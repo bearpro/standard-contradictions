@@ -1,0 +1,212 @@
+﻿
+module Mprokazin.DdlLtlf.Language.Ast
+
+type AlgebraicEqualityCondition =
+    | Gt
+    | Lt
+    | Eq
+
+type AlgebraicExpression = 
+    | Constant of int
+    | Variable of string
+    | Sum of A: AlgebraicExpression * B: AlgebraicExpression
+    | Mod of A: AlgebraicExpression * B: AlgebraicExpression
+
+type PredicateExpression =
+    | And of A: PredicateExpression * B: PredicateExpression
+    | Or of A: PredicateExpression * B: PredicateExpression
+    | Not of PredicateExpression
+    | NamedPredicateCall of Name: string * Parameters: string list
+    | NestedPredicate of 
+        Defined: NamedPredicateDefinition * 
+        Predicate: PredicateExpression
+    | AlgebraicPredicate of 
+        A: AlgebraicExpression * 
+        B: AlgebraicExpression * 
+        Condition: AlgebraicEqualityCondition
+    | NotImplementedExpression of string
+
+and NamedPredicateDefinition = { 
+    Name: string
+    Parameters: string list
+    Predicate: PredicateExpression
+}
+
+type DeonticModality = 
+    | Obligated 
+    | Permitted
+    | Forbidden
+    | Suggested
+
+type DeonticStatement = {
+    Name: string
+    Modality: DeonticModality
+    Body: PredicateExpression
+    Context: PredicateExpression option
+}
+
+type Model = { 
+    DeonticStatements: DeonticStatement list
+    NamedPredicates: NamedPredicateDefinition list
+}
+
+module Visitors =
+
+    open Mprokazin.DdlLtlf.Language.Antlr
+
+    type ModalityVisitor() =
+        inherit DdlLtlfBaseVisitor<DeonticModality>()
+
+        override _.VisitDeonticModality ctx =
+            match ctx.GetText() with
+            | "obligated" -> DeonticModality.Obligated
+            | "permitted" -> DeonticModality.Permitted
+            | "forbidden" -> DeonticModality.Forbidden
+            | "suggested" -> DeonticModality.Suggested
+            | x -> failwithf "Unknown modality: %s" x
+
+    type ParametersVisitor() =
+        inherit DdlLtlfBaseVisitor<string list>()
+        override _.VisitParameters ctx = 
+            ctx.NAME()
+            |> Array.map (fun x -> x.GetText())
+            |> List.ofArray
+
+    type AlgebraicExpressionVisitor() =
+        inherit DdlLtlfBaseVisitor<AlgebraicExpression>()
+
+        override this.VisitConst ctx =
+            let value = ctx.algebraicConstant().GetText() |> int
+            AlgebraicExpression.Constant value
+
+        override this.VisitVar ctx =
+            let paramName = ctx.parameterReference().GetText()
+            AlgebraicExpression.Variable paramName
+
+        override this.VisitSum ctx =
+            let a = ctx.algebraicExpression(0) |> this.Visit
+            let b = ctx.algebraicExpression(1) |> this.Visit
+            AlgebraicExpression.Sum(a, b)
+
+        override this.VisitMod ctx =
+            let a = ctx.algebraicExpression(0) |> this.Visit
+            let b = ctx.algebraicExpression(1) |> this.Visit
+            AlgebraicExpression.Mod(a, b)
+
+    type PredicateExpressionVisitor() =
+        inherit DdlLtlfBaseVisitor<PredicateExpression>()
+
+        override this.VisitOr ctx =
+            let a = this.Visit(ctx.predicate(0))
+            let b = this.Visit(ctx.predicate(1))
+            PredicateExpression.Or(A = a, B = b)
+
+        override this.VisitAnd ctx =
+            let a = this.Visit(ctx.predicate(0))
+            let b = this.Visit(ctx.predicate(1))
+            PredicateExpression.And(A = a, B = b)
+
+        override this.VisitNot ctx =
+            PredicateExpression.Not (this.Visit (ctx.predicate()))
+
+        override this.VisitAlgebraic ctx =
+            let v = AlgebraicExpressionVisitor()
+            
+            let a = ctx.algebraicPredicate().algebraicExpression(0)
+            let a = v.Visit(a)
+            
+            let b = ctx.algebraicPredicate().algebraicExpression(1)
+            let b = v.Visit(b)
+            
+            let condition = 
+                match ctx.algebraicPredicate().GetChild(1).GetText() with
+                | "=" -> AlgebraicEqualityCondition.Eq
+                | ">" -> AlgebraicEqualityCondition.Gt
+                | "<" -> AlgebraicEqualityCondition.Lt
+                | x -> failwithf "Unknown equality condition: %s" x
+
+            PredicateExpression.AlgebraicPredicate(a, b, condition)
+
+        override _.VisitNamedPredicateCall ctx =
+            let name = ctx.NAME().GetText()
+            let ps =
+                if isNull (ctx.parameters()) then []
+                else ParametersVisitor().VisitParameters(ctx.parameters())
+            PredicateExpression.NamedPredicateCall(name, ps)
+
+        override this.VisitNestedPredicate ctx =
+            let nestedPredicate = 
+                NamedPredicateDefinitionVisitor().Visit(ctx.namedPredicateDefinition())
+            let predicate = this.Visit(ctx.predicate())
+            PredicateExpression.NestedPredicate(nestedPredicate, predicate)
+
+    and NamedPredicateDefinitionVisitor() =
+        inherit DdlLtlfBaseVisitor<NamedPredicateDefinition>()
+
+        override this.VisitNamedPredicateDefinition ctx =
+            let name = ctx.NAME().GetText()
+            let ps =
+                if isNull (ctx.parameters()) then []
+                else ParametersVisitor().VisitParameters(ctx.parameters())
+            let predicate = PredicateExpressionVisitor().Visit(ctx.predicate())
+            
+            { Name = name 
+              Parameters = ps
+              Predicate = predicate }
+
+
+    type DeonticStatementVisitor() =
+        inherit DdlLtlfBaseVisitor<DeonticStatement>()
+
+        override this.VisitDeonticStatement ctx =
+            let modality = ctx.deonticModality().Accept(ModalityVisitor())
+            
+            let nameOpt =
+                match ctx.NAME() with
+                | null -> $"(anonymous statement at {ctx.SourceInterval})"
+                | name -> name.GetText()
+
+            let body = ctx.predicate(0).Accept(PredicateExpressionVisitor())
+
+            let contextOpt =
+                if ctx.predicate().Length > 1 then
+                    Some (ctx.predicate(1).Accept(PredicateExpressionVisitor()))
+                else None
+
+            {
+                Name = nameOpt
+                Modality = modality
+                Body = body
+                Context = contextOpt
+            }
+
+    type RootVisitor() =
+        inherit DdlLtlfBaseVisitor<Model>()
+
+        override this.VisitRoot (context: DdlLtlfParser.RootContext): Model = 
+            let deonticStatements = 
+                context.deonticStatement() 
+                |> Array.map (DeonticStatementVisitor().Visit)
+                |> List.ofArray
+
+            let namedPredicates =
+                context.namedPredicateDefinition()
+                |> Array.map (NamedPredicateDefinitionVisitor().Visit)
+                |> List.ofArray
+
+            { DeonticStatements = deonticStatements
+              NamedPredicates = namedPredicates }
+                
+    let visit x = RootVisitor().Visit x
+
+let parse (input: string) =
+
+    let stream = Antlr4.Runtime.AntlrInputStream input
+    let lexer = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfLexer(stream)
+    let tokens = Antlr4.Runtime.CommonTokenStream(lexer)
+    let parser = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfParser(tokens)
+    
+    let tree = parser.root()
+    
+    let result = Visitors.visit tree
+    result
