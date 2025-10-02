@@ -1,0 +1,12 @@
+python-dotenv
+requests
+pandas
+umap-learn
+numpy
+scikit-learn
+seaborn
+matplotlib
+hdbscan
+plotly
+nbformat
+POT
