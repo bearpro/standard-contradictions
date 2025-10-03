@@ -10,3 +10,4 @@ let ``Undefined predicate fails`` () =
     match Semantics.validate ast with
     | Ok () -> Assert.Fail("Unexpectedly Ok")
     | Error e -> Assert.NotEmpty e
+    

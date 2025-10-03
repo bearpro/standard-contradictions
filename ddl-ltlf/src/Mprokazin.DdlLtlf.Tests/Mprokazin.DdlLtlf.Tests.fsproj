@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="Tests.Language.Ast.fs" />
     <Compile Include="Tests.Language.Semantics.fs" />
+    <Compile Include="Tests.Solver.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -23,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Mprokazin.DdlLtlf.Language.Antlr\Mprokazin.DdlLtlf.Language.Antlr.csproj" />
     <ProjectReference Include="..\Mprokazin.DdlLtlf.Language\Mprokazin.DdlLtlf.Language.fsproj" />
+    <ProjectReference Include="..\Mprokazin.DdlLtlf.Solver\Mprokazin.DdlLtlf.Solver.fsproj" />
   </ItemGroup>
 
 </Project>
