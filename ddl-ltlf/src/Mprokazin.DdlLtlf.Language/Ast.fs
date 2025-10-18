@@ -16,7 +16,7 @@ type PredicateExpression =
     | And of A: PredicateExpression * B: PredicateExpression
     | Or of A: PredicateExpression * B: PredicateExpression
     | Not of PredicateExpression
-    | NamedPredicateCall of Name: string * Parameters: string list
+    | NamedPredicateCall of Name: string * Parameters: string array
     | NestedPredicate of 
         Defined: NamedPredicateDefinition * 
         Predicate: PredicateExpression
@@ -28,7 +28,7 @@ type PredicateExpression =
 
 and NamedPredicateDefinition = { 
     Name: string
-    Parameters: string list
+    Parameters: string array
     Predicate: PredicateExpression
 }
 
@@ -132,7 +132,7 @@ module Visitors =
             let ps =
                 if isNull (ctx.parameters()) then []
                 else ParametersVisitor().VisitParameters(ctx.parameters())
-            PredicateExpression.NamedPredicateCall(name, ps)
+            PredicateExpression.NamedPredicateCall(name, Array.ofList ps)
 
         override this.VisitNestedPredicate ctx =
             let nestedPredicate = 
@@ -151,7 +151,7 @@ module Visitors =
             let predicate = PredicateExpressionVisitor().Visit(ctx.predicate())
             
             { Name = name 
-              Parameters = ps
+              Parameters = Array.ofList ps
               Predicate = predicate }
 
 

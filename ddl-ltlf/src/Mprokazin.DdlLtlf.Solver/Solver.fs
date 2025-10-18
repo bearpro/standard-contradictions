@@ -61,8 +61,8 @@ let rec private varsP = function
   | And(a,b) | Or(a,b)                  -> Set.union (varsP a) (varsP b)
   | Not p                               -> varsP p
   | AlgebraicPredicate(a, b, _)         -> Set.union (varsA a) (varsA b)
-  | NamedPredicateCall(_, pars)         -> Set.ofList pars
-  | NestedPredicate(defined, p)         -> Set.union (Set.ofList defined.Parameters) (varsP defined.Predicate) |> Set.union (varsP p)
+  | NamedPredicateCall(_, pars)         -> Set.ofArray pars
+  | NestedPredicate(defined, p)         -> Set.union (Set.ofArray defined.Parameters) (varsP defined.Predicate) |> Set.union (varsP p)
   | NotImplementedExpression _          -> Set.empty
 
 let private collectVars (norm: Normalized list) =
@@ -88,7 +88,7 @@ let private aexpr (z:Z) =
   let rec go = function
     | AlgebraicExpression.Constant i   -> z.Ctx.MkInt(i) :> ArithExpr
     | AlgebraicExpression.Variable v   -> z.Env[v] :?> ArithExpr
-    | AlgebraicExpression.Sum(a,b)     -> z.Ctx.MkAdd(go a, go b) :> ArithExpr
+    | AlgebraicExpression.Sum(a,b)     -> z.Ctx.MkAdd(go a, go b)
     | AlgebraicExpression.Mod(a,b)     ->
         z.Ctx.MkMod(go a :?> IntExpr, go b :?> IntExpr) :> ArithExpr
   go
@@ -104,12 +104,12 @@ let private pred (z:Z) =
     | AlgebraicPredicate(a,b,cond) ->
         let aa, bb = aexpr z a, aexpr z b
         match cond with
-        | AlgebraicEqualityCondition.Eq -> z.Ctx.MkEq(aa,bb) :?> BoolExpr
+        | AlgebraicEqualityCondition.Eq -> z.Ctx.MkEq(aa,bb)
         | AlgebraicEqualityCondition.Gt -> z.Ctx.MkGt(aa,bb)
         | AlgebraicEqualityCondition.Lt -> z.Ctx.MkLt(aa,bb)
     | NamedPredicateCall(name, pars) ->
         // на всякий случай: если вдруг осталось — считаем как неинтерпретируемый булев предикат
-        let args = pars |> List.map (fun p -> z.Env[p]) |> List.toArray
+        let args = pars |> Array.map (fun p -> z.Env[p])
         let sorts = args |> Array.map (fun e -> e.Sort)
         let f = z.Ctx.MkFuncDecl(name, sorts, z.Ctx.BoolSort :> Sort)
         z.Ctx.MkApp(f, args) :?> BoolExpr
