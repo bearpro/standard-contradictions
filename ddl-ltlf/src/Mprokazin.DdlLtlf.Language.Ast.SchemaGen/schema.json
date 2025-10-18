@@ -1,0 +1,436 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "DDL-LTLf AST",
+  "type": "object",
+  "description": "JSON Schema for DDL-LTLf's language AST",
+  "additionalProperties": false,
+  "required": [
+    "deonticStatements",
+    "namedPredicates"
+  ],
+  "properties": {
+    "deonticStatements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/DeonticStatement"
+      }
+    },
+    "namedPredicates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/NamedPredicateDefinition"
+      }
+    }
+  },
+  "definitions": {
+    "DeonticStatement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "modality",
+        "body"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "modality": {
+          "$ref": "#/definitions/DeonticModality"
+        },
+        "body": {
+          "$ref": "#/definitions/PredicateExpression"
+        },
+        "context": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/PredicateExpression"
+            }
+          ]
+        }
+      }
+    },
+    "DeonticModality": {
+      "type": "string",
+      "additionalProperties": false,
+      "enum": [
+        "Obligated",
+        "Permitted",
+        "Forbidden",
+        "Suggested"
+      ]
+    },
+    "PredicateExpression": {
+      "definitions": {
+        "And": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "a",
+            "b"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "And",
+              "x-enumNames": [
+                "And"
+              ],
+              "enum": [
+                "And"
+              ]
+            },
+            "a": {
+              "$ref": "#/definitions/PredicateExpression"
+            },
+            "b": {
+              "$ref": "#/definitions/PredicateExpression"
+            }
+          }
+        },
+        "Or": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "a",
+            "b"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "Or",
+              "x-enumNames": [
+                "Or"
+              ],
+              "enum": [
+                "Or"
+              ]
+            },
+            "a": {
+              "$ref": "#/definitions/PredicateExpression"
+            },
+            "b": {
+              "$ref": "#/definitions/PredicateExpression"
+            }
+          }
+        },
+        "Not": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "item"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "Not",
+              "x-enumNames": [
+                "Not"
+              ],
+              "enum": [
+                "Not"
+              ]
+            },
+            "item": {
+              "$ref": "#/definitions/PredicateExpression"
+            }
+          }
+        },
+        "NamedPredicateCall": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "name",
+            "parameters"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "NamedPredicateCall",
+              "x-enumNames": [
+                "NamedPredicateCall"
+              ],
+              "enum": [
+                "NamedPredicateCall"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "parameters": {
+              "$ref": "#/definitions/StringOf"
+            }
+          }
+        },
+        "NestedPredicate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "defined",
+            "predicate"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "NestedPredicate",
+              "x-enumNames": [
+                "NestedPredicate"
+              ],
+              "enum": [
+                "NestedPredicate"
+              ]
+            },
+            "defined": {
+              "$ref": "#/definitions/NamedPredicateDefinition"
+            },
+            "predicate": {
+              "$ref": "#/definitions/PredicateExpression"
+            }
+          }
+        },
+        "AlgebraicPredicate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "a",
+            "b",
+            "condition"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "AlgebraicPredicate",
+              "x-enumNames": [
+                "AlgebraicPredicate"
+              ],
+              "enum": [
+                "AlgebraicPredicate"
+              ]
+            },
+            "a": {
+              "$ref": "#/definitions/AlgebraicExpression"
+            },
+            "b": {
+              "$ref": "#/definitions/AlgebraicExpression"
+            },
+            "condition": {
+              "$ref": "#/definitions/AlgebraicEqualityCondition"
+            }
+          }
+        },
+        "NotImplementedExpression": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "item"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "NotImplementedExpression",
+              "x-enumNames": [
+                "NotImplementedExpression"
+              ],
+              "enum": [
+                "NotImplementedExpression"
+              ]
+            },
+            "item": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PredicateExpression/definitions/And"
+        },
+        {
+          "$ref": "#/definitions/PredicateExpression/definitions/Or"
+        },
+        {
+          "$ref": "#/definitions/PredicateExpression/definitions/Not"
+        },
+        {
+          "$ref": "#/definitions/PredicateExpression/definitions/NamedPredicateCall"
+        },
+        {
+          "$ref": "#/definitions/PredicateExpression/definitions/NestedPredicate"
+        },
+        {
+          "$ref": "#/definitions/PredicateExpression/definitions/AlgebraicPredicate"
+        },
+        {
+          "$ref": "#/definitions/PredicateExpression/definitions/NotImplementedExpression"
+        }
+      ]
+    },
+    "StringOf": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "NamedPredicateDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "parameters",
+        "predicate"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "predicate": {
+          "$ref": "#/definitions/PredicateExpression"
+        }
+      }
+    },
+    "AlgebraicExpression": {
+      "definitions": {
+        "Constant": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "item"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "Constant",
+              "x-enumNames": [
+                "Constant"
+              ],
+              "enum": [
+                "Constant"
+              ]
+            },
+            "item": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        },
+        "Variable": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "item"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "Variable",
+              "x-enumNames": [
+                "Variable"
+              ],
+              "enum": [
+                "Variable"
+              ]
+            },
+            "item": {
+              "type": "string"
+            }
+          }
+        },
+        "Sum": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "a",
+            "b"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "Sum",
+              "x-enumNames": [
+                "Sum"
+              ],
+              "enum": [
+                "Sum"
+              ]
+            },
+            "a": {
+              "$ref": "#/definitions/AlgebraicExpression"
+            },
+            "b": {
+              "$ref": "#/definitions/AlgebraicExpression"
+            }
+          }
+        },
+        "Mod": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ddl-ltlf",
+            "a",
+            "b"
+          ],
+          "properties": {
+            "ddl-ltlf": {
+              "type": "string",
+              "default": "Mod",
+              "x-enumNames": [
+                "Mod"
+              ],
+              "enum": [
+                "Mod"
+              ]
+            },
+            "a": {
+              "$ref": "#/definitions/AlgebraicExpression"
+            },
+            "b": {
+              "$ref": "#/definitions/AlgebraicExpression"
+            }
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AlgebraicExpression/definitions/Constant"
+        },
+        {
+          "$ref": "#/definitions/AlgebraicExpression/definitions/Variable"
+        },
+        {
+          "$ref": "#/definitions/AlgebraicExpression/definitions/Sum"
+        },
+        {
+          "$ref": "#/definitions/AlgebraicExpression/definitions/Mod"
+        }
+      ]
+    },
+    "AlgebraicEqualityCondition": {
+      "type": "string",
+      "additionalProperties": false,
+      "enum": [
+        "Gt",
+        "Lt",
+        "Eq"
+      ]
+    }
+  }
+}
