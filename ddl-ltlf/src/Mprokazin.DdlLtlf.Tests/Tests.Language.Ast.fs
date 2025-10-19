@@ -101,8 +101,9 @@ let ``Algebraic obligation`` () =
     match statement.Body with
     | AlgebraicPredicate(a, b, condition) ->
         Assert.Equal(
-            AlgebraicExpression.Mod(
+            AlgebraicExpression.Op(
                 AlgebraicExpression.Variable("x"),
+                AlgebraicOperation.Mod,
                 AlgebraicExpression.Constant(3)),
             a)
         Assert.Equal(

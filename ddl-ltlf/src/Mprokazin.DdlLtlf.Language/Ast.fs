@@ -3,14 +3,17 @@ module Mprokazin.DdlLtlf.Language.Ast
 
 type AlgebraicEqualityCondition =
     | Gt
-    | Lt
+    | Ge
     | Eq
+    | Lt
+    | Le
+
+type AlgebraicOperation = Sum | Mod | Mul | Sub | Dev
 
 type AlgebraicExpression = 
     | Constant of int
     | Variable of string
-    | Sum of A: AlgebraicExpression * B: AlgebraicExpression
-    | Mod of A: AlgebraicExpression * B: AlgebraicExpression
+    | Op of A: AlgebraicExpression * Op: AlgebraicOperation * B: AlgebraicExpression
 
 type PredicateExpression =
     | And of A: PredicateExpression * B: PredicateExpression
@@ -83,15 +86,19 @@ module Visitors =
             let paramName = ctx.parameterReference().GetText()
             AlgebraicExpression.Variable paramName
 
-        override this.VisitSum ctx =
-            let a = ctx.algebraicExpression(0) |> this.Visit
-            let b = ctx.algebraicExpression(1) |> this.Visit
-            AlgebraicExpression.Sum(a, b)
+        override this.VisitOp ctx =
+            let a = this.Visit (ctx.algebraicExpression(0))
+            let b = this.Visit (ctx.algebraicExpression(1))
+            match ctx.binaryAlgegraicOperation().GetText() with
+            | "/" -> AlgebraicExpression.Op(a, Dev, b)
+            | "*" -> AlgebraicExpression.Op(a, Mul, b)
+            | "+" -> AlgebraicExpression.Op(a, Sum, b)
+            | "-" -> AlgebraicExpression.Op(a, Sub, b)
+            | "%" -> AlgebraicExpression.Op(a, Mod, b)
+            | x -> failwithf "Unexpected algebraic operation %s" x
 
-        override this.VisitMod ctx =
-            let a = ctx.algebraicExpression(0) |> this.Visit
-            let b = ctx.algebraicExpression(1) |> this.Visit
-            AlgebraicExpression.Mod(a, b)
+        override this.VisitParens ctx: AlgebraicExpression = 
+            this.Visit (ctx.algebraicExpression())
 
     type PredicateExpressionVisitor() =
         inherit DdlLtlfBaseVisitor<PredicateExpression>()
@@ -120,9 +127,11 @@ module Visitors =
             
             let condition = 
                 match ctx.algebraicPredicate().GetChild(1).GetText() with
-                | "=" -> AlgebraicEqualityCondition.Eq
-                | ">" -> AlgebraicEqualityCondition.Gt
                 | "<" -> AlgebraicEqualityCondition.Lt
+                | "<=" -> AlgebraicEqualityCondition.Le
+                | "=" -> AlgebraicEqualityCondition.Eq
+                | ">=" -> AlgebraicEqualityCondition.Ge
+                | ">" -> AlgebraicEqualityCondition.Gt
                 | x -> failwithf "Unknown equality condition: %s" x
 
             PredicateExpression.AlgebraicPredicate(a, b, condition)

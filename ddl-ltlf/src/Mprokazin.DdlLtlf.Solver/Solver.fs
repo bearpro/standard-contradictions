@@ -54,8 +54,7 @@ let private normalize (sem: PermissionSemantics) (ds: DeonticStatement) : Normal
 let rec private varsA = function
   | AlgebraicExpression.Constant _      -> Set.empty
   | AlgebraicExpression.Variable v      -> Set.singleton v
-  | AlgebraicExpression.Sum(a,b)        -> Set.union (varsA a) (varsA b)
-  | AlgebraicExpression.Mod(a,b)        -> Set.union (varsA a) (varsA b)
+  | AlgebraicExpression.Op(a,_,b)        -> Set.union (varsA a) (varsA b)
 
 let rec private varsP = function
   | And(a,b) | Or(a,b)                  -> Set.union (varsP a) (varsP b)
@@ -88,9 +87,15 @@ let private aexpr (z:Z) =
   let rec go = function
     | AlgebraicExpression.Constant i   -> z.Ctx.MkInt(i) :> ArithExpr
     | AlgebraicExpression.Variable v   -> z.Env[v] :?> ArithExpr
-    | AlgebraicExpression.Sum(a,b)     -> z.Ctx.MkAdd(go a, go b)
-    | AlgebraicExpression.Mod(a,b)     ->
-        z.Ctx.MkMod(go a :?> IntExpr, go b :?> IntExpr) :> ArithExpr
+    | AlgebraicExpression.Op(a,op,b)     -> 
+      match op with
+      | Sum -> z.Ctx.MkAdd(go a, go b)
+      | Mod -> z.Ctx.MkMod(go a :?> IntExpr, go b :?> IntExpr)
+      | Mul -> z.Ctx.MkMul(go a, go b)
+      | Sub -> z.Ctx.MkSub(go a, go b)
+      | Dev -> z.Ctx.MkDiv(go a, go b)
+      
+        
   go
 
 let private pred (z:Z) =
@@ -107,6 +112,8 @@ let private pred (z:Z) =
         | AlgebraicEqualityCondition.Eq -> z.Ctx.MkEq(aa,bb)
         | AlgebraicEqualityCondition.Gt -> z.Ctx.MkGt(aa,bb)
         | AlgebraicEqualityCondition.Lt -> z.Ctx.MkLt(aa,bb)
+        | AlgebraicEqualityCondition.Ge -> z.Ctx.MkGe(aa,bb)
+        | AlgebraicEqualityCondition.Le -> z.Ctx.MkLe(aa,bb)
     | NamedPredicateCall(name, pars) ->
         // на всякий случай: если вдруг осталось — считаем как неинтерпретируемый булев предикат
         let args = pars |> Array.map (fun p -> z.Env[p])

@@ -7,13 +7,15 @@ algebraicConstant       : INT ;
 
 parameterReference      : NAME ;
 
+binaryAlgegraicOperation : ('+' | '-' | '%' | '/' | '*' ) ;
+
 algebraicExpression     : algebraicConstant                             # Const
                         | parameterReference                            # Var
-                        | algebraicExpression '+' algebraicExpression   # Sum
-                        | algebraicExpression '%' algebraicExpression   # Mod
+                        | algebraicExpression binaryAlgegraicOperation algebraicExpression # Op
+                        | '(' algebraicExpression ')'                   # Parens
                         ;
 
-algebraicPredicate      : algebraicExpression ('<' | '>' | '=') algebraicExpression 
+algebraicPredicate      : algebraicExpression ('<' | '<=' | '=' | '>=' | '>') algebraicExpression 
                         ;
 
 parameters : '(' NAME? (',' NAME)* ')' ;
