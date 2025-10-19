@@ -1,4 +1,7 @@
 .sync*
 .nextcloud*
 **/Desktop.ini
+
 **/.env*
+**/data/*
+**/data/!gitignore
