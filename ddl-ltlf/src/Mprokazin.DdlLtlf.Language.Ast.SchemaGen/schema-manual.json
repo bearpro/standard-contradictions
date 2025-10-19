@@ -1,0 +1,264 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/ddl-ltlf-model.schema.json",
+  "title": "DDL-LTLf Model (LLM-friendly)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["deonticStatements"],
+  "properties": {
+    "deonticStatements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/DeonticStatement" },
+      "description": "Нормативные (деонтические) высказывания."
+    },
+    "namedPredicates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/NamedPredicateDefinition" },
+      "description": "Опционально: словарь именованных предикатов, если они используются."
+    }
+  },
+
+  "$defs": {
+    "DeonticModality": {
+      "type": "string",
+      "enum": ["Obligated", "Permitted", "Forbidden", "Suggested"],
+      "description": "Деонтическая модальность."
+    },
+
+    "AlgebraicEqualityCondition": {
+      "type": "string",
+      "enum": ["Gt", "Lt", "Eq"],
+      "description": "Оператор сравнения для алгебраических предикатов: >, <, =."
+    },
+
+    "AlgebraicExpression": {
+      "description": "Алгебраическое выражение. Используется явный тег kind для вариантов.",
+      "oneOf": [
+        {
+          "title": "Constant",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "Constant" },
+            "value": { "type": "integer", "description": "Целочисленная константа." }
+          },
+          "examples": [{ "kind": "Constant", "value": 5 }]
+        },
+        {
+          "title": "Variable",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name"],
+          "properties": {
+            "kind": { "const": "Variable" },
+            "name": { "type": "string", "minLength": 1, "description": "Имя переменной." }
+          },
+          "examples": [{ "kind": "Variable", "name": "x" }]
+        },
+        {
+          "title": "Sum",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "a", "b"],
+          "properties": {
+            "kind": { "const": "Sum" },
+            "a": { "$ref": "#/$defs/AlgebraicExpression" },
+            "b": { "$ref": "#/$defs/AlgebraicExpression" }
+          },
+          "examples": [
+            {
+              "kind": "Sum",
+              "a": { "kind": "Variable", "name": "x" },
+              "b": { "kind": "Constant", "value": 1 }
+            }
+          ]
+        },
+        {
+          "title": "Mod",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "a", "b"],
+          "properties": {
+            "kind": { "const": "Mod" },
+            "a": { "$ref": "#/$defs/AlgebraicExpression" },
+            "b": { "$ref": "#/$defs/AlgebraicExpression" }
+          },
+          "examples": [
+            {
+              "kind": "Mod",
+              "a": { "kind": "Variable", "name": "n" },
+              "b": { "kind": "Constant", "value": 2 }
+            }
+          ]
+        }
+      ]
+    },
+
+    "PredicateExpression": {
+      "description": "Логическое/предикатное выражение. Юнит-тег kind обязателен.",
+      "oneOf": [
+        {
+          "title": "And",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "a", "b"],
+          "properties": {
+            "kind": { "const": "And" },
+            "a": { "$ref": "#/$defs/PredicateExpression" },
+            "b": { "$ref": "#/$defs/PredicateExpression" }
+          }
+        },
+        {
+          "title": "Or",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "a", "b"],
+          "properties": {
+            "kind": { "const": "Or" },
+            "a": { "$ref": "#/$defs/PredicateExpression" },
+            "b": { "$ref": "#/$defs/PredicateExpression" }
+          }
+        },
+        {
+          "title": "Not",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expr"],
+          "properties": {
+            "kind": { "const": "Not" },
+            "expr": { "$ref": "#/$defs/PredicateExpression" }
+          }
+        },
+        {
+          "title": "NamedPredicateCall",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name"],
+          "properties": {
+            "kind": { "const": "NamedPredicateCall" },
+            "name": { "type": "string", "minLength": 1, "description": "Имя предиката." },
+            "parameters": {
+              "type": "array",
+              "description": "Позиционные строковые параметры вызова.",
+              "items": { "type": "string" },
+              "default": []
+            }
+          },
+          "examples": [
+            { "kind": "NamedPredicateCall", "name": "IsEmployee", "parameters": ["userId"] }
+          ]
+        },
+        {
+          "title": "NestedPredicate",
+          "description": "Локальное определение предиката и его использование (редко нужно; продвинутая конструкция).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "defined", "predicate"],
+          "properties": {
+            "kind": { "const": "NestedPredicate" },
+            "defined": { "$ref": "#/$defs/NamedPredicateDefinition" },
+            "predicate": { "$ref": "#/$defs/PredicateExpression" }
+          }
+        },
+        {
+          "title": "AlgebraicPredicate",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "a", "b", "condition"],
+          "properties": {
+            "kind": { "const": "AlgebraicPredicate" },
+            "a": { "$ref": "#/$defs/AlgebraicExpression" },
+            "b": { "$ref": "#/$defs/AlgebraicExpression" },
+            "condition": { "$ref": "#/$defs/AlgebraicEqualityCondition" }
+          },
+          "examples": [
+            {
+              "kind": "AlgebraicPredicate",
+              "condition": "Gt",
+              "a": { "kind": "Variable", "name": "x" },
+              "b": { "kind": "Constant", "value": 0 }
+            }
+          ]
+        },
+        {
+          "title": "NotImplementedExpression",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "message"],
+          "properties": {
+            "kind": { "const": "NotImplementedExpression" },
+            "message": { "type": "string", "description": "Текст заглушки/TODO." }
+          }
+        }
+      ]
+    },
+
+    "NamedPredicateDefinition": {
+      "title": "NamedPredicateDefinition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "parameters", "predicate"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "Имя предиката." },
+        "parameters": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Сигнатура параметров определения (имена)."
+        },
+        "predicate": { "$ref": "#/$defs/PredicateExpression" }
+      },
+      "examples": [
+        {
+          "name": "IsAdult",
+          "parameters": ["userId"],
+          "predicate": {
+            "kind": "AlgebraicPredicate",
+            "condition": "Gt",
+            "a": { "kind": "NamedPredicateCall", "name": "AgeOf", "parameters": ["userId"] },
+            "b": { "kind": "Constant", "value": 17 }
+          }
+        }
+      ]
+    },
+
+    "DeonticStatement": {
+      "title": "DeonticStatement",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "modality", "body"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "Человекочитаемое имя правила." },
+        "modality": { "$ref": "#/$defs/DeonticModality" },
+        "body": {
+          "$ref": "#/$defs/PredicateExpression",
+          "description": "Условие/формула, к которой применяется модальность."
+        },
+        "context": {
+          "description": "Необязательный контекст (условие применимости).",
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/PredicateExpression" }
+          ],
+          "default": null
+        }
+      },
+      "examples": [
+        {
+          "name": "WearHelmetOnSite",
+          "modality": "Obligated",
+          "body": {
+            "kind": "NamedPredicateCall",
+            "name": "IsOnConstructionSite",
+            "parameters": ["userId"]
+          },
+          "context": {
+            "kind": "Not",
+            "expr": { "kind": "NamedPredicateCall", "name": "IsInOffice", "parameters": ["userId"] }
+          }
+        }
+      ]
+    }
+  }
+}
