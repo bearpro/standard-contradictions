@@ -20,7 +20,16 @@ obligated big_enough(x) when is_tube(x)
 fact x.shape = Tube(length: 30, diameter: 5)
 ```
 
-## Overview
+## Sources in this directory
+
+- `Mprokazin.DdlLtlf.Language.Antlr` - ANTLR grammar of the language.
+- `Mprokazin.DdlLtlf.Language` - parser and semantic analyzer, and probably other language (design time) features that if ever there are.
+- `Mprokazin.DdlLtlf.Solver` - runtime of the language. Translate ddl-ltlf to Z3.
+- `Mprokazin.DdlLtlf.Cli` - shell tool to work with language sources (`validate`, `solve`)
+- `Mprokazin.DdlLtlf.Tests` - single test project for all things above. 
+- `Mprokazin.DdlLtlf.Language.Ast.SchemaGen` - generator of json-schema matching lanugae syntax tree structure. May be useful for some software integrations later, but for now just collects dust there.
+
+## Language Overview
 
 - The _program_ in this language not meant to be executed as traditional code of
   general purpose programming language
