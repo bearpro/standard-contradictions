@@ -26,7 +26,8 @@ fact x.shape = Tube(length: 30, diameter: 5)
 - `Mprokazin.DdlLtlf.Language` - parser and semantic analyzer, and probably other language (design time) features that if ever there are.
 - `Mprokazin.DdlLtlf.Solver` - runtime of the language. Translate ddl-ltlf to Z3.
 - `Mprokazin.DdlLtlf.Cli` - shell tool to work with language sources (`validate`, `solve`)
-- `Mprokazin.DdlLtlf.Tests` - single test project for all things above. 
+- `Mprokazin.DdlLtlf.Tests` - parser and semantics tests that do not require the native Z3 library.
+- `Mprokazin.DdlLtlf.Tests.Solver` - solver tests that exercise Z3-backed conflict detection.
 - `Mprokazin.DdlLtlf.Language.Ast.SchemaGen` - generator of json-schema matching lanugae syntax tree structure. May be useful for some software integrations later, but for now just collects dust there.
 
 ## Language Overview

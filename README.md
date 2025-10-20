@@ -20,3 +20,8 @@ Set of tool to check for contradictions and conflicts inside and between normati
 # Status
 
 This is early prototype - expect breaking changes.
+
+## Running tests
+
+- `dotnet test ddl-ltlf/src/Mprokazin.DdlLtlf.Tests` – parser and semantics tests that do not require the native Z3 library and can run in any environment.
+- `dotnet test ddl-ltlf/src/Mprokazin.DdlLtlf.Tests.Solver` – solver integration tests that require Microsoft Z3 (native) to be available on the machine.
