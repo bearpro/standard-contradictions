@@ -23,8 +23,8 @@ type Conflict =
 
 // ==================== Н О Р М А Л И З А Ц И Я ====================
 
-let private truePred = AlgebraicPredicate(AlgebraicExpression.Constant 1,
-                                          AlgebraicExpression.Constant 1,
+let private truePred = AlgebraicPredicate(AlgebraicExpression.IntegerConstant 1,
+                                          AlgebraicExpression.IntegerConstant 1,
                                           AlgebraicEqualityCondition.Eq)
 
 let private negate (p: PredicateExpression) =
@@ -52,8 +52,9 @@ let private normalize (sem: PermissionSemantics) (ds: DeonticStatement) : Normal
 // ==================== С Б О Р   П Е Р Е М Е Н Н Ы Х ====================
 
 let rec private varsA = function
-  | AlgebraicExpression.Constant _      -> Set.empty
-  | AlgebraicExpression.Variable v      -> Set.singleton v
+  | AlgebraicExpression.IntegerConstant _      -> Set.empty
+  | AlgebraicExpression.RealConstant _     -> Set.empty
+  | AlgebraicExpression.Variable v       -> Set.singleton v
   | AlgebraicExpression.Op(a,_,b)        -> Set.union (varsA a) (varsA b)
 
 let rec private varsP = function
@@ -62,6 +63,7 @@ let rec private varsP = function
   | AlgebraicPredicate(a, b, _)         -> Set.union (varsA a) (varsA b)
   | NamedPredicateCall(_, pars)         -> Set.ofArray pars
   | NestedPredicate(defined, p)         -> Set.union (Set.ofArray defined.Parameters) (varsP defined.Predicate) |> Set.union (varsP p)
+  | Bool _                              -> Set.empty
   | NotImplementedExpression _          -> Set.empty
 
 let private collectVars (norm: Normalized list) =
@@ -85,7 +87,8 @@ let private mkZ (vars: string list) =
 
 let private aexpr (z:Z) =
   let rec go = function
-    | AlgebraicExpression.Constant i   -> z.Ctx.MkInt(i) :> ArithExpr
+    | AlgebraicExpression.IntegerConstant i   -> z.Ctx.MkInt(i) :> ArithExpr
+    | AlgebraicExpression.RealConstant f  -> z.Ctx.MkReal(f.ToString()) :> ArithExpr
     | AlgebraicExpression.Variable v   -> z.Env[v] :?> ArithExpr
     | AlgebraicExpression.Op(a,op,b)     -> 
       match op with
@@ -114,6 +117,7 @@ let private pred (z:Z) =
         | AlgebraicEqualityCondition.Lt -> z.Ctx.MkLt(aa,bb)
         | AlgebraicEqualityCondition.Ge -> z.Ctx.MkGe(aa,bb)
         | AlgebraicEqualityCondition.Le -> z.Ctx.MkLe(aa,bb)
+    | Bool b -> z.Ctx.MkBool b
     | NamedPredicateCall(name, pars) ->
         // на всякий случай: если вдруг осталось — считаем как неинтерпретируемый булев предикат
         let args = pars |> Array.map (fun p -> z.Env[p])

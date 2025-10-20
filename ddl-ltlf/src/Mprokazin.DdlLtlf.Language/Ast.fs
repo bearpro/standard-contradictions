@@ -11,7 +11,8 @@ type AlgebraicEqualityCondition =
 type AlgebraicOperation = Sum | Mod | Mul | Sub | Dev
 
 type AlgebraicExpression = 
-    | Constant of int
+    | IntegerConstant of int64
+    | RealConstant of string // No need to parse it to float and loose percision
     | Variable of string
     | Op of A: AlgebraicExpression * Op: AlgebraicOperation * B: AlgebraicExpression
 
@@ -20,6 +21,7 @@ type PredicateExpression =
     | Or of A: PredicateExpression * B: PredicateExpression
     | Not of PredicateExpression
     | NamedPredicateCall of Name: string * Parameters: string array
+    | Bool of bool
     | NestedPredicate of 
         Defined: NamedPredicateDefinition * 
         Predicate: PredicateExpression
@@ -79,8 +81,14 @@ module Visitors =
         inherit DdlLtlfBaseVisitor<AlgebraicExpression>()
 
         override this.VisitConst ctx =
-            let value = ctx.algebraicConstant().GetText() |> int
-            AlgebraicExpression.Constant value
+            if ctx.algebraicConstant().INT() <> null then
+                ctx.algebraicConstant().INT().GetText() 
+                |> int64 
+                |> AlgebraicExpression.IntegerConstant
+            else if ctx.algebraicConstant().RATIONAL() <> null then
+                ctx.algebraicConstant().RATIONAL().GetText() 
+                |> AlgebraicExpression.RealConstant
+            else failwithf "Unexpected algebraic constant %s" (ctx.algebraicConstant().GetText())
 
         override this.VisitVar ctx =
             let paramName = ctx.parameterReference().GetText()
@@ -116,14 +124,23 @@ module Visitors =
         override this.VisitNot ctx =
             PredicateExpression.Not (this.Visit (ctx.predicate()))
 
+        override this.VisitPredicateParens ctx =
+            this.Visit(ctx.predicate())
+
+        override this.VisitBool ctx =
+            match ctx.GetText() with
+            | "true" -> Bool true
+            | "false" -> Bool false
+            | x -> failwithf "Unexpected boolean constant %s" x
+
         override this.VisitAlgebraic ctx =
             let v = AlgebraicExpressionVisitor()
             
             let a = ctx.algebraicPredicate().algebraicExpression(0)
-            let a = v.Visit(a)
+            let a = v.Visit a
             
             let b = ctx.algebraicPredicate().algebraicExpression(1)
-            let b = v.Visit(b)
+            let b = v.Visit b
             
             let condition = 
                 match ctx.algebraicPredicate().GetChild(1).GetText() with
@@ -172,7 +189,7 @@ module Visitors =
             
             let nameOpt =
                 match ctx.NAME() with
-                | null -> $"(anonymous statement at {ctx.SourceInterval})"
+                | null -> $"(anonymous statement at {ctx.Start.Line}:{ctx.Start.Column})"
                 | name -> name.GetText()
 
             let body = ctx.predicate(0).Accept(PredicateExpressionVisitor())

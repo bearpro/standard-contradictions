@@ -104,16 +104,46 @@ let ``Algebraic obligation`` () =
             AlgebraicExpression.Op(
                 AlgebraicExpression.Variable("x"),
                 AlgebraicOperation.Mod,
-                AlgebraicExpression.Constant(3)),
+                AlgebraicExpression.IntegerConstant(3)),
             a)
         Assert.Equal(
-            AlgebraicExpression.Constant(0),
+            AlgebraicExpression.IntegerConstant(0),
             b)
         Assert.True(condition.IsEq)
     | _ -> Assert.Fail()
     match statement.Context.Value with
     | AlgebraicPredicate(a, b, condition) ->
         Assert.Equal(AlgebraicExpression.Variable "x", a)
-        Assert.Equal(AlgebraicExpression.Constant 10, b)
+        Assert.Equal(AlgebraicExpression.IntegerConstant 10, b)
         Assert.Equal(AlgebraicEqualityCondition.Gt, condition)
     | _ -> Assert.Fail()
+
+[<Fact>]
+let ``Boolean and real literal parsed`` () =
+    let input = 
+        """
+        obligated (true)
+        obligated (false)
+        obligated 0 = 0.2
+        """
+    let stream = Antlr4.Runtime.AntlrInputStream input
+    let lexer = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfLexer(stream)
+    let tokens = Antlr4.Runtime.CommonTokenStream(lexer)
+    let parser = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfParser(tokens)
+    
+    let tree = parser.root()
+    
+    let result = Mprokazin.DdlLtlf.Language.Ast.Visitors.visit tree
+    
+    match result.DeonticStatements with
+    | [ trueSt; falseSt; ratSt ] -> 
+        Assert.Equal(Bool true, trueSt.Body)
+        Assert.Equal(Bool false, falseSt.Body)
+        Assert.Equal(
+            AlgebraicPredicate(
+                AlgebraicExpression.IntegerConstant(0),
+                AlgebraicExpression.RealConstant("0.2"),
+                AlgebraicEqualityCondition.Eq
+            ),
+            ratSt.Body)
+    | _ -> Assert.Fail("Expected to parse 3 obligations")

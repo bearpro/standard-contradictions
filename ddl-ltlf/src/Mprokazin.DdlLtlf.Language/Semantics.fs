@@ -39,6 +39,7 @@ let rec private checkPredicate (env: Set<string>) (path: string list) (errs: Res
 
     | PredicateExpression.NotImplementedExpression _ ->
         () // пропускаем
+    | PredicateExpression.Bool _ -> ()
 
     | PredicateExpression.NestedPredicate (def, body) ->
         // Имя локального предиката доступно и в его теле (разрешаем рекурсию),
