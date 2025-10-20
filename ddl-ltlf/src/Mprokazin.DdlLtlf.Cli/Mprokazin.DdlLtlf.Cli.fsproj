@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="Args.fs" />
     <Compile Include="Parameters.fs" />
+    <Compile Include="Commands/Solve.fs" />
     <Compile Include="Commands/Validate.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -18,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Mprokazin.DdlLtlf.Language\Mprokazin.DdlLtlf.Language.fsproj" />
+    <ProjectReference Include="..\Mprokazin.DdlLtlf.Solver\Mprokazin.DdlLtlf.Solver.fsproj" />
   </ItemGroup>
 
 </Project>

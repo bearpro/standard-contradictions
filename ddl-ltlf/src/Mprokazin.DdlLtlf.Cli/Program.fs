@@ -4,9 +4,6 @@ open System
 open Argu
 
 module Main =
-    let solve () = ()
-    let validate () = ()
-
 
     [<EntryPoint>]
     let main argv =
@@ -17,13 +14,16 @@ module Main =
 
             let result: int =
                 match verbs with
-                | [Args.Verbs.Validate args] -> 
+                | [Args.Verbs.Validate args] ->
                     let parameters = Parameters.processValidateArgs (args.GetAllResults()) Parameters.ValidateParameters.init
                     Commands.Validate.run parameters
 
-                | [Args.Verbs.Solve args] -> 0
+                | [Args.Verbs.Solve args] ->
+                    let parameters = Parameters.processSolveArgs (args.GetAllResults()) Parameters.SolveParameters.init
+                    Commands.Solve.run parameters
+
                 | _ -> failwith "Unexpected arguments"
-            
+
             result
         with
         | :? ArguParseException as ex ->
