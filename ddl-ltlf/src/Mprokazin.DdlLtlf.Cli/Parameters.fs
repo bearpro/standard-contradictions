@@ -10,7 +10,14 @@ type OutputFormat =
 
 type SolveParameters = {
     Input: InputSource
+    OutputFormat: OutputFormat
+    Verbose: bool
 }
+    with static member init: SolveParameters = {
+            Input = Files []
+            OutputFormat = Shell
+            Verbose = false
+        }
 
 type ValidateParameters = {
     Input: InputSource
@@ -25,11 +32,20 @@ type ValidateParameters = {
             Verbose = false;
         }
 
-let processSolveArgs args state : SolveParameters =
+let rec processSolveArgs args state : SolveParameters =
     match args with
-    | Args.SolveArgs.Files ["--"] -> { state with Input = StdIn }
-    | Args.SolveArgs.Files list -> { state with Input = Files list }
-    | _ -> state
+    | [] -> state
+    | Args.SolveArgs.Files ["--"] :: tail ->
+        processSolveArgs tail { state with Input = StdIn }
+    | Args.SolveArgs.Files list :: tail ->
+        processSolveArgs tail { state with Input = Files list }
+    | Args.SolveArgs.Output_Format Args.OutputFormat.Json :: tail ->
+        processSolveArgs tail { state with OutputFormat = Json }
+    | Args.SolveArgs.Output_Format Args.OutputFormat.Shell :: tail ->
+        processSolveArgs tail { state with OutputFormat = Shell }
+    | Args.SolveArgs.Verbose :: tail ->
+        processSolveArgs tail { state with Verbose = true }
+    | _::tail -> processSolveArgs tail state
 
 let rec processValidateArgs args state : ValidateParameters =
     match args with
