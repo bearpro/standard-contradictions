@@ -56,7 +56,7 @@ let private disposeInput (input: SolveInput) =
     if not (obj.ReferenceEquals(input.Reader, Console.In)) then
         input.Reader.Dispose()
 
-let private combineModels (models: Mprokazin.DdlLtlf.Language.Ast.Model list) =
+let private combineModels (models: Mprokazin.DdlLtlf.Language.Ast.Model list) : Mprokazin.DdlLtlf.Language.Ast.Model =
     { DeonticStatements = models |> List.collect (fun m -> m.DeonticStatements)
       NamedPredicates = models |> List.collect (fun m -> m.NamedPredicates) }
 
@@ -77,7 +77,7 @@ let private printInputErrors (results: SolveInputResult list) =
                 | Exception ex ->
                     printfn "Exception in %s: %s" result.Source ex.Message
 
-let private writeShellOutput conflicts =
+let private writeShellOutput (conflicts: Mprokazin.DdlLtlf.Solver.Conflict list) =
     if List.isEmpty conflicts then
         printfn "No conflicts found"
     else
@@ -85,7 +85,7 @@ let private writeShellOutput conflicts =
         for conflict in conflicts do
             printfn "- %s vs %s: %s" conflict.LeftId conflict.RightId conflict.Reason
 
-let private writeJsonOutput conflicts =
+let private writeJsonOutput (conflicts: Mprokazin.DdlLtlf.Solver.Conflict list) =
     let payload =
         {| conflicts = conflicts
            summary = {| count = conflicts.Length |} |}
