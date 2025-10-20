@@ -1,0 +1,60 @@
+# ---- Базовые предикаты и помощники ---------------------------------
+
+predicate in_seg(x, a, b) = x >= a and x <= b
+predicate line_le(x, y, x1, y1, x2, y2) =
+  y <= y1 + (y2 - y1) * (x - x1) / (x2 - x1)
+
+# Кривая 1: кусочно-линейная верхняя граница (аппроксимация по графику)
+# Опорные точки (x_r ; δ_r): (0;0), (0.5;0.20), (0.8;0.23), (1.5;0.15), (2.0;0.07), (2.5;0.02)
+
+predicate ub_curve1(xr, dr) =
+  (in_seg(xr, 0.0, 0.5) and line_le(xr, dr, 0.0, 0.00, 0.5, 0.20)) or
+  (in_seg(xr, 0.5, 0.8) and line_le(xr, dr, 0.5, 0.20, 0.8, 0.23)) or
+  (in_seg(xr, 0.8, 1.5) and line_le(xr, dr, 0.8, 0.23, 1.5, 0.15)) or
+  (in_seg(xr, 1.5, 2.0) and line_le(xr, dr, 1.5, 0.15, 2.0, 0.07)) or
+  (in_seg(xr, 2.0, 2.5) and line_le(xr, dr, 2.0, 0.07, 2.5, 0.02))
+
+# Кривая 2: кусочно-линейная верхняя граница (монотонная)
+# Опорные точки (x_r ; δ_r): (0;0.35), (0.5;0.21), (1.0;0.13), (1.5;0.08), (2.0;0.05), (2.5;0.03)
+
+predicate ub_curve2(xr, dr) =
+  (in_seg(xr, 0.0, 0.5) and line_le(xr, dr, 0.0, 0.35, 0.5, 0.21)) or
+  (in_seg(xr, 0.5, 1.0) and line_le(xr, dr, 0.5, 0.21, 1.0, 0.13)) or
+  (in_seg(xr, 1.0, 1.5) and line_le(xr, dr, 1.0, 0.13, 1.5, 0.08)) or
+  (in_seg(xr, 1.5, 2.0) and line_le(xr, dr, 1.5, 0.08, 2.0, 0.05)) or
+  (in_seg(xr, 2.0, 2.5) and line_le(xr, dr, 2.0, 0.05, 2.5, 0.03))
+
+# Общие допустимые области
+predicate domain(xr, dr) = xr >= 0 and xr <= 2.5 and dr >= 0
+
+# ---- Нормативные правила -------------------------------------------
+
+# Режимы применения (из чертежа "а"/"б" — интерпретируем как разные случаи расчёта)
+# TODO: can be parsed after types implemented with dot-notation
+# predicate regime1(ctx) = ctx.mode = "1"
+# predicate regime2(ctx) = ctx.mode = "2"
+
+# Обязаны соблюдать верхнюю огибающую соответствующей кривой
+obligated domain(xr, dr) when true
+obligated ub_curve1(xr, dr) when regime1(ctx)
+obligated ub_curve2(xr, dr) when regime2(ctx)
+
+# Запрещено превышать огибающую
+forbidden dr > 0 and not ub_curve1(xr, dr) when regime1(ctx)
+forbidden dr > 0 and not ub_curve2(xr, dr) when regime2(ctx)
+
+# Информативные (нестрогие) свойства графика как «нормы-подсказки»
+# (можно использовать в проверках качества модели)
+predicate has_peak_curve1() =
+  # максимум около xr ≈ 0.7–0.8
+  ub_curve1(0.8, 0.23) and ub_curve1(0.5, 0.20) and ub_curve1(1.0, 0.20)
+
+permitted has_peak_curve1()
+permitted monotone_nonincreasing(ub_curve2, xr) when xr > 0 and xr < 2.5
+
+# ---- Время/процесс (LTLf) ------------------------------------------
+# Требование проверять соблюдение до утверждения проекта и на этапе мониторинга
+# TODO: can be parsed after temporal statements implemented
+# always_before(ApprovedDesign, obligated ub_curve1(xr, dr) when regime1(ctx))
+# always_before(ApprovedDesign, obligated ub_curve2(xr, dr) when regime2(ctx))
+# always_during(Monitoring, obligated domain(xr, dr))
