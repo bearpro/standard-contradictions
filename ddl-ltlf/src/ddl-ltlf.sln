@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mprokazin.DdlLtlf.Language.
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Mprokazin.DdlLtlf.Tests", "Mprokazin.DdlLtlf.Tests\Mprokazin.DdlLtlf.Tests.fsproj", "{6247F592-BFD6-4A51-B83B-B827795667F4}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Mprokazin.DdlLtlf.Tests.Solver", "Mprokazin.DdlLtlf.Tests.Solver\Mprokazin.DdlLtlf.Tests.Solver.fsproj", "{8077E0DD-3BE0-45F5-9F42-824F1483A56A}"
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Mprokazin.DdlLtlf.Solver", "Mprokazin.DdlLtlf.Solver\Mprokazin.DdlLtlf.Solver.fsproj", "{56870EFC-B433-48FF-A046-71508E34B951}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Mprokazin.DdlLtlf.Language.Ast.SchemaGen", "Mprokazin.DdlLtlf.Language.Ast.SchemaGen\Mprokazin.DdlLtlf.Language.Ast.SchemaGen.fsproj", "{A5D536F7-533E-40AD-ABBA-C4FC525C6118}"
@@ -59,8 +61,20 @@ Global
 		{6247F592-BFD6-4A51-B83B-B827795667F4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6247F592-BFD6-4A51-B83B-B827795667F4}.Release|x64.ActiveCfg = Release|Any CPU
 		{6247F592-BFD6-4A51-B83B-B827795667F4}.Release|x64.Build.0 = Release|Any CPU
-		{6247F592-BFD6-4A51-B83B-B827795667F4}.Release|x86.ActiveCfg = Release|Any CPU
-		{6247F592-BFD6-4A51-B83B-B827795667F4}.Release|x86.Build.0 = Release|Any CPU
+                {6247F592-BFD6-4A51-B83B-B827795667F4}.Release|x86.ActiveCfg = Release|Any CPU
+                {6247F592-BFD6-4A51-B83B-B827795667F4}.Release|x86.Build.0 = Release|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Debug|x64.ActiveCfg = Debug|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Debug|x64.Build.0 = Debug|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Debug|x86.ActiveCfg = Debug|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Debug|x86.Build.0 = Debug|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Release|Any CPU.Build.0 = Release|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Release|x64.ActiveCfg = Release|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Release|x64.Build.0 = Release|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Release|x86.ActiveCfg = Release|Any CPU
+                {8077E0DD-3BE0-45F5-9F42-824F1483A56A}.Release|x86.Build.0 = Release|Any CPU
 		{56870EFC-B433-48FF-A046-71508E34B951}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{56870EFC-B433-48FF-A046-71508E34B951}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{56870EFC-B433-48FF-A046-71508E34B951}.Debug|x64.ActiveCfg = Debug|Any CPU
