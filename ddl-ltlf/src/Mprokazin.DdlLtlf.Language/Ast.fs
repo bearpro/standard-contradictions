@@ -1,238 +1,82 @@
-﻿
-module Mprokazin.DdlLtlf.Language.Ast
+﻿namespace Mprokazin.DdlLtlf.Language.Ast
 
-type AlgebraicEqualityCondition =
-    | Gt
-    | Ge
-    | Eq
-    | Lt
-    | Le
+type SourceRange = { StartLine: int; StartChar: int; EndLine: int; EndChar: int }
 
-type AlgebraicOperation = Sum | Mod | Mul | Sub | Dev
+type PrimitiveType = Int | Rational | Bool
+type TypeReference = 
+    | Primitive of PrimitiveType 
+    | Named of string
 
-type AlgebraicExpression = 
-    | IntegerConstant of int64
-    | RealConstant of string // No need to parse it to float and loose percision
-    | Variable of string
-    | Op of A: AlgebraicExpression * Op: AlgebraicOperation * B: AlgebraicExpression
+type ProductTypeField = { Name: string; Type: TypeDescription option; Range: SourceRange }
+and TypeDescription = 
+    | Reference of TypeReference
+    | Product of ProductTypeField list * SourceRange
+    | Sum of  TypeDescription list * SourceRange
 
-type PredicateExpression =
-    | And of A: PredicateExpression * B: PredicateExpression
-    | Or of A: PredicateExpression * B: PredicateExpression
-    | Not of PredicateExpression
-    | NamedPredicateCall of Name: string * Parameters: string array
-    | Bool of bool
-    | NestedPredicate of 
-        Defined: NamedPredicateDefinition * 
-        Predicate: PredicateExpression
-    | AlgebraicPredicate of 
-        A: AlgebraicExpression * 
-        B: AlgebraicExpression * 
-        Condition: AlgebraicEqualityCondition
-    | NotImplementedExpression of string
+type TypeDefinition = { Name: string; Body: TypeDescription; Range: SourceRange }
 
-and NamedPredicateDefinition = { 
-    Name: string
-    Parameters: string array
-    Predicate: PredicateExpression
+type ValueReferenceValue =
+    | IntConstant of int
+    | RationalConstant of string
+    | BooleanConstant of bool
+    | Name of string list
+
+type ValueReference = { Value: ValueReferenceValue; Type: TypeDescription option; Range: SourceRange }
+
+type PredicateCall = {
+    PredicateName: string
+    Arguments: ValueReference list
+    Range: SourceRange
 }
 
-type DeonticModality = 
-    | Obligated 
-    | Permitted
-    | Forbidden
-    | Suggested
+type AlgebraicOperation = Mul | Div | Mod | Sum | Sub
+
+type AlgebraicExpression =
+    | Value of ValueReference
+    | Operation of AlgebraicExpression * AlgebraicOperation * AlgebraicExpression * SourceRange
+
+type AlgebraicEqualityCondition = Lt | Le | Eq | Ge | Gt | Ne
+
+type Parameter = { Name: string; Type: TypeDescription option; Range: SourceRange }
+
+type AlgebraicCondition = { 
+    Condition: AlgebraicEqualityCondition
+    LeftExpression: AlgebraicExpression
+    RightExpression: AlgebraicExpression
+    Range: SourceRange
+}
+
+type PredicateBodyItem = 
+    | Call      of PredicateCall
+    | Value     of ValueReference
+    | AlgebraicCondition of AlgebraicCondition
+and PredicateBody = 
+    | Item  of PredicateBodyItem                    * SourceRange
+    | Not   of PredicateBody                        * SourceRange
+    | And   of PredicateBody * PredicateBody        * SourceRange
+    | Or    of PredicateBody * PredicateBody        * SourceRange
+    | Definition of PredicateDefinition * PredicateBody * SourceRange
+and PredicateDefinition = { 
+    Name: string 
+    Parameters: Parameter list
+    Body: PredicateBody
+    Range: SourceRange
+}
+
+type DeonticModality = Obligated | Forbidden | Permitted | Suggeseted
 
 type DeonticStatement = {
-    Name: string
     Modality: DeonticModality
-    Body: PredicateExpression
-    Context: PredicateExpression option
+    Name: string option
+    Body: PredicateBody
+    Condition: PredicateBody option
+    Range: SourceRange
 }
 
-type Model = { 
-    DeonticStatements: DeonticStatement list
-    NamedPredicates: NamedPredicateDefinition list
-}
+type Definition = 
+    | Type of TypeDefinition
+    | Fact of unit
+    | Predicate of PredicateDefinition
+    | DeonticStatement of DeonticStatement
 
-module Visitors =
-
-    open Mprokazin.DdlLtlf.Language.Antlr
-
-    type ModalityVisitor() =
-        inherit DdlLtlfBaseVisitor<DeonticModality>()
-
-        override _.VisitDeonticModality ctx =
-            match ctx.GetText() with
-            | "obligated" -> DeonticModality.Obligated
-            | "permitted" -> DeonticModality.Permitted
-            | "forbidden" -> DeonticModality.Forbidden
-            | "suggested" -> DeonticModality.Suggested
-            | x -> failwithf "Unknown modality: %s" x
-
-    type ParametersVisitor() =
-        inherit DdlLtlfBaseVisitor<string list>()
-        override _.VisitParameters ctx = 
-            ctx.NAME()
-            |> Array.map (fun x -> x.GetText())
-            |> List.ofArray
-
-    type AlgebraicExpressionVisitor() =
-        inherit DdlLtlfBaseVisitor<AlgebraicExpression>()
-
-        override this.VisitConst ctx =
-            if ctx.algebraicConstant().INT() <> null then
-                ctx.algebraicConstant().INT().GetText() 
-                |> int64 
-                |> AlgebraicExpression.IntegerConstant
-            else if ctx.algebraicConstant().RATIONAL() <> null then
-                ctx.algebraicConstant().RATIONAL().GetText() 
-                |> AlgebraicExpression.RealConstant
-            else failwithf "Unexpected algebraic constant %s" (ctx.algebraicConstant().GetText())
-
-        override this.VisitVar ctx =
-            let paramName = ctx.parameterReference().GetText()
-            AlgebraicExpression.Variable paramName
-
-        override this.VisitOp ctx =
-            let a = this.Visit (ctx.algebraicExpression(0))
-            let b = this.Visit (ctx.algebraicExpression(1))
-            match ctx.binaryAlgegraicOperation().GetText() with
-            | "/" -> AlgebraicExpression.Op(a, Dev, b)
-            | "*" -> AlgebraicExpression.Op(a, Mul, b)
-            | "+" -> AlgebraicExpression.Op(a, Sum, b)
-            | "-" -> AlgebraicExpression.Op(a, Sub, b)
-            | "%" -> AlgebraicExpression.Op(a, Mod, b)
-            | x -> failwithf "Unexpected algebraic operation %s" x
-
-        override this.VisitParens ctx: AlgebraicExpression = 
-            this.Visit (ctx.algebraicExpression())
-
-    type PredicateExpressionVisitor() =
-        inherit DdlLtlfBaseVisitor<PredicateExpression>()
-
-        override this.VisitOr ctx =
-            let a = this.Visit(ctx.predicate(0))
-            let b = this.Visit(ctx.predicate(1))
-            PredicateExpression.Or(A = a, B = b)
-
-        override this.VisitAnd ctx =
-            let a = this.Visit(ctx.predicate(0))
-            let b = this.Visit(ctx.predicate(1))
-            PredicateExpression.And(A = a, B = b)
-
-        override this.VisitNot ctx =
-            PredicateExpression.Not (this.Visit (ctx.predicate()))
-
-        override this.VisitPredicateParens ctx =
-            this.Visit(ctx.predicate())
-
-        override this.VisitBool ctx =
-            match ctx.GetText() with
-            | "true" -> Bool true
-            | "false" -> Bool false
-            | x -> failwithf "Unexpected boolean constant %s" x
-
-        override this.VisitAlgebraic ctx =
-            let v = AlgebraicExpressionVisitor()
-            
-            let a = ctx.algebraicPredicate().algebraicExpression(0)
-            let a = v.Visit a
-            
-            let b = ctx.algebraicPredicate().algebraicExpression(1)
-            let b = v.Visit b
-            
-            let condition = 
-                match ctx.algebraicPredicate().GetChild(1).GetText() with
-                | "<" -> AlgebraicEqualityCondition.Lt
-                | "<=" -> AlgebraicEqualityCondition.Le
-                | "=" -> AlgebraicEqualityCondition.Eq
-                | ">=" -> AlgebraicEqualityCondition.Ge
-                | ">" -> AlgebraicEqualityCondition.Gt
-                | x -> failwithf "Unknown equality condition: %s" x
-
-            PredicateExpression.AlgebraicPredicate(a, b, condition)
-
-        override _.VisitNamedPredicateCall ctx =
-            let name = ctx.NAME().GetText()
-            let ps =
-                if isNull (ctx.parameters()) then []
-                else ParametersVisitor().VisitParameters(ctx.parameters())
-            PredicateExpression.NamedPredicateCall(name, Array.ofList ps)
-
-        override this.VisitNestedPredicate ctx =
-            let nestedPredicate = 
-                NamedPredicateDefinitionVisitor().Visit(ctx.namedPredicateDefinition())
-            let predicate = this.Visit(ctx.predicate())
-            PredicateExpression.NestedPredicate(nestedPredicate, predicate)
-
-    and NamedPredicateDefinitionVisitor() =
-        inherit DdlLtlfBaseVisitor<NamedPredicateDefinition>()
-
-        override this.VisitNamedPredicateDefinition ctx =
-            let name = ctx.NAME().GetText()
-            let ps =
-                if isNull (ctx.parameters()) then []
-                else ParametersVisitor().VisitParameters(ctx.parameters())
-            let predicate = PredicateExpressionVisitor().Visit(ctx.predicate())
-            
-            { Name = name 
-              Parameters = Array.ofList ps
-              Predicate = predicate }
-
-
-    type DeonticStatementVisitor() =
-        inherit DdlLtlfBaseVisitor<DeonticStatement>()
-
-        override this.VisitDeonticStatement ctx =
-            let modality = ctx.deonticModality().Accept(ModalityVisitor())
-            
-            let nameOpt =
-                match ctx.NAME() with
-                | null -> $"(anonymous statement at {ctx.Start.Line}:{ctx.Start.Column})"
-                | name -> name.GetText()
-
-            let body = ctx.predicate(0).Accept(PredicateExpressionVisitor())
-
-            let contextOpt =
-                if ctx.predicate().Length > 1 then
-                    Some (ctx.predicate(1).Accept(PredicateExpressionVisitor()))
-                else None
-
-            {
-                Name = nameOpt
-                Modality = modality
-                Body = body
-                Context = contextOpt
-            }
-
-    type RootVisitor() =
-        inherit DdlLtlfBaseVisitor<Model>()
-
-        override this.VisitRoot (context: DdlLtlfParser.RootContext): Model = 
-            let deonticStatements = 
-                context.deonticStatement() 
-                |> Array.map (DeonticStatementVisitor().Visit)
-                |> List.ofArray
-
-            let namedPredicates =
-                context.namedPredicateDefinition()
-                |> Array.map (NamedPredicateDefinitionVisitor().Visit)
-                |> List.ofArray
-
-            { DeonticStatements = deonticStatements
-              NamedPredicates = namedPredicates }
-                
-    let visit x = RootVisitor().Visit x
-
-let parse (input: string) =
-
-    let stream = Antlr4.Runtime.AntlrInputStream input
-    let lexer = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfLexer(stream)
-    let tokens = Antlr4.Runtime.CommonTokenStream(lexer)
-    let parser = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfParser(tokens)
-    
-    let tree = parser.root()
-    
-    let result = Visitors.visit tree
-    result
+type Program = Definition list

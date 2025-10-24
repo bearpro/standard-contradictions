@@ -21,22 +21,28 @@ let ``Simple obligation`` () =
     
     let tree = parser.root()
     
-    let result = Mprokazin.DdlLtlf.Language.Ast.Visitors.visit tree
+    let result = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
+
+    let deonticStatements = 
+        result 
+        |> List.where (function DeonticStatement _ -> true | _ -> false)
     
-    do Assert.Empty(result.NamedPredicates)
-    do Assert.Single(result.DeonticStatements)
+    do Assert.Single(deonticStatements)
     
-    let statement::[] =  result.DeonticStatements
+    let statement::[] = 
+        deonticStatements
+        |> List.map (function DeonticStatement x -> x)
 
     match statement.Body with
-    | NamedPredicateCall(name, parameters) ->
-        Assert.Equal("wipe", name)
-        Assert.Equal<string>(["x"], parameters)
+    | Item(Call ({ PredicateName = n; Arguments = [ { Value = Name p } ] }), _) -> 
+        Assert.Equal("wipe", n)
+        Assert.Equal<string>(["x"], p)
     | _ -> Assert.Fail()
-    match statement.Context.Value with
-    | NamedPredicateCall(name, parameters) ->
-        Assert.Equal("shit", name)
-        Assert.Equal<string>(["x"], parameters)
+    
+    match statement.Condition.Value with
+    | Item(Call ({ PredicateName = n; Arguments = [ { Value = Name p } ] }), _) -> 
+        Assert.Equal("shit", n)
+        Assert.Equal<string>(["x"], p)
     | _ -> Assert.Fail()
 
 [<Fact>]
@@ -44,8 +50,8 @@ let ``Simple obligation with named predicate definition`` () =
     let input = 
         """
         predicate wipe(x) = 
-            predicate take_papper(x) = 1 = 1 in
-            predicate use_papper(x) = 1 = 1 in
+            predicate take_papper(x) = 1 = 1
+            predicate use_papper(x) = 1 = 1
 
             take_papper(x) and use_papper(x_ass)
         
@@ -60,23 +66,19 @@ let ``Simple obligation with named predicate definition`` () =
     
     let tree = parser.root()
     
-    let result = Mprokazin.DdlLtlf.Language.Ast.Visitors.visit tree
-    
-    do Assert.Equal(2, result.NamedPredicates.Length)
-    do Assert.Single(result.DeonticStatements)
-    
-    let statement::[] =  result.DeonticStatements
+    let result = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
 
-    match statement.Body with
-    | NamedPredicateCall(name, parameters) ->
-        Assert.Equal("wipe", name)
-        Assert.Equal<string>(["x"], parameters)
-    | _ -> Assert.Fail()
-    match statement.Context.Value with
-    | NamedPredicateCall(name, parameters) ->
-        Assert.Equal("shit", name)
-        Assert.Equal<string>(["x"], parameters)
-    | _ -> Assert.Fail()
+    let namedPredicates = 
+        result
+        |> List.choose (function Predicate p -> Some p | _ -> None)
+
+    let deonticStatements =
+        result
+        |> List.choose (function DeonticStatement p -> Some p | _ -> None)
+    
+    do Assert.Equal(2, namedPredicates.Length)
+    do Assert.Single(deonticStatements)
+
 
 [<Fact>]
 let ``Algebraic obligation`` () =
@@ -91,32 +93,44 @@ let ``Algebraic obligation`` () =
     
     let tree = parser.root()
     
-    let result = Mprokazin.DdlLtlf.Language.Ast.Visitors.visit tree
+    let result = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
+
+    let namedPredicates = 
+        result
+        |> List.choose (function Predicate p -> Some p | _ -> None)
+
+    let deonticStatements =
+        result
+        |> List.choose (function DeonticStatement p -> Some p | _ -> None)
     
-    do Assert.Empty(result.NamedPredicates)
-    do Assert.Single(result.DeonticStatements)
+    do Assert.Empty(namedPredicates)
+    do Assert.Single(deonticStatements)
     
-    let statement::[] =  result.DeonticStatements
+    let statement::[] =  deonticStatements
 
     match statement.Body with
-    | AlgebraicPredicate(a, b, condition) ->
-        Assert.Equal(
-            AlgebraicExpression.Op(
-                AlgebraicExpression.Variable("x"),
-                AlgebraicOperation.Mod,
-                AlgebraicExpression.IntegerConstant(3)),
-            a)
-        Assert.Equal(
-            AlgebraicExpression.IntegerConstant(0),
-            b)
-        Assert.True(condition.IsEq)
+    | Item(
+        AlgebraicCondition({
+            Condition = Eq
+            LeftExpression = Operation(
+                AlgebraicExpression.Value ({ Value = ValueReferenceValue.Name(["x"]) }),
+                Mod,
+                AlgebraicExpression.Value ({ Value = ValueReferenceValue.IntConstant(3)}),
+                _
+                )
+            RightExpression = AlgebraicExpression.Value ({ Value = ValueReferenceValue.IntConstant(0) })
+            }), _) -> Assert.Equal(1, 1)
     | _ -> Assert.Fail()
-    match statement.Context.Value with
-    | AlgebraicPredicate(a, b, condition) ->
-        Assert.Equal(AlgebraicExpression.Variable "x", a)
-        Assert.Equal(AlgebraicExpression.IntegerConstant 10, b)
-        Assert.Equal(AlgebraicEqualityCondition.Gt, condition)
+
+    match statement.Condition.Value with
+    | Item(
+        AlgebraicCondition({
+            Condition = Gt
+            LeftExpression = AlgebraicExpression.Value ({ Value = ValueReferenceValue.Name(["x"]) })
+            RightExpression = AlgebraicExpression.Value({ Value = ValueReferenceValue.IntConstant(10) })
+            }), _) -> Assert.Equal(1, 1)
     | _ -> Assert.Fail()
+
 
 [<Fact>]
 let ``Boolean and real literal parsed`` () =
@@ -133,17 +147,39 @@ let ``Boolean and real literal parsed`` () =
     
     let tree = parser.root()
     
-    let result = Mprokazin.DdlLtlf.Language.Ast.Visitors.visit tree
+    let result = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
+
+    let namedPredicates = 
+        result
+        |> List.choose (function Predicate p -> Some p | _ -> None)
+
+    let deonticStatements =
+        result
+        |> List.choose (function DeonticStatement p -> Some p | _ -> None)
     
-    match result.DeonticStatements with
-    | [ trueSt; falseSt; ratSt ] -> 
-        Assert.Equal(Bool true, trueSt.Body)
-        Assert.Equal(Bool false, falseSt.Body)
-        Assert.Equal(
-            AlgebraicPredicate(
-                AlgebraicExpression.IntegerConstant(0),
-                AlgebraicExpression.RealConstant("0.2"),
-                AlgebraicEqualityCondition.Eq
-            ),
-            ratSt.Body)
-    | _ -> Assert.Fail("Expected to parse 3 obligations")
+    let (trueSt, falseSt, ratSt) =
+        match deonticStatements with
+        | [ trueSt; falseSt; ratSt ] -> (trueSt, falseSt, ratSt)
+        | _ -> 
+            Assert.Fail("Expected to parse 3 obligations")
+            failwith ""
+
+    match trueSt.Body with
+    | Item(Value({ Value = BooleanConstant (true) }), _) -> Assert.Equal(1, 1)
+    | _ -> Assert.Fail()
+    
+    match falseSt.Body with
+    | Item(Value({ Value = BooleanConstant (false) }), _) -> Assert.Equal(1, 1)
+    | _ -> Assert.Fail()
+
+    match ratSt.Body with
+    | Item(
+        AlgebraicCondition({ 
+            Condition = Eq
+            LeftExpression = AlgebraicExpression.Value ({ Value = ValueReferenceValue.IntConstant(0) })
+            RightExpression = AlgebraicExpression.Value({ Value = ValueReferenceValue.RationalConstant("0.2") })
+            }),
+        _) 
+        -> Assert.Equal(1, 1)
+    | _ -> Assert.Fail()
+

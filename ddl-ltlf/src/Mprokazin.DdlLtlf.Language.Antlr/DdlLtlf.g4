@@ -1,73 +1,162 @@
 grammar DdlLtlf;
 
-// ---- parser rules (lowercase by convention)
-root  : (namedPredicateDefinition | deonticStatement)+ EOF ;
+/* Lexer Tokens */ 
 
-algebraicConstant       : (INT | RATIONAL);
+    fragment DIGITS   : [0-9]+ ;
+    fragment EXPONENT : [eE] [+-]? DIGITS ;
 
-parameterReference      : NAME ;
+    // Rational constant
+    
+    RATIONAL    : DIGITS '.' DIGITS (EXPONENT)?      // 12.34, 12.34e-2
+                | '.' DIGITS (EXPONENT)?             // .5, .5e+1
+                | DIGITS EXPONENT                    // 12e10
+                ;
 
-binaryAlgegraicOperation : ('+' | '-' | '%' | '/' | '*' ) ;
 
-algebraicExpression     : algebraicConstant                             # Const
-                        | parameterReference                            # Var
-                        | algebraicExpression binaryAlgegraicOperation algebraicExpression # Op
-                        | '(' algebraicExpression ')'                   # Parens
+    // Integer constant
+    INT         : DIGITS ;
+
+    // Booleans
+    BOOL : 'true' | 'false' ;
+
+
+    // Operations
+    MUL  : '*';
+    DIV  : '/';
+    MOD  : '%';
+    ADD : '+';
+    SUB: '-';
+
+    // Logical conditions
+    NOT : 'not' ;
+    AND : 'and' ;
+    OR  : 'or'  ;
+
+    // Algebraic conditions
+    LT   : '<'  ;
+    LE   : '<=' ;
+    EQ   : '='  ;
+    GE   : '>=' ;
+    GT   : '>'  ;
+    NE   : '<>' ;
+
+    // Keywords:
+    PREDICATE   : 'predicate' ;
+    TYPE        : 'type'      ;
+    WHEN        : 'when'      ;
+    
+    INT_TN      : 'int'       ;
+    RATIONAL_TN : 'rational'  ;
+    BOOL_TN     : 'bool'      ;
+
+    // Deontic modlities
+
+    OBLIGATED   : 'obligated' ;
+    PERMITTED   : 'permitted' ;
+    FORBIDDEN   : 'forbidden' ;
+    SUGGESTED   : 'suggested' ;
+
+
+    // Other
+    DOT                 : '.' ;
+    NAME                : [a-zA-Z_][a-zA-Z_0-9]*;
+    // NAME_REFERENCE      : NAME ('.' NAME)+ ;
+    WS                  : [ \t\r\n]+ -> skip;
+
+/* Primitives and basics */
+
+    constant : (RATIONAL | INT | BOOL) ;
+    nameReference: NAME (DOT NAME)* ;
+
+
+/* Types */ 
+
+    primitiveTypeName   : INT_TN      # Int
+                        | RATIONAL_TN # Rational
+                        | BOOL_TN     # Bool
                         ;
 
-algebraicPredicate      : algebraicExpression ('<' | '<=' | '=' | '>=' | '>') algebraicExpression 
-                        ;
+    typeReference       : primitiveTypeName | NAME ;
 
-parameters : '(' NAME? (',' NAME)* ')' ;
+    sumTypeDescription      : '(' ('|')? typeDescription ('|' typeDescription)+ ')' ;
+    
+    productTypeItem         : NAME (':' typeDescription)? ;
+    productTypeDescription  : '(' (productTypeItem (',' productTypeItem)*)? ')' ;
 
-namedPredicateCall : NAME parameters ;
+    // Final type description
 
-predicate   : predicate 'or' predicate    # Or
-            | predicate 'and' predicate   # And
-            | 'not' predicate             # Not
-            | BOOL                        # Bool
-            | algebraicPredicate          # Algebraic
-            | namedPredicateCall          # NamedPredicate
-            | namedPredicateDefinition 'in' predicate # NestedPredicate
-            | '(' predicate ')'           # PredicateParens
-            ;
+    typeDescription : typeReference 
+                    | sumTypeDescription 
+                    | productTypeDescription 
+                    ;
 
-namedPredicateDefinition    : 'predicate' NAME parameters '=' predicate;
+    typeDefinition  : TYPE NAME '=' typeDescription ;
 
-deonticModality   : 'obligated'
-                  | 'permitted'
-                  | 'forbidden' 
-                  | 'suggested' 
-                  ;
 
-deonticStatement  : deonticModality (NAME '=')?? predicate ('when' predicate)?
-                  ;
+/* Predicates */ 
 
-// ---- lexer rules (UPPERCASE by convention)
 
-// Numbers
-fragment DIGITS   : [0-9]+ ;
-fragment EXPONENT : [eE] [+-]? DIGITS ;
+    // Predicate signature
 
-RATIONAL
-  : DIGITS '.' DIGITS (EXPONENT)?      // 12.34, 12.34e-2
-  | '.' DIGITS (EXPONENT)?             // .5, .5e+1
-  | DIGITS EXPONENT                    // 12e10
-  ;
+    predicateParameter : NAME (':' typeDescription)? ;
+    predicateParameters : '(' (predicateParameter (',' predicateParameter)*)? ')' ;
 
-INT         : DIGITS ;
+    predicateDefinition : PREDICATE NAME predicateParameters '=' predicateBody ;
 
-// Booleans
+    valueReference : (nameReference | constant) (':' typeDescription)? ;
+    predicateReferenceArguments: '(' (valueReference (',' valueReference)*)?')' ;
+    predicateReference : NAME predicateReferenceArguments ;
 
-fragment TRUE : 'true' ;
-fragment FALSE: 'false' ;
+    
+    algebraicOperation      : MUL       # Mul
+                            | DIV       # Div
+                            | MOD       # Mod
+                            | ADD       # Add
+                            | SUB       # Sub
+                            ;
 
-BOOL : TRUE | FALSE ;
+    algebraicExpression     : valueReference                # AlgebraicValue
+                            | '(' algebraicExpression ')'   # AlgebraicParens
+                            | algebraicExpression algebraicOperation algebraicExpression # Operation
+                            ; 
 
-// Other lexer tokens
+    algebraicComparation    : LT  # Lt
+                            | LE  # Le
+                            | EQ  # Eq
+                            | GE  # Ge
+                            | GT  # Gt
+                            | NE  # Ne
+                            ;
 
-NAME        : [a-zA-Z_][a-zA-Z_0-9]* ;
+    algebraicCondition : algebraicExpression algebraicComparation algebraicExpression ;
 
-WS          : [ \t\r\n]+ -> skip ;
+    // Predicate body
+    predicateBody : predicateDefinition predicateBody   # WithNested
+                | '(' predicateBody ')'                 # PredicateParens
+                | NOT predicateBody                     # Not
+                | predicateBody OR predicateBody        # Or
+                | predicateBody AND predicateBody       # And
+                | predicateReference                    # Reference
+                | valueReference                        # Value
+                | algebraicCondition                    # Algebraic
+                ;
 
-LINE_COMMENT : '#' ~[\r\n]* -> skip ;
+/* Deontic statements */ 
+
+    deonticModality : OBLIGATED     # Obligated
+                    | PERMITTED     # Permitted
+                    | FORBIDDEN     # Forbidden
+                    | SUGGESTED     # Suggested
+                    ;
+
+    deonticStatement : deonticModality (NAME '=')?? predicateBody (WHEN predicateBody)? ;
+
+/* Program */
+
+topLevelDefinition  : typeDefinition 
+                    | predicateDefinition 
+                    | deonticStatement 
+                    ;
+
+
+root  : (topLevelDefinition)+ EOF ;

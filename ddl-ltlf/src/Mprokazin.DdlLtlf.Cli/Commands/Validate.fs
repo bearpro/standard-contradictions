@@ -65,7 +65,7 @@ type CollectingErrorListener() =
 type ValidationResult = { 
     Source: string
     Errors: ValidationError list
-    Model: Mprokazin.DdlLtlf.Language.Ast.Model option
+    Model: Mprokazin.DdlLtlf.Language.Ast.Program option
 }
 
 let processInput (input: ValidationInput) = 
@@ -90,7 +90,7 @@ let processInput (input: ValidationInput) =
             parser.AddErrorListener parserErrors
             
             let tree = parser.root()
-            let ast = Mprokazin.DdlLtlf.Language.Ast.Visitors.visit tree
+            let ast = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
 
             let parserErrors = 
                 parserErrors.Errors 

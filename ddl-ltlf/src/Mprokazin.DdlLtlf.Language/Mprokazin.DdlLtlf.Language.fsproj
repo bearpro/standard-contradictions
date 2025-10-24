@@ -7,6 +7,15 @@
 
   <ItemGroup>
     <Compile Include="Ast.fs" />
+    <Compile Include="Ast.Visitors.Helpers.fs" />
+    <Compile Include="Ast.Visitors.TypeDescriptionVisitor.fs" />
+    <Compile Include="Ast.Visitors.TypeDefinitionVisitor.fs" />
+    <Compile Include="Ast.Visitors.ValueReferenceVisitor.fs" />
+    <Compile Include="Ast.Visitors.AlgebraicConditionVisitor.fs" />
+    <Compile Include="Ast.Visitors.PredicateDefinitionVisitor.fs" />
+    <Compile Include="Ast.Visitors.DeonticStatementVisitor.fs" />
+    <Compile Include="Ast.Visitors.fs" />
+    <Compile Include="Ast.Parser.fs" />
     <Compile Include="Semantics.fs" />
   </ItemGroup>
 
