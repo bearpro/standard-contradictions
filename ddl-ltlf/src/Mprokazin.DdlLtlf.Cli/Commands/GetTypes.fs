@@ -34,15 +34,18 @@ let processInput (input: GetTypesInput) =
             
         let tree = parser.root()
         let ast = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
-        let types = Mprokazin.DdlLtlf.Language.Typing.inferProgram ast
+        let types = Mprokazin.DdlLtlf.Language.Typing.inferTypes ast
 
         Ok (input.Source, types)
     with
         | e -> Error (input.Source, e)
 
-let printModel model format =
+let printModel (model: Mprokazin.DdlLtlf.Language.Typing.ProgramObjTypeInfo list) format =
     match format with
-    | FSharp -> printfn "%A" model
+    | FSharp -> 
+        model
+        |> List.map (_.Type)
+        |> printfn "%A" 
     | x -> printfn "Format %A not implemented" x
 
 let run (parameters: GetTypesParameters) = 
