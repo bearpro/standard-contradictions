@@ -8,10 +8,18 @@ type TypeReference =
     | Named of string
 
 type ProductTypeField = { Name: string; Type: TypeDescription option; Range: SourceRange }
+and ProductTypeDescription = { Fields: ProductTypeField list; Range: SourceRange }
+and SumTypeDescription = { Variants: TypeDescription list; Range: SourceRange }
+// NOTE: Functions are not part of this 
+// language (yet?). This type description
+// can not be used source code, but it need
+// for type inference.
+and FuncTypeDescription = { Parameter: SumTypeDescription; Value: TypeDescription; Range: SourceRange }
 and TypeDescription = 
     | Reference of TypeReference
-    | Product of ProductTypeField list * SourceRange
-    | Sum of  TypeDescription list * SourceRange
+    | Product of ProductTypeDescription
+    | Sum of SumTypeDescription
+    | Function of FuncTypeDescription
 
 type TypeDefinition = { Name: string; Body: TypeDescription; Range: SourceRange }
 
@@ -58,9 +66,10 @@ and PredicateBody =
     | Definition of PredicateDefinition * PredicateBody * SourceRange
 and PredicateDefinition = { 
     Name: string 
-    Parameters: Parameter list
+    Parameter: ProductTypeDescription
     Body: PredicateBody
     Range: SourceRange
+    PredicateType: FuncTypeDescription option
 }
 
 type DeonticModality = Obligated | Forbidden | Permitted | Suggeseted

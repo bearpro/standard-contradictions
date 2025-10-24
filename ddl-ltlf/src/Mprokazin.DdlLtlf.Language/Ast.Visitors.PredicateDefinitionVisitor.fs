@@ -79,13 +79,15 @@ and PredicateDefinitionVisitor() =
         let name = ctx.NAME().GetText()
         let range = rangeOfCtx ctx
 
-        { Name = name; Type = parameterType; Range = range }
+        { Name = name; Type = parameterType; Range = range } : ProductTypeField
         
 
-    let predicateParametersOf (ctx: DdlLtlfParser.PredicateParametersContext) : Parameter list =
-        ctx.predicateParameter()
-        |> Seq.map predicateParameterOf
-        |> List.ofSeq
+    let predicateParametersOf (ctx: DdlLtlfParser.PredicateParametersContext) =
+        let parameters =
+            ctx.predicateParameter()
+            |> Seq.map predicateParameterOf
+            |> List.ofSeq
+        { Fields = parameters; Range = rangeOfCtx ctx }
 
     let predicateBodyOf ctx : PredicateBody = 
         PredicateBodyVisitor().Visit ctx
@@ -97,6 +99,7 @@ and PredicateDefinitionVisitor() =
         let range = rangeOfCtx ctx
 
         { Name = name
-          Parameters = predicateParametersOf parameters
+          Parameter = predicateParametersOf parameters
           Body = predicateBodyOf ctx
-          Range = range }
+          Range = range 
+          PredicateType = None }

@@ -84,29 +84,37 @@ fact x.shape = Tube(length: 30, diameter: 5)
     ```
   
   - `TODO` **Type definition**  
-    Optional definition of data structure that can be passed to predicateds and contrained by facts. Will be infered if not stated implicitly.  
-    The type is discrimined union which fields can be `int`, `float`, `bool` or unions themselve.  
-    Note that single programm uses just single type.
+    Optional definition of data structure that can be passed to predicateds and constrained by facts. Will be infered if not stated implicitly.  
+    Types can be built of products and sums of primitives and other types.  
+    Primitives are `int`, `bool` and `rational`.
 
     Example:
     ```
-    type Tube 
-    | length of float * diameter of float
+    type Tube = (
+      length: rational, 
+      diamter: rational
+    )
 
-    root type 
-    | x of (
-        weight of int 
-            * shape of
-                | tube of Tube
-                | cube of (x of float * y of float * z of float)
-        )
-
-    predicate is_tube (x) =
-        match x.shape with 
-        | Tube _ -> true
-        | _ -> false
+    predicate not_donut (x: Tube) = x.lenght >= x.diameter
     
-    obligated x.weight < 10 when is_tube(x)
+    obligated not_donut(tube) when
+    ```
+
+  - `TODO` **Pattern matching**  
+    If your domain contains some case of _variants_ it can be represented
+    as sum-types and processed by predicates with pattern matching.
+    If value of sum-type is passed to predicate, language will use
+    one predicate variant with type matched object's variant.
+    ```
+    type Liquid = ()
+    type Solid = ()
+    type Gas = ()
+
+    type Substance = (Liquid|Solid|Gas)
+    
+    predicate is_gas(x: Liquid) = false
+    predicate is_gas(x: Solid) = false
+    predicate is_gas(x: Gas) = true
     ```
 
   - `TODO` **Facts**  

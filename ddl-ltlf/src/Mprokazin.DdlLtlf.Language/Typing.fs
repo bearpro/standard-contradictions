@@ -29,10 +29,10 @@ let makeSequence (ast: Definition list) : TypedObject list =
             match td with
             | Reference _ ->
                 []
-            | Product (fields, _) ->
+            | Product { Fields = fields } ->
                 fields
                 |> List.collect ofProductField
-            | TypeDescription.Sum (variants, _) ->
+            | TypeDescription.Sum { Variants = variants } ->
                 variants
                 |> List.collect ofTypeDescription
         self :: children
@@ -64,14 +64,6 @@ let makeSequence (ast: Definition list) : TypedObject list =
             // порядок: текущее выражение, потом левое, потом правое
             TypedObject.AlgebraicExpression expr
             :: (ofAlgebraicExpression l @ ofAlgebraicExpression r)
-
-    let ofParameter (p: Parameter) : TypedObject list =
-        let self = TypedObject.Parameter p
-        let t =
-            match p.Type with
-            | None -> []
-            | Some td -> ofTypeDescription td
-        self :: t
 
     let ofAlgebraicCondition (c: AlgebraicCondition) : TypedObject list =
         // условие как узел
@@ -128,9 +120,9 @@ let makeSequence (ast: Definition list) : TypedObject list =
         // сам предикат
         let self = TypedObject.PredicateDefinition pd
         // параметры
-        let parameters = pd.Parameters |> List.collect ofParameter
+        let parameters = pd.Parameter |> Product |> ofTypeDescription
         // тело
-        let bodyItems = ofPredicateBody pd.Body
+        let bodyItems = ofPredicateBody pd.Body 
         self :: (parameters @ bodyItems)
 
     let ofDeonticStatement (ds: DeonticStatement) : TypedObject list =
@@ -193,15 +185,25 @@ let getDeclaredBound objectTypeInfo : InferedType =
     | ProductTypeField { Type = Some td } -> InferedType.Bound td
     | _ -> objectTypeInfo.Type
 
+let unify a b =
+    match a, b with
+    | Bound x, Bound y ->
+        if x = y then Bound x
+        else Conflict [ a; b ]
+    | Bound x, Unbound _ -> Bound x
+    | Unbound _, Bound x -> Bound x
+    | Conflict xs, Bound _ -> Conflict (a::b::xs) // или аккуратнее слить
+    | Bound _, Conflict xs -> Conflict (a::b::xs)
+    | Conflict xs, Conflict ys -> Conflict (xs @ ys)
+    | Unbound _, Unbound _ -> a // не важно, оба свободны
+    | Unbound _, Conflict _ -> b
+    | Conflict _, Unbound _ -> a
+
 let inferObject objectTypeInfo state =
     let semanticBound = getSemanticBound objectTypeInfo
     let declaredBound = getDeclaredBound objectTypeInfo
     
-    match semanticBound, declaredBound with
-    | Bound x, Unbound _ 
-    | Unbound _, Bound x -> Bound x
-    | _ -> objectTypeInfo.Type
-
+    unify semanticBound declaredBound
 
 let rec inferPassForward (objects: ProgramObjTypeInfo list) (state: State) : State =
     match objects with

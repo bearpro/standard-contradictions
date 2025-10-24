@@ -35,7 +35,7 @@ type TypeDescritptionVisitor() =
                 s.typeDescription()
                 |> Seq.map typeDescriptionOf
                 |> Seq.toList
-            TypeDescription.Sum (cases, rangeOfCtx s)
+            TypeDescription.Sum { Variants = cases; Range = rangeOfCtx s }
         | Product p -> 
             let fields : ProductTypeField list =
                 p.productTypeItem()
@@ -50,7 +50,7 @@ type TypeDescritptionVisitor() =
                       Type  = typOpt
                       Range = rangeOfCtx item }: ProductTypeField)
                 |> Seq.toList
-            TypeDescription.Product (fields, rangeOfCtx p)
+            TypeDescription.Product { Fields = fields; Range = rangeOfCtx p }
         | _ -> 
             failwith "Unreachable: typeDescription must match one of the three alternatives"
 
