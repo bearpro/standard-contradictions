@@ -7,7 +7,7 @@ open Xunit
 [<Fact>]
 let ``No conflicts on single simple algebraic statement`` () =
     let input = "obligated x % 3 = 0"
-    let ast = Ast.parse input
+    let ast = Ast.Parser.parse input
     let conflicts = 
         ast 
         |> Solver.findConflicts Solver.PermissionSemantics.Ignore
@@ -19,7 +19,7 @@ let ``Obveous algebraic conflicts found`` () =
         obligated x % 2 = 1
         obligated x = 2
     """
-    let ast = Ast.parse input
+    let ast = Ast.Parser.parse input
     let conflicts = 
         ast 
         |> Solver.findConflicts Solver.PermissionSemantics.Ignore
@@ -31,7 +31,7 @@ let ``No conflicts when contexts not overlap`` () =
         permitted x = 5 when x > 10
         forbidden x = 5 when x < 10
     """
-    let ast = Ast.parse input
+    let ast = Ast.Parser.parse input
     let conflicts = 
         ast 
         |> Solver.findConflicts Solver.PermissionSemantics.StrongPermission

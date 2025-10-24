@@ -55,7 +55,7 @@ let printModel (model: Mprokazin.DdlLtlf.Language.Typing.ProgramObjTypeInfo list
                 | TypeDefinition      x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
                 | TypeDescription     x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
                 | ProductTypeField    x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
-                | ValueReference      x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | Expression          x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
                 | PredicateCall       x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
                 | AlgebraicExpression x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
                 | Parameter           x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
@@ -67,7 +67,8 @@ let printModel (model: Mprokazin.DdlLtlf.Language.Typing.ProgramObjTypeInfo list
             let t = 
                 match x.Type with
                 | Bound td ->   Mprokazin.DdlLtlf.Language.Ast.Unparser.printTypeDescription td
-                | Conflict _ -> "conflict"
+                | Conflict s -> 
+                    sprintf "conflicts: %A" s
                 | Unbound x -> $"Unbound {x}"
             printfn "%3d | %-40s : %s" x.Id source t
         )

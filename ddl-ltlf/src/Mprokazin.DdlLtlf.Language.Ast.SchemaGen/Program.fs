@@ -10,7 +10,7 @@ open FSharp.SystemTextJson
 
 open Mprokazin.DdlLtlf
 
-type SchemaRoot = Language.Ast.Model
+type SchemaRoot = Language.Ast.Program
 
 let postprocess (schema: JsonSchema) =
     for def in schema.Definitions do

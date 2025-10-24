@@ -15,8 +15,9 @@ let ``Simple types valdidated`` () =
         predicate run(x: int) = x > 0
         """
 
-    let ast = Ast.Parser.parse input
+    let ast = 
+        Ast.Parser.parse input 
+        |> Tests.Helpers.RangeSanitizer.sanitizeProgram
 
-    let types = Typing.inferProgram ast
-
-    ()
+    let types = Typing.inferTypes ast 
+    Assert.NotEmpty types
