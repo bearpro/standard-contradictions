@@ -58,7 +58,11 @@ grammar DdlLtlf;
 
 
     // Other
+    OF                  : 'of' ;
+    IS                  : 'is' ;
+    ARROW               : '->' ;
     DOT                 : '.' ;
+    UNDERSCORE          : '_' ;
     NAME                : [a-zA-Z_][a-zA-Z_0-9]*;
     // NAME_REFERENCE      : NAME ('.' NAME)+ ;
     WS                  : [ \t\r\n]+ -> skip;
@@ -78,16 +82,21 @@ grammar DdlLtlf;
 
     typeReference       : primitiveTypeName | NAME ;
 
-    sumTypeDescription      : '(' ('|')? typeDescription ('|' typeDescription)+ ')' ;
-    
+    sumVariant              : NAME (OF typeDescription)? ;
+    sumTypeDescription      : '(' ('|')? sumVariant ('|' sumVariant)* ')' ;
+
     productTypeItem         : NAME (':' typeDescription)? ;
     productTypeDescription  : '(' (productTypeItem (',' productTypeItem)*)? ')' ;
 
+    functionTypeDescription : '(' functionParameterTypes ')' ARROW typeDescription ;
+    functionParameterTypes  : (typeDescription (',' typeDescription)*)? ;
+
     // Final type description
 
-    typeDescription : typeReference 
+    typeDescription : functionTypeDescription
                     | sumTypeDescription 
                     | productTypeDescription 
+                    | typeReference 
                     ;
 
     typeDefinition  : TYPE NAME '=' typeDescription ;
@@ -103,8 +112,22 @@ grammar DdlLtlf;
 
     predicateDefinition : PREDICATE NAME predicateParameters '=' predicateBody ;
 
-    valueReference : (nameReference | constant) (':' typeDescription)? ;
-    predicateReferenceArguments: '(' (valueReference (',' valueReference)*)?')' ;
+    constructorInvocation : NAME '(' (expression (',' expression)*)? ')' ;
+    tupleLiteral : '(' expression ',' expression (',' expression)* ')' ;
+
+    expressionPrimary 
+                    : constructorInvocation   # ConstructorExpression
+                    | tupleLiteral            # TupleExpression
+                    | constant                # ConstantExpression
+                    | nameReference           # NameExpression
+                    | '(' expression ')'      # ParenthesizedExpression
+                    ;
+
+    expression      : expressionPrimary ':' typeDescription   # AnnotatedExpression
+                    | expressionPrimary                       # PlainExpression
+                    ;
+
+    predicateReferenceArguments: '(' (expression (',' expression)*)?')' ;
     predicateReference : NAME predicateReferenceArguments ;
 
     
@@ -115,7 +138,7 @@ grammar DdlLtlf;
                             | SUB       # Sub
                             ;
 
-    algebraicExpression     : valueReference                # AlgebraicValue
+    algebraicExpression     : expression                    # AlgebraicValue
                             | '(' algebraicExpression ')'   # AlgebraicParens
                             | algebraicExpression algebraicOperation algebraicExpression # Operation
                             ; 
@@ -130,6 +153,15 @@ grammar DdlLtlf;
 
     algebraicCondition : algebraicExpression algebraicComparation algebraicExpression ;
 
+    pattern             : constructorPattern   # ConstructorPatternValue
+                        | tuplePattern         # TuplePatternValue
+                        | constant             # ConstantPatternValue
+                        | UNDERSCORE           # WildcardPatternValue
+                        ;
+
+    constructorPattern  : NAME '(' (pattern (',' pattern)*)? ')' ;
+    tuplePattern        : '(' pattern ',' pattern (',' pattern)* ')' ;
+
     // Predicate body
     predicateBody : predicateDefinition predicateBody   # WithNested
                 | '(' predicateBody ')'                 # PredicateParens
@@ -137,7 +169,8 @@ grammar DdlLtlf;
                 | predicateBody OR predicateBody        # Or
                 | predicateBody AND predicateBody       # And
                 | predicateReference                    # Reference
-                | valueReference                        # Value
+                | expression IS pattern                 # IsPattern
+                | expression                            # Value
                 | algebraicCondition                    # Algebraic
                 ;
 

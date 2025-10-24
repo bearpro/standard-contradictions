@@ -11,8 +11,8 @@ type PredicateBodyVisitor() =
         let name = ctx.NAME().GetText()
         let range = rangeOfCtx ctx
         let arguments = 
-            ctx.predicateReferenceArguments().valueReference()
-            |> Seq.map (ValueReferenceVisitor().Visit)
+            ctx.predicateReferenceArguments().expression()
+            |> Seq.map (ExpressionVisitor().Visit)
             |> List.ofSeq
         { PredicateName = name; Range = range; Arguments = arguments }
 
@@ -38,7 +38,7 @@ type PredicateBodyVisitor() =
             let range = rangeOfCtx ctx
             let a = this.Visit a
             let b = this.Visit b
-            PredicateBody.Or(a, b, range)
+            PredicateBody.And(a, b, range)
         | _ -> failwith "Unexpected count of predicates int NOT. Grammar probably changed."
 
     override _.VisitReference (ctx: DdlLtlfParser.ReferenceContext): PredicateBody = 
@@ -47,9 +47,15 @@ type PredicateBodyVisitor() =
         PredicateBody.Item (call, range)
 
     override _.VisitValue (ctx: DdlLtlfParser.ValueContext): PredicateBody = 
-        let value = ctx.valueReference() |> ValueReferenceVisitor().Visit |> PredicateBodyItem.Value
+        let value = ctx.expression() |> ExpressionVisitor().Visit |> PredicateBodyItem.Expression
         let range = rangeOfCtx ctx
         PredicateBody.Item (value, range)
+
+    override _.VisitIsPattern (ctx: DdlLtlfParser.IsPatternContext): PredicateBody =
+        let expr = ctx.expression() |> ExpressionVisitor().Visit
+        let pattern = ctx.pattern() |> PatternVisitor().Visit
+        let range = rangeOfCtx ctx
+        PredicateBody.Item (PredicateBodyItem.PatternMatch (expr, pattern), range)
 
     override _.VisitAlgebraic (ctx: DdlLtlfParser.AlgebraicContext): PredicateBody = 
         let range = rangeOfCtx ctx
@@ -79,27 +85,24 @@ and PredicateDefinitionVisitor() =
         let name = ctx.NAME().GetText()
         let range = rangeOfCtx ctx
 
-        { Name = name; Type = parameterType; Range = range } : ProductTypeField
-        
+        { Name = name; Type = parameterType; Range = range }
 
     let predicateParametersOf (ctx: DdlLtlfParser.PredicateParametersContext) =
-        let parameters =
-            ctx.predicateParameter()
-            |> Seq.map predicateParameterOf
-            |> List.ofSeq
-        { Fields = parameters; Range = rangeOfCtx ctx }
+        ctx.predicateParameter()
+        |> Seq.map predicateParameterOf
+        |> List.ofSeq
 
-    let predicateBodyOf ctx : PredicateBody = 
+    let predicateBodyOf (ctx: DdlLtlfParser.PredicateBodyContext) : PredicateBody = 
         PredicateBodyVisitor().Visit ctx
 
     override _.VisitPredicateDefinition (ctx: DdlLtlfParser.PredicateDefinitionContext): PredicateDefinition = 
         let name = ctx.NAME().GetText()
-        let parameters = ctx.predicateParameters()
-        let body = ctx.predicateBody()
+        let parametersCtx = ctx.predicateParameters()
+        let bodyCtx = ctx.predicateBody()
         let range = rangeOfCtx ctx
 
         { Name = name
-          Parameter = predicateParametersOf parameters
-          Body = predicateBodyOf ctx
+          Parameters = predicateParametersOf parametersCtx
+          Body = predicateBodyOf bodyCtx
           Range = range 
           PredicateType = None }

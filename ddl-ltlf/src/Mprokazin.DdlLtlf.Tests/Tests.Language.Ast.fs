@@ -34,15 +34,15 @@ let ``Simple obligation`` () =
         |> List.map (function DeonticStatement x -> x)
 
     match statement.Body with
-    | Item(Call ({ PredicateName = n; Arguments = [ { Value = Name p } ] }), _) -> 
+    | Item(Call ({ PredicateName = n; Arguments = [ { Kind = ExpressionKind.Name segments } ] }), _) -> 
         Assert.Equal("wipe", n)
-        Assert.Equal<string>(["x"], p)
+        Assert.Equal<string list>(["x"], segments)
     | _ -> Assert.Fail()
     
     match statement.Condition.Value with
-    | Item(Call ({ PredicateName = n; Arguments = [ { Value = Name p } ] }), _) -> 
+    | Item(Call ({ PredicateName = n; Arguments = [ { Kind = ExpressionKind.Name segments } ] }), _) -> 
         Assert.Equal("shit", n)
-        Assert.Equal<string>(["x"], p)
+        Assert.Equal<string list>(["x"], segments)
     | _ -> Assert.Fail()
 
 [<Fact>]
@@ -109,26 +109,29 @@ let ``Algebraic obligation`` () =
     let statement::[] =  deonticStatements
 
     match statement.Body with
-    | Item(
-        AlgebraicCondition({
-            Condition = Eq
-            LeftExpression = Operation(
-                AlgebraicExpression.Value ({ Value = ValueReferenceValue.Name(["x"]) }),
-                Mod,
-                AlgebraicExpression.Value ({ Value = ValueReferenceValue.IntConstant(3)}),
-                _
-                )
-            RightExpression = AlgebraicExpression.Value ({ Value = ValueReferenceValue.IntConstant(0) })
-            }), _) -> Assert.Equal(1, 1)
+    | Item(AlgebraicCondition condition, _) ->
+        match condition.LeftExpression with
+        | Operation(
+            AlgebraicExpression.Expression { Kind = ExpressionKind.Name segments },
+            Mod,
+            AlgebraicExpression.Expression { Kind = ExpressionKind.Constant (ConstantValue.IntConstant 3) },
+            _) ->
+            Assert.Equal<string list>(["x"], segments)
+        | _ -> Assert.Fail()
+        match condition.RightExpression with
+        | AlgebraicExpression.Expression { Kind = ExpressionKind.Constant (ConstantValue.IntConstant 0) } -> ()
+        | _ -> Assert.Fail()
     | _ -> Assert.Fail()
 
     match statement.Condition.Value with
-    | Item(
-        AlgebraicCondition({
-            Condition = Gt
-            LeftExpression = AlgebraicExpression.Value ({ Value = ValueReferenceValue.Name(["x"]) })
-            RightExpression = AlgebraicExpression.Value({ Value = ValueReferenceValue.IntConstant(10) })
-            }), _) -> Assert.Equal(1, 1)
+    | Item(AlgebraicCondition condition, _) ->
+        match condition.LeftExpression with
+        | AlgebraicExpression.Expression { Kind = ExpressionKind.Name segments } ->
+            Assert.Equal<string list>(["x"], segments)
+        | _ -> Assert.Fail()
+        match condition.RightExpression with
+        | AlgebraicExpression.Expression { Kind = ExpressionKind.Constant (ConstantValue.IntConstant 10) } -> ()
+        | _ -> Assert.Fail()
     | _ -> Assert.Fail()
 
 
@@ -165,19 +168,19 @@ let ``Boolean and real literal parsed`` () =
             failwith ""
 
     match trueSt.Body with
-    | Item(Value({ Value = BooleanConstant (true) }), _) -> Assert.Equal(1, 1)
+    | Item(Expression { Kind = ExpressionKind.Constant (ConstantValue.BooleanConstant true) }, _) -> Assert.Equal(1, 1)
     | _ -> Assert.Fail()
     
     match falseSt.Body with
-    | Item(Value({ Value = BooleanConstant (false) }), _) -> Assert.Equal(1, 1)
+    | Item(Expression { Kind = ExpressionKind.Constant (ConstantValue.BooleanConstant false) }, _) -> Assert.Equal(1, 1)
     | _ -> Assert.Fail()
 
     match ratSt.Body with
     | Item(
         AlgebraicCondition({ 
             Condition = Eq
-            LeftExpression = AlgebraicExpression.Value ({ Value = ValueReferenceValue.IntConstant(0) })
-            RightExpression = AlgebraicExpression.Value({ Value = ValueReferenceValue.RationalConstant("0.2") })
+            LeftExpression = AlgebraicExpression.Expression { Kind = ExpressionKind.Constant (ConstantValue.IntConstant 0) }
+            RightExpression = AlgebraicExpression.Expression { Kind = ExpressionKind.Constant (ConstantValue.RationalConstant "0.2") }
             }),
         _) 
         -> Assert.Equal(1, 1)

@@ -22,9 +22,9 @@ type AlgebraicConditionVisitor() =
             ctx.algebraicExpression() 
             |> algebraicExpressionOf 
         | :? DdlLtlfParser.AlgebraicValueContext as ctx -> 
-            ctx.valueReference() 
-            |> ValueReferenceVisitor().Visit 
-            |> AlgebraicExpression.Value
+            ctx.expression()
+            |> ExpressionVisitor().Visit
+            |> AlgebraicExpression.Expression
         | :? DdlLtlfParser.OperationContext as ctx -> 
             let range = rangeOfCtx ctx
             let op = ctx.algebraicOperation() |> operationOf

@@ -27,15 +27,42 @@ type TypeDescritptionVisitor() =
         let (|Reference|_|) _ = ctx.typeReference() |> Option.ofObj
         let (|Sum|_|) _ = ctx.sumTypeDescription() |> Option.ofObj
         let (|Product|_|) _ = ctx.productTypeDescription() |> Option.ofObj
+        let (|Function|_|) _ = ctx.functionTypeDescription() |> Option.ofObj
 
         match ctx with
         | Reference r -> TypeDescription.Reference (typeReferenceOf r)
+        | Function f -> 
+            let parameters =
+                f.functionParameterTypes()
+                |> Option.ofObj
+                |> Option.map (fun fp ->
+                    fp.typeDescription()
+                    |> Seq.map typeDescriptionOf
+                    |> List.ofSeq)
+                |> Option.defaultValue []
+
+            let returnType =
+                f.typeDescription()
+                |> typeDescriptionOf
+
+            TypeDescription.Function
+                { Parameters = parameters
+                  ReturnType = returnType
+                  Range = rangeOfCtx f }
         | Sum s -> 
-            let cases =
-                s.typeDescription()
-                |> Seq.map typeDescriptionOf
-                |> Seq.toList
-            TypeDescription.Sum { Variants = cases; Range = rangeOfCtx s }
+            let variants =
+                s.sumVariant()
+                |> Seq.map (fun variant ->
+                    let name = variant.NAME().GetText()
+                    let payload =
+                        variant.typeDescription()
+                        |> Option.ofObj
+                        |> Option.map typeDescriptionOf
+                    { Constructor = name
+                      Payload = payload
+                      Range = rangeOfCtx variant })
+                |> List.ofSeq
+            TypeDescription.Sum { Variants = variants; Range = rangeOfCtx s }
         | Product p -> 
             let fields : ProductTypeField list =
                 p.productTypeItem()
