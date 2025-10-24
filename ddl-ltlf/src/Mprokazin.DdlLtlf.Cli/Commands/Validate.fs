@@ -159,10 +159,5 @@ let run (parameters: ValidateParameters) =
                 | Exception e ->
                     printfn "Exception in %s: %s\n%s" r.Source e.Message e.StackTrace
             code <- 1
-
-    if parameters.PrintModel then 
-        for r in results do
-            if List.isEmpty r.Errors then do
-                printfn "Model in %s:\n%A" r.Source r.Model.Value
     
     code

@@ -16,7 +16,7 @@ type private SolveError =
 type private SolveInputResult = {
     Source: string
     Errors: SolveError list
-    Model: Mprokazin.DdlLtlf.Language.Ast.Model option
+    Model: Mprokazin.DdlLtlf.Language.Ast.Program option
 }
 
 let private createInputs (parameters: SolveParameters) : SolveInput list =
@@ -46,7 +46,7 @@ let private parseInput (input: SolveInput) : SolveInputResult =
         let tokens = Antlr4.Runtime.CommonTokenStream(lexer)
         let parser = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfParser(tokens)
         let tree = parser.root()
-        let model = Mprokazin.DdlLtlf.Language.Ast.Visitors.visit tree
+        let model = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
 
         { initial with Model = Some model }
     with ex ->
@@ -56,9 +56,11 @@ let private disposeInput (input: SolveInput) =
     if not (obj.ReferenceEquals(input.Reader, Console.In)) then
         input.Reader.Dispose()
 
-let private combineModels (models: Mprokazin.DdlLtlf.Language.Ast.Model list) : Mprokazin.DdlLtlf.Language.Ast.Model =
-    { DeonticStatements = models |> List.collect (fun m -> m.DeonticStatements)
-      NamedPredicates = models |> List.collect (fun m -> m.NamedPredicates) }
+let private combineModels (models: Mprokazin.DdlLtlf.Language.Ast.Program list) : Mprokazin.DdlLtlf.Language.Ast.Program =
+    List.head models
+    // TODO
+    //{ DeonticStatements = models |> List.collect (fun m -> m.DeonticStatements)
+    //  NamedPredicates = models |> List.collect (fun m -> m.NamedPredicates) }
 
 let private printSemanticErrors (errors: Mprokazin.DdlLtlf.Language.Semantics.SemanticError list) =
     printfn "Semantic validation failed:"
@@ -136,9 +138,9 @@ let run (parameters: SolveParameters) =
             printSemanticErrors semanticErrors
             1
         | Ok () ->
-            let conflicts =
-                combined
-                |> Mprokazin.DdlLtlf.Solver.findConflicts Mprokazin.DdlLtlf.Solver.PermissionSemantics.StrongPermission
+            let conflicts = []
+                //combined
+                //|> Mprokazin.DdlLtlf.Solver.findConflicts Mprokazin.DdlLtlf.Solver.PermissionSemantics.StrongPermission
 
             if parameters.Verbose then
                 printfn "Conflicts detected: %d" conflicts.Length
@@ -146,5 +148,6 @@ let run (parameters: SolveParameters) =
             match parameters.OutputFormat with
             | OutputFormat.Shell -> writeShellOutput conflicts
             | OutputFormat.Json -> writeJsonOutput conflicts
+            | OutputFormat.FSharp -> printfn "%A" conflicts
 
             if List.isEmpty conflicts then 0 else 1

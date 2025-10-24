@@ -10,6 +10,8 @@
   <ItemGroup>
     <Compile Include="Args.fs" />
     <Compile Include="Parameters.fs" />
+    <Compile Include="Commands\GetAst.fs" />
+    <Compile Include="Commands\GetTypes.fs" />
     <Compile Include="Commands/Solve.fs" />
     <Compile Include="Commands/Validate.fs" />
     <Compile Include="Program.fs" />

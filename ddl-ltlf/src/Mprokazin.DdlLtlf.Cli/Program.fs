@@ -22,6 +22,14 @@ module Main =
                     let parameters = Parameters.processSolveArgs (args.GetAllResults()) Parameters.SolveParameters.init
                     Commands.Solve.run parameters
 
+                | [Args.Verbs.Get_Ast args] ->
+                    let parameters = Parameters.processGetAstArgs (args.GetAllResults()) Parameters.GetAstParameters.init
+                    Commands.GetAst.run parameters
+
+                | [Args.Verbs.Get_Types args] ->
+                    let parameters = Parameters.processGetTypesArgs (args.GetAllResults()) Parameters.GetTypesParameters.init
+                    Commands.GetTypes.run parameters
+
                 | _ -> failwith "Unexpected arguments"
 
             result
