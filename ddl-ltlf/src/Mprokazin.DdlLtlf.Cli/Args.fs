@@ -32,7 +32,7 @@ with
             | Files _ -> "Source files to validate"
 
 type GetAstArgs =
-    | [<AltCommandLineAttribute("f")>] Output_Format of OutputFormat
+    | [<AltCommandLineAttribute("-f")>] Output_Format of OutputFormat
     | [<MainCommand; ExactlyOnce; Last>] Files of files: string list
 with 
     interface IArgParserTemplate with
@@ -42,7 +42,7 @@ with
             | Files _ -> "Source files to validate"
 
 type GetTypesArgs =
-    | [<AltCommandLineAttribute("f")>] Output_Format of OutputFormat
+    | [<AltCommandLineAttribute("-f")>] Output_Format of OutputFormat
     | [<MainCommand; ExactlyOnce; Last>] Files of files: string list
 with 
     interface IArgParserTemplate with
