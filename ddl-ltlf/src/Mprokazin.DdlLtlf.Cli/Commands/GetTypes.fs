@@ -2,6 +2,7 @@
 
 open System.IO
 open Mprokazin.DdlLtlf.Cli.Parameters
+open Mprokazin.DdlLtlf.Language.Typing
 
 type GetTypesInput = { 
     Source: string
@@ -46,6 +47,31 @@ let printModel (model: Mprokazin.DdlLtlf.Language.Typing.ProgramObjTypeInfo list
         model
         |> List.map (_.Type)
         |> printfn "%A" 
+    | Shell ->
+        model
+        |> List.map (fun x -> 
+            let source = 
+                match (x.Object: Mprokazin.DdlLtlf.Language.Typing.TypedObject) with
+                | TypeDefinition      x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | TypeDescription     x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | ProductTypeField    x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | ValueReference      x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | PredicateCall       x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | AlgebraicExpression x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | Parameter           x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | AlgebraicCondition  x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | PredicateBodyItem   x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | PredicateBody       x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | PredicateDefinition x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+                | DeonticStatement    x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
+            let t = 
+                match x.Type with
+                | Bound td ->   Mprokazin.DdlLtlf.Language.Ast.Unparser.printTypeDescription td
+                | Conflict _ -> "conflict"
+                | Unbound x -> $"Unbound {x}"
+            printfn "%3d | %-40s : %s" x.Id source t
+        )
+        |> ignore
     | x -> printfn "Format %A not implemented" x
 
 let run (parameters: GetTypesParameters) = 
