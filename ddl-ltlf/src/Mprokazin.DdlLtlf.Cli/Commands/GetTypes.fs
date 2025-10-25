@@ -67,7 +67,8 @@ let printModel (model: Mprokazin.DdlLtlf.Language.Typing.ProgramObjTypeInfo list
             let t = 
                 match x.Type with
                 | Bound td ->   Mprokazin.DdlLtlf.Language.Ast.Unparser.printTypeDescription td
-                | Conflict _ -> "conflict"
+                | Conflict s -> 
+                    sprintf "conflicts: %A" s
                 | Unbound x -> $"Unbound {x}"
             printfn "%3d | %-40s : %s" x.Id source t
         )

@@ -8,6 +8,7 @@ predicate line_le(x, y, x1, y1, x2, y2) =
 # Опорные точки (x_r ; δ_r): (0;0), (0.5;0.20), (0.8;0.23), (1.5;0.15), (2.0;0.07), (2.5;0.02)
 
 predicate ub_curve1(xr, dr) =
+# TODO Literals in predicate calls
   (in_seg(xr, 0.0, 0.5) and line_le(xr, dr, 0.0, 0.00, 0.5, 0.20)) or
   (in_seg(xr, 0.5, 0.8) and line_le(xr, dr, 0.5, 0.20, 0.8, 0.23)) or
   (in_seg(xr, 0.8, 1.5) and line_le(xr, dr, 0.8, 0.23, 1.5, 0.15)) or

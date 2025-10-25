@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Tests.Helpers.fs" />
     <Compile Include="Tests.Language.Ast.fs" />
     <Compile Include="Tests.Language.Typing.fs" />
     <Compile Include="Tests.Language.Semantics.fs" />

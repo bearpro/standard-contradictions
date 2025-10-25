@@ -106,15 +106,19 @@ fact x.shape = Tube(length: 30, diameter: 5)
     If value of sum-type is passed to predicate, language will use
     one predicate variant with type matched object's variant.
     ```
-    type Liquid = ()
-    type Solid = ()
-    type Gas = ()
+    type ImNum = (
+      im: rational, 
+      re: rational
+    )
+    type Vector2(x: rational, y: rational)
 
-    type Substance = (Liquid|Solid|Gas)
+    type Any = (ImNum|rational)
     
-    predicate is_gas(x: Liquid) = false
-    predicate is_gas(x: Solid) = false
-    predicate is_gas(x: Gas) = true
+    predicate not_zero(x: ImNum) = x.re > 0.0
+    predicate not_zero(x: Vector2) = x > 0.0 or y > 0.0
+
+    obligated not_zero(x) when x = ()
+
     ```
 
   - `TODO` **Facts**  
@@ -150,9 +154,10 @@ fact x.shape = Tube(length: 30, diameter: 5)
     obligated x.mantissa.size = 23 when x.size = 32
 
     # This field value should provided as fact by CAD software
-    root type 
+    type T (
         @expose('x')
-        | x of int
+        x: int
+    )
     ```
   
 - Code of this language not meant to be written by hand. Typically, you
