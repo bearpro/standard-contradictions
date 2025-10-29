@@ -32,7 +32,7 @@ type AntlrError = {
 }
 
 type ValidationError =
-    | SemanticError of Mprokazin.DdlLtlf.Language.Semantics.SemanticError
+    | TypeError of Mprokazin.DdlLtlf.Language.Typing.TypeError
     | LexerError of AntlrError
     | ParserError of AntlrError
     | Exception of exn
@@ -112,14 +112,14 @@ let processInput (input: ValidationInput) =
     let result = 
         if Option.isSome result.Model then 
             try 
-                let semanticValidationResult = Mprokazin.DdlLtlf.Language.Semantics.validate result.Model.Value
+                let semanticValidationResult = Mprokazin.DdlLtlf.Language.Typing.inferTypes result.Model.Value
             
                 match semanticValidationResult with
-                | Ok () -> result
-                | Error errors -> { result with Errors = result.Errors @ List.map SemanticError errors }
+                | Ok result -> Ok result
+                | Error errors -> Error { result with Errors = result.Errors @ List.map TypeError errors }
             with 
-                | e -> { result with Errors = Exception e :: result.Errors }
-        else result
+                | e -> Error { result with Errors = Exception e :: result.Errors }
+        else Error { Errors = result.Errors; Model = None; Source = result.Source}
         
     result
 
@@ -145,19 +145,20 @@ let run (parameters: ValidateParameters) =
     let mutable code = 0
 
     for r in results do
-        if not (List.isEmpty r.Errors) then do
-            printfn "Errors in %s:" r.Source
-            for e in r.Errors do
-                match e with
-                | SemanticError e -> 
-                    let location = String.concat "->" e.Path
-                    printfn "Semantic error in %s (%s): %s" r.Source location e.Message
-                | LexerError e ->
-                    printfn "Lexer error in %s:line %d:%d: %s" r.Source e.Line e.Char e.Message
-                | ParserError e ->
-                    printfn "Parser error in %s:line %d:%d: %s" r.Source e.Line e.Char e.Message
-                | Exception e ->
-                    printfn "Exception in %s: %s\n%s" r.Source e.Message e.StackTrace
+        match r with
+        | Ok _ -> ()
+        | Error e ->
+            // for e in e.Errors do
+            //     match e with
+            //     | TypeError e -> 
+            //         let location = String.concat "->" ["_"]
+            //         printfn "Semantic error in %s (%s): %s" r.Source location e.Message
+            //     | LexerError e ->
+            //         printfn "Lexer error in %s:line %d:%d: %s" r.Source e.Line e.Char e.Message
+            //     | ParserError e ->
+            //         printfn "Parser error in %s:line %d:%d: %s" r.Source e.Line e.Char e.Message
+            //     | Exception e ->
+            //         printfn "Exception in %s: %s\n%s" r.Source e.Message e.StackTrace
             code <- 1
     
     code

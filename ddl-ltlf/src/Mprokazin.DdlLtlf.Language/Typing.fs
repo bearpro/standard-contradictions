@@ -213,6 +213,7 @@ type TypeContext =
       AliasCache: Dictionary<string, TypeExpr>
       SumTypes: Dictionary<string, SumTypeInfo>
       Constructors: Dictionary<string, SumConstructorInfo>
+      LatestProductByField: Dictionary<string, string>
       Builder: TypeBuilder }
 
 let private primitiveTypeExpr =
@@ -469,12 +470,12 @@ let private expectBool range ty =
     | other ->
         error range ExpectedBool $"Expected bool but got {typeExprToString other}."
 
-let private expectNumeric range ty =
+let rec private expectNumeric range ty =
     match prune ty with
     | TInt
     | TRational -> ok ()
-    | TVar _ ->
-        error range ExpectedNumeric $"Unable to determine numeric type at {range.StartLine}:{range.StartChar}."
+    | TVar { Binding = Some bound } -> expectNumeric range bound
+    | TVar { Binding = None } -> ok ()
     | other ->
         error range ExpectedNumeric $"Expected numeric type but got {typeExprToString other}."
 
@@ -640,25 +641,85 @@ let rec private inferExpression
                             match names with
                             | [] -> return currentTy
                             | field :: rest ->
-                                match prune currentTy with
-                                | TProduct product ->
-                                    match product.Fields |> List.tryFind (fun f -> f.Name = Some field) with
-                                    | Some fld -> return! resolveField fld.Type rest
-                                    | None ->
-                                        return!
-                                            error
-                                                expr.Range
-                                                (FieldNotFound field)
-                                                (sprintf "Field '%s' not found in product type." field)
-                                | other ->
+                                let! product =
+                                    typeResult {
+                                        match prune currentTy with
+                                        | TProduct product -> return product
+                                        | TVar ({ Binding = Some bound }) ->
+                                            match prune bound with
+                                            | TProduct product -> return product
+                                            | other ->
+                                                return!
+                                                    error
+                                                        expr.Range
+                                                        NotAProductType
+                                                        (sprintf
+                                                            "Cannot access field '%s' on non-product type %s."
+                                                            field
+                                                            (typeExprToString other))
+                                        | TVar ({ Binding = None } as tv) ->
+                                            match ctx.LatestProductByField.TryGetValue field with
+                                            | true, typeName ->
+                                                match ctx.TypeDefinitions |> Map.tryFind typeName with
+                                                | Some entry ->
+                                                    let! productTy =
+                                                        resolveTypeDescription ctx (Some typeName) entry.Definition.Body
+                                                    match prune productTy with
+                                                    | TProduct _ ->
+                                                        let! _ = unify expr.Range currentTy productTy
+                                                        match prune currentTy with
+                                                        | TProduct product -> return product
+                                                        | other ->
+                                                            return!
+                                                                error
+                                                                    expr.Range
+                                                                    NotAProductType
+                                                                    (sprintf
+                                                                        "Cannot access field '%s' on non-product type %s."
+                                                                        field
+                                                                        (typeExprToString other))
+                                                    | _ ->
+                                                        return!
+                                                            error
+                                                                expr.Range
+                                                                NotAProductType
+                                                                (sprintf
+                                                                    "Type '%s' does not define product fields."
+                                                                    typeName)
+                                                | None ->
+                                                    return!
+                                                        error
+                                                            expr.Range
+                                                            (UnknownType typeName)
+                                                            (sprintf "Type '%s' is not defined." typeName)
+                                            | false, _ ->
+                                                return!
+                                                    error
+                                                        expr.Range
+                                                        NotAProductType
+                                                        (sprintf
+                                                            "Cannot access field '%s' on non-product type %s."
+                                                            field
+                                                            (typeExprToString (prune currentTy)))
+                                        | other ->
+                                            return!
+                                                error
+                                                    expr.Range
+                                                    NotAProductType
+                                                    (sprintf
+                                                        "Cannot access field '%s' on non-product type %s."
+                                                        field
+                                                        (typeExprToString other))
+                                    }
+
+                                match product.Fields |> List.tryFind (fun f -> f.Name = Some field) with
+                                | Some fld -> return! resolveField fld.Type rest
+                                | None ->
                                     return!
                                         error
                                             expr.Range
-                                            NotAProductType
-                                            (sprintf
-                                                "Cannot access field '%s' on non-product type %s."
-                                                field
-                                                (typeExprToString other))
+                                            (FieldNotFound field)
+                                            (sprintf "Field '%s' not found in product type." field)
                         }
 
                     let! finalTy = resolveField baseType tail
@@ -757,24 +818,57 @@ let rec private inferAlgebraicExpression
             let! leftTy, leftExpr = inferAlgebraicExpression ctx predicates env left
             let! rightTy, rightExpr = inferAlgebraicExpression ctx predicates env right
 
-            let! _ = expectNumeric range leftTy
-            let! _ = expectNumeric range rightTy
-
-            let! _ =
-                match prune leftTy, prune rightTy with
-                | TInt, TRational
-                | TRational, TInt ->
-                    error
-                        range
-                        (ComparisonTypeMismatch("numeric", "numeric"))
-                        "Numeric operands must have the same type."
-                | _ -> ok ()
-
-            let resultType =
+            let! resultType =
                 match op with
-                | AlgebraicOperation.Div -> TRational
-                | AlgebraicOperation.Mod -> TInt
-                | _ -> prune leftTy
+                | AlgebraicOperation.Mod ->
+                    typeResult {
+                        let! _ = unify range leftTy TInt
+                        let! _ = unify range rightTy TInt
+                        return TInt
+                    }
+                | AlgebraicOperation.Div ->
+                    typeResult {
+                        let! _ = unify range leftTy TRational
+                        let! _ = unify range rightTy TRational
+                        return TRational
+                    }
+                | AlgebraicOperation.Mul
+                | AlgebraicOperation.Sum
+                | AlgebraicOperation.Sub ->
+                    typeResult {
+                        let! _ = unify range leftTy rightTy
+                        match prune leftTy with
+                        | TInt ->
+                            let! _ = unify range rightTy TInt
+                            return TInt
+                        | TRational ->
+                            let! _ = unify range rightTy TRational
+                            return TRational
+                        | TVar ({ Binding = Some bound }) ->
+                            match prune bound with
+                            | TInt ->
+                                let! _ = unify range rightTy TInt
+                                return TInt
+                            | TRational ->
+                                let! _ = unify range rightTy TRational
+                                return TRational
+                            | other ->
+                                return!
+                                    error
+                                        range
+                                        ExpectedNumeric
+                                        (sprintf "Expected numeric type but got %s." (typeExprToString other))
+                        | TVar ({ Binding = None } as tv) ->
+                            tv.Binding <- Some TInt
+                            let! _ = unify range rightTy TInt
+                            return TInt
+                        | other ->
+                            return!
+                                error
+                                    range
+                                    ExpectedNumeric
+                                    (sprintf "Expected numeric type but got %s." (typeExprToString other))
+                    }
 
             let updated =
                 AlgebraicExpression.Operation(leftExpr, op, rightExpr, range)
@@ -1152,8 +1246,10 @@ let private collectTypeDefinitions (program: Program) =
 let private buildTypeContext (program: Program) =
     let builder = createBuilder ()
 
+    let typeDefinitions = collectTypeDefinitions program
+
     let definitions =
-        collectTypeDefinitions program
+        typeDefinitions
         |> List.fold
             (fun acc def ->
                 if Map.containsKey def.Name acc then
@@ -1166,10 +1262,22 @@ let private buildTypeContext (program: Program) =
                         acc)
             Map.empty
 
+    let latestProductByField =
+        let dict = Dictionary<string, string>(StringComparer.Ordinal)
+        typeDefinitions
+        |> List.iter (fun def ->
+            match def.Body with
+            | TypeDescription.Product product ->
+                product.Fields
+                |> List.iter (fun field -> dict[field.Name] <- def.Name)
+            | _ -> ())
+        dict
+
     { TypeDefinitions = definitions
       AliasCache = Dictionary<string, TypeExpr>(StringComparer.Ordinal)
       SumTypes = Dictionary<string, SumTypeInfo>(StringComparer.Ordinal)
       Constructors = Dictionary<string, SumConstructorInfo>(StringComparer.Ordinal)
+      LatestProductByField = latestProductByField
       Builder = builder }
 
 let private collectTypedObjects (program: Program) =

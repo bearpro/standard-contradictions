@@ -62,13 +62,13 @@ let private combineModels (models: Mprokazin.DdlLtlf.Language.Ast.Program list) 
     //{ DeonticStatements = models |> List.collect (fun m -> m.DeonticStatements)
     //  NamedPredicates = models |> List.collect (fun m -> m.NamedPredicates) }
 
-let private printSemanticErrors (errors: Mprokazin.DdlLtlf.Language.Semantics.SemanticError list) =
-    printfn "Semantic validation failed:"
-    for error in errors do
-        let location =
-            error.Path
-            |> List.fold (fun acc part -> $"{acc}->{part}") "model"
-        printfn "%s in %s: %s" error.Kind location error.Message
+// let private printSemanticErrors (errors: Mprokazin.DdlLtlf.Language.Semantics.SemanticError list) =
+//     printfn "Semantic validation failed:"
+//     for error in errors do
+//         let location =
+//             error.Path
+//             |> List.fold (fun acc part -> $"{acc}->{part}") "model"
+//         printfn "%s in %s: %s" error.Kind location error.Message
 
 let private printInputErrors (results: SolveInputResult list) =
     for result in results do
@@ -133,11 +133,11 @@ let run (parameters: SolveParameters) =
 
         let combined = combineModels models
 
-        match Mprokazin.DdlLtlf.Language.Semantics.validate combined with
-        | Error semanticErrors ->
-            printSemanticErrors semanticErrors
+        match Mprokazin.DdlLtlf.Language.Typing.inferTypes combined with
+        | Error errors ->
+            printfn "%A" errors
             1
-        | Ok () ->
+        | Ok x ->
             let conflicts = []
                 //combined
                 //|> Mprokazin.DdlLtlf.Solver.findConflicts Mprokazin.DdlLtlf.Solver.PermissionSemantics.StrongPermission
