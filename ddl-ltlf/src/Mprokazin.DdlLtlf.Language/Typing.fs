@@ -1,680 +1,1157 @@
-﻿module Mprokazin.DdlLtlf.Language.Typing
+module Mprokazin.DdlLtlf.Language.Typing
 
 open System
 open System.Collections.Generic
 open Mprokazin.DdlLtlf.Language.Ast
 
-// -------------------------------
-// 1. Базовые сущности
-// -------------------------------
+let private zeroRange =
+    { StartLine = 0
+      StartChar = 0
+      EndLine = 0
+      EndChar = 0 }
 
-type TypedObject =
-| TypeDefinition      of Ast.TypeDefinition
-| TypeDescription     of Ast.TypeDescription
-| ProductTypeField    of Ast.ProductTypeField
-| Expression          of Ast.Expression
-| PredicateCall       of Ast.PredicateCall
-| AlgebraicExpression of Ast.AlgebraicExpression
-| Parameter           of Ast.Parameter
-| AlgebraicCondition  of Ast.AlgebraicCondition
-| PredicateBodyItem   of Ast.PredicateBodyItem
-| PredicateBody       of Ast.PredicateBody
-| PredicateDefinition of Ast.PredicateDefinition
-| DeonticStatement    of Ast.DeonticStatement
+let private rangeOrDefault (range: SourceRange option) =
+    range |> Option.defaultValue zeroRange
+
+// ---------------------------------------------------------------------------
+// Result helpers
+// ---------------------------------------------------------------------------
+
+type TypeResult<'a> = Result<'a, TypeError list>
+
+and TypeErrorKind =
+    | UnknownType of string
+    | DuplicateType of string
+    | UnknownConstructor of string
+    | DuplicateConstructor of string
+    | UnknownIdentifier of string
+    | FieldNotFound of string
+    | NotAProductType
+    | PredicateNotFound of string
+    | PredicateArityMismatch of expected: int * actual: int
+    | ArgumentTypeMismatch of index: int * expected: string * actual: string
+    | AnnotationMismatch of expected: string * actual: string
+    | ExpectedBool
+    | ExpectedNumeric
+    | ComparisonTypeMismatch of string * string
+    | ConstructorArgumentMismatch of string * expected: int * actual: int
+    | PatternMismatch of string
+    | UnboundParameterType of string
+    | GeneralTypeError of string
+
+and TypeError =
+    { Kind: TypeErrorKind
+      Message: string
+      Range: SourceRange }
+
+let private ok x : TypeResult<_> = Ok x
+
+let private error range kind message : TypeResult<_> =
+    Error
+        [ { Kind = kind
+            Message = message
+            Range = range } ]
+
+let private mergeResults (results: TypeResult<'a> list) : TypeResult<'a list> =
+    let mutable values = []
+    let mutable errors = []
+
+    for r in results do
+        match r with
+        | Ok v -> values <- v :: values
+        | Error es -> errors <- es @ errors
+
+    if List.isEmpty errors then
+        values |> List.rev |> Ok
+    else
+        Error errors
+
+let private combine r1 r2 combiner =
+    match r1, r2 with
+    | Ok x, Ok y -> combiner x y
+    | Error e1, Ok _ -> Error e1
+    | Ok _, Error e2 -> Error e2
+    | Error e1, Error e2 -> Error(e1 @ e2)
+
+type TypeResultBuilder() =
+    member _.Bind(m, f) = Result.bind f m
+    member _.Return v = Ok v
+    member _.ReturnFrom m = m
+    member _.Zero() = Ok ()
+    member _.Delay(f: unit -> TypeResult<'a>) = f
+    member _.Run(f: unit -> TypeResult<'a>) = f()
+let typeResult = TypeResultBuilder()
+
+// ---------------------------------------------------------------------------
+// Internal type representation
+// ---------------------------------------------------------------------------
 
 type TypeVarId = int
 
-type TypedObjectWithId =
-    { Id     : TypeVarId
-      Object : TypedObject }
+type TypeVar =
+    { Id: TypeVarId
+      mutable Binding: TypeExpr option }
 
-type InferedType = 
-| Unbound   of id: TypeVarId
-| Bound     of TypeDescription
-| Conflict  of InferedType list
+and ProductFieldInfo =
+    { mutable Name: string option
+      Type: TypeExpr }
 
-type ProgramObjTypeInfo =
-    { Id     : TypeVarId
-      Object : TypedObject
-      Type   : InferedType }
+and ProductInfo =
+    { Id: int
+      mutable Fields: ProductFieldInfo list }
 
-type State = ProgramObjTypeInfo list
+and TypeExpr =
+    | TInt
+    | TRational
+    | TBool
+    | TProduct of ProductInfo
+    | TSum of string
+    | TFunction of TypeExpr list * TypeExpr
+    | TVar of TypeVar
 
-// -------------------------------
-// 2. Окружение для назначения Id
-// -------------------------------
+// NOTE: Fixed compiler error here:
+type TypeBuilder =
+    { mutable NextTypeVar: int
+      mutable NextProductId: int }
 
-type ProductShape =
-    { SelfId   : TypeVarId
-      FieldIds : Map<string, TypeVarId> }
+let private createBuilder () =
+    { NextTypeVar = 1
+      NextProductId = 1 }
 
-type Env =
-    { mutable NextId         : int
-      mutable Types          : Map<string, ProductShape>            // имя типа -> форма
-      mutable ShapesBySelfId : Map<TypeVarId, ProductShape> }       // SelfId -> форма
+let private freshTypeVar (builder: TypeBuilder) =
+    let id = builder.NextTypeVar
+    builder.NextTypeVar <- builder.NextTypeVar + 1
+    TVar { Id = id; Binding = None }
 
-let private freshId (env: Env) : TypeVarId =
-    let id = env.NextId
-    env.NextId <- env.NextId + 1
-    id
+let private freshProduct (builder: TypeBuilder) (fields: ProductFieldInfo list) =
+    let id = builder.NextProductId
+    builder.NextProductId <- builder.NextProductId + 1
+    TProduct
+        { Id = id
+          Fields = fields }
 
-let private registerShape (env:Env) (shape:ProductShape) =
-    env.ShapesBySelfId <- env.ShapesBySelfId.Add(shape.SelfId, shape)
+let rec private prune ty =
+    match ty with
+    | TVar ({ Binding = Some bound } as v) ->
+        let pruned = prune bound
+        v.Binding <- Some pruned
+        pruned
+    | _ -> ty
 
-let private buildProductShape (env: Env) (fields: ProductTypeField list) : ProductShape =
-    let selfId = freshId env
-    let fieldIds =
-        fields
-        |> List.fold (fun acc f ->
-            if acc |> Map.containsKey f.Name then acc
-            else acc |> Map.add f.Name (freshId env)
-        ) Map.empty
-    let shape = { SelfId = selfId; FieldIds = fieldIds }
-    registerShape env shape
-    shape
+let rec private occurs (target: TypeVarId) (ty: TypeExpr) =
+    match prune ty with
+    | TVar v -> v.Id = target
+    | TProduct info -> info.Fields |> List.exists (fun f -> occurs target f.Type)
+    | TFunction (args, ret) -> occurs target ret || args |> List.exists (occurs target)
+    | _ -> false
 
-// NEW: построить форму продукта с заданным SelfId (нужно для поля x: ( ... ))
-let private buildProductShapeWithSelf (env: Env) (selfId: TypeVarId) (fields: ProductTypeField list) : ProductShape =
-    let fieldIds =
-        fields
-        |> List.fold (fun acc f ->
-            if acc |> Map.containsKey f.Name then acc
-            else acc |> Map.add f.Name (freshId env)
-        ) Map.empty
-    let shape = { SelfId = selfId; FieldIds = fieldIds }
-    registerShape env shape
-    shape
+let rec private typeExprStructuralEquals a b =
+    match prune a, prune b with
+    | TInt, TInt
+    | TRational, TRational
+    | TBool, TBool -> true
+    | TSum n1, TSum n2 -> n1 = n2
+    | TFunction (args1, ret1), TFunction (args2, ret2) ->
+        List.length args1 = List.length args2
+        && List.forall2 typeExprStructuralEquals args1 args2
+        && typeExprStructuralEquals ret1 ret2
+    | TProduct p1, TProduct p2 ->
+        let fields1 = p1.Fields
+        let fields2 = p2.Fields
+        List.length fields1 = List.length fields2
+        && List.forall2 (fun f1 f2 -> typeExprStructuralEquals f1.Type f2.Type) fields1 fields2
+    | TVar v1, TVar v2 when obj.ReferenceEquals(v1, v2) -> true
+    | TVar { Binding = Some bound }, other -> typeExprStructuralEquals bound other
+    | other, TVar { Binding = Some bound } -> typeExprStructuralEquals other bound
+    | _ -> false
 
-let private ensureNamedType (env: Env) (td: Ast.TypeDefinition) : ProductShape option =
-    match td.Body with
-    | TypeDescription.Product p ->
-        match env.Types |> Map.tryFind td.Name with
-        | Some shape -> Some shape
+let rec private typeExprToString ty =
+    let ty = prune ty
+    match ty with
+    | TInt -> "int"
+    | TRational -> "rational"
+    | TBool -> "bool"
+    | TSum name -> name
+    | TVar v -> sprintf "'%d" v.Id
+    | TProduct info ->
+        let parts =
+            info.Fields
+            |> List.mapi (fun idx field ->
+                let name =
+                    match field.Name with
+                    | Some n -> n
+                    | None -> sprintf "_%d" idx
+                sprintf "%s: %s" name (typeExprToString field.Type))
+        sprintf "(%s)" (String.Join(", ", parts))
+    | TFunction (args, ret) ->
+        let args = args |> List.map typeExprToString |> Array.ofList
+        let argText: string = String.Join(", ", args)
+        sprintf "(%s) -> %s" argText (typeExprToString ret)
+
+// ---------------------------------------------------------------------------
+// Type description <-> TypeExpr conversion
+// ---------------------------------------------------------------------------
+
+type SumConstructorInfo =
+    { Constructor: string
+      SumName: string
+      Payload: TypeExpr option
+      Range: SourceRange }
+
+type SumTypeInfo =
+    { Name: string
+      Range: SourceRange
+      Variants: SumConstructorInfo list }
+
+// NOTE: Fixed compiler error here:
+type TypeEnvEntry =
+    { Definition: TypeDefinition
+      Placeholder: TypeExpr option }
+
+type TypeContext =
+    { TypeDefinitions: Map<string, TypeEnvEntry>
+      AliasCache: Dictionary<string, TypeExpr>
+      SumTypes: Dictionary<string, SumTypeInfo>
+      Constructors: Dictionary<string, SumConstructorInfo>
+      Builder: TypeBuilder }
+
+let private primitiveTypeExpr =
+    function
+    | PrimitiveType.Int -> TInt
+    | PrimitiveType.Rational -> TRational
+    | PrimitiveType.Bool -> TBool
+
+let rec private typeExprToTypeDescription (ty: TypeExpr) (range: SourceRange option) : TypeDescription =
+    match prune ty with
+    | TInt -> PrimitiveType.Int |> TypeReference.Primitive |> TypeDescription.Reference
+    | TRational -> PrimitiveType.Rational |> TypeReference.Primitive |> TypeDescription.Reference
+    | TBool -> PrimitiveType.Bool |> TypeReference.Primitive |> TypeDescription.Reference
+    | TSum name -> TypeReference.Named name |> TypeDescription.Reference
+    | TFunction (args, ret) ->
+        let argsTd = args |> List.map (fun a -> typeExprToTypeDescription a None)
+        let retTd = typeExprToTypeDescription ret None
+        TypeDescription.Function
+            { Parameters = argsTd
+              ReturnType = retTd
+              Range = rangeOrDefault range }
+    | TVar v ->
+        match v.Binding with
+        | Some bound -> typeExprToTypeDescription bound range
         | None ->
-            let shape = buildProductShape env p.Fields
-            env.Types <- env.Types |> Map.add td.Name shape
-            Some shape
-    | _ -> None
+            // Free type variables should be resolved by the time we render them.
+            TypeReference.Named (sprintf "'%d" v.Id) |> TypeDescription.Reference
+    | TProduct info ->
+        let fields =
+            info.Fields
+            |> List.mapi (fun idx field ->
+                { Name =
+                      match field.Name with
+                      | Some name -> name
+                      | None -> sprintf "_%d" idx
+                  Type = Some(typeExprToTypeDescription field.Type None)
+                  Range = rangeOrDefault range }: ProductTypeField)
 
-// -------------------------------
-// 3. makeSequence + стабильные TypeVarId
-// -------------------------------
+        TypeDescription.Product
+            { Fields = fields
+              Range = rangeOrDefault range }
 
-let makeSequence (definitions: Definition list) : (TypedObjectWithId list * Map<TypeVarId, ProductShape>) =
-    let acc = System.Collections.Generic.List<TypedObjectWithId> ()
-    let add (id:TypeVarId) (obj:TypedObject) =
-        acc.Add({ Id = id; Object = obj })
+let rec private resolveTypeDescription
+    (ctx: TypeContext)
+    (currentTypeName: string option)
+    (desc: TypeDescription)
+    : TypeResult<TypeExpr>
+    =
+    typeResult {
+        let builder = ctx.Builder
+        match desc with
+        | TypeDescription.Reference (TypeReference.Primitive prim) ->
+            return primitiveTypeExpr prim
 
-    let env = { NextId = 1; Types = Map.empty; ShapesBySelfId = Map.empty }
-
-    let tryFindCurrentConcreteType (id:TypeVarId) : TypeDescription option =
-        // пробежимся с конца acc (он List<TypedObjectWithId>, но это System.Collections.Generic.List, у неё есть индекс)
-        let mutable found = None
-        for i = acc.Count - 1 downto 0 do
-            let item = acc.[i]
-            if item.Id = id then
-                match item.Object with
-                | TypedObject.TypeDescription td ->
-                    // считаем это конкретным типом (подойдёт и Product, и Primitive, и Bool)
-                    if found.IsNone then
-                        found <- Some td
-                | _ -> ()
-        found
-
-    let addTypeAs (targetId:TypeVarId) (td:TypeDescription) =
-        // просто sugar
-        add targetId (TypedObject.TypeDescription td)
-
-    let intTd =
-        TypeDescription.Reference (TypeReference.Primitive PrimitiveType.Int)
-
-    let ratTd =
-        TypeDescription.Reference (TypeReference.Primitive PrimitiveType.Rational)
-
-    let boolTd =
-        TypeDescription.Reference (TypeReference.Primitive PrimitiveType.Bool)
-
-    // Разрешение пути полей: ["p"; "x"; "y"] -> Id последнего поля
-    let resolveFieldPath (env:Env) (scope:Dictionary<string,TypeVarId>) (segments:string list) : TypeVarId =
-        match segments with
-        | [] -> freshId env
-        | first :: rest ->
-            let mutable currentId =
-                match scope.TryGetValue(first) with
-                | true, id -> id
-                | _ ->
-                    let nid = freshId env
-                    scope.[first] <- nid
-                    nid
-
-            for fieldName in rest do
-                match env.ShapesBySelfId |> Map.tryFind currentId with
-                | Some shape ->
-                    match shape.FieldIds |> Map.tryFind fieldName with
-                    | Some fid -> currentId <- fid
-                    | None ->
-                        let newFid = freshId env
-                        let newShape = { shape with FieldIds = shape.FieldIds.Add(fieldName, newFid) }
-                        env.ShapesBySelfId <- env.ShapesBySelfId.Add(shape.SelfId, newShape)
-                        currentId <- newFid
+        | TypeDescription.Reference (TypeReference.Named name) ->
+            if ctx.AliasCache.ContainsKey name then
+                return ctx.AliasCache[name]
+            else
+                match ctx.TypeDefinitions |> Map.tryFind name with
                 | None ->
-                    // текущий id становится продуктом "на лету"
-                    let emptyShape = { SelfId = currentId; FieldIds = Map.empty }
-                    registerShape env emptyShape
-                    let newFid = freshId env
-                    let updated = { emptyShape with FieldIds = emptyShape.FieldIds.Add(fieldName, newFid) }
-                    env.ShapesBySelfId <- env.ShapesBySelfId.Add(currentId, updated)
-                    currentId <- newFid
-            currentId
+                    return! error
+                        // NOTE: Fixed compiler error here:
+                        (match desc with
+                        | Reference _ -> { StartLine = -1; StartChar = 0; EndLine = -1; EndChar = 0}
+                        | Product { Range = r}
+                        | TypeDescription.Sum { Range = r}
+                        | Function { Range = r} -> r)
+                        (UnknownType name)
+                        (sprintf "Type '%s' is not defined." name)
+                | Some entry ->
+                    let placeholder =
+                        entry.Placeholder
+                        |> Option.defaultWith (fun _ -> freshTypeVar builder)
 
-    // --- Эмиссия типов / полей
+                    ctx.AliasCache[name] <- placeholder
 
-    let rec emitProductField (shape: ProductShape option) (f: ProductTypeField) =
-        // id поля (значение поля!)
-        let fieldId =
-            match shape with
-            | Some sh -> sh.FieldIds |> Map.tryFind f.Name |> Option.defaultWith (fun () -> freshId env)
-            | None    -> freshId env
+                    let! resolved = resolveTypeDescription ctx (Some name) entry.Definition.Body
 
-        // сам Field
-        add fieldId (TypedObject.ProductTypeField f)
+                    // NOTE: Fixed complier error here:
+                    do 
+                        match placeholder with
+                        | TVar v -> v.Binding <- Some resolved
+                        | _ -> ()
 
-        // если у поля есть явная аннотация типа
-        match f.Type with
-        | Some (TypeDescription.Product pdesc) ->
-            // ВАЖНО: продукт-тип поля должен иметь SelfId = fieldId,
-            // чтобы x: (a) позволил резолвить x.a через ShapesBySelfId[fieldId]
-            let fshape = buildProductShapeWithSelf env fieldId pdesc.Fields
-            ignore (emitTypeDescription (Some fshape) (TypeDescription.Product pdesc))
-        | Some td ->
-            ignore (emitTypeDescription None td)
-        | None -> ()
-    // emitTypeDescriptionWithId: принудительно эмитит данный td как TypeDescription с фиксированным selfId.
-    // Для Product/Sum/Function мы всё так же хотим развернуть дочерние куски,
-    // но без генерации новой "корневой" переменной типа.
-    and emitTypeDescriptionWithId (selfId:TypeVarId) (td: TypeDescription) =
-        // Зарегистрировать в acc сам td под уже существующим selfId
-        add selfId (TypedObject.TypeDescription td)
+                    ctx.AliasCache[name] <- resolved
+                    return resolved
 
-        match td with
-        | TypeDescription.Product pdesc ->
-            // ВАЖНО: у продукта selfId должен стать формой продукта.
-            // Если его ещё нет в ShapesBySelfId (например это сигнатура функции),
-            // надо создать shape с данным selfId, чтобы дальнейшая точечная нотация работала.
-            let shape =
-                match env.ShapesBySelfId |> Map.tryFind selfId with
-                | Some sh -> sh
-                | None ->
-                    let sh = buildProductShapeWithSelf env selfId pdesc.Fields
-                    sh
-            // поля:
-            for f in pdesc.Fields do
-                emitProductField (Some shape) f
+        | TypeDescription.Product product ->
+            let! fields =
+                product.Fields
+                |> List.map (fun field ->
+                    typeResult {
+                        match field.Type with
+                        | None ->
+                            return! error
+                                field.Range
+                                (GeneralTypeError (sprintf "Field '%s' is missing a type annotation." field.Name))
+                                (sprintf "Field '%s' requires an explicit type." field.Name)
+                        | Some td ->
+                            let! ty = resolveTypeDescription ctx None td
+                            return { Name = Some field.Name; Type = ty }
+                    })
+                |> mergeResults
 
-        | TypeDescription.Sum sdesc ->
-            for variant in sdesc.Variants do
-                variant.Payload
-                |> Option.iter (fun payload -> ignore (emitTypeDescription None payload))
-
-        | TypeDescription.Function fdesc ->
-            for parameter in fdesc.Parameters do
-                ignore (emitTypeDescription None parameter)
-            ignore (emitTypeDescription None fdesc.ReturnType)
-
-        | TypeDescription.Reference _ ->
-            ()
-    and emitTypeDescription (shapeOpt: ProductShape option) (td: TypeDescription) : TypeVarId =
-        match td with
-        | TypeDescription.Reference _ ->
-            let selfId = freshId env
-            add selfId (TypedObject.TypeDescription td)
-            selfId
+            return freshProduct builder fields
 
         | TypeDescription.Sum sumDesc ->
-            let selfId = freshId env
-            add selfId (TypedObject.TypeDescription td)
-            for variant in sumDesc.Variants do
-                variant.Payload
-                |> Option.iter (fun payload -> ignore (emitTypeDescription None payload))
-            selfId
+            match currentTypeName with
+            | None ->
+                return! error
+                    sumDesc.Range
+                    (GeneralTypeError "Anonymous sum types are not supported.")
+                    "Anonymous sum types are not supported; declare them via 'type Name = (...)'."
+            | Some typeName ->
+                // NOTE: Fixed compiler error here:
+                if not (ctx.SumTypes.ContainsKey typeName) then
+                    let! variants = 
+                        sumDesc.Variants
+                        |> List.map (fun variant ->
+                            typeResult {
+                                let! payloadTypeOpt =
+                                    match variant.Payload with
+                                    | Some payloadDesc -> resolveTypeDescription ctx None payloadDesc |> Result.map Some
+                                    | None -> ok None
 
-        | TypeDescription.Product pdesc ->
-            let shape =
-                match shapeOpt with
-                | Some s -> s
-                | None   -> buildProductShape env pdesc.Fields
+                                let ctorInfo =
+                                    { Constructor = variant.Constructor
+                                      SumName = typeName
+                                      Payload = payloadTypeOpt
+                                      Range = variant.Range }
 
-            add shape.SelfId (TypedObject.TypeDescription td)
-            for f in pdesc.Fields do
-                emitProductField (Some shape) f
-            shape.SelfId
+                                if ctx.Constructors.ContainsKey variant.Constructor then
+                                    return! error
+                                        variant.Range
+                                        (DuplicateConstructor variant.Constructor)
+                                        (sprintf "Constructor '%s' is already defined." variant.Constructor)
+                                else
+                                    ctx.Constructors[variant.Constructor] <- ctorInfo
+                                    return ctorInfo
+                            })
+                        |> mergeResults
 
-        | TypeDescription.Function fdesc ->
-            let selfId = freshId env
-            add selfId (TypedObject.TypeDescription td)
-            for parameter in fdesc.Parameters do
-                ignore (emitTypeDescription None parameter)
-            ignore (emitTypeDescription None fdesc.ReturnType)
-            selfId
+                    let info =
+                        { Name = typeName
+                          Range = sumDesc.Range
+                          Variants = variants }
+                    // NOTE: Fixed compiler error here:
+                    let _ = ctx.SumTypes[typeName] <- info
+                    return TSum typeName
+                // NOTE: Fixed compiler error here:
+                else return TSum typeName
 
-    // --- Выражения/значения
+        | TypeDescription.Function fn ->
+            let! args =
+                fn.Parameters
+                |> List.map (resolveTypeDescription ctx None)
+                |> mergeResults
 
-    let rec emitExpression (scope: Dictionary<string,TypeVarId>) (expr: Expression) : TypeVarId =
-        let nodeId =
-            match expr.Kind with
-            | ExpressionKind.Name segments ->
-                resolveFieldPath env scope segments
-            | ExpressionKind.Constant _ ->
-                freshId env
-            | ExpressionKind.Tuple _ ->
-                failwith "Typing for tuple expressions is not implemented yet"
-            | ExpressionKind.Constructor _ ->
-                failwith "Typing for constructor expressions is not implemented yet"
+            let! ret = resolveTypeDescription ctx None fn.ReturnType
+            return TFunction(args, ret)
+    }
 
-        add nodeId (TypedObject.Expression expr)
+// ---------------------------------------------------------------------------
+// Predicate information and environments
+// ---------------------------------------------------------------------------
+
+type ParameterInfo =
+    { Name: string
+      TypeExpr: TypeExpr
+      Range: SourceRange }
+
+type PredicateInfo =
+    { Name: string
+      Parameters: ParameterInfo list
+      ReturnType: TypeExpr
+      Range: SourceRange }
+
+type PredicateEnv =
+    { Predicates: Dictionary<string, PredicateInfo> }
+
+let private createPredicateEnv () =
+    { Predicates = Dictionary<string, PredicateInfo>(StringComparer.Ordinal) }
+
+let private registerPredicate (env: PredicateEnv) (info: PredicateInfo) =
+    env.Predicates[info.Name] <- info
+
+let private tryFindPredicate (env: PredicateEnv) (name: string) =
+    match env.Predicates.TryGetValue name with
+    | true, info -> Some info
+    | _ -> None
+
+// ---------------------------------------------------------------------------
+// Unification and compatibility checks
+// ---------------------------------------------------------------------------
+
+let rec private unify range (expected: TypeExpr) (actual: TypeExpr) : TypeResult<unit> =
+    let expected = prune expected
+    let actual = prune actual
+
+    match expected, actual with
+    | TVar ev, _ ->
+        if obj.ReferenceEquals(expected, actual) then
+            ok ()
+        elif occurs ev.Id actual then
+            error range (GeneralTypeError "Recursive type detected.") "Recursive type detected during unification."
+        else
+            ev.Binding <- Some actual
+            ok ()
+    | _, TVar _ -> unify range actual expected
+    | TInt, TInt
+    | TRational, TRational
+    | TBool, TBool -> ok ()
+    | TSum s1, TSum s2 when s1 = s2 -> ok ()
+    | TFunction (args1, ret1), TFunction (args2, ret2) ->
+        if List.length args1 <> List.length args2 then
+            error
+                range
+                (GeneralTypeError "Function arity mismatch.")
+                "Functions have different arity and cannot be unified."
+        else
+            let argResults = List.map2 (unify range) args1 args2
+            let _ = mergeResults argResults
+            unify range ret1 ret2
+    | TProduct p1, TProduct p2 ->
+        let fields1 = p1.Fields
+        let fields2 = p2.Fields
+        if List.length fields1 <> List.length fields2 then
+            error
+                range
+                (GeneralTypeError "Product arity mismatch.")
+                "Product types have different number of fields."
+        else
+            let merged =
+                List.zip fields1 fields2
+                |> List.map (fun (f1, f2) ->
+                    match f1.Name, f2.Name with
+                    | Some n, None -> f2.Name <- Some n
+                    | None, Some n -> f1.Name <- Some n
+                    | _ -> ()
+                    unify range f1.Type f2.Type)
+            mergeResults merged |> Result.map (fun _ -> ())
+    | _ ->
+        let expectedText = typeExprToString expected
+        let actualText = typeExprToString actual
+        error
+            range
+            (GeneralTypeError "Type mismatch.")
+            $"Type mismatch: expected {expectedText}, got {actualText}."
+
+let private expectBool range ty =
+    match prune ty with
+    | TBool -> ok ()
+    | TVar _ -> unify range TBool ty
+    | other ->
+        error range ExpectedBool $"Expected bool but got {typeExprToString other}."
+
+let private expectNumeric range ty =
+    match prune ty with
+    | TInt
+    | TRational -> ok ()
+    | TVar _ ->
+        error range ExpectedNumeric $"Unable to determine numeric type at {range.StartLine}:{range.StartChar}."
+    | other ->
+        error range ExpectedNumeric $"Expected numeric type but got {typeExprToString other}."
+
+let rec private isResolvedType ty =
+    match prune ty with
+    | TVar { Binding = None } -> false
+    | TVar { Binding = Some bound } -> isResolvedType bound
+    | TProduct info -> info.Fields |> List.forall (fun f -> isResolvedType f.Type)
+    | TFunction (args, ret) -> List.forall isResolvedType args && isResolvedType ret
+    | _ -> true
+
+// ---------------------------------------------------------------------------
+// Value environment for expressions
+// ---------------------------------------------------------------------------
+
+type ValueEnv =
+    { Parent: ValueEnv option
+      Values: Dictionary<string, TypeExpr> }
+
+let rec private lookupValue (env: ValueEnv) (name: string) =
+    match env.Values.TryGetValue name with
+    | true, value -> Some value
+    | _ ->
+        match env.Parent with
+        | Some parent -> lookupValue parent name
+        | None -> None
+
+let private extendValueEnv (env: ValueEnv option) =
+    { Parent = env
+      Values = Dictionary<string, TypeExpr>(StringComparer.Ordinal) }
+
+let private addValue (env: ValueEnv) (name: string) (ty: TypeExpr) =
+    env.Values[name] <- ty
+
+// ---------------------------------------------------------------------------
+// Expression inference
+// ---------------------------------------------------------------------------
+
+let rec private inferExpression
+    (ctx: TypeContext)
+    (predicates: PredicateEnv)
+    (env: ValueEnv)
+    (expr: Expression)
+    : TypeResult<TypeExpr * Expression>
+    =
+    typeResult {
+        match expr.Kind with
+        | ExpressionKind.Constant constValue ->
+            let ty =
+                match constValue with
+                | ConstantValue.IntConstant _ -> TInt
+                | ConstantValue.RationalConstant _ -> TRational
+                | ConstantValue.BooleanConstant _ -> TBool
+
+            let annotated = { expr with Annotation = Some(typeExprToTypeDescription ty (Some expr.Range)) }
+            return (ty, annotated)
+
+        | ExpressionKind.Name segments ->
+            match segments with
+            | [] ->
+                return! error expr.Range (UnknownIdentifier "") "Empty name access."
+            | head :: tail ->
+                match lookupValue env head with
+                | None ->
+                    return!
+                        error
+                            expr.Range
+                            (UnknownIdentifier head)
+                            (sprintf "Identifier '%s' is not defined." head)
+                | Some baseType ->
+                    let rec resolveField (currentTy: TypeExpr) (names: string list) =
+                        typeResult {
+                            match names with
+                            | [] -> return currentTy
+                            | field :: rest ->
+                                match prune currentTy with
+                                | TProduct product ->
+                                    match product.Fields |> List.tryFind (fun f -> f.Name = Some field) with
+                                    | Some fld -> return! resolveField fld.Type rest
+                                    | None ->
+                                        return!
+                                            error
+                                                expr.Range
+                                                (FieldNotFound field)
+                                                (sprintf "Field '%s' not found in product type." field)
+                                | other ->
+                                    return!
+                                        error
+                                            expr.Range
+                                            NotAProductType
+                                            (sprintf
+                                                "Cannot access field '%s' on non-product type %s."
+                                                field
+                                                (typeExprToString other))
+                        }
+
+                    let! finalTy = resolveField baseType tail
+                    let annotated = { expr with Annotation = Some(typeExprToTypeDescription finalTy (Some expr.Range)) }
+                    return (finalTy, annotated)
+
+        | ExpressionKind.Tuple items ->
+            let! inferred =
+                items
+                |> List.map (inferExpression ctx predicates env)
+                |> mergeResults
+
+            let elementTypes = inferred |> List.map fst
+            let updatedItems = inferred |> List.map snd
+            let fields =
+                elementTypes
+                |> List.mapi (fun idx ty ->
+                    { Name = Some (sprintf "_%d" idx)
+                      Type = ty })
+
+            let productTy = freshProduct ctx.Builder fields
+
+            let! finalTy =
+                match expr.Annotation with
+                | None -> ok productTy
+                | Some ann ->
+                    typeResult {
+                        let! expected = resolveTypeDescription ctx None ann
+                        let! _ = unify expr.Range expected productTy
+                        return expected
+                    }
+
+            let annotated =
+                { expr with
+                    Kind = ExpressionKind.Tuple updatedItems
+                    Annotation = Some(typeExprToTypeDescription finalTy (Some expr.Range)) }
+
+            return (finalTy, annotated)
+
+        | ExpressionKind.Constructor call ->
+            match ctx.Constructors.TryGetValue call.Constructor with
+            | false, _ ->
+                return!
+                    error
+                        call.Range
+                        (UnknownConstructor call.Constructor)
+                        (sprintf "Constructor '%s' is not defined." call.Constructor)
+            | true, ctorInfo ->
+                let sumType = TSum ctorInfo.SumName
+                match ctorInfo.Payload, call.Arguments with
+                | None, [] ->
+                    let annotated =
+                        { expr with
+                            Annotation = Some(typeExprToTypeDescription sumType (Some expr.Range)) }
+                    return (sumType, annotated)
+
+                | Some payloadTy, [ argument ] ->
+                    let! argTy, updatedArg = inferExpression ctx predicates env argument
+                    let! _ = unify call.Range payloadTy argTy
+                    let annotatedCall = { call with Arguments = [ updatedArg ] }
+                    let annotated =
+                        { expr with
+                            Kind = ExpressionKind.Constructor annotatedCall
+                            Annotation = Some(typeExprToTypeDescription sumType (Some expr.Range)) }
+                    return (sumType, annotated)
+
+                | Some _, args ->
+                    return!
+                        error
+                            call.Range
+                            (ConstructorArgumentMismatch(call.Constructor, 1, List.length args))
+                            (sprintf "Constructor '%s' expects exactly one argument." call.Constructor)
+
+                | None, args ->
+                    return!
+                        error
+                            call.Range
+                            (ConstructorArgumentMismatch(call.Constructor, 0, List.length args))
+                            (sprintf "Constructor '%s' does not accept arguments." call.Constructor)
+    }
+
+let rec private inferAlgebraicExpression
+    (ctx: TypeContext)
+    (predicates: PredicateEnv)
+    (env: ValueEnv)
+    (expr: AlgebraicExpression)
+    : TypeResult<TypeExpr * AlgebraicExpression>
+    =
+    typeResult {
+        match expr with
+        | AlgebraicExpression.Expression inner ->
+            let! ty, annotated = inferExpression ctx predicates env inner
+            return (ty, AlgebraicExpression.Expression annotated)
+
+        | AlgebraicExpression.Operation (left, op, right, range) ->
+            let! leftTy, leftExpr = inferAlgebraicExpression ctx predicates env left
+            let! rightTy, rightExpr = inferAlgebraicExpression ctx predicates env right
+
+            let! _ = expectNumeric range leftTy
+            let! _ = expectNumeric range rightTy
+
+            let! _ =
+                match prune leftTy, prune rightTy with
+                | TInt, TRational
+                | TRational, TInt ->
+                    error
+                        range
+                        (ComparisonTypeMismatch("numeric", "numeric"))
+                        "Numeric operands must have the same type."
+                | _ -> ok ()
+
+            let resultType =
+                match op with
+                | AlgebraicOperation.Div -> TRational
+                | AlgebraicOperation.Mod -> TInt
+                | _ -> prune leftTy
+
+            let updated =
+                AlgebraicExpression.Operation(leftExpr, op, rightExpr, range)
+
+            return (resultType, updated)
+    }
+
+let rec private checkPattern
+    (ctx: TypeContext)
+    (predicates: PredicateEnv)
+    (env: ValueEnv)
+    (expected: TypeExpr)
+    (pattern: Pattern)
+    : TypeResult<unit * Pattern>
+    =
+    typeResult {
+        match pattern with
+        | Pattern.Wildcard range -> return ((), Pattern.Wildcard range)
+        | Pattern.Constant (value, range) ->
+            let ty =
+                match value with
+                | ConstantValue.IntConstant _ -> TInt
+                | ConstantValue.RationalConstant _ -> TRational
+                | ConstantValue.BooleanConstant _ -> TBool
+            let! _ = unify range expected ty
+            return ((), Pattern.Constant(value, range))
+
+        | Pattern.Tuple (patterns, range) ->
+            match prune expected with
+            | TProduct product ->
+                if List.length product.Fields <> List.length patterns then
+                    return!
+                        error
+                            range
+                            (PatternMismatch "Tuple arity mismatch.")
+                            "Tuple pattern arity does not match the value."
+                else
+                    let! _ =
+                        List.zip product.Fields patterns
+                        |> List.map (fun (field, pat) -> checkPattern ctx predicates env field.Type pat)
+                        |> mergeResults
+                    let updated = Pattern.Tuple(patterns, range)
+                    return ((), updated)
+            | other ->
+                return!
+                    error
+                        range
+                        (PatternMismatch "Expected product type in pattern.")
+                        (sprintf "Pattern expects a product type but got %s." (typeExprToString other))
+
+        | Pattern.Constructor ctorPattern ->
+            match ctx.Constructors.TryGetValue ctorPattern.Constructor with
+            | false, _ ->
+                return!
+                    error
+                        ctorPattern.Range
+                        (UnknownConstructor ctorPattern.Constructor)
+                        (sprintf "Constructor '%s' is not defined." ctorPattern.Constructor)
+            | true, ctorInfo ->
+                let expectedSum = TSum ctorInfo.SumName
+                let! _ = unify ctorPattern.Range expected expectedSum
+                match ctorInfo.Payload, ctorPattern.Arguments with
+                | None, [] -> return ((), pattern)
+                | Some payloadTy, [ pat ] ->
+                    let! _ = checkPattern ctx predicates env payloadTy pat
+                    return ((), pattern)
+                | Some _, [] ->
+                    return!
+                        error
+                            ctorPattern.Range
+                            (PatternMismatch "Missing constructor payload pattern.")
+                            (sprintf "Constructor '%s' expects a payload." ctorPattern.Constructor)
+                | None, _ ->
+                    return!
+                        error
+                            ctorPattern.Range
+                            (PatternMismatch "Unexpected constructor arguments.")
+                            (sprintf "Constructor '%s' does not take arguments." ctorPattern.Constructor)
+                | Some _, _ ->
+                    return!
+                        error
+                            ctorPattern.Range
+                            (PatternMismatch "Multiple constructor arguments.")
+                            "Constructor patterns currently support a single payload argument."
+    }
+
+// ---------------------------------------------------------------------------
+// Predicate inference
+// ---------------------------------------------------------------------------
+
+let rec private inferPredicateBody
+    (ctx: TypeContext)
+    (predicates: PredicateEnv)
+    (env: ValueEnv)
+    (body: PredicateBody)
+    : TypeResult<PredicateBody>
+    =
+    typeResult {
+        match body with
+        | PredicateBody.Item (item, range) ->
+            match item with
+            | PredicateBodyItem.Expression expr ->
+                let! ty, annotated = inferExpression ctx predicates env expr
+                let! _ = expectBool range ty
+                return PredicateBody.Item(PredicateBodyItem.Expression annotated, range)
+
+            | PredicateBodyItem.Call call ->
+                match tryFindPredicate predicates call.PredicateName with
+                | None ->
+                    return!
+                        error
+                            call.Range
+                            (PredicateNotFound call.PredicateName)
+                            (sprintf "Predicate '%s' is not defined." call.PredicateName)
+                | Some info ->
+                    if List.length info.Parameters <> List.length call.Arguments then
+                        return!
+                            error
+                                call.Range
+                                (PredicateArityMismatch(List.length info.Parameters, List.length call.Arguments))
+                                (sprintf
+                                    "Predicate '%s' expects %d argument(s)."
+                                    call.PredicateName
+                                    (List.length info.Parameters))
+                    else
+                        let! updatedArgs =
+                            List.zip info.Parameters call.Arguments
+                            |> List.map (fun (param, arg) ->
+                                typeResult {
+                                    let! argTy, annotated = inferExpression ctx predicates env arg
+                                    let! _ = unify arg.Range param.TypeExpr argTy
+                                    return annotated
+                                })
+                            |> mergeResults
+
+                        return
+                            (PredicateBody.Item(
+                                PredicateBodyItem.Call { call with Arguments = updatedArgs },
+                                range))
+
+            | PredicateBodyItem.PatternMatch (expr, pattern) ->
+                let! exprTy, annotatedExpr = inferExpression ctx predicates env expr
+                let! _ = checkPattern ctx predicates env exprTy pattern
+                return
+                    (PredicateBody.Item(
+                        PredicateBodyItem.PatternMatch(annotatedExpr, pattern),
+                        range))
+
+            | PredicateBodyItem.AlgebraicCondition cond ->
+                let! leftTy, leftExpr = inferAlgebraicExpression ctx predicates env cond.LeftExpression
+                let! rightTy, rightExpr = inferAlgebraicExpression ctx predicates env cond.RightExpression
+                let! _ = expectNumeric cond.Range leftTy
+                let! _ = expectNumeric cond.Range rightTy
+                let! _ = unify cond.Range leftTy rightTy
+                return
+                    (PredicateBody.Item(
+                        PredicateBodyItem.AlgebraicCondition
+                            { cond with
+                                LeftExpression = leftExpr
+                                RightExpression = rightExpr },
+                        range))
+
+        | PredicateBody.Not (nested, range) ->
+            let! typedNested = inferPredicateBody ctx predicates env nested
+            return PredicateBody.Not(typedNested, range)
+
+        | PredicateBody.And (left, right, range) ->
+            let! leftTyped = inferPredicateBody ctx predicates env left
+            let! rightTyped = inferPredicateBody ctx predicates env right
+            return PredicateBody.And(leftTyped, rightTyped, range)
+
+        | PredicateBody.Or (left, right, range) ->
+            let! leftTyped = inferPredicateBody ctx predicates env left
+            let! rightTyped = inferPredicateBody ctx predicates env right
+            return PredicateBody.Or(leftTyped, rightTyped, range)
+
+        | PredicateBody.Definition (definition, rest, range) ->
+            let extendedPredicates = createPredicateEnv ()
+            predicates.Predicates
+            |> Seq.iter (fun kv -> extendedPredicates.Predicates[kv.Key] <- kv.Value)
+
+            let! typedDefinition, predicateInfo =
+                inferPredicateDefinition ctx extendedPredicates definition
+
+            registerPredicate extendedPredicates predicateInfo
+
+            let! typedRest = inferPredicateBody ctx extendedPredicates env rest
+            return PredicateBody.Definition(typedDefinition, typedRest, range)
+    }
+
+and private inferPredicateDefinition
+    (ctx: TypeContext)
+    (predicates: PredicateEnv)
+    (definition: PredicateDefinition)
+    : TypeResult<PredicateDefinition * PredicateInfo>
+    =
+    typeResult {
+        let valueEnv = extendValueEnv None
+        let builder = ctx.Builder
+
+        let! parameterInfos =
+            definition.Parameters
+            |> List.map (fun parameter ->
+                typeResult {
+                    match parameter.Type with
+                    | Some td ->
+                        let! ty = resolveTypeDescription ctx None td
+                        let info =
+                            { Name = parameter.Name
+                              TypeExpr = ty
+                              Range = parameter.Range }
+                        addValue valueEnv parameter.Name ty
+                        return (info, Some td)
+                    | None ->
+                        let ty = freshTypeVar builder
+                        addValue valueEnv parameter.Name ty
+                        let info =
+                            { Name = parameter.Name
+                              TypeExpr = ty
+                              Range = parameter.Range }
+                        return (info, None)
+                })
+            |> mergeResults
+
+        let predicateInfo =
+            { Name = definition.Name
+              Parameters = parameterInfos |> List.map fst
+              ReturnType = TBool
+              Range = definition.Range }
+
+        registerPredicate predicates predicateInfo
+
+        let! typedBody = inferPredicateBody ctx predicates valueEnv definition.Body
+
+        let unresolvedParameters =
+            predicateInfo.Parameters
+            |> List.filter (fun p -> isResolvedType p.TypeExpr |> not)
+
+        if not unresolvedParameters.IsEmpty then
+            let errors =
+                unresolvedParameters
+                |> List.map (fun p ->
+                    { Kind = UnboundParameterType p.Name
+                      Message = sprintf "Could not infer type of parameter '%s'." p.Name
+                      Range = p.Range })
+            return! Error errors
+        else
+            let updatedParameters =
+                (definition.Parameters, predicateInfo.Parameters)
+                ||> List.map2 (fun parameter info ->
+                    let typeDescription = typeExprToTypeDescription info.TypeExpr (Some parameter.Range)
+                    { parameter with Type = Some typeDescription })
+
+            let predicateType =
+                { Parameters =
+                      predicateInfo.Parameters
+                      |> List.map (fun p -> typeExprToTypeDescription p.TypeExpr None)
+                  ReturnType =
+                      TypeDescription.Reference
+                          (TypeReference.Primitive PrimitiveType.Bool)
+                  Range = definition.Range }
+
+            let updatedDefinition =
+                { definition with
+                    Parameters = updatedParameters
+                    Body = typedBody
+                    PredicateType = Some predicateType }
+
+            return (updatedDefinition, predicateInfo)
+    }
+
+// ---------------------------------------------------------------------------
+// Program-level helpers
+// ---------------------------------------------------------------------------
+
+type TypedObject =
+    | TypeDefinition of Ast.TypeDefinition
+    | TypeDescription of Ast.TypeDescription
+    | ProductTypeField of Ast.ProductTypeField
+    | Expression of Ast.Expression
+    | PredicateCall of Ast.PredicateCall
+    | AlgebraicExpression of Ast.AlgebraicExpression
+    | Parameter of Ast.Parameter
+    | AlgebraicCondition of Ast.AlgebraicCondition
+    | PredicateBodyItem of Ast.PredicateBodyItem
+    | PredicateBody of Ast.PredicateBody
+    | PredicateDefinition of Ast.PredicateDefinition
+    | DeonticStatement of Ast.DeonticStatement
+
+type ProgramObjTypeInfo =
+    { Id: int
+      Object: TypedObject
+      Type: TypeDescription
+      Range: SourceRange }
+
+type TypedProgram =
+    { Program: Program
+      TypedObjects: ProgramObjTypeInfo list }
+
+let private collectTypeDefinitions (program: Program) =
+    program
+    |> List.choose (function
+        | Definition.Type td -> Some td
+        | _ -> None)
+
+let private buildTypeContext (program: Program) =
+    let builder = createBuilder ()
+
+    let definitions =
+        collectTypeDefinitions program
+        |> List.fold
+            (fun acc def ->
+                if Map.containsKey def.Name acc then
+                    acc
+                else
+                    Map.add
+                        def.Name
+                        { Definition = def
+                          Placeholder = None }
+                        acc)
+            Map.empty
+
+    { TypeDefinitions = definitions
+      AliasCache = Dictionary<string, TypeExpr>(StringComparer.Ordinal)
+      SumTypes = Dictionary<string, SumTypeInfo>(StringComparer.Ordinal)
+      Constructors = Dictionary<string, SumConstructorInfo>(StringComparer.Ordinal)
+      Builder = builder }
+
+let private collectTypedObjects (program: Program) =
+    let acc = ResizeArray<ProgramObjTypeInfo>()
+    let mutable nextId = 1
+
+    let add (obj: TypedObject) (ty: TypeDescription) (range: SourceRange) =
+        acc.Add
+            { Id = nextId
+              Object = obj
+              Type = ty
+              Range = range }
+        nextId <- nextId + 1
+
+    let rec visitExpression expr =
+        expr.Annotation
+        |> Option.iter (fun ann -> add (TypedObject.Expression expr) ann expr.Range)
 
         match expr.Kind with
-        | ExpressionKind.Constant (ConstantValue.IntConstant _) ->
-            let intTd = TypeDescription.Reference (TypeReference.Primitive PrimitiveType.Int)
-            add nodeId (TypedObject.TypeDescription intTd)
-        | ExpressionKind.Constant (ConstantValue.RationalConstant _) ->
-            let ratTd = TypeDescription.Reference (TypeReference.Primitive PrimitiveType.Rational)
-            add nodeId (TypedObject.TypeDescription ratTd)
-        | ExpressionKind.Constant (ConstantValue.BooleanConstant _) ->
-            let boolTd = TypeDescription.Reference (TypeReference.Primitive PrimitiveType.Bool)
-            add nodeId (TypedObject.TypeDescription boolTd)
-        | _ -> ()
+        | ExpressionKind.Constant _ -> ()
+        | ExpressionKind.Name _ -> ()
+        | ExpressionKind.Tuple items ->
+            items |> List.iter visitExpression
+        | ExpressionKind.Constructor call ->
+            call.Arguments |> List.iter visitExpression
 
-        expr.Annotation
-        |> Option.iter (fun td -> ignore (emitTypeDescription None td))
+    let rec visitPredicateBody body =
+        let range =
+            match body with
+            | PredicateBody.Item (_, range)
+            | PredicateBody.Not (_, range)
+            | PredicateBody.And (_, _, range)
+            | PredicateBody.Or (_, _, range)
+            | PredicateBody.Definition (_, _, range) -> range
 
-        nodeId
+        add
+            (TypedObject.PredicateBody body)
+            (TypeDescription.Reference(TypeReference.Primitive PrimitiveType.Bool))
+            range
 
-    let rec emitAlgebraicExpression (scope: Dictionary<string,TypeVarId>) (expr: AlgebraicExpression) : TypeVarId =
-        match expr with
-        | AlgebraicExpression.Expression v ->
-            let vid = emitExpression scope v
-            add vid (TypedObject.AlgebraicExpression expr) // разделяем Id со значением
-            vid
-
-        | AlgebraicExpression.Operation (l, op, r, _) ->
-            let lid = emitAlgebraicExpression scope l
-            let rid = emitAlgebraicExpression scope r
-
-            let selfId = freshId env
-            add selfId (TypedObject.AlgebraicExpression expr)
-
-            match op with
-            | AlgebraicOperation.Mod ->
-                // и операнды, и результат должны быть int
-                addTypeAs lid intTd
-                addTypeAs rid intTd
-                // можно (но не обязательно) сказать и самому узлу, что он int;
-                // сейчас мы в getSemanticBound для Mod уже это делаем через AlgebraicExpression, так что ок.
-
-            | AlgebraicOperation.Div ->
-                // деление -> результат как Rational (getSemanticBound уже это делает),
-                // операнды считаем числовыми. Для простоты: тоже Rational.
-                addTypeAs lid ratTd
-                addTypeAs rid ratTd
-
-            | AlgebraicOperation.Sum
-            | AlgebraicOperation.Sub
-            | AlgebraicOperation.Mul ->
-                // операнды должны быть совместимого числового типа.
-                // эвристика:
-                // 1. если у кого-то уже есть явный тип (int или rational), копируем его на второго.
-                // 2. иначе пока не делаем ничего, до тех пор, пока где-то не появится литерал.
-                let lKnown = tryFindCurrentConcreteType lid
-                let rKnown = tryFindCurrentConcreteType rid
-                match lKnown, rKnown with
-                | Some ltd, None ->
-                    addTypeAs rid ltd
-                | None, Some rtd ->
-                    addTypeAs lid rtd
-                | _ -> ()
-            selfId
-
-    let emitAlgebraicCondition (scope: Dictionary<string,TypeVarId>) (c: AlgebraicCondition) : unit =
-        let selfId = freshId env
-        add selfId (TypedObject.AlgebraicCondition c)
-
-        let lid = emitAlgebraicExpression scope c.LeftExpression
-        let rid = emitAlgebraicExpression scope c.RightExpression
-
-        // правило по видам сравнений
-        // тебе нужно посмотреть что у тебя за дизъюнкт в AST:
-        //   Eq / Neq / Lt / Gt / Le / Ge ... — я буду называть их условно
-        //
-        match c.Condition with
-        | Eq
-        | Ne ->
-            // x = y, x != y
-            // если кто-то уже конкретно типизирован (int, bool, product и т.п.),
-            // протягиваем этот тип на другого
-            let lKnown = tryFindCurrentConcreteType lid
-            let rKnown = tryFindCurrentConcreteType rid
-            match lKnown, rKnown with
-            | Some ltd, None ->
-                addTypeAs rid ltd
-            | None, Some rtd ->
-                addTypeAs lid rtd
-            | _ -> ()
-
-        | Lt
-        | Gt
-        | Le
-        | Ge ->
-            // числовые сравнения — операнды должны быть числовыми.
-            // эвристика: если один из операндов уже Int или Rational, копируем на другой.
-            let lKnown = tryFindCurrentConcreteType lid
-            let rKnown = tryFindCurrentConcreteType rid
-
-            // helper: является ли td числовым (int или rational)?
-            let isNumeric td =
-                match td with
-                | TypeDescription.Reference (TypeReference.Primitive PrimitiveType.Int) -> true
-                | TypeDescription.Reference (TypeReference.Primitive PrimitiveType.Rational) -> true
-                | _ -> false
-
-            match lKnown, rKnown with
-            | Some ltd, None when isNumeric ltd ->
-                addTypeAs rid ltd
-            | None, Some rtd when isNumeric rtd ->
-                addTypeAs lid rtd
-            | _ -> ()
-
-        // если появятся другие операции — добавь сюда
-
-    let rec emitPredicateBody (scope: Dictionary<string,TypeVarId>) (body: PredicateBody) : unit =
-        let selfId = freshId env
-        add selfId (TypedObject.PredicateBody body)
         match body with
         | PredicateBody.Item (item, _) ->
-            emitPredicateBodyItem scope item
-        | PredicateBody.Not (inner, _) ->
-            emitPredicateBody scope inner
-        | PredicateBody.And (l, r, _) ->
-            emitPredicateBody scope l
-            emitPredicateBody scope r
-        | PredicateBody.Or (l, r, _) ->
-            emitPredicateBody scope l
-            emitPredicateBody scope r
-        | PredicateBody.Definition (innerPd, innerBody, _) ->
-            emitPredicateDefinition innerPd
-            emitPredicateBody scope innerBody
+            match item with
+            | PredicateBodyItem.Expression expr -> visitExpression expr
+            | PredicateBodyItem.Call call ->
+                let td =
+                    TypeDescription.Reference(TypeReference.Primitive PrimitiveType.Bool)
+                add (TypedObject.PredicateCall call) td call.Range
+                call.Arguments |> List.iter visitExpression
+            | PredicateBodyItem.PatternMatch (expr, _) -> visitExpression expr
+            | PredicateBodyItem.AlgebraicCondition cond ->
+                add
+                    (TypedObject.AlgebraicCondition cond)
+                    (TypeDescription.Reference(TypeReference.Primitive PrimitiveType.Bool))
+                    cond.Range
+        | PredicateBody.Not (nested, _) -> visitPredicateBody nested
+        | PredicateBody.And (left, right, _) ->
+            visitPredicateBody left
+            visitPredicateBody right
+        | PredicateBody.Or (left, right, _) ->
+            visitPredicateBody left
+            visitPredicateBody right
+        | PredicateBody.Definition (def, rest, _) ->
+            match def.PredicateType with
+            | Some fn -> add (TypedObject.PredicateDefinition def) (TypeDescription.Function fn) def.Range
+            | None -> ()
+            visitPredicateDefinition def
+            visitPredicateBody rest
 
-    and emitPredicateBodyItem (scope: Dictionary<string,TypeVarId>) (item: PredicateBodyItem) : unit =
-        let selfId = freshId env
-        add selfId (TypedObject.PredicateBodyItem item)
-        match item with
-        | PredicateBodyItem.Call pc ->
-            let callId = freshId env
-            add callId (TypedObject.PredicateCall pc)
-            for arg in pc.Arguments do
-                ignore (emitExpression scope arg)
-        | PredicateBodyItem.Expression v ->
-            ignore (emitExpression scope v)
-        | PredicateBodyItem.PatternMatch _ ->
-            failwith "Typing for pattern matching is not implemented yet"
-        | PredicateBodyItem.AlgebraicCondition ac ->
-            emitAlgebraicCondition scope ac
+    and visitPredicateDefinition def =
+        def.Parameters
+        |> List.iter (fun parameter ->
+            match parameter.Type with
+            | Some ty -> add (TypedObject.Parameter parameter) ty parameter.Range
+            | None -> ())
 
-    // --- Предикат
+        visitPredicateBody def.Body
 
-    and emitPredicateDefinition (pd: PredicateDefinition) : unit =
-        let paramFields : ProductTypeField list =
-            pd.Parameters
-            |> List.map (fun p -> { Name = p.Name; Type = p.Type; Range = p.Range })
-        let paramProduct = { Fields = paramFields; Range = pd.Range }
-        let paramFieldNames = paramFields |> List.map (fun f -> f.Name) |> Set.ofList
-
-        let reusedShapeOpt =
-            env.Types
-            |> Map.tryPick (fun _name shape ->
-                let shapeFieldNames = shape.FieldIds |> Map.toList |> List.map fst |> Set.ofList
-                if shapeFieldNames = paramFieldNames then Some shape else None)
-
-        let argShape =
-            match reusedShapeOpt with
-            | Some shape -> shape
-            | None       -> buildProductShape env paramProduct.Fields
-
-        // scope: каждое верхнеуровневое поле параметра -> свой FieldId
-        let scope = Dictionary<string,TypeVarId>()
-        for f in paramProduct.Fields do
-            match argShape.FieldIds |> Map.tryFind f.Name with
-            | Some fid -> scope.[f.Name] <- fid
-            | None     -> ()
-
-        // эмитим сам product-параметр, деля Id с формой
-        let paramTypeDesc = TypeDescription.Product paramProduct
-        ignore (emitTypeDescription (Some argShape) paramTypeDesc)
-
-        // тело
-        emitPredicateBody scope pd.Body
-
-        // тип предиката: (param) -> bool
-        let boolTypeDesc =
-            PrimitiveType.Bool
-            |> TypeReference.Primitive
-            |> TypeDescription.Reference
-
-        let predFuncTypeDesc : TypeDescription =
-            TypeDescription.Function {
-                Parameters = [ paramTypeDesc ]
-                ReturnType = boolTypeDesc
-                Range = pd.Range
-            }
-
-        // один и тот же Id для предиката как объекта и его функционального типа
-        let predId = freshId env
-        add predId (TypedObject.PredicateDefinition pd)
-
-        // привязываем сигнатуру к predId, а не создаём новый freshId
-        emitTypeDescriptionWithId predId predFuncTypeDesc
-
-    // --- Деонтическое высказывание
-
-    let emitDeonticStatement (ds: DeonticStatement) =
-        let selfId = freshId env
-        add selfId (TypedObject.DeonticStatement ds)
-        let scope = Dictionary<string,TypeVarId>()
-        emitPredicateBody scope ds.Body
-        match ds.Condition with
-        | Some condBody -> emitPredicateBody scope condBody
-        | None -> ()
-
-    // --- Два прохода по определениям
-
-    for d in definitions do
-        match d with
-        | Definition.Type td -> ignore (ensureNamedType env td)
-        | _ -> ()
-
-    for d in definitions do
-        match d with
+    for definition in program do
+        match definition with
         | Definition.Type td ->
-            let shapeOpt = env.Types |> Map.tryFind td.Name
-            match td.Body with
-            | TypeDescription.Product pdesc ->
-                let shape =
-                    match shapeOpt with
-                    | Some s -> s
-                    | None   -> buildProductShape env pdesc.Fields
-                let tdProduct = TypeDescription.Product pdesc
-                ignore (emitTypeDescription (Some shape) tdProduct)
-            | otherTd ->
-                ignore (emitTypeDescription None otherTd)
-
-            let defId =
-                match shapeOpt with
-                | Some s -> s.SelfId
-                | None   -> freshId env
-            add defId (TypedObject.TypeDefinition td)
-
-        | Definition.Predicate pd ->
-            emitPredicateDefinition pd
-
-        | Definition.DeonticStatement ds ->
-            emitDeonticStatement ds
-
+            add (TypedObject.TypeDefinition td) td.Body td.Range
+        | Definition.Predicate predicate ->
+            visitPredicateDefinition predicate
+        | Definition.DeonticStatement statement ->
+            visitPredicateBody statement.Body
+            statement.Condition
+            |> Option.iter visitPredicateBody
         | Definition.Fact _ -> ()
 
-    (List.ofSeq acc, env.ShapesBySelfId)
+    acc |> Seq.toList
 
+let inferTypes (program: Program) : TypeResult<TypedProgram> =
+    let ctx = buildTypeContext program
+    let predicates = createPredicateEnv ()
 
-// -------------------------------
-// 4. Инференс типов
-// -------------------------------
+    let mutable programAcc = []
+    let mutable errors = []
 
-let getSemanticBound (objectInfo: ProgramObjTypeInfo) : InferedType =
-    match objectInfo.Object with
-    | AlgebraicCondition _
-    | PredicateCall _ 
-    | PredicateBody _ 
-    | PredicateBodyItem _ ->
-        PrimitiveType.Bool |> TypeReference.Primitive |> TypeDescription.Reference |> InferedType.Bound
+    for definition in program do
+        match definition with
+        | Definition.Type td ->
+            match resolveTypeDescription ctx (Some td.Name) td.Body with
+            | Ok _ -> programAcc <- Definition.Type td :: programAcc
+            | Error errs -> errors <- errs @ errors
 
-    | AlgebraicExpression (AlgebraicExpression.Operation(_, AlgebraicOperation.Div, _, _)) ->
-        PrimitiveType.Rational |> TypeReference.Primitive |> TypeDescription.Reference |> InferedType.Bound
+        | Definition.Predicate predicate ->
+            match inferPredicateDefinition ctx predicates predicate with
+            | Ok (typedDefinition, info) ->
+                registerPredicate predicates info
+                programAcc <- Definition.Predicate typedDefinition :: programAcc
+            | Error errs -> errors <- errs @ errors
 
-    | AlgebraicExpression (AlgebraicExpression.Operation(_, AlgebraicOperation.Mod, _, _)) ->
-        PrimitiveType.Int |> TypeReference.Primitive |> TypeDescription.Reference |> InferedType.Bound
+        | Definition.DeonticStatement statement ->
+            let env = extendValueEnv None
+            match inferPredicateBody ctx predicates env statement.Body with
+            | Ok typedBody ->
+                let conditionResult =
+                    match statement.Condition with
+                    | Some cond -> inferPredicateBody ctx predicates env cond |> Result.map Some
+                    | None -> ok None
 
-    // литералы: сразу известен тип
-    | Expression { Kind = ExpressionKind.Constant (ConstantValue.IntConstant _) } ->
-        PrimitiveType.Int |> TypeReference.Primitive |> TypeDescription.Reference |> InferedType.Bound
-    | Expression { Kind = ExpressionKind.Constant (ConstantValue.RationalConstant _) } ->
-        PrimitiveType.Rational |> TypeReference.Primitive |> TypeDescription.Reference |> InferedType.Bound
-    | Expression { Kind = ExpressionKind.Constant (ConstantValue.BooleanConstant _) } ->
-        PrimitiveType.Bool |> TypeReference.Primitive |> TypeDescription.Reference |> InferedType.Bound
+                match conditionResult with
+                | Ok typedConditionOpt ->
+                    let typedStatement =
+                        { statement with
+                            Body = typedBody
+                            Condition = typedConditionOpt }
+                    programAcc <- Definition.DeonticStatement typedStatement :: programAcc
+                | Error errs -> errors <- errs @ errors
+            | Error errs ->
+                errors <- errs @ errors
 
-    | _ -> objectInfo.Type
+        | Definition.Fact () ->
+            programAcc <- definition :: programAcc
 
-let getDeclaredBound (objectInfo: ProgramObjTypeInfo) : InferedType =
-    match objectInfo.Object with
-    | TypeDescription td -> InferedType.Bound td
-    | TypeDefinition { Body = td } -> InferedType.Bound td
-    | Expression { Annotation = Some td } -> InferedType.Bound td
-    | Parameter { Type = Some td } -> InferedType.Bound td
-    | ProductTypeField { Type = Some td } -> InferedType.Bound td
-    | PredicateDefinition { PredicateType = Some ftd } ->
-        InferedType.Bound (TypeDescription.Function ftd)
-    | _ -> objectInfo.Type
-
-let unify a b =
-    match a, b with
-    | Bound x, Bound y ->
-        if x = y then Bound x else Conflict [ a; b ]
-    | Bound x, Unbound _ -> Bound x
-    | Unbound _, Bound x -> Bound x
-    | Conflict xs, Bound _ -> Conflict (a :: b :: xs)
-    | Bound _, Conflict xs -> Conflict (a :: b :: xs)
-    | Conflict xs, Conflict ys -> Conflict (xs @ ys)
-    | Unbound _, Unbound _ -> a
-    | Unbound _, Conflict _ -> b
-    | Conflict _, Unbound _ -> a
-
-let inferObject (objectInfo: ProgramObjTypeInfo) (_state:State) : InferedType =
-    let semanticBound = getSemanticBound objectInfo
-    let declaredBound = getDeclaredBound objectInfo // keep style consistent
-    unify semanticBound declaredBound
-
-let rec inferPassForward (objects: ProgramObjTypeInfo list) (acc: State) : State =
-    match objects with
-    | [] -> acc
-    | obj::tail ->
-        let inferred = inferObject obj acc
-        let updated = { obj with Type = inferred }
-        inferPassForward tail (updated :: acc)
-
-// NEW: рекурсивный апгрейд product-типов с учётом типов полей (вложенно)
-let patchProducts (shapesBySelfId: Map<TypeVarId, ProductShape>) (state: State) : State =
-    // быстрый доступ: Id -> Bound TypeDescription (если есть)
-    let finalBound : Dictionary<TypeVarId, TypeDescription> =
-        let d = Dictionary<TypeVarId, TypeDescription>()
-        for o in state do
-            match o.Type with
-            | Bound td -> d[o.Id] <- td
-            | _ -> ()
-        d
-
-    let rec upgrade (selfId: TypeVarId) (td: TypeDescription) : TypeDescription =
-        match td with
-        | TypeDescription.Product pdesc ->
-            match shapesBySelfId |> Map.tryFind selfId with
-            | None -> td
-            | Some shape ->
-                let newFields =
-                    pdesc.Fields
-                    |> List.map (fun f ->
-                        match shape.FieldIds |> Map.tryFind f.Name with
-                        | None -> f
-                        | Some fid ->
-                            // если знаем тип поля — улучшаем его (вложенно, если это продукт)
-                            match finalBound.TryGetValue(fid) with
-                            | true, ftd ->
-                                { f with Type = Some (upgrade fid ftd) }
-                            | _ -> f)
-                TypeDescription.Product { pdesc with Fields = newFields }
-
-        | TypeDescription.Sum sdesc ->
-            let newVars =
-                sdesc.Variants
-                |> List.mapi (fun i variant ->
-                    let upgradedPayload =
-                        variant.Payload
-                        |> Option.map (fun payload -> upgrade (selfId + i + 1000000) payload)
-                    { variant with Payload = upgradedPayload })
-            TypeDescription.Sum { sdesc with Variants = newVars }
-
-        | other -> other
-
-    state
-    |> List.map (fun o ->
-        match o.Type with
-        | Bound td ->
-            let improved = upgrade o.Id td
-            { o with Type = Bound improved }
-        | _ -> o)
-
-let inferPassBackward (forwardState: State) : State =
-    let byId = forwardState |> List.groupBy (fun o -> o.Id)
-    let groupResult =
-        byId
-        |> List.map (fun (id, objs) ->
-            let merged =
-                match objs with
-                | []    -> Unbound id
-                | h::ts -> ts |> List.fold (fun acc o -> unify acc o.Type) h.Type
-            id, merged)
-        |> Map.ofList
-
-    forwardState
-    |> List.map (fun o ->
-        let finalType = defaultArg (groupResult.TryFind o.Id) o.Type
-        { o with Type = finalType })
-
-let inferTypes (program: Program) : State =
-    // 1) построение + снимок форм
-    let (seqWithIds, shapesBySelfId) = makeSequence program
-
-    // 2) начальное состояние
-    let initialState : ProgramObjTypeInfo list =
-        seqWithIds
-        |> List.map (fun x ->
-            { Id     = x.Id
-              Object = x.Object
-              Type   = Unbound x.Id })
-
-    // 3) семантика / явные типы
-    let afterForward = inferPassForward initialState [] |> List.rev
-
-    // 4) унификация по Id
-    let afterBackward = inferPassBackward afterForward
-
-    // 5) поднять типы полей внутрь продуктов (вложенно)
-    let afterPatch = patchProducts shapesBySelfId afterBackward
-
-    afterPatch
+    if List.isEmpty errors then
+        let program = programAcc |> List.rev
+        let typedObjects = collectTypedObjects program
+        Ok
+            { Program = program
+              TypedObjects = typedObjects }
+    else
+        Error errors

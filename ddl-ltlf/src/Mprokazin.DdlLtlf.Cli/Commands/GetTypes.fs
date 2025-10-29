@@ -1,5 +1,6 @@
 ﻿module Mprokazin.DdlLtlf.Cli.Commands.GetTypes
 
+open System
 open System.IO
 open Mprokazin.DdlLtlf.Cli.Parameters
 open Mprokazin.DdlLtlf.Language.Typing
@@ -35,20 +36,28 @@ let processInput (input: GetTypesInput) =
             
         let tree = parser.root()
         let ast = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
-        let types = Mprokazin.DdlLtlf.Language.Typing.inferTypes ast
-
-        Ok (input.Source, types)
+        match Mprokazin.DdlLtlf.Language.Typing.inferTypes ast with
+        | Ok typed -> Ok (input.Source, typed)
+        | Error errors ->
+            let message =
+                errors
+                |> List.map (fun err ->
+                    let range =
+                        sprintf "%d:%d-%d:%d" err.Range.StartLine err.Range.StartChar err.Range.EndLine err.Range.EndChar
+                    sprintf "%s (%A): %s" range err.Kind err.Message)
+                |> String.concat Environment.NewLine
+            Error (input.Source, message)
     with
-        | e -> Error (input.Source, e)
+        | e -> Error (input.Source, e.Message)
 
-let printModel (model: Mprokazin.DdlLtlf.Language.Typing.ProgramObjTypeInfo list) format =
+let printModel (model: Mprokazin.DdlLtlf.Language.Typing.TypedProgram) format =
     match format with
     | FSharp -> 
-        model
-        |> List.map (_.Type)
-        |> printfn "%A" 
+        model.TypedObjects
+        |> List.map (fun info -> info.Id, info.Type)
+        |> printfn "%A"
     | Shell ->
-        model
+        model.TypedObjects
         |> List.map (fun x -> 
             let source = 
                 match (x.Object: Mprokazin.DdlLtlf.Language.Typing.TypedObject) with
@@ -64,12 +73,8 @@ let printModel (model: Mprokazin.DdlLtlf.Language.Typing.ProgramObjTypeInfo list
                 | PredicateBody       x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
                 | PredicateDefinition x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
                 | DeonticStatement    x -> Mprokazin.DdlLtlf.Language.Ast.Unparser.unparseAstNode x
-            let t = 
-                match x.Type with
-                | Bound td ->   Mprokazin.DdlLtlf.Language.Ast.Unparser.printTypeDescription td
-                | Conflict s -> 
-                    sprintf "conflicts: %A" s
-                | Unbound x -> $"Unbound {x}"
+            let t =
+                Mprokazin.DdlLtlf.Language.Ast.Unparser.printTypeDescription x.Type
             printfn "%3d | %-40s : %s" x.Id source t
         )
         |> ignore
@@ -97,9 +102,9 @@ let run (parameters: GetTypesParameters) =
         | Ok (source, model) -> 
             printfn "Types of %s:" source
             printModel model parameters.OutputFormat
-        | Error (source, e) -> 
+        | Error (source, message) -> 
             printfn "Error in %s:" source
-            printfn "%A" e
+            printfn "%s" message
             code <- 1
     
     code
