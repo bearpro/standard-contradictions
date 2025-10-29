@@ -1174,7 +1174,7 @@ let private inferDeonticStatement
         predicates.Predicates
         |> Seq.iter (fun kv -> localPredicates.Predicates[kv.Key] <- kv.Value)
 
-        let! _, predicateInfo =
+        let! typedPredicate, predicateInfo =
             inferPredicateDefinition ctx localPredicates tmpPredicate
 
         let boolType =
@@ -1204,6 +1204,7 @@ let private inferDeonticStatement
             { statement with
                 Body = typedBody
                 Condition = typedConditionOpt
+                Parameters = typedPredicate.Parameters
                 InferredType = Some funcType }
 
         return (updatedStatement, funcType)

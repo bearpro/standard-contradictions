@@ -57,10 +57,7 @@ let private disposeInput (input: SolveInput) =
         input.Reader.Dispose()
 
 let private combineModels (models: Mprokazin.DdlLtlf.Language.Ast.Program list) : Mprokazin.DdlLtlf.Language.Ast.Program =
-    List.head models
-    // TODO
-    //{ DeonticStatements = models |> List.collect (fun m -> m.DeonticStatements)
-    //  NamedPredicates = models |> List.collect (fun m -> m.NamedPredicates) }
+    models |> List.collect id
 
 // let private printSemanticErrors (errors: Mprokazin.DdlLtlf.Language.Semantics.SemanticError list) =
 //     printfn "Semantic validation failed:"
@@ -133,21 +130,16 @@ let run (parameters: SolveParameters) =
 
         let combined = combineModels models
 
-        match Mprokazin.DdlLtlf.Language.Typing.inferTypes combined with
-        | Error errors ->
-            printfn "%A" errors
-            1
-        | Ok x ->
-            let conflicts = []
-                //combined
-                //|> Mprokazin.DdlLtlf.Solver.findConflicts Mprokazin.DdlLtlf.Solver.PermissionSemantics.StrongPermission
+        let conflicts =
+            combined
+            |> Mprokazin.DdlLtlf.Solver.findConflicts Mprokazin.DdlLtlf.Solver.PermissionSemantics.StrongPermission
 
-            if parameters.Verbose then
-                printfn "Conflicts detected: %d" conflicts.Length
+        if parameters.Verbose then
+            printfn "Conflicts detected: %d" conflicts.Length
 
-            match parameters.OutputFormat with
-            | OutputFormat.Shell -> writeShellOutput conflicts
-            | OutputFormat.Json -> writeJsonOutput conflicts
-            | OutputFormat.FSharp -> printfn "%A" conflicts
+        match parameters.OutputFormat with
+        | OutputFormat.Shell -> writeShellOutput conflicts
+        | OutputFormat.Json -> writeJsonOutput conflicts
+        | OutputFormat.FSharp -> printfn "%A" conflicts
 
-            if List.isEmpty conflicts then 0 else 1
+        if List.isEmpty conflicts then 0 else 1

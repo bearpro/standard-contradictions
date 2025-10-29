@@ -97,6 +97,7 @@ type DeonticStatement =
       Body: PredicateBody
       Condition: PredicateBody option
       Range: SourceRange
+      Parameters: Parameter list
       InferredType: FuncTypeDescription option }
 
 type Definition =

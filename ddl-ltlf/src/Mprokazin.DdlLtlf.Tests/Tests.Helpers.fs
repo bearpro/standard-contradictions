@@ -117,6 +117,7 @@ module RangeSanitizer =
             Body = sanitizePredicateBody statement.Body
             Condition = statement.Condition |> Option.map sanitizePredicateBody
             Range = unsetStatusRange
+            Parameters = []
             InferredType = None }
 
     let sanitizeDefinition = function
