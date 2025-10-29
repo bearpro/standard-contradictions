@@ -96,7 +96,8 @@ type DeonticStatement =
       Name: string option
       Body: PredicateBody
       Condition: PredicateBody option
-      Range: SourceRange }
+      Range: SourceRange
+      InferredType: FuncTypeDescription option }
 
 type Definition =
     | Type of TypeDefinition

@@ -33,4 +33,5 @@ type DeonticStatementVisitor() =
           Name = name
           Body = body
           Condition = condition
-          Range = range }
+          Range = range
+          InferredType = None }
