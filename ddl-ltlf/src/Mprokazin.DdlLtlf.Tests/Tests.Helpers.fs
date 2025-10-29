@@ -116,7 +116,8 @@ module RangeSanitizer =
         { statement with
             Body = sanitizePredicateBody statement.Body
             Condition = statement.Condition |> Option.map sanitizePredicateBody
-            Range = unsetStatusRange }
+            Range = unsetStatusRange
+            InferredType = None }
 
     let sanitizeDefinition = function
         | Type definition -> Type (sanitizeTypeDefinition definition)

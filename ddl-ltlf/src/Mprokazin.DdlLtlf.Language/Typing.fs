@@ -510,6 +510,96 @@ let private addValue (env: ValueEnv) (name: string) (ty: TypeExpr) =
     env.Values[name] <- ty
 
 // ---------------------------------------------------------------------------
+// Free variable collection for deontic statements
+// ---------------------------------------------------------------------------
+
+let collectFreeVariablesForDeontic
+    (ctx: TypeContext)
+    (predicates: PredicateEnv)
+    (statement: DeonticStatement)
+    : Set<string>
+    =
+    let knownPredicates =
+        predicates.Predicates.Keys
+        |> Seq.map id
+        |> Set.ofSeq
+
+    let knownConstructors =
+        ctx.Constructors.Keys
+        |> Seq.map id
+        |> Set.ofSeq
+
+    let rec collectExpression (env: Set<string>) (localPreds: Set<string>) (acc: Set<string>) (expr: Expression) =
+        match expr.Kind with
+        | ExpressionKind.Constant _ -> acc
+        | ExpressionKind.Name segments ->
+            match segments with
+            | head :: _ ->
+                if Set.contains head env
+                   || Set.contains head knownPredicates
+                   || Set.contains head localPreds
+                   || Set.contains head knownConstructors
+                then acc
+                else Set.add head acc
+            | [] -> acc
+        | ExpressionKind.Tuple items ->
+            (acc, items)
+            ||> List.fold (fun state item -> collectExpression env localPreds state item)
+        | ExpressionKind.Constructor call ->
+            (acc, call.Arguments)
+            ||> List.fold (fun state item -> collectExpression env localPreds state item)
+
+    let rec collectAlgebraicExpression env localPreds acc algebraic =
+        match algebraic with
+        | AlgebraicExpression.Expression expr ->
+            collectExpression env localPreds acc expr
+        | AlgebraicExpression.Operation (left, _, right, _) ->
+            let acc = collectAlgebraicExpression env localPreds acc left
+            collectAlgebraicExpression env localPreds acc right
+
+    let rec collectItem env localPreds acc item =
+        match item with
+        | PredicateBodyItem.Expression expr ->
+            collectExpression env localPreds acc expr
+        | PredicateBodyItem.Call call ->
+            (acc, call.Arguments)
+            ||> List.fold (fun state arg -> collectExpression env localPreds state arg)
+        | PredicateBodyItem.PatternMatch (expr, _) ->
+            collectExpression env localPreds acc expr
+        | PredicateBodyItem.AlgebraicCondition cond ->
+            let acc = collectAlgebraicExpression env localPreds acc cond.LeftExpression
+            collectAlgebraicExpression env localPreds acc cond.RightExpression
+
+    let rec collectBody env localPreds acc body =
+        match body with
+        | PredicateBody.Item (item, _) ->
+            collectItem env localPreds acc item
+        | PredicateBody.Not (nested, _) ->
+            collectBody env localPreds acc nested
+        | PredicateBody.And (left, right, _) ->
+            let acc = collectBody env localPreds acc left
+            collectBody env localPreds acc right
+        | PredicateBody.Or (left, right, _) ->
+            let acc = collectBody env localPreds acc left
+            collectBody env localPreds acc right
+        | PredicateBody.Definition (def, rest, _) ->
+            let envWithParams =
+                def.Parameters
+                |> List.fold (fun e param -> Set.add param.Name e) env
+            let localPreds' = Set.add def.Name localPreds
+            let acc = collectBody envWithParams localPreds' acc def.Body
+            collectBody envWithParams localPreds' acc rest
+
+    let initialEnv = Set.empty
+    let initialLocalPreds = Set.empty
+
+    let afterBody = collectBody initialEnv initialLocalPreds Set.empty statement.Body
+
+    match statement.Condition with
+    | None -> afterBody
+    | Some cond -> collectBody initialEnv initialLocalPreds afterBody cond
+
+// ---------------------------------------------------------------------------
 // Expression inference
 // ---------------------------------------------------------------------------
 
@@ -956,6 +1046,75 @@ and private inferPredicateDefinition
             return (updatedDefinition, predicateInfo)
     }
 
+let private inferDeonticStatement
+    (ctx: TypeContext)
+    (predicates: PredicateEnv)
+    (statement: DeonticStatement)
+    : TypeResult<DeonticStatement * FuncTypeDescription>
+    =
+    typeResult {
+        let freeVars = collectFreeVariablesForDeontic ctx predicates statement
+
+        let pseudoParams =
+            freeVars
+            |> Set.toList
+            |> List.sort
+            |> List.map (fun name ->
+                { Name = name
+                  Type = None
+                  Range = statement.Range })
+
+        let mergedBody =
+            match statement.Condition with
+            | None -> statement.Body
+            | Some cond -> PredicateBody.And(statement.Body, cond, statement.Range)
+
+        let tmpPredicate =
+            { Name = statement.Name |> Option.defaultValue "__deontic_tmp__"
+              Parameters = pseudoParams
+              Body = mergedBody
+              Range = statement.Range
+              PredicateType = None }
+
+        let localPredicates = createPredicateEnv ()
+        predicates.Predicates
+        |> Seq.iter (fun kv -> localPredicates.Predicates[kv.Key] <- kv.Value)
+
+        let! _, predicateInfo =
+            inferPredicateDefinition ctx localPredicates tmpPredicate
+
+        let boolType =
+            TypeDescription.Reference(TypeReference.Primitive PrimitiveType.Bool)
+
+        let funcType =
+            { Parameters =
+                  predicateInfo.Parameters
+                  |> List.map (fun param -> typeExprToTypeDescription param.TypeExpr (Some statement.Range))
+              ReturnType = boolType
+              Range = statement.Range }
+
+        let valueEnv = extendValueEnv None
+        predicateInfo.Parameters
+        |> List.iter (fun param -> addValue valueEnv param.Name param.TypeExpr)
+
+        let! typedBody = inferPredicateBody ctx predicates valueEnv statement.Body
+
+        let! typedConditionOpt =
+            match statement.Condition with
+            | Some cond ->
+                inferPredicateBody ctx predicates valueEnv cond
+                |> Result.map Some
+            | None -> ok None
+
+        let updatedStatement =
+            { statement with
+                Body = typedBody
+                Condition = typedConditionOpt
+                InferredType = Some funcType }
+
+        return (updatedStatement, funcType)
+    }
+
 // ---------------------------------------------------------------------------
 // Program-level helpers
 // ---------------------------------------------------------------------------
@@ -1096,6 +1255,12 @@ let private collectTypedObjects (program: Program) =
         | Definition.Predicate predicate ->
             visitPredicateDefinition predicate
         | Definition.DeonticStatement statement ->
+            statement.InferredType
+            |> Option.iter (fun fn ->
+                add
+                    (TypedObject.DeonticStatement statement)
+                    (TypeDescription.Function fn)
+                    statement.Range)
             visitPredicateBody statement.Body
             statement.Condition
             |> Option.iter visitPredicateBody
@@ -1125,22 +1290,9 @@ let inferTypes (program: Program) : TypeResult<TypedProgram> =
             | Error errs -> errors <- errs @ errors
 
         | Definition.DeonticStatement statement ->
-            let env = extendValueEnv None
-            match inferPredicateBody ctx predicates env statement.Body with
-            | Ok typedBody ->
-                let conditionResult =
-                    match statement.Condition with
-                    | Some cond -> inferPredicateBody ctx predicates env cond |> Result.map Some
-                    | None -> ok None
-
-                match conditionResult with
-                | Ok typedConditionOpt ->
-                    let typedStatement =
-                        { statement with
-                            Body = typedBody
-                            Condition = typedConditionOpt }
-                    programAcc <- Definition.DeonticStatement typedStatement :: programAcc
-                | Error errs -> errors <- errs @ errors
+            match inferDeonticStatement ctx predicates statement with
+            | Ok (typedStatement, _) ->
+                programAcc <- Definition.DeonticStatement typedStatement :: programAcc
             | Error errs ->
                 errors <- errs @ errors
 
