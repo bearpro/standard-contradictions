@@ -19,5 +19,12 @@ let ``Simple types valdidated`` () =
         Ast.Parser.parse input 
         |> Tests.Helpers.RangeSanitizer.sanitizeProgram
 
-    let types = Typing.inferTypes ast 
-    Assert.NotEmpty types
+    match Typing.inferTypes ast with
+    | Ok typed ->
+        Assert.NotEmpty typed.TypedObjects
+    | Error errors ->
+        let message =
+            errors
+            |> List.map (fun e -> e.Message)
+            |> String.concat "; "
+        failwithf "Typing failed: %s" message
