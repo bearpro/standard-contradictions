@@ -126,9 +126,9 @@ let rec private ensureBool (value: Value) =
 
 let rec private equalValues (state: EvalState) left right =
     match left, right with
-    | BoolVal a, BoolVal b -> state.Context.MkEq(a, b) :?> BoolExpr
-    | IntVal a, IntVal b -> state.Context.MkEq(a, b) :?> BoolExpr
-    | RealVal a, RealVal b -> state.Context.MkEq(a, b) :?> BoolExpr
+    | BoolVal a, BoolVal b -> state.Context.MkEq(a, b)
+    | IntVal a, IntVal b -> state.Context.MkEq(a, b)
+    | RealVal a, RealVal b -> state.Context.MkEq(a, b)
     | ProductVal a, ProductVal b ->
         a
         |> Map.toList
@@ -264,7 +264,7 @@ let rec private evaluatePredicateBody
                 | IntNumeric l, IntNumeric r -> (l :> ArithExpr, r :> ArithExpr)
                 | _ -> (toReal leftValue, toReal rightValue)
             match cond.Condition with
-            | AlgebraicEqualityCondition.Eq -> ctx.MkEq(leftExpr, rightExpr) :?> BoolExpr
+            | AlgebraicEqualityCondition.Eq -> ctx.MkEq(leftExpr, rightExpr)
             | AlgebraicEqualityCondition.Ne -> ctx.MkNot(ctx.MkEq(leftExpr, rightExpr))
             | AlgebraicEqualityCondition.Gt -> ctx.MkGt(leftExpr, rightExpr)
             | AlgebraicEqualityCondition.Ge -> ctx.MkGe(leftExpr, rightExpr)
