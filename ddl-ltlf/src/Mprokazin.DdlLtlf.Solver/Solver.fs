@@ -20,12 +20,28 @@ type private TypeInfo =
     | TRational
     | TBool
     | TProduct of (string * TypeInfo) list
+    | TSum of SumTypeInfo
+
+and private SumVariantInfo =
+    { Name: string
+      Index: int
+      Payload: TypeInfo option }
+
+and private SumTypeInfo =
+    { Variants: SumVariantInfo list
+      VariantByName: Map<string, SumVariantInfo> }
 
 type private Value =
     | IntVal of IntExpr
     | RealVal of ArithExpr
     | BoolVal of BoolExpr
     | ProductVal of Map<string, Value>
+    | SumVal of SumValue
+
+and private SumValue =
+    { Label: IntExpr
+      SumType: SumTypeInfo
+      Payloads: Map<string, Value option> }
 
 type private SharedValue =
     { Value: Value
@@ -84,8 +100,24 @@ let rec private typeInfoOf (env: TypeEnvironment) (desc: TypeDescription) : Type
                             | None -> failwithf "Field '%s' has no type annotation." field.Name
                         field.Name, fieldType)
                 TProduct fields
+            | TypeDescription.Sum sumType ->
+                let variants =
+                    sumType.Variants
+                    |> List.mapi (fun index variant ->
+                        let payloadType =
+                            match variant.Payload with
+                            | Some td -> typeInfoOf env td |> Some
+                            | None -> None
+                        { Name = variant.Constructor
+                          Index = index
+                          Payload = payloadType })
+                let variantByName =
+                    variants
+                    |> List.map (fun info -> info.Name, info)
+                    |> Map.ofList
+                TSum { Variants = variants; VariantByName = variantByName }
             | _ ->
-                failwith "Solver does not support sum or function types yet."
+                failwith "Solver does not support function types yet."
 
         env.Cache[desc] <- info
         info
@@ -109,6 +141,34 @@ let rec private declareValue (state: EvalState) (name: string) (info: TypeInfo) 
                 field, shared.Value)
             |> Map.ofList
             |> ProductVal
+        | TSum sumInfo ->
+            if List.isEmpty sumInfo.Variants then
+                failwith "Sum type must define at least one variant."
+
+            let label = state.Context.MkIntConst(freshName state (name + "__tag"))
+
+            let payloads =
+                sumInfo.Variants
+                |> List.map (fun variant ->
+                    let payload =
+                        match variant.Payload with
+                        | Some payloadType ->
+                            let shared = declareValue state (name + "_" + variant.Name) payloadType
+                            Some shared.Value
+                        | None -> None
+                    variant.Name, payload)
+                |> Map.ofList
+
+            let allowedLabels =
+                sumInfo.Variants
+                |> List.map (fun variant -> state.Context.MkEq(label, state.Context.MkInt(variant.Index)))
+
+            match allowedLabels with
+            | [] -> ()
+            | [ single ] -> state.Assumptions.Add(single)
+            | _ -> state.Assumptions.Add(state.Context.MkOr(Array.ofList allowedLabels))
+
+            SumVal { Label = label; SumType = sumInfo; Payloads = payloads }
 
     let constraints =
         if state.Assumptions.Count <= assumptionOffset then
@@ -139,6 +199,53 @@ let rec private equalValues (state: EvalState) left right =
         |> function
             | [] -> state.Context.MkTrue()
             | list -> state.Context.MkAnd(Array.ofList list)
+    | SumVal left, SumVal right ->
+        if left.SumType.Variants.Length <> right.SumType.Variants.Length then
+            failwith "Sum type mismatch during equality comparison."
+
+        let variantPairs =
+            left.SumType.Variants
+            |> List.map (fun variant ->
+                match right.SumType.VariantByName |> Map.tryFind variant.Name with
+                | Some rightVariant -> variant, rightVariant
+                | None -> failwithf "Constructor '%s' mismatch during equality comparison." variant.Name)
+
+        let ctx = state.Context
+        let tagEq = ctx.MkEq(left.Label, right.Label)
+
+        let payloadEqs =
+            variantPairs
+            |> List.choose (fun (leftVariant, rightVariant) ->
+                if leftVariant.Index <> rightVariant.Index then
+                    failwith "Constructor ordering mismatch during equality comparison."
+
+                match leftVariant.Payload, rightVariant.Payload with
+                | Some _, None
+                | None, Some _ -> failwith "Constructor payload mismatch during equality comparison."
+                | None, None -> None
+                | Some _, Some _ ->
+                    let leftPayloadOpt =
+                        left.Payloads
+                        |> Map.tryFind leftVariant.Name
+                        |> Option.defaultValue None
+
+                    let rightPayloadOpt =
+                        right.Payloads
+                        |> Map.tryFind rightVariant.Name
+                        |> Option.defaultValue None
+
+                    match leftPayloadOpt, rightPayloadOpt with
+                    | Some leftPayload, Some rightPayload ->
+                        let active = ctx.MkEq(left.Label, ctx.MkInt(leftVariant.Index))
+                        let eq = equalValues state leftPayload rightPayload
+                        Some(ctx.MkImplies(active, eq))
+                    | _ ->
+                        let active = ctx.MkEq(left.Label, ctx.MkInt(leftVariant.Index))
+                        Some(ctx.MkImplies(active, ctx.MkTrue())))
+
+        match payloadEqs with
+        | [] -> tagEq
+        | _ -> ctx.MkAnd(Array.ofList (tagEq :: payloadEqs))
     | _ -> failwith "Unsupported equality comparison."
 
 // ---------------------------------------------------------------------------
@@ -183,8 +290,44 @@ let rec private evaluateExpression
             sprintf "_%d" idx, value)
         |> Map.ofList
         |> ProductVal
-    | ExpressionKind.Constructor _ ->
-        failwith "Sum constructors are not supported by solver yet."
+    | ExpressionKind.Constructor call ->
+        let sumInfo =
+            match expr.Annotation with
+            | Some annotation ->
+                match typeInfoOf state.Types annotation with
+                | TSum info -> info
+                | _ -> failwith "Constructor expression annotation is not a sum type."
+            | None -> failwith "Constructor expression is missing type annotation."
+
+        let variantInfo =
+            match sumInfo.VariantByName |> Map.tryFind call.Constructor with
+            | Some info -> info
+            | None -> failwithf "Constructor '%s' is not part of the target sum type." call.Constructor
+
+        let payloadValueOpt =
+            match variantInfo.Payload, call.Arguments with
+            | None, [] -> None
+            | Some _, [] -> failwithf "Constructor '%s' expects a payload argument." call.Constructor
+            | None, _ :: _ -> failwithf "Constructor '%s' does not accept payload arguments." call.Constructor
+            | Some _, [ argument ] ->
+                let value = evaluateExpression state predicates variables argument
+                Some value
+            | Some _, _ -> failwithf "Constructor '%s' expects exactly one payload argument." call.Constructor
+
+        let payloads =
+            sumInfo.Variants
+            |> List.map (fun variant ->
+                let payload =
+                    if variant.Name = variantInfo.Name then
+                        payloadValueOpt
+                    else None
+                variant.Name, payload)
+            |> Map.ofList
+
+        SumVal
+            { Label = state.Context.MkInt(variantInfo.Index)
+              SumType = sumInfo
+              Payloads = payloads }
 
 let rec private evaluateAlgebraicExpression
     (state: EvalState)
@@ -312,7 +455,8 @@ and private evaluatePredicateCall
                     | TInt, IntVal _
                     | TRational, RealVal _
                     | TBool, BoolVal _
-                    | TProduct _, ProductVal _ -> argumentValue
+                    | TProduct _, ProductVal _
+                    | TSum _, SumVal _ -> argumentValue
                     | _ ->
                         failwithf "Predicate '%s' argument type mismatch." call.PredicateName
                 | None -> argumentValue)
