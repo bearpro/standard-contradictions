@@ -1,0 +1,77 @@
+:root {
+    --inputs-width: 34%;
+    --outputs-width: 33%;
+    --conflicts-width: 33%;
+}
+
+html, body {
+    height: 100%;
+}
+
+textarea {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.9rem;
+}
+
+.column-title {
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+#inputs-column, #outputs-column, #conflicts-column {
+    min-height: 70vh;
+}
+
+#inputs-column textarea, #outputs-column textarea {
+    min-height: 140px;
+}
+
+.badge-info {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+.badge-warning {
+    background-color: #ffc107;
+}
+
+.badge-error {
+    background-color: #dc3545;
+}
+
+#project-columns {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+@media (min-width: 992px) {
+    #project-columns {
+        flex-direction: row;
+    }
+
+    #inputs-column {
+        flex: 1 1 var(--inputs-width);
+    }
+
+    #outputs-column {
+        flex: 1 1 var(--outputs-width);
+    }
+
+    #conflicts-column {
+        flex: 1 1 var(--conflicts-width);
+    }
+}
+
+#quota-indicator {
+    font-size: 0.85rem;
+}
+
+input.input-name {
+    font-weight: 600;
+}
+
+.output-timestamp {
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+}

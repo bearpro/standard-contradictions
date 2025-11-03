@@ -1,0 +1,56 @@
+@page "/project"
+@model Mprokazin.DdlLtlf.OnlineDemo.Pages.ProjectModel
+@{
+    ViewData["Title"] = "Project";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <span id="dirty-indicator" class="badge text-bg-warning d-none">Unsaved changes</span>
+    </div>
+    <div id="quota-indicator" class="text-muted"></div>
+</div>
+
+<div id="project-columns">
+    <section id="inputs-column" class="bg-white p-3 rounded shadow-sm">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="column-title">Inputs</div>
+            <button class="btn btn-sm btn-outline-success" id="btn-add-input" type="button">+ Input</button>
+        </div>
+        <div id="inputs-list" class="d-flex flex-column gap-3 mt-3"></div>
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <button class="btn btn-success" id="btn-solve" type="button">Solve</button>
+            <span class="small text-muted" id="solve-timestamp"></span>
+        </div>
+    </section>
+    <section id="outputs-column" class="bg-white p-3 rounded shadow-sm">
+        <div class="column-title">Outputs</div>
+        <div id="outputs-list" class="d-flex flex-column gap-3 mt-3"></div>
+    </section>
+    <section id="conflicts-column" class="bg-white p-3 rounded shadow-sm">
+        <div class="column-title">Conflicts</div>
+        <div id="conflicts-list" class="d-flex flex-column gap-2"></div>
+    </section>
+</div>
+
+<div class="modal fade" id="openProjectModal" tabindex="-1" aria-labelledby="openProjectLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="openProjectLabel">Open project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group" id="projects-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="quota-fetcher" hx-get="/api/users/quota" hx-trigger="load, every 30s" hx-swap="none"></div>
+
+<script type="application/json" id="initial-project">@Html.Raw(Model.InitialProjectJson)</script>
+<script type="application/json" id="initial-quota">@Html.Raw(Model.InitialQuotaJson)</script>
