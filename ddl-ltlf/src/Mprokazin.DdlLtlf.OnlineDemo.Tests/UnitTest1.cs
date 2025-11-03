@@ -2,7 +2,9 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Mprokazin.DdlLtlf.OnlineDemo.Data;
 using Mprokazin.DdlLtlf.OnlineDemo.Models;
+using Mprokazin.DdlLtlf.OnlineDemo.Options;
 using Mprokazin.DdlLtlf.OnlineDemo.Services;
+using Microsoft.Extensions.Options;
 
 namespace Mprokazin.DdlLtlf.OnlineDemo.Tests;
 
@@ -70,7 +72,12 @@ public class DemoTests
             DailySpentTokens = 0,
         };
 
-        var convertService = new ConvertService(db, new TokenService(db, context), context);
+        var convertService = new ConvertService(
+            db,
+            new TokenService(db, context),
+            context,
+            new StubHttpClientFactory(),
+            Options.Create(new OpenAiOptions { ApiKey = "test", Model = "test" }));
         var solveService = new SolveService(db, new TokenService(db, context), context);
         var staleTimestamp = project.UpdatedAt.AddMinutes(1);
 
@@ -131,4 +138,9 @@ public class DemoTests
             .Options;
         return new DemoDb(options);
     }
+}
+
+file sealed class StubHttpClientFactory : IHttpClientFactory
+{
+    public HttpClient CreateClient(string name) => new(new HttpClientHandler());
 }
