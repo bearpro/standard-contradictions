@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Mprokazin.DdlLtlf.OnlineDemo.Data;
 using Mprokazin.DdlLtlf.OnlineDemo.Middleware;
+using Mprokazin.DdlLtlf.OnlineDemo.Options;
 using Mprokazin.DdlLtlf.OnlineDemo.Services;
 using Mprokazin.DdlLtlf.OnlineDemo.ViewModels;
 
@@ -17,6 +18,9 @@ builder.Services.AddDbContext<DemoDb>(options =>
 
 builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
+
+builder.Services.Configure<OpenAiOptions>(builder.Configuration.GetSection("OpenAI"));
 
 builder.Services.AddScoped<RequestUserContext>();
 builder.Services.AddScoped<ProjectService>();
@@ -196,6 +200,10 @@ api.MapPost("/inputs/{id:int}/convert", async (HttpRequest request, int id, Conv
     catch (TokenBudgetExceededException)
     {
         return Results.Json(new { error = "budget_exceeded" }, statusCode: StatusCodes.Status429TooManyRequests);
+    }
+    catch (ConvertFailedException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
     }
     catch (InvalidOperationException ex)
     {
