@@ -160,9 +160,9 @@ let ``Boolean and real literal parsed`` () =
         result
         |> List.choose (function DeonticStatement p -> Some p | _ -> None)
     
-    let (trueSt, falseSt, ratSt) =
+    let trueSt, falseSt, ratSt =
         match deonticStatements with
-        | [ trueSt; falseSt; ratSt ] -> (trueSt, falseSt, ratSt)
+        | [ trueSt; falseSt; ratSt ] -> trueSt, falseSt, ratSt
         | _ -> 
             Assert.Fail("Expected to parse 3 obligations")
             failwith ""
@@ -185,4 +185,103 @@ let ``Boolean and real literal parsed`` () =
         _) 
         -> Assert.Equal(1, 1)
     | _ -> Assert.Fail()
+
+[<Fact>]
+let ``Zero-arity sum type pattern matching parsed``() = 
+    let input = 
+        """
+        type T = (A|B)
+        predicate p(t) = t is A()
+        """
+    
+    let stream = Antlr4.Runtime.AntlrInputStream input
+    let lexer = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfLexer(stream)
+    let tokens = Antlr4.Runtime.CommonTokenStream(lexer)
+    let parser = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfParser(tokens)
+    
+    let tree = parser.root()
+    
+    let result = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
+
+    let p = 
+        result
+        |> List.choose (function Predicate p -> Some p | _ -> None)
+        |> List.find (fun p -> p.Name = "p")
+
+    match p.Body with
+    | Item(PatternMatch(x, p), _) -> 
+        match x with
+        | { Kind = Name ["t"] } -> ()
+        | x -> Assert.Fail(message=sprintf "%A" x)
+        match p with
+        | Constructor { Constructor = "A" } -> ()
+        | x -> Assert.Fail(message=sprintf "%A" x)
+    | x -> Assert.Fail(message=sprintf "%A" x)
+
+
+[<Fact>]
+let ``N-arity sum type pattern matching parsed``() = 
+    let input = 
+        """
+        type T = (A of int|B of rational)
+        predicate p(t) = t is A(1)
+        """
+    
+    let stream = Antlr4.Runtime.AntlrInputStream input
+    let lexer = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfLexer(stream)
+    let tokens = Antlr4.Runtime.CommonTokenStream(lexer)
+    let parser = Mprokazin.DdlLtlf.Language.Antlr.DdlLtlfParser(tokens)
+    
+    let tree = parser.root()
+    
+    let result = Mprokazin.DdlLtlf.Language.Ast.Parser.visit tree
+
+    let t = 
+        result
+        |> List.choose (function Type t -> Some t | _ -> None)
+        |> List.find (fun t -> t.Name = "T")
+
+    let tVariants = 
+        match t.Body with
+        | TypeDescription.Sum { Variants = x } -> x
+        | _ -> failwith "T was not sum type"
+
+    let a, b = 
+        match tVariants with
+        | [a; b] -> a, b
+        | _ -> failwith "Variants A and B not parsed"
+
+    let ap = 
+        match a with
+        | { Constructor = "A"; Payload = Some ap } -> ap
+        | _ -> failwith "Constructor or payload A not parsed"
+
+    let bp = 
+        match b with
+        | { Constructor = "B"; Payload = Some bp } -> bp
+        | _ -> failwith "Constructor or payload B not parsed"
+
+    match ap with
+    | Reference(Primitive Int) -> ()
+    | x -> failwithf "Variant A payload was %A, not 'int'." x
+
+    match bp with
+    | Reference(Primitive Rational) -> ()
+    | x -> failwithf "Variant B payload was %A, not 'rational'." x
+
+    let p = 
+        result
+        |> List.choose (function Predicate p -> Some p | _ -> None)
+        |> List.find (fun p -> p.Name = "p")
+
+    match p.Body with
+    | Item(PatternMatch(x, p), _) -> 
+        match x with
+        | { Kind = Name ["t"] } -> ()
+        | x -> Assert.Fail(message=sprintf "%A" x)
+        match p with
+        | Constructor { Constructor = "A" } -> ()
+        | x -> Assert.Fail(message=sprintf "%A" x)
+    | x -> Assert.Fail(message=sprintf "%A" x)
+
 
