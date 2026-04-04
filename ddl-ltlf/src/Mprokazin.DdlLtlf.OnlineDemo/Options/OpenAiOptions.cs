@@ -9,7 +9,5 @@ public class OpenAiOptions
     public string? BaseUrl { get; set; }
         = "https://api.openai.com/v1";
 
-    public int MaxOutputTokens { get; set; } = 1024;
-
     public double Temperature { get; set; } = 0.2;
 }
