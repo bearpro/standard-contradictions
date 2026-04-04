@@ -77,7 +77,7 @@ public class DemoTests
             new TokenService(db, context),
             context,
             new StubHttpClientFactory(),
-            Options.Create(new OpenAiOptions { ApiKey = "test", Model = "test" }));
+            Microsoft.Extensions.Options.Options.Create(new OpenAiOptions { ApiKey = "test", Model = "test" }));
         var solveService = new SolveService(db, new TokenService(db, context), context);
         var staleTimestamp = project.UpdatedAt.AddMinutes(1);
 
@@ -86,7 +86,7 @@ public class DemoTests
     }
 
     [Fact]
-    public async Task OutputIsUniquePerInput()
+    public async Task OutputIsReplacedPerInput()
     {
         using var connection = new SqliteConnection("Filename=:memory:");
         await connection.OpenAsync();
@@ -128,7 +128,15 @@ public class DemoTests
         await db.SaveChangesAsync();
 
         db.Outputs.Add(new Output { InputId = input.Id, Text = "second", ConvertedAt = now });
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        await db.SaveChangesAsync();
+
+        var outputs = await db.Outputs
+            .Where(o => o.InputId == input.Id)
+            .OrderBy(o => o.Id)
+            .ToListAsync();
+
+        Assert.Single(outputs);
+        Assert.Equal("second", outputs[0].Text);
     }
 
     private static DemoDb CreateInMemoryDb()
