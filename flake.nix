@@ -16,7 +16,7 @@
         let
           pkgs = import nixpkgs { inherit system; };
           dotnet = pkgs.dotnet-sdk_10;
-          python = pkgs.python314;
+          python = pkgs.python315;
           jre = pkgs.jre_headless;
         in
         {
@@ -35,6 +35,7 @@
             DOTNET_ROOT = "${dotnet}";
             JAVA_HOME = "${jre}";
             LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.z3 ];
+            UV_PYTHON_DOWNLOADS = "never";
           };
         });
     };
