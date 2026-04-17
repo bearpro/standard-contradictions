@@ -1,4 +1,4 @@
-from mdl import hello_world
+import mdl
 
 
 def test_hello_world() -> None:

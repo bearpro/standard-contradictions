@@ -7,7 +7,7 @@ class _MdlObject:
     """
     Any source code object. Mostly used to trace sources
     """
-    source: Optional[str]
+    source: str
 
 @dataclass(frozen=True)
 class _LtlfFormula(_MdlObject):
@@ -19,7 +19,7 @@ class Proposition(_LtlfFormula):
     Boolean variable with name
     TODO Proposition may also represent some programmable condition e.x. `x > 5`
     """
-    pass
+    name: str
 
 @dataclass(frozen=True)
 class And(_LtlfFormula):
@@ -46,7 +46,9 @@ class Rule(_MdlObject):
     """
     Represents deontic rule.
     """
-    pass
+    kind: str
+    antecedent: Optional[_LtlfFormula]   # φ_i
+    consequent: _LtlfFormula   # ψ_i
 
 @dataclass(frozen=True)
 class Module:
