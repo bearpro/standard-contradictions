@@ -1,7 +1,7 @@
-from .lib.model import *
 from .lib.alignment import Alignment, AlignmentTool, ExactNameMatcher, align
 from .lib.dsl import ModuleBuilder
-from .lib.solver import SolveResult, Trace, evaluate, solve
+from .lib.model import *
+from .lib.solver import SolveResult, Trace, TraceState, evaluate, solve
 
 __all__ = [
     "Alignment",
@@ -38,13 +38,12 @@ __all__ = [
     "Or",
     "Priority",
     "Proposition",
-    "Product",
     "ProductInstance",
     "ProductType",
-    "ProductValue",
     "RAT",
     "Rat",
     "Relation",
+    "RuntimeValue",
     "Rule",
     "STRING",
     "ScalarType",
@@ -56,14 +55,13 @@ __all__ = [
     "Term",
     "Top",
     "Trace",
+    "TraceState",
     "Truth",
     "Until",
     "Var",
     "Variable",
-    "Variant",
     "VariantInstance",
     "VariantPayload",
-    "VariantValue",
     "align",
     "evaluate",
     "solve",

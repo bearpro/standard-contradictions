@@ -189,44 +189,6 @@ class FieldAccess(Term):
 
 
 @dataclass(frozen=True, init=False)
-class ProductValue(Term):
-    fields: tuple[tuple[str, Term], ...]
-
-    def __init__(self, type: ProductType, fields: Mapping[str, Term], source: str = ""):
-        missing = {name for name, _ in type.fields} - set(fields)
-        extra = set(fields) - {name for name, _ in type.fields}
-        if missing or extra:
-            raise ValueError("Product value fields must exactly match product type fields.")
-        for name, field_type in type.fields:
-            if fields[name].type != field_type:
-                raise TypeError(f"Field {name!r} has incompatible type.")
-        super().__init__(type, source)
-        object.__setattr__(self, "fields", tuple(fields.items()))
-
-
-@dataclass(frozen=True, init=False)
-class VariantValue(Term):
-    variant: str
-    payload: Term | None
-
-    def __init__(
-        self,
-        type: SumType,
-        variant: str,
-        payload: Term | None = None,
-        source: str = "",
-    ):
-        expected = type.payload_type(variant)
-        if expected is None and payload is not None:
-            raise TypeError("Payload is not allowed for this variant.")
-        if expected is not None and (payload is None or payload.type != expected):
-            raise TypeError("Variant payload has incompatible type.")
-        super().__init__(type, source)
-        object.__setattr__(self, "variant", variant)
-        object.__setattr__(self, "payload", payload)
-
-
-@dataclass(frozen=True, init=False)
 class VariantPayload(Term):
     value: Term
     variant: str
@@ -293,8 +255,7 @@ class LtlfFormula(_MdlObject):
 @dataclass(frozen=True, init=False)
 class Proposition(LtlfFormula):
     """
-    Boolean variable with name
-    TODO Proposition may also represent some programmable condition e.x. `x > 5`
+    Unbound Boolean variable with name.
     """
     name: str
 
@@ -557,18 +518,6 @@ def String(value: str) -> Const:
     return Const(value, STRING)
 
 
-def Product(type: ProductType, fields: Mapping[str, Term | bool | int | Fraction | str]) -> ProductValue:
-    return ProductValue(type, {name: _term(value) for name, value in fields.items()})
-
-
-def Variant(
-    type: SumType,
-    variant: str,
-    payload: Term | bool | int | Fraction | str | None = None,
-) -> VariantValue:
-    return VariantValue(type, variant, None if payload is None else _term(payload))
-
-
 def Len(value: Term) -> StringLength:
     return StringLength(value)
 
@@ -698,13 +647,12 @@ __all__ = [
     "Or",
     "Priority",
     "Proposition",
-    "Product",
     "ProductInstance",
     "ProductType",
-    "ProductValue",
     "RAT",
     "Rat",
     "Relation",
+    "RuntimeValue",
     "Rule",
     "STRING",
     "ScalarType",
@@ -718,8 +666,6 @@ __all__ = [
     "Until",
     "Var",
     "Variable",
-    "Variant",
     "VariantInstance",
     "VariantPayload",
-    "VariantValue",
 ]

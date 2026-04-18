@@ -8,6 +8,7 @@ def main() -> None:
         doc.is_not_x = mdl.Not(mdl.Proposition("x"))
         doc.now_x = mdl.Until(doc.now, doc.is_x)
         doc.now_not_x = mdl.Until(doc.now, doc.is_not_x)
+        
         doc.r1 = mdl.Rule("test1", "O", None, doc.now_x)
         doc.r2 = mdl.Rule("test2", "O", None, doc.now_not_x)
 

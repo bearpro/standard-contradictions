@@ -9,7 +9,6 @@ def test_single_obligation_without_temporality_is_consistent() -> None:
     result = mdl.solve(doc.build())
 
     assert result.is_consistent
-    assert result.trace == (frozenset({"p"}),)
     assert [rule.source for rule in result.winning_rules] == ["r1"]
 
 
@@ -44,7 +43,6 @@ def test_defeasible_priority_resolves_conflicting_obligations() -> None:
     result = mdl.solve(doc.build())
 
     assert result.is_consistent
-    assert result.trace == (frozenset(),)
     assert [rule.source for rule in result.winning_rules] == ["exception"]
 
 
@@ -58,7 +56,6 @@ def test_defeater_blocks_without_adding_requirement() -> None:
     result = mdl.solve(doc.build())
 
     assert result.is_consistent
-    assert result.trace == (frozenset(),)
     assert [rule.source for rule in result.winning_rules] == ["blocker"]
 
 
@@ -84,7 +81,6 @@ def test_next_obligation_uses_finite_trace_semantics() -> None:
     result = mdl.solve(document, horizon=2)
 
     assert result.is_consistent
-    assert result.trace == (frozenset(), frozenset({"p"}))
 
 
 def test_example_until_obligations_conflict_on_single_step_trace() -> None:

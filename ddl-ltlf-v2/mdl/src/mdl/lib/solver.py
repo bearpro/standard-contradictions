@@ -4,7 +4,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from fractions import Fraction
 from itertools import product
-from typing import override
 
 from mdl.lib.model import (
     BOOL,
@@ -33,8 +32,8 @@ from mdl.lib.model import (
     Proposition,
     ProductInstance,
     ProductType,
-    ProductValue,
     Relation,
+    RuntimeValue,
     Rule,
     StringLength,
     SumType,
@@ -45,11 +44,9 @@ from mdl.lib.model import (
     Variable,
     VariantInstance,
     VariantPayload,
-    VariantValue,
 )
 
 
-RuntimeValue = bool | int | Fraction | str | ProductInstance | VariantInstance
 NumberValue = int | Fraction
 
 
@@ -57,17 +54,6 @@ NumberValue = int | Fraction
 class TraceState:
     propositions: frozenset[str]
     values: dict[str, RuntimeValue]
-
-    def __contains__(self, name: str) -> bool:
-        return name in self.propositions
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, frozenset):
-            return not self.values and self.propositions == other
-        if not isinstance(other, TraceState):
-            return False
-        return self.propositions == other.propositions and self.values == other.values
 
 
 Trace = tuple[TraceState, ...]
@@ -208,78 +194,11 @@ def _norm_formulas(
 def _collect_propositions_from_formulas(formulas: Iterable[LtlfFormula]) -> set[str]:
     propositions: set[str] = set()
     for formula in formulas:
-        propositions.update(_collect_propositions(formula))
+        for node in _walk_formula(formula):
+            if isinstance(node, Proposition):
+                propositions.add(node.name)
 
     return propositions
-
-
-def _collect_propositions(formula: LtlfFormula) -> set[str]:
-    if isinstance(formula, Proposition):
-        return {formula.name}
-    if isinstance(formula, (Top, Bottom)):
-        return set()
-    if isinstance(formula, Relation):
-        return _collect_term_propositions(formula.left) | _collect_term_propositions(formula.right)
-    if isinstance(formula, Truth):
-        return _collect_term_propositions(formula.value)
-    if isinstance(formula, IsVariant):
-        return _collect_term_propositions(formula.value)
-    if isinstance(formula, Not):
-        return _collect_propositions(formula.operand)
-    if isinstance(formula, (Next, Eventually, Always)):
-        return _collect_propositions(formula.operand)
-    if isinstance(formula, (And, Or)):
-        propositions: set[str] = set()
-        for operand in formula.operands:
-            propositions.update(_collect_propositions(operand))
-        return propositions
-    if isinstance(formula, Until):
-        return _collect_propositions(formula.left) | _collect_propositions(formula.right)
-    if isinstance(formula, IfFormula):
-        return (
-            _collect_propositions(formula.condition)
-            | _collect_propositions(formula.then_branch)
-            | _collect_propositions(formula.else_branch)
-        )
-    if isinstance(formula, CaseFormula):
-        atoms: set[str] = set()
-        for _, branch in formula.cases:
-            atoms.update(_collect_propositions(branch))
-        return atoms
-
-    raise TypeError(f"Unsupported LTLf formula: {formula!r}")
-
-
-def _collect_term_propositions(term: Term) -> set[str]:
-    if isinstance(term, (Variable, Const)):
-        return set()
-    if isinstance(term, Arithmetic):
-        return _collect_term_propositions(term.left) | _collect_term_propositions(term.right)
-    if isinstance(term, StringLength):
-        return _collect_term_propositions(term.value)
-    if isinstance(term, FieldAccess):
-        return _collect_term_propositions(term.value)
-    if isinstance(term, ProductValue):
-        atoms: set[str] = set()
-        for _, field in term.fields:
-            atoms.update(_collect_term_propositions(field))
-        return atoms
-    if isinstance(term, VariantValue):
-        return set() if term.payload is None else _collect_term_propositions(term.payload)
-    if isinstance(term, VariantPayload):
-        return _collect_term_propositions(term.value)
-    if isinstance(term, IfExpr):
-        return (
-            _collect_propositions(term.condition)
-            | _collect_term_propositions(term.then_branch)
-            | _collect_term_propositions(term.else_branch)
-        )
-    if isinstance(term, CaseExpr):
-        atoms = _collect_term_propositions(term.value)
-        for _, branch in term.cases:
-            atoms.update(_collect_term_propositions(branch))
-        return atoms
-    raise TypeError(f"Unsupported term: {term!r}")
 
 
 @dataclass
@@ -294,91 +213,76 @@ class _DomainHints:
 def _collect_domain_hints(formulas: Iterable[LtlfFormula]) -> _DomainHints:
     hints = _DomainHints({}, set(), set(), set(), set())
     for formula in formulas:
-        _collect_formula_domain_hints(formula, hints)
+        for node in _walk_formula(formula):
+            if isinstance(node, Variable):
+                existing = hints.variables.get(node.name)
+                if existing is not None and existing != node.type:
+                    raise TypeError(f"Variable {node.name!r} is used with multiple types.")
+                hints.variables[node.name] = node.type
+            elif isinstance(node, Const):
+                _add_constant_hint(node, hints)
     return hints
 
 
-def _collect_formula_domain_hints(formula: LtlfFormula, hints: _DomainHints) -> None:
+def _walk_formula(formula: LtlfFormula) -> Iterable[LtlfFormula | Term]:
+    yield formula
     if isinstance(formula, (Top, Bottom, Proposition)):
         return
     if isinstance(formula, Relation):
-        _collect_term_domain_hints(formula.left, hints)
-        _collect_term_domain_hints(formula.right, hints)
+        yield from _walk_term(formula.left)
+        yield from _walk_term(formula.right)
         return
-    if isinstance(formula, Truth):
-        _collect_term_domain_hints(formula.value, hints)
-        return
-    if isinstance(formula, IsVariant):
-        _collect_term_domain_hints(formula.value, hints)
+    if isinstance(formula, (Truth, IsVariant)):
+        yield from _walk_term(formula.value)
         return
     if isinstance(formula, Not):
-        _collect_formula_domain_hints(formula.operand, hints)
+        yield from _walk_formula(formula.operand)
         return
     if isinstance(formula, (Next, Eventually, Always)):
-        _collect_formula_domain_hints(formula.operand, hints)
+        yield from _walk_formula(formula.operand)
         return
     if isinstance(formula, (And, Or)):
         for operand in formula.operands:
-            _collect_formula_domain_hints(operand, hints)
+            yield from _walk_formula(operand)
         return
     if isinstance(formula, Until):
-        _collect_formula_domain_hints(formula.left, hints)
-        _collect_formula_domain_hints(formula.right, hints)
+        yield from _walk_formula(formula.left)
+        yield from _walk_formula(formula.right)
         return
     if isinstance(formula, IfFormula):
-        _collect_formula_domain_hints(formula.condition, hints)
-        _collect_formula_domain_hints(formula.then_branch, hints)
-        _collect_formula_domain_hints(formula.else_branch, hints)
+        yield from _walk_formula(formula.condition)
+        yield from _walk_formula(formula.then_branch)
+        yield from _walk_formula(formula.else_branch)
         return
     if isinstance(formula, CaseFormula):
-        _collect_term_domain_hints(formula.value, hints)
+        yield from _walk_term(formula.value)
         for _, branch in formula.cases:
-            _collect_formula_domain_hints(branch, hints)
+            yield from _walk_formula(branch)
         return
 
     raise TypeError(f"Unsupported LTLf formula: {formula!r}")
 
 
-def _collect_term_domain_hints(term: Term, hints: _DomainHints) -> None:
-    if isinstance(term, Variable):
-        existing = hints.variables.get(term.name)
-        if existing is not None and existing != term.type:
-            raise TypeError(f"Variable {term.name!r} is used with multiple types.")
-        hints.variables[term.name] = term.type
-        return
-    if isinstance(term, Const):
-        _add_constant_hint(term, hints)
+def _walk_term(term: Term) -> Iterable[LtlfFormula | Term]:
+    yield term
+    if isinstance(term, (Variable, Const)):
         return
     if isinstance(term, Arithmetic):
-        _collect_term_domain_hints(term.left, hints)
-        _collect_term_domain_hints(term.right, hints)
+        yield from _walk_term(term.left)
+        yield from _walk_term(term.right)
         return
-    if isinstance(term, StringLength):
-        _collect_term_domain_hints(term.value, hints)
-        return
-    if isinstance(term, FieldAccess):
-        _collect_term_domain_hints(term.value, hints)
-        return
-    if isinstance(term, ProductValue):
-        for _, field in term.fields:
-            _collect_term_domain_hints(field, hints)
-        return
-    if isinstance(term, VariantValue):
-        if term.payload is not None:
-            _collect_term_domain_hints(term.payload, hints)
-        return
-    if isinstance(term, VariantPayload):
-        _collect_term_domain_hints(term.value, hints)
+    if isinstance(term, (StringLength, FieldAccess, VariantPayload)):
+        yield from _walk_term(term.value)
         return
     if isinstance(term, IfExpr):
-        _collect_formula_domain_hints(term.condition, hints)
-        _collect_term_domain_hints(term.then_branch, hints)
-        _collect_term_domain_hints(term.else_branch, hints)
+        yield from _walk_formula(term.condition)
+        yield from _walk_term(term.then_branch)
+        yield from _walk_term(term.else_branch)
         return
     if isinstance(term, CaseExpr):
-        _collect_term_domain_hints(term.value, hints)
+        yield from _walk_term(term.value)
         for _, branch in term.cases:
-            _collect_term_domain_hints(branch, hints)
+            yield from _walk_term(branch)
         return
 
     raise TypeError(f"Unsupported term: {term!r}")
@@ -393,28 +297,6 @@ def _add_constant_hint(term: Const, hints: _DomainHints) -> None:
         hints.rat_values.add(term.value)
     elif term.type == STRING and isinstance(term.value, str):
         hints.string_values.add(term.value)
-    elif isinstance(term.type, ProductType) and isinstance(term.value, ProductInstance):
-        for _, value in term.value.fields:
-            _add_runtime_constant_hint(value, hints)
-    elif isinstance(term.type, SumType) and isinstance(term.value, VariantInstance):
-        if term.value.payload is not None:
-            _add_runtime_constant_hint(term.value.payload, hints)
-
-
-def _add_runtime_constant_hint(value: RuntimeValue, hints: _DomainHints) -> None:
-    if isinstance(value, bool):
-        hints.bool_values.add(value)
-    elif isinstance(value, int):
-        hints.int_values.add(value)
-    elif isinstance(value, Fraction):
-        hints.rat_values.add(value)
-    elif isinstance(value, str):
-        hints.string_values.add(value)
-    elif isinstance(value, ProductInstance):
-        for _, field_value in value.fields:
-            _add_runtime_constant_hint(field_value, hints)
-    elif value.payload is not None:
-        _add_runtime_constant_hint(value.payload, hints)
 
 
 def _domain_for_type(type: MdlType, hints: _DomainHints) -> tuple[RuntimeValue, ...]:
@@ -546,21 +428,6 @@ def _evaluate_term(term: Term, trace: Trace, time: int) -> RuntimeValue:
         if not isinstance(value, ProductInstance):
             raise TypeError("Field access target must evaluate to a product.")
         return value.field_value(term.field_name)
-    if isinstance(term, ProductValue):
-        return ProductInstance(
-            term.type.name,
-            tuple(
-                (name, _evaluate_term(field, trace, time))
-                for name, field in term.fields
-            ),
-        )
-    if isinstance(term, VariantValue):
-        payload = (
-            None
-            if term.payload is None
-            else _evaluate_term(term.payload, trace, time)
-        )
-        return VariantInstance(term.type.name, term.variant, payload)
     if isinstance(term, VariantPayload):
         value = _evaluate_term(term.value, trace, time)
         if not isinstance(value, VariantInstance) or value.variant != term.variant:
