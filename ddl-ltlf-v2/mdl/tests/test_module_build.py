@@ -5,7 +5,7 @@ import mdl
 
 def test_module_cannot_be_created_directly() -> None:
     try:
-        mdl.Module({})
+        _ = mdl.Module({})
     except TypeError as error:
         assert "ModuleBuilder" in str(error)
     else:
@@ -13,24 +13,68 @@ def test_module_cannot_be_created_directly() -> None:
 
 
 def test_module_build_validates_variable_references() -> None:
-    value = mdl.Var("value", mdl.INT)
-
     with mdl.ModuleBuilder() as doc:
-        doc.rule = mdl.Rule("uses-undeclared-variable", "O", None, value >= 1)
+        doc.rule = mdl.Rule("O", None, mdl.Var(mdl.INT) >= 1)
 
     try:
-        doc.build()
+        _ = doc.build()
     except NameError as error:
-        assert "value" in str(error)
+        assert "Variable" in str(error)
     else:
         raise AssertionError("Build should reject undeclared variables.")
 
 
 def test_module_build_accepts_declared_variables() -> None:
-    value = mdl.Var("value", mdl.INT)
-
     with mdl.ModuleBuilder() as doc:
-        doc.value = value
-        doc.rule = mdl.Rule("uses-declared-variable", "O", None, value >= 1)
+        doc.value = mdl.Var(mdl.INT)
+        doc.rule = mdl.Rule("O", None, doc.value >= 1)
 
     assert isinstance(doc.build(), mdl.Module)
+
+
+def test_module_build_binds_unnamed_objects_from_builder_attributes() -> None:
+    with mdl.ModuleBuilder() as doc:
+        doc.value = mdl.Var(mdl.INT)
+        doc.ready = mdl.Proposition()
+        doc.rule = mdl.Rule("O", None, doc.ready & (doc.value >= 1))
+
+    module = doc.build()
+
+    assert isinstance(module.value, mdl.Variable)
+    assert isinstance(module.ready, mdl.Proposition)
+    assert isinstance(module.rule, mdl.Rule)
+    assert module.value.name == "value"
+    assert module.ready.name == "ready"
+    assert module.rule.source == "rule"
+    assert mdl.solve(module).is_consistent
+
+
+def test_module_build_binds_unnamed_product_types_from_builder_attributes() -> None:
+    with mdl.ModuleBuilder() as doc:
+        doc.Person = mdl.ProductType({"age": mdl.INT, "name": mdl.STRING})
+        doc.person = mdl.Var(doc.Person)
+        doc.rule = mdl.Rule("O", None, doc.person.field("age") >= 18)
+
+    module = doc.build()
+
+    assert isinstance(module.Person, mdl.ProductType)
+    assert isinstance(module.person, mdl.Variable)
+    assert module.Person.name == "Person"
+    assert module.person.name == "person"
+    assert module.person.type.name == "Person"
+
+
+def test_module_build_binds_unnamed_functions_from_builder_attributes() -> None:
+    def increment_body(value: mdl.Term) -> mdl.Term:
+        return value + 1
+
+    with mdl.ModuleBuilder() as doc:
+        doc.increment = mdl.Function({"value": mdl.INT}, mdl.INT, increment_body)
+        doc.value = mdl.Var(mdl.INT)
+        doc.rule = mdl.Rule("O", None, doc.increment(doc.value) >= 1)
+
+    module = doc.build()
+
+    assert isinstance(module.increment, mdl.Function)
+    assert module.increment.name == "increment"
+    assert mdl.solve(module).is_consistent

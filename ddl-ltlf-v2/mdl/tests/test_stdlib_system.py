@@ -33,9 +33,10 @@ def _load_system_module():
 
 def _system() -> SystemModule:
     system = _load_system_module()
-    assert isinstance(system.MODULE, mdl.Module)
-    assert system.SYSTEM is system.MODULE
-    return cast(SystemModule, cast(object, system.MODULE))
+    module = cast(object, system.MODULE)
+    assert isinstance(module, mdl.Module)
+    assert cast(object, system.SYSTEM) is module
+    return cast(SystemModule, cast(object, module))
 
 
 def test_char_at_is_native_string_indexing() -> None:
@@ -43,7 +44,6 @@ def test_char_at_is_native_string_indexing() -> None:
 
     with mdl.ModuleBuilder() as doc:
         doc.rule = mdl.Rule(
-            "char-at",
             "O",
             None,
             mdl.Eq(system.char_at(mdl.String("ab"), 1), mdl.String("b")),
@@ -54,17 +54,16 @@ def test_char_at_is_native_string_indexing() -> None:
 
 def test_string_to_list_is_defined_in_stdlib() -> None:
     system = _system()
-    expected = system.cons(
-        mdl.String("a"),
-        system.cons(mdl.String("b"), system.nil(system.STRING_LIST)),
-    )
 
     with mdl.ModuleBuilder() as doc:
+        doc.expected = system.cons(
+            mdl.String("a"),
+            system.cons(mdl.String("b"), system.nil(system.STRING_LIST)),
+        )
         doc.rule = mdl.Rule(
-            "string-to-list",
             "O",
             None,
-            mdl.Eq(system.string_to_list(mdl.String("ab")), expected),
+            mdl.Eq(system.string_to_list(mdl.String("ab")), doc.expected),
         )
 
     assert mdl.solve(doc.build()).is_consistent
@@ -72,14 +71,13 @@ def test_string_to_list_is_defined_in_stdlib() -> None:
 
 def test_stdlib_can_count_string_list_items() -> None:
     system = _system()
-    chars = system.string_to_list(mdl.String("test@example.com"))
 
     with mdl.ModuleBuilder() as doc:
+        doc.chars = system.string_to_list(mdl.String("test@example.com"))
         doc.rule = mdl.Rule(
-            "count-at",
             "O",
             None,
-            mdl.Eq(system.count_string(chars, mdl.String("@")), mdl.Int(1)),
+            mdl.Eq(system.count_string(doc.chars, mdl.String("@")), mdl.Int(1)),
         )
 
     assert mdl.solve(doc.build()).is_consistent

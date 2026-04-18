@@ -3,22 +3,19 @@ import mdl
 
 def test_typed_integer_relations_detect_inconsistency() -> None:
     with mdl.ModuleBuilder() as doc:
-        age = mdl.Var("age", mdl.INT)
-        doc.age = age
-        doc.adult = mdl.Rule("adult", "O", None, age >= 18)
-        doc.minor = mdl.Rule("minor", "O", None, age < 18)
+        doc.age = mdl.Var(mdl.INT)
+        doc.adult = mdl.Rule("O", None, doc.age >= 18)
+        doc.minor = mdl.Rule("O", None, doc.age < 18)
 
     assert not mdl.solve(doc.build()).is_consistent
 
 
 def test_typed_arithmetic_and_string_length_are_solved() -> None:
     with mdl.ModuleBuilder() as doc:
-        count = mdl.Var("count", mdl.INT)
-        name = mdl.Var("name", mdl.STRING)
-        doc.count = count
-        doc.name = name
-        doc.amount = mdl.Rule("amount", "O", None, count + 2 >= 4)
-        doc.name_length = mdl.Rule("name-length", "O", None, mdl.Len(name) > 2)
+        doc.count = mdl.Var(mdl.INT)
+        doc.name = mdl.Var(mdl.STRING)
+        doc.amount = mdl.Rule("O", None, doc.count + 2 >= 4)
+        doc.name_length = mdl.Rule("O", None, mdl.Len(doc.name) > 2)
 
     result = mdl.solve(doc.build())
 
@@ -27,16 +24,13 @@ def test_typed_arithmetic_and_string_length_are_solved() -> None:
 
 def test_if_formula_selects_branch() -> None:
     with mdl.ModuleBuilder() as doc:
-        active = mdl.Var("active", mdl.BOOL)
-        age = mdl.Var("age", mdl.INT)
-        doc.active = active
-        doc.age = age
-        doc.r1 = mdl.Rule("active", "O", None, mdl.Truth(active))
+        doc.active = mdl.Var(mdl.BOOL)
+        doc.age = mdl.Var(mdl.INT)
+        doc.r1 = mdl.Rule("O", None, mdl.Truth(doc.active))
         doc.r2 = mdl.Rule(
-            "conditional-age",
             "O",
             None,
-            mdl.If(mdl.Truth(active), age >= 18, age >= 0),
+            mdl.If(mdl.Truth(doc.active), doc.age >= 18, doc.age >= 0),
         )
 
     result = mdl.solve(doc.build())
@@ -45,18 +39,14 @@ def test_if_formula_selects_branch() -> None:
 
 
 def test_product_fields_are_sugar_over_typed_terms() -> None:
-    person_type = mdl.ProductType("Person", {"age": mdl.INT, "name": mdl.STRING})
-
     with mdl.ModuleBuilder() as doc:
-        person = mdl.Var("person", person_type)
-        doc.person_type = person_type
-        doc.person = person
-        doc.age_rule = mdl.Rule("age", "O", None, person.field("age") >= 18)
+        doc.person_type = mdl.ProductType({"age": mdl.INT, "name": mdl.STRING})
+        doc.person = mdl.Var(doc.person_type)
+        doc.age_rule = mdl.Rule("O", None, doc.person.field("age") >= 18)
         doc.name_rule = mdl.Rule(
-            "name",
             "O",
             None,
-            mdl.Len(person.field("name")) > 0,
+            mdl.Len(doc.person.field("name")) > 0,
         )
 
     result = mdl.solve(doc.build())
@@ -65,68 +55,57 @@ def test_product_fields_are_sugar_over_typed_terms() -> None:
 
 
 def test_two_single_string_field_products_can_have_different_constraints() -> None:
-    left_type = mdl.ProductType("LeftBox", {"value": mdl.STRING})
-    right_type = mdl.ProductType("RightBox", {"value": mdl.STRING})
-
     with mdl.ModuleBuilder() as doc:
-        left = mdl.Var("left", left_type)
-        right = mdl.Var("right", right_type)
-        doc.left_type = left_type
-        doc.right_type = right_type
-        doc.left = left
-        doc.right = right
-        left_value = mdl.Rule(
-            "left-value",
+        doc.left_type = mdl.ProductType({"value": mdl.STRING})
+        doc.right_type = mdl.ProductType({"value": mdl.STRING})
+        doc.left = mdl.Var(doc.left_type)
+        doc.right = mdl.Var(doc.right_type)
+        doc.left_value = mdl.Rule(
             "O",
             None,
-            mdl.Eq(left.field("value"), mdl.String("test")),
+            mdl.Eq(doc.left.field("value"), mdl.String("test")),
         )
-        right_value_length = mdl.Rule(
-            "right-value-length",
+        doc.right_value_length = mdl.Rule(
             "O",
             None,
-            mdl.Len(right.field("value")) > 4,
+            mdl.Len(doc.right.field("value")) > 4,
         )
-        doc.left_value = left_value
-        doc.right_value_length = right_value_length
 
-    result = mdl.solve(doc.build())
+    module = doc.build()
+    result = mdl.solve(module)
 
     assert result.is_consistent
     assert result.trace is not None
+    left_value = module.left_value
+    right_value_length = module.right_value_length
+    assert isinstance(left_value, mdl.Rule)
+    assert isinstance(right_value_length, mdl.Rule)
     assert mdl.evaluate(left_value.consequent, result.trace)
     assert mdl.evaluate(right_value_length.consequent, result.trace)
 
 
 def test_sum_case_selects_variant_branch() -> None:
-    person_type = mdl.ProductType("Person", {"age": mdl.INT, "name": mdl.STRING})
-    decision_type = mdl.SumType(
-        "Decision",
-        {"Approved": person_type, "Rejected": mdl.STRING},
-    )
-
     with mdl.ModuleBuilder() as doc:
-        decision = mdl.Var("decision", decision_type)
-        approved = mdl.VariantPayload(decision, "Approved")
-        rejected = mdl.VariantPayload(decision, "Rejected")
-        doc.person_type = person_type
-        doc.decision_type = decision_type
-        doc.decision = decision
+        doc.person_type = mdl.ProductType({"age": mdl.INT, "name": mdl.STRING})
+        doc.decision_type = mdl.SumType(
+            {"Approved": doc.person_type, "Rejected": mdl.STRING},
+        )
+        doc.decision = mdl.Var(doc.decision_type)
+        doc.approved = mdl.VariantPayload(doc.decision, "Approved")
+        doc.rejected = mdl.VariantPayload(doc.decision, "Rejected")
         doc.must_be_approved = mdl.Rule(
-            "approved",
             "O",
             None,
-            mdl.IsVariant(decision, "Approved"),
+            mdl.IsVariant(doc.decision, "Approved"),
         )
         doc.valid_payload = mdl.Rule(
-            "payload",
             "O",
             None,
             mdl.Case(
-                decision,
+                doc.decision,
                 {
-                    "Approved": approved.field("age") >= 18,
-                    "Rejected": mdl.Len(rejected) > 0,
+                    "Approved": doc.approved.field("age") >= 18,
+                    "Rejected": mdl.Len(doc.rejected) > 0,
                 },
             ),
         )
@@ -138,12 +117,12 @@ def test_sum_case_selects_variant_branch() -> None:
 
 def test_exact_name_alignment_matches_shared_builder_names() -> None:
     with mdl.ModuleBuilder() as left:
-        left.status = mdl.Proposition("status")
-        left.age = mdl.Var("age", mdl.INT)
+        left.status = mdl.Proposition()
+        left.age = mdl.Var(mdl.INT)
 
     with mdl.ModuleBuilder() as right:
-        right.status = mdl.Proposition("status")
-        right.name = mdl.Var("name", mdl.STRING)
+        right.status = mdl.Proposition()
+        right.name = mdl.Var(mdl.STRING)
 
     matches = mdl.align(left.build(), right.build())
 

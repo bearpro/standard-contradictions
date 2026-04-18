@@ -177,6 +177,12 @@ def evaluate(formula: LtlfFormula, trace: Trace, time: int = 0) -> bool:
 NameMapper = Callable[[str], str]
 
 
+def _required_name(name: str | None, kind: str) -> str:
+    if name is None:
+        raise NameError(f"{kind} is not bound to a module name.")
+    return name
+
+
 def _collect_norms(
     documents: Iterable[Module],
     alignments: tuple[Alignment, ...],
@@ -254,7 +260,7 @@ def _alignment_canonical_name(alignment: Alignment) -> str:
 def _alignment_symbol_name(document: Module, name: str) -> str | None:
     value = document.objects.get(name)
     if isinstance(value, (Proposition, Variable)):
-        return value.name
+        return _required_name(value.name, type(value).__name__)
     if value is None:
         return name
     return None
@@ -296,7 +302,10 @@ def _rename_priority(
 
 def _rename_formula(formula: LtlfFormula, name_mapper: NameMapper) -> LtlfFormula:
     if isinstance(formula, Proposition):
-        return Proposition(formula.source, name_mapper(formula.name))
+        return Proposition(
+            formula.source,
+            name_mapper(_required_name(formula.name, "Proposition")),
+        )
     if isinstance(formula, (Top, Bottom)):
         return formula
     if isinstance(formula, Relation):
@@ -360,7 +369,11 @@ def _rename_formula(formula: LtlfFormula, name_mapper: NameMapper) -> LtlfFormul
 
 def _rename_term(term: Term, name_mapper: NameMapper) -> Term:
     if isinstance(term, Variable):
-        return Variable(name_mapper(term.name), term.type, term.source)
+        return Variable(
+            name_mapper(_required_name(term.name, "Variable")),
+            term.type,
+            term.source,
+        )
     if isinstance(term, Const):
         return term
     if isinstance(term, Arithmetic):
@@ -454,7 +467,7 @@ def _collect_propositions_from_formulas(formulas: Iterable[LtlfFormula]) -> set[
     for formula in formulas:
         for node in _walk_formula(formula):
             if isinstance(node, Proposition):
-                propositions.add(node.name)
+                propositions.add(_required_name(node.name, "Proposition"))
 
     return propositions
 
@@ -473,10 +486,11 @@ def _collect_domain_hints(formulas: Iterable[LtlfFormula]) -> _DomainHints:
     for formula in formulas:
         for node in _walk_formula(formula):
             if isinstance(node, Variable):
-                existing = hints.variables.get(node.name)
+                node_name = _required_name(node.name, "Variable")
+                existing = hints.variables.get(node_name)
                 if existing is not None and existing != node.type:
-                    raise TypeError(f"Variable {node.name!r} is used with multiple types.")
-                hints.variables[node.name] = node.type
+                    raise TypeError(f"Variable {node_name!r} is used with multiple types.")
+                hints.variables[node_name] = node.type
             elif isinstance(node, Const):
                 _add_constant_hint(node, hints)
     return hints
@@ -484,8 +498,9 @@ def _collect_domain_hints(formulas: Iterable[LtlfFormula]) -> _DomainHints:
 
 def _walk_formula(
     formula: LtlfFormula,
-    function_stack: frozenset[str] = frozenset(),
+    function_stack: frozenset[str] | None = None,
 ) -> Iterable[LtlfFormula | Term]:
+    function_stack = function_stack or frozenset()
     yield formula
     if isinstance(formula, (Top, Bottom, Proposition)):
         return
@@ -526,8 +541,9 @@ def _walk_formula(
 
 def _walk_term(
     term: Term,
-    function_stack: frozenset[str] = frozenset(),
+    function_stack: frozenset[str] | None = None,
 ) -> Iterable[LtlfFormula | Term]:
+    function_stack = function_stack or frozenset()
     yield term
     if isinstance(term, (Variable, Const)):
         return
@@ -569,10 +585,11 @@ def _walk_term(
     if isinstance(term, FunctionCall):
         for argument in term.arguments:
             yield from _walk_term(argument, function_stack)
-        if term.function.name in function_stack:
+        function_name = _required_name(term.function.name, "Function")
+        if function_name in function_stack:
             return
         body = _substitute_function_body(term)
-        yield from _walk_term(body, function_stack | {term.function.name})
+        yield from _walk_term(body, function_stack | {function_name})
         return
 
     raise TypeError(f"Unsupported term: {term!r}")
@@ -652,7 +669,7 @@ def _substitute_formula(
 
 def _substitute_term(term: Term, replacements: dict[str, Term]) -> Term:
     if isinstance(term, Variable):
-        return replacements.get(term.name, term)
+        return replacements.get(_required_name(term.name, "Variable"), term)
     if isinstance(term, Const):
         return term
     if isinstance(term, Arithmetic):
@@ -769,6 +786,7 @@ def _domain_for_type(
                 string_values.add("x" * length)
         return tuple(sorted(string_values, key=_string_sort_key))
     if isinstance(type, ProductType):
+        type_name = _required_name(type.name, "ProductType")
         field_domains = [
             (
                 name,
@@ -782,16 +800,17 @@ def _domain_for_type(
             for name, field_type in type.fields
         ]
         return tuple(
-            ProductInstance(type.name, tuple(zip((name for name, _ in field_domains), values)))
+            ProductInstance(type_name, tuple(zip((name for name, _ in field_domains), values)))
             for values in product(*(domain for _, domain in field_domains))
         )
     if isinstance(type, SumType):
-        current_depth = type_depths.get(type.name, 0)
-        next_depths = {**type_depths, type.name: current_depth + 1}
+        type_name = _required_name(type.name, "SumType")
+        current_depth = type_depths.get(type_name, 0)
+        next_depths = {**type_depths, type_name: current_depth + 1}
         variant_values: list[RuntimeValue] = []
         for variant, payload_type in type.variants:
             if payload_type is None:
-                variant_values.append(VariantInstance(type.name, variant))
+                variant_values.append(VariantInstance(type_name, variant))
             elif current_depth >= max_recursive_depth:
                 continue
             else:
@@ -801,7 +820,7 @@ def _domain_for_type(
                     max_recursive_depth,
                     next_depths,
                 ):
-                    variant_values.append(VariantInstance(type.name, variant, payload))
+                    variant_values.append(VariantInstance(type_name, variant, payload))
         return tuple(variant_values)
     raise TypeError(f"Unsupported type: {type!r}")
 
@@ -870,7 +889,7 @@ def _evaluate_relation(formula: Relation, trace: Trace, time: int) -> bool:
 def _evaluate_term(term: Term, trace: Trace, time: int) -> RuntimeValue:
     state = trace[time]
     if isinstance(term, Variable):
-        return state.values[term.name]
+        return state.values[_required_name(term.name, "Variable")]
     if isinstance(term, Const):
         return term.value
     if isinstance(term, Arithmetic):
@@ -902,7 +921,7 @@ def _evaluate_term(term: Term, trace: Trace, time: int) -> RuntimeValue:
         return value[index]
     if isinstance(term, ProductConstruct):
         return ProductInstance(
-            term.type.name,
+            _required_name(term.type.name, "ProductType"),
             tuple(
                 (name, _evaluate_term(field_value, trace, time))
                 for name, field_value in term.fields
@@ -910,7 +929,7 @@ def _evaluate_term(term: Term, trace: Trace, time: int) -> RuntimeValue:
         )
     if isinstance(term, VariantConstruct):
         return VariantInstance(
-            term.type.name,
+            _required_name(term.type.name, "SumType"),
             term.variant,
             None if term.payload is None else _evaluate_term(term.payload, trace, time),
         )

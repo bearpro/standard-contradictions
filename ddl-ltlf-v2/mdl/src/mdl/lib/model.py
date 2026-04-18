@@ -26,7 +26,7 @@ class _MdlObject:
 
 @dataclass(frozen=True)
 class MdlType:
-    name: str
+    name: str | None
 
 
 @dataclass(frozen=True)
@@ -44,11 +44,27 @@ STRING = ScalarType("string")
 class ProductType(MdlType):
     fields: tuple[tuple[str, MdlType], ...]
 
-    def __init__(self, name: str, fields: Mapping[str, MdlType]):
-        if not fields:
+    def __init__(
+        self,
+        name_or_fields: str | Mapping[str, MdlType],
+        fields: Mapping[str, MdlType] | None = None,
+    ):
+        if fields is None:
+            name = None
+            actual_fields = name_or_fields
+        else:
+            name = name_or_fields
+            actual_fields = fields
+        if not isinstance(actual_fields, Mapping):
+            raise TypeError("ProductType fields must be a mapping.")
+        if not actual_fields:
             raise ValueError("ProductType requires at least one field.")
+        if name is not None and not isinstance(name, str):
+            raise TypeError("ProductType name must be a string.")
+        if name == "":
+            raise ValueError("ProductType name must not be empty.")
         super().__init__(name)
-        object.__setattr__(self, "fields", tuple(fields.items()))
+        object.__setattr__(self, "fields", tuple(actual_fields.items()))
 
     def field_type(self, name: str) -> MdlType:
         for field_name, field_type in self.fields:
@@ -61,11 +77,27 @@ class ProductType(MdlType):
 class SumType(MdlType):
     variants: tuple[tuple[str, MdlType | None], ...]
 
-    def __init__(self, name: str, variants: Mapping[str, MdlType | None]):
-        if not variants:
+    def __init__(
+        self,
+        name_or_variants: str | Mapping[str, MdlType | None],
+        variants: Mapping[str, MdlType | None] | None = None,
+    ):
+        if variants is None:
+            name = None
+            actual_variants = name_or_variants
+        else:
+            name = name_or_variants
+            actual_variants = variants
+        if not isinstance(actual_variants, Mapping):
+            raise TypeError("SumType variants must be a mapping.")
+        if not actual_variants:
             raise ValueError("SumType requires at least one variant.")
+        if name is not None and not isinstance(name, str):
+            raise TypeError("SumType name must be a string.")
+        if name == "":
+            raise ValueError("SumType name must not be empty.")
         super().__init__(name)
-        object.__setattr__(self, "variants", tuple(variants.items()))
+        object.__setattr__(self, "variants", tuple(actual_variants.items()))
 
     def payload_type(self, variant: str) -> MdlType | None:
         for variant_name, payload_type in self.variants:
@@ -151,12 +183,27 @@ class Term(_MdlObject):
 
 @dataclass(frozen=True, init=False)
 class Variable(Term):
-    name: str
+    name: str | None
 
-    def __init__(self, name: str, type: MdlType, source: str = ""):
-        if not name:
+    def __init__(
+        self,
+        name_or_type: str | MdlType,
+        type: MdlType | None = None,
+        source: str = "",
+    ):
+        if type is None:
+            name = None
+            actual_type = name_or_type
+        else:
+            name = name_or_type
+            actual_type = type
+        if not isinstance(actual_type, MdlType):
+            raise TypeError("Variable type must be an MDL type.")
+        if name is not None and not isinstance(name, str):
+            raise TypeError("Variable name must be a string.")
+        if name == "":
             raise ValueError("Variable name must not be empty.")
-        super().__init__(type, source)
+        super().__init__(actual_type, source)
         object.__setattr__(self, "name", name)
 
 
@@ -337,23 +384,39 @@ class FunctionParameter:
 
 @dataclass(frozen=True, init=False)
 class Function(_MdlObject):
-    name: str
+    name: str | None
     parameters: tuple[FunctionParameter, ...]
     return_type: MdlType
     body: object
 
     def __init__(
         self,
-        name: str,
-        parameters: Mapping[str, MdlType],
-        return_type: MdlType,
-        body: object,
+        name_or_parameters: str | Mapping[str, MdlType],
+        parameters_or_return_type: Mapping[str, MdlType] | MdlType,
+        return_type_or_body: MdlType | object,
+        body: object | None = None,
         source: str = "",
     ):
-        if not name:
+        if body is None:
+            name = None
+            parameters = name_or_parameters
+            return_type = parameters_or_return_type
+            actual_body = return_type_or_body
+        else:
+            name = name_or_parameters
+            parameters = parameters_or_return_type
+            return_type = return_type_or_body
+            actual_body = body
+        if name is not None and not isinstance(name, str):
+            raise TypeError("Function name must be a string.")
+        if name == "":
             raise ValueError("Function name must not be empty.")
+        if not isinstance(parameters, Mapping):
+            raise TypeError("Function parameters must be a mapping.")
         if not parameters:
             raise ValueError("Function requires at least one parameter.")
+        if not isinstance(return_type, MdlType):
+            raise TypeError("Function return type must be an MDL type.")
         super().__init__(source)
         object.__setattr__(self, "name", name)
         object.__setattr__(
@@ -362,7 +425,7 @@ class Function(_MdlObject):
             tuple(FunctionParameter(param_name, type) for param_name, type in parameters.items()),
         )
         object.__setattr__(self, "return_type", return_type)
-        object.__setattr__(self, "body", body)
+        object.__setattr__(self, "body", actual_body)
 
     def __call__(self, *arguments: Term | bool | int | Fraction | str) -> FunctionCall:
         return FunctionCall(self, tuple(_term(argument) for argument in arguments))
@@ -415,12 +478,12 @@ class Proposition(LtlfFormula):
     """
     Unbound Boolean variable with name.
     """
-    name: str
+    name: str | None
 
-    def __init__(self, source_or_name: str, name: str | None = None):
-        source = "" if name is None else source_or_name
+    def __init__(self, source_or_name: str | None = None, name: str | None = None):
+        source = "" if name is None else (source_or_name or "")
         actual_name = source_or_name if name is None else name
-        if not actual_name:
+        if actual_name == "":
             raise ValueError("Proposition name must not be empty.")
         super().__init__(source)
         object.__setattr__(self, "name", actual_name)
@@ -595,16 +658,32 @@ class Rule(_MdlObject):
 
     def __init__(
         self,
-        source: str,
-        kind: str,
-        antecedent: LtlfFormula | None,
-        consequent: LtlfFormula,
+        source_or_kind: str,
+        kind_or_antecedent: str | LtlfFormula | None,
+        antecedent_or_consequent: LtlfFormula | None,
+        consequent: LtlfFormula | None = None,
         strength: str = "strict",
     ):
+        if consequent is None:
+            source = ""
+            kind = source_or_kind
+            antecedent = kind_or_antecedent
+            actual_consequent = antecedent_or_consequent
+        else:
+            source = source_or_kind
+            kind = kind_or_antecedent
+            antecedent = antecedent_or_consequent
+            actual_consequent = consequent
+        if not isinstance(kind, str):
+            raise TypeError("Rule kind must be a string.")
+        if antecedent is not None and not isinstance(antecedent, LtlfFormula):
+            raise TypeError("Rule antecedent must be an LTLf formula or None.")
+        if not isinstance(actual_consequent, LtlfFormula):
+            raise TypeError("Rule consequent must be an LTLf formula.")
         super().__init__(source)
         object.__setattr__(self, "kind", kind)
         object.__setattr__(self, "antecedent", antecedent)
-        object.__setattr__(self, "consequent", consequent)
+        object.__setattr__(self, "consequent", actual_consequent)
         object.__setattr__(self, "strength", strength)
 
 @dataclass(frozen=True, init=False)
@@ -630,34 +709,59 @@ class Priority(_MdlObject):
 
 
 def StrictRule(
-    source: str,
-    kind: str,
-    antecedent: LtlfFormula | None,
-    consequent: LtlfFormula,
+    source_or_kind: str,
+    kind_or_antecedent: str | LtlfFormula | None,
+    antecedent_or_consequent: LtlfFormula | None,
+    consequent: LtlfFormula | None = None,
 ) -> Rule:
-    return Rule(source, kind, antecedent, consequent, strength="strict")
+    return Rule(
+        source_or_kind,
+        kind_or_antecedent,
+        antecedent_or_consequent,
+        consequent,
+        strength="strict",
+    )
 
 
 def DefeasibleRule(
-    source: str,
-    kind: str,
-    antecedent: LtlfFormula | None,
-    consequent: LtlfFormula,
+    source_or_kind: str,
+    kind_or_antecedent: str | LtlfFormula | None,
+    antecedent_or_consequent: LtlfFormula | None,
+    consequent: LtlfFormula | None = None,
 ) -> Rule:
-    return Rule(source, kind, antecedent, consequent, strength="defeasible")
+    return Rule(
+        source_or_kind,
+        kind_or_antecedent,
+        antecedent_or_consequent,
+        consequent,
+        strength="defeasible",
+    )
 
 
 def Defeater(
-    source: str,
-    kind: str,
-    antecedent: LtlfFormula | None,
+    source_or_kind: str,
+    kind_or_antecedent: str | LtlfFormula | None,
+    antecedent: LtlfFormula | None = None,
     consequent: LtlfFormula | None = None,
 ) -> Rule:
-    return Rule(source, kind, antecedent, consequent or Top(), strength="defeater")
+    if isinstance(kind_or_antecedent, str):
+        return Rule(
+            source_or_kind,
+            kind_or_antecedent,
+            antecedent,
+            consequent or Top(),
+            strength="defeater",
+        )
+    return Rule(
+        source_or_kind,
+        kind_or_antecedent,
+        consequent or Top(),
+        strength="defeater",
+    )
 
 
-def Var(name: str, type: MdlType) -> Variable:
-    return Variable(name, type)
+def Var(name_or_type: str | MdlType, type: MdlType | None = None) -> Variable:
+    return Variable(name_or_type, type)
 
 
 def Bool(value: bool) -> Const:
@@ -800,10 +904,241 @@ def _validate_case_coverage(type: SumType, cases: Mapping[str, object]) -> None:
         raise ValueError("Case branches must exactly cover sum type variants.")
 
 
+def bind_module_objects(objects: Mapping[str, object]) -> dict[str, object]:
+    module_names = {id(value): name for name, value in objects.items()}
+    memo: dict[int, object] = {}
+
+    def bind_object(value: object) -> object:
+        value_id = id(value)
+        if value_id in memo:
+            return memo[value_id]
+
+        if isinstance(value, MdlType):
+            bound = bind_type(value)
+        elif isinstance(value, Function):
+            bound = bind_function(value)
+        elif isinstance(value, Rule):
+            bound = bind_rule(value)
+        elif isinstance(value, Priority):
+            higher = bind_object(value.higher)
+            lower = bind_object(value.lower)
+            if not isinstance(higher, Rule) or not isinstance(lower, Rule):
+                raise TypeError("Priority edges must point to rules.")
+            bound = Priority(
+                higher,
+                lower,
+                None if value.condition is None else bind_formula(value.condition),
+                value.source,
+            )
+        elif isinstance(value, LtlfFormula):
+            bound = bind_formula(value)
+        elif isinstance(value, Term):
+            bound = bind_term(value)
+        else:
+            bound = value
+
+        memo[value_id] = bound
+        return bound
+
+    def module_name(value: object) -> str | None:
+        return module_names.get(id(value))
+
+    def bind_type(type: MdlType) -> MdlType:
+        type_id = id(type)
+        if type_id in memo:
+            cached = memo[type_id]
+            if isinstance(cached, MdlType):
+                return cached
+        if isinstance(type, TypeRef):
+            return type
+        if isinstance(type, ProductType):
+            name = type.name or module_name(type)
+            fields = {
+                field_name: bind_type(field_type)
+                for field_name, field_type in type.fields
+            }
+            return ProductType(fields) if name is None else ProductType(name, fields)
+        if isinstance(type, SumType):
+            name = type.name or module_name(type)
+            variants = {
+                variant_name: None if payload_type is None else bind_type(payload_type)
+                for variant_name, payload_type in type.variants
+            }
+            return SumType(variants) if name is None else SumType(name, variants)
+        return type
+
+    def bind_function(function: Function) -> Function:
+        name = function.name or module_name(function)
+        parameters = {
+            parameter.name: bind_type(parameter.type)
+            for parameter in function.parameters
+        }
+        return_type = bind_type(function.return_type)
+        body = function.body
+        if isinstance(body, Term):
+            body = bind_term(body)
+        if name is None:
+            return Function(parameters, return_type, body, source=function.source)
+        return Function(name, parameters, return_type, body, source=function.source)
+
+    def bind_rule(rule: Rule) -> Rule:
+        source = rule.source or module_name(rule) or ""
+        return Rule(
+            source,
+            rule.kind,
+            None if rule.antecedent is None else bind_formula(rule.antecedent),
+            bind_formula(rule.consequent),
+            strength=rule.strength,
+        )
+
+    def bind_formula(formula: LtlfFormula) -> LtlfFormula:
+        formula_id = id(formula)
+        if formula_id in memo:
+            cached = memo[formula_id]
+            if isinstance(cached, LtlfFormula):
+                return cached
+        if isinstance(formula, Proposition):
+            name = formula.name or module_name(formula)
+            if name is None:
+                return Proposition()
+            return Proposition(formula.source, name)
+        if isinstance(formula, (Top, Bottom)):
+            return formula
+        if isinstance(formula, Relation):
+            return Relation(
+                formula.op,
+                bind_term(formula.left),
+                bind_term(formula.right),
+                formula.source,
+            )
+        if isinstance(formula, Truth):
+            return Truth(bind_term(formula.value), formula.source)
+        if isinstance(formula, IsVariant):
+            return IsVariant(bind_term(formula.value), formula.variant, formula.source)
+        if isinstance(formula, Not):
+            return Not(bind_formula(formula.operand), formula.source)
+        if isinstance(formula, And):
+            return And(
+                *(bind_formula(operand) for operand in formula.operands),
+                source=formula.source,
+            )
+        if isinstance(formula, Or):
+            return Or(
+                *(bind_formula(operand) for operand in formula.operands),
+                source=formula.source,
+            )
+        if isinstance(formula, Next):
+            return Next(bind_formula(formula.operand), formula.source)
+        if isinstance(formula, Until):
+            return Until(
+                bind_formula(formula.left),
+                bind_formula(formula.right),
+                formula.source,
+            )
+        if isinstance(formula, Eventually):
+            return Eventually(bind_formula(formula.operand), formula.source)
+        if isinstance(formula, Always):
+            return Always(bind_formula(formula.operand), formula.source)
+        if isinstance(formula, IfFormula):
+            return IfFormula(
+                bind_formula(formula.condition),
+                bind_formula(formula.then_branch),
+                bind_formula(formula.else_branch),
+                formula.source,
+            )
+        if isinstance(formula, CaseFormula):
+            return CaseFormula(
+                bind_term(formula.value),
+                {
+                    variant: bind_formula(branch)
+                    for variant, branch in formula.cases
+                },
+                formula.source,
+            )
+        raise TypeError(f"Unsupported LTLf formula: {formula!r}")
+
+    def bind_term(term: Term) -> Term:
+        term_id = id(term)
+        if term_id in memo:
+            cached = memo[term_id]
+            if isinstance(cached, Term):
+                return cached
+        if isinstance(term, Variable):
+            name = term.name or module_name(term)
+            type = bind_type(term.type)
+            if name is None:
+                return Variable(type, source=term.source)
+            return Variable(name, type, term.source)
+        if isinstance(term, Const):
+            return Const(term.value, bind_type(term.type), term.source)
+        if isinstance(term, Arithmetic):
+            return Arithmetic(term.op, bind_term(term.left), bind_term(term.right), term.source)
+        if isinstance(term, StringLength):
+            return StringLength(bind_term(term.value), term.source)
+        if isinstance(term, StringCharAt):
+            return StringCharAt(bind_term(term.value), bind_term(term.index), term.source)
+        if isinstance(term, ProductConstruct):
+            type = bind_type(term.type)
+            if not isinstance(type, ProductType):
+                raise TypeError("ProductConstruct type must bind to a product type.")
+            return ProductConstruct(
+                type,
+                {
+                    field_name: bind_term(field_value)
+                    for field_name, field_value in term.fields
+                },
+                term.source,
+            )
+        if isinstance(term, VariantConstruct):
+            type = bind_type(term.type)
+            if not isinstance(type, SumType):
+                raise TypeError("VariantConstruct type must bind to a sum type.")
+            return VariantConstruct(
+                type,
+                term.variant,
+                None if term.payload is None else bind_term(term.payload),
+                term.source,
+            )
+        if isinstance(term, FieldAccess):
+            return FieldAccess(bind_term(term.value), term.field_name, term.source)
+        if isinstance(term, VariantPayload):
+            return VariantPayload(bind_term(term.value), term.variant, term.source)
+        if isinstance(term, IfExpr):
+            return IfExpr(
+                bind_formula(term.condition),
+                bind_term(term.then_branch),
+                bind_term(term.else_branch),
+                term.source,
+            )
+        if isinstance(term, CaseExpr):
+            return CaseExpr(
+                bind_term(term.value),
+                {
+                    variant: bind_term(branch)
+                    for variant, branch in term.cases
+                },
+                term.source,
+            )
+        if isinstance(term, FunctionCall):
+            function = bind_object(term.function)
+            if not isinstance(function, Function):
+                raise TypeError("FunctionCall function must bind to a function.")
+            return FunctionCall(
+                function,
+                tuple(bind_term(argument) for argument in term.arguments),
+                term.source,
+            )
+        raise TypeError(f"Unsupported term: {term!r}")
+
+    return {name: bind_object(value) for name, value in objects.items()}
+
+
 def validate_module_objects(objects: Mapping[str, object]) -> None:
     value_env: dict[str, MdlType] = {}
     for value in objects.values():
         if isinstance(value, Variable):
+            if value.name is None:
+                raise NameError("Variable is not bound to a module name.")
             existing = value_env.get(value.name)
             if existing is not None and not _types_compatible(existing, value.type):
                 raise TypeError(f"Variable {value.name!r} is declared with multiple types.")
@@ -842,15 +1177,22 @@ def _validate_module_object(
 def _validate_type(type: MdlType, stack: frozenset[str]) -> None:
     if isinstance(type, TypeRef):
         target = _resolve_type(type)
-        if type.name in stack:
+        type_name = type.name
+        if type_name is None:
+            raise NameError("TypeRef is not bound to a type name.")
+        if type_name in stack:
             return
-        _validate_type(target, stack | {type.name})
+        _validate_type(target, stack | {type_name})
     elif isinstance(type, ProductType):
+        if type.name is None:
+            raise NameError("ProductType is not bound to a module name.")
         if type.name in stack:
             return
         for _, field_type in type.fields:
             _validate_type(field_type, stack | {type.name})
     elif isinstance(type, SumType):
+        if type.name is None:
+            raise NameError("SumType is not bound to a module name.")
         if type.name in stack:
             return
         for _, payload_type in type.variants:
@@ -863,6 +1205,8 @@ def _validate_function(
     value_env: Mapping[str, MdlType],
     function_stack: frozenset[str],
 ) -> None:
+    if function.name is None:
+        raise NameError("Function is not bound to a module name.")
     if function.name in function_stack:
         return
 
@@ -890,7 +1234,11 @@ def _validate_formula(
     value_env: Mapping[str, MdlType],
     function_stack: frozenset[str],
 ) -> None:
-    if isinstance(formula, (Top, Bottom, Proposition)):
+    if isinstance(formula, (Top, Bottom)):
+        return
+    if isinstance(formula, Proposition):
+        if formula.name is None:
+            raise NameError("Proposition is not bound to a module name.")
         return
     if isinstance(formula, Relation):
         _validate_term(formula.left, value_env, function_stack)
@@ -943,6 +1291,8 @@ def _validate_term(
     function_stack: frozenset[str],
 ) -> None:
     if isinstance(term, Variable):
+        if term.name is None:
+            raise NameError("Variable is not bound to a module name.")
         expected_type = value_env.get(term.name)
         if expected_type is None:
             raise NameError(f"Variable {term.name!r} is not declared in the module.")
@@ -1047,7 +1397,11 @@ class Module:
 
     @classmethod
     def _from_builder(cls, objects: Mapping[str, object]) -> Module:
-        module_objects = dict(objects)
+        return cls.from_builder(objects)
+
+    @classmethod
+    def from_builder(cls, objects: Mapping[str, object]) -> Module:
+        module_objects = bind_module_objects(dict(objects))
         validate_module_objects(module_objects)
         return cls(module_objects, _builder_token=_MODULE_BUILDER_TOKEN)
 
