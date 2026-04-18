@@ -43,4 +43,4 @@ class ModuleBuilder:
 
     def build(self) -> Module:
         objects = self._objects
-        return Module(dict(objects or {}))
+        return Module._from_builder(dict(objects or {}))

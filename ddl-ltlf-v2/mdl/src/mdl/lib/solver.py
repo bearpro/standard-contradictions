@@ -19,6 +19,7 @@ from mdl.lib.model import (
     Const,
     Eventually,
     FieldAccess,
+    FunctionCall,
     IfExpr,
     IfFormula,
     IsVariant,
@@ -30,24 +31,29 @@ from mdl.lib.model import (
     Or,
     Priority,
     Proposition,
+    ProductConstruct,
     ProductInstance,
     ProductType,
     Relation,
     RuntimeValue,
     Rule,
+    StringCharAt,
     StringLength,
     SumType,
     Term,
     Top,
     Truth,
+    TypeRef,
     Until,
     Variable,
+    VariantConstruct,
     VariantInstance,
     VariantPayload,
 )
 
 
 NumberValue = int | Fraction
+_MAX_RECURSIVE_SUM_DEPTH = 2
 
 
 @dataclass(frozen=True)
@@ -70,16 +76,22 @@ class SolveResult:
         return self.is_consistent
 
 
-def solve(*documents: Module, horizon: int = 1) -> SolveResult:
+def solve(
+    *documents: Module,
+    horizon: int = 1,
+    max_recursive_depth: int = _MAX_RECURSIVE_SUM_DEPTH,
+) -> SolveResult:
     if horizon < 1:
         raise ValueError("horizon must be greater than or equal to 1.")
+    if max_recursive_depth < 0:
+        raise ValueError("max_recursive_depth must be greater than or equal to 0.")
 
     rules, priorities = _collect_norms(documents)
     formulas = _norm_formulas(rules, priorities)
     atoms = sorted(_collect_propositions_from_formulas(formulas))
     domain_hints = _collect_domain_hints(formulas)
     variable_domains = {
-        name: _domain_for_type(type, domain_hints)
+        name: _domain_for_type(type, domain_hints, max_recursive_depth)
         for name, type in sorted(domain_hints.variables.items())
     }
 
@@ -224,67 +236,244 @@ def _collect_domain_hints(formulas: Iterable[LtlfFormula]) -> _DomainHints:
     return hints
 
 
-def _walk_formula(formula: LtlfFormula) -> Iterable[LtlfFormula | Term]:
+def _walk_formula(
+    formula: LtlfFormula,
+    function_stack: frozenset[str] = frozenset(),
+) -> Iterable[LtlfFormula | Term]:
     yield formula
     if isinstance(formula, (Top, Bottom, Proposition)):
         return
     if isinstance(formula, Relation):
-        yield from _walk_term(formula.left)
-        yield from _walk_term(formula.right)
+        yield from _walk_term(formula.left, function_stack)
+        yield from _walk_term(formula.right, function_stack)
         return
     if isinstance(formula, (Truth, IsVariant)):
-        yield from _walk_term(formula.value)
+        yield from _walk_term(formula.value, function_stack)
         return
     if isinstance(formula, Not):
-        yield from _walk_formula(formula.operand)
+        yield from _walk_formula(formula.operand, function_stack)
         return
     if isinstance(formula, (Next, Eventually, Always)):
-        yield from _walk_formula(formula.operand)
+        yield from _walk_formula(formula.operand, function_stack)
         return
     if isinstance(formula, (And, Or)):
         for operand in formula.operands:
-            yield from _walk_formula(operand)
+            yield from _walk_formula(operand, function_stack)
         return
     if isinstance(formula, Until):
-        yield from _walk_formula(formula.left)
-        yield from _walk_formula(formula.right)
+        yield from _walk_formula(formula.left, function_stack)
+        yield from _walk_formula(formula.right, function_stack)
         return
     if isinstance(formula, IfFormula):
-        yield from _walk_formula(formula.condition)
-        yield from _walk_formula(formula.then_branch)
-        yield from _walk_formula(formula.else_branch)
+        yield from _walk_formula(formula.condition, function_stack)
+        yield from _walk_formula(formula.then_branch, function_stack)
+        yield from _walk_formula(formula.else_branch, function_stack)
         return
     if isinstance(formula, CaseFormula):
-        yield from _walk_term(formula.value)
+        yield from _walk_term(formula.value, function_stack)
         for _, branch in formula.cases:
-            yield from _walk_formula(branch)
+            yield from _walk_formula(branch, function_stack)
         return
 
     raise TypeError(f"Unsupported LTLf formula: {formula!r}")
 
 
-def _walk_term(term: Term) -> Iterable[LtlfFormula | Term]:
+def _walk_term(
+    term: Term,
+    function_stack: frozenset[str] = frozenset(),
+) -> Iterable[LtlfFormula | Term]:
     yield term
     if isinstance(term, (Variable, Const)):
         return
     if isinstance(term, Arithmetic):
-        yield from _walk_term(term.left)
-        yield from _walk_term(term.right)
+        yield from _walk_term(term.left, function_stack)
+        yield from _walk_term(term.right, function_stack)
         return
-    if isinstance(term, (StringLength, FieldAccess, VariantPayload)):
-        yield from _walk_term(term.value)
+    if isinstance(
+        term,
+        (
+            StringLength,
+            StringCharAt,
+            FieldAccess,
+            VariantPayload,
+        ),
+    ):
+        yield from _walk_term(term.value, function_stack)
+        if isinstance(term, StringCharAt):
+            yield from _walk_term(term.index, function_stack)
+        return
+    if isinstance(term, ProductConstruct):
+        for _, field_value in term.fields:
+            yield from _walk_term(field_value, function_stack)
+        return
+    if isinstance(term, VariantConstruct):
+        if term.payload is not None:
+            yield from _walk_term(term.payload, function_stack)
         return
     if isinstance(term, IfExpr):
-        yield from _walk_formula(term.condition)
-        yield from _walk_term(term.then_branch)
-        yield from _walk_term(term.else_branch)
+        yield from _walk_formula(term.condition, function_stack)
+        yield from _walk_term(term.then_branch, function_stack)
+        yield from _walk_term(term.else_branch, function_stack)
         return
     if isinstance(term, CaseExpr):
-        yield from _walk_term(term.value)
+        yield from _walk_term(term.value, function_stack)
         for _, branch in term.cases:
-            yield from _walk_term(branch)
+            yield from _walk_term(branch, function_stack)
+        return
+    if isinstance(term, FunctionCall):
+        for argument in term.arguments:
+            yield from _walk_term(argument, function_stack)
+        if term.function.name in function_stack:
+            return
+        body = _substitute_function_body(term)
+        yield from _walk_term(body, function_stack | {term.function.name})
         return
 
+    raise TypeError(f"Unsupported term: {term!r}")
+
+
+def _substitute_function_body(call: FunctionCall) -> Term:
+    replacements = {
+        parameter.name: argument
+        for parameter, argument in zip(call.function.parameters, call.arguments)
+    }
+    return _substitute_term(call.function.body_term(), replacements)
+
+
+def _substitute_formula(
+    formula: LtlfFormula,
+    replacements: dict[str, Term],
+) -> LtlfFormula:
+    if isinstance(formula, (Top, Bottom, Proposition)):
+        return formula
+    if isinstance(formula, Relation):
+        return Relation(
+            formula.op,
+            _substitute_term(formula.left, replacements),
+            _substitute_term(formula.right, replacements),
+            formula.source,
+        )
+    if isinstance(formula, Truth):
+        return Truth(_substitute_term(formula.value, replacements), formula.source)
+    if isinstance(formula, IsVariant):
+        return IsVariant(
+            _substitute_term(formula.value, replacements),
+            formula.variant,
+            formula.source,
+        )
+    if isinstance(formula, Not):
+        return Not(_substitute_formula(formula.operand, replacements), formula.source)
+    if isinstance(formula, And):
+        return And(
+            *(_substitute_formula(operand, replacements) for operand in formula.operands),
+            source=formula.source,
+        )
+    if isinstance(formula, Or):
+        return Or(
+            *(_substitute_formula(operand, replacements) for operand in formula.operands),
+            source=formula.source,
+        )
+    if isinstance(formula, Next):
+        return Next(_substitute_formula(formula.operand, replacements), formula.source)
+    if isinstance(formula, Until):
+        return Until(
+            _substitute_formula(formula.left, replacements),
+            _substitute_formula(formula.right, replacements),
+            formula.source,
+        )
+    if isinstance(formula, Eventually):
+        return Eventually(_substitute_formula(formula.operand, replacements), formula.source)
+    if isinstance(formula, Always):
+        return Always(_substitute_formula(formula.operand, replacements), formula.source)
+    if isinstance(formula, IfFormula):
+        return IfFormula(
+            _substitute_formula(formula.condition, replacements),
+            _substitute_formula(formula.then_branch, replacements),
+            _substitute_formula(formula.else_branch, replacements),
+            formula.source,
+        )
+    if isinstance(formula, CaseFormula):
+        return CaseFormula(
+            _substitute_term(formula.value, replacements),
+            {
+                name: _substitute_formula(branch, replacements)
+                for name, branch in formula.cases
+            },
+            formula.source,
+        )
+    raise TypeError(f"Unsupported LTLf formula: {formula!r}")
+
+
+def _substitute_term(term: Term, replacements: dict[str, Term]) -> Term:
+    if isinstance(term, Variable):
+        return replacements.get(term.name, term)
+    if isinstance(term, Const):
+        return term
+    if isinstance(term, Arithmetic):
+        return Arithmetic(
+            term.op,
+            _substitute_term(term.left, replacements),
+            _substitute_term(term.right, replacements),
+            term.source,
+        )
+    if isinstance(term, StringLength):
+        return StringLength(_substitute_term(term.value, replacements), term.source)
+    if isinstance(term, StringCharAt):
+        return StringCharAt(
+            _substitute_term(term.value, replacements),
+            _substitute_term(term.index, replacements),
+            term.source,
+        )
+    if isinstance(term, ProductConstruct):
+        return ProductConstruct(
+            term.type,
+            {
+                name: _substitute_term(field_value, replacements)
+                for name, field_value in term.fields
+            },
+            term.source,
+        )
+    if isinstance(term, VariantConstruct):
+        return VariantConstruct(
+            term.type,
+            term.variant,
+            None if term.payload is None else _substitute_term(term.payload, replacements),
+            term.source,
+        )
+    if isinstance(term, FieldAccess):
+        return FieldAccess(
+            _substitute_term(term.value, replacements),
+            term.field_name,
+            term.source,
+        )
+    if isinstance(term, VariantPayload):
+        return VariantPayload(
+            _substitute_term(term.value, replacements),
+            term.variant,
+            term.source,
+        )
+    if isinstance(term, IfExpr):
+        return IfExpr(
+            _substitute_formula(term.condition, replacements),
+            _substitute_term(term.then_branch, replacements),
+            _substitute_term(term.else_branch, replacements),
+            term.source,
+        )
+    if isinstance(term, CaseExpr):
+        return CaseExpr(
+            _substitute_term(term.value, replacements),
+            {
+                name: _substitute_term(branch, replacements)
+                for name, branch in term.cases
+            },
+            term.source,
+        )
+    if isinstance(term, FunctionCall):
+        return FunctionCall(
+            term.function,
+            tuple(_substitute_term(argument, replacements) for argument in term.arguments),
+            term.source,
+        )
     raise TypeError(f"Unsupported term: {term!r}")
 
 
@@ -299,20 +488,35 @@ def _add_constant_hint(term: Const, hints: _DomainHints) -> None:
         hints.string_values.add(term.value)
 
 
-def _domain_for_type(type: MdlType, hints: _DomainHints) -> tuple[RuntimeValue, ...]:
-    if type == BOOL:
+def _resolve_type(type: MdlType) -> MdlType:
+    if isinstance(type, TypeRef):
+        if type.target is None:
+            raise TypeError(f"Unbound recursive type reference: {type.name!r}.")
+        return type.target
+    return type
+
+
+def _domain_for_type(
+    type: MdlType,
+    hints: _DomainHints,
+    max_recursive_depth: int,
+    type_depths: dict[str, int] | None = None,
+) -> tuple[RuntimeValue, ...]:
+    type = _resolve_type(type)
+    type_depths = type_depths or {}
+    if type.name == BOOL.name:
         return (False, True)
-    if type == INT:
+    if type.name == INT.name:
         int_values: set[int] = set(hints.int_values) | {0, 1}
         for value in list(hints.int_values):
             int_values.update({value - 1, value + 1})
         return tuple(sorted(int_values))
-    if type == RAT:
+    if type.name == RAT.name:
         rat_values: set[Fraction] = set(hints.rat_values) | {Fraction(0), Fraction(1)}
         for value in list(hints.rat_values):
             rat_values.update({value - 1, value + 1})
         return tuple(sorted(rat_values))
-    if type == STRING:
+    if type.name == STRING.name:
         string_values: set[str] = set(hints.string_values) | {"", "x"}
         for length in _candidate_string_lengths(hints):
             if length >= 0:
@@ -320,7 +524,15 @@ def _domain_for_type(type: MdlType, hints: _DomainHints) -> tuple[RuntimeValue, 
         return tuple(sorted(string_values, key=_string_sort_key))
     if isinstance(type, ProductType):
         field_domains = [
-            (name, _domain_for_type(field_type, hints))
+            (
+                name,
+                _domain_for_type(
+                    field_type,
+                    hints,
+                    max_recursive_depth,
+                    type_depths,
+                ),
+            )
             for name, field_type in type.fields
         ]
         return tuple(
@@ -328,12 +540,21 @@ def _domain_for_type(type: MdlType, hints: _DomainHints) -> tuple[RuntimeValue, 
             for values in product(*(domain for _, domain in field_domains))
         )
     if isinstance(type, SumType):
+        current_depth = type_depths.get(type.name, 0)
+        next_depths = {**type_depths, type.name: current_depth + 1}
         variant_values: list[RuntimeValue] = []
         for variant, payload_type in type.variants:
             if payload_type is None:
                 variant_values.append(VariantInstance(type.name, variant))
+            elif current_depth >= max_recursive_depth:
+                continue
             else:
-                for payload in _domain_for_type(payload_type, hints):
+                for payload in _domain_for_type(
+                    payload_type,
+                    hints,
+                    max_recursive_depth,
+                    next_depths,
+                ):
                     variant_values.append(VariantInstance(type.name, variant, payload))
         return tuple(variant_values)
     raise TypeError(f"Unsupported type: {type!r}")
@@ -423,6 +644,30 @@ def _evaluate_term(term: Term, trace: Trace, time: int) -> RuntimeValue:
         if not isinstance(value, str):
             raise TypeError("Len operand must evaluate to a string.")
         return len(value)
+    if isinstance(term, StringCharAt):
+        value = _evaluate_term(term.value, trace, time)
+        index = _evaluate_term(term.index, trace, time)
+        if not isinstance(value, str):
+            raise TypeError("CharAt value must evaluate to a string.")
+        if isinstance(index, bool) or not isinstance(index, int):
+            raise TypeError("CharAt index must evaluate to an int.")
+        if not 0 <= index < len(value):
+            raise IndexError("CharAt index out of bounds.")
+        return value[index]
+    if isinstance(term, ProductConstruct):
+        return ProductInstance(
+            term.type.name,
+            tuple(
+                (name, _evaluate_term(field_value, trace, time))
+                for name, field_value in term.fields
+            ),
+        )
+    if isinstance(term, VariantConstruct):
+        return VariantInstance(
+            term.type.name,
+            term.variant,
+            None if term.payload is None else _evaluate_term(term.payload, trace, time),
+        )
     if isinstance(term, FieldAccess):
         value = _evaluate_term(term.value, trace, time)
         if not isinstance(value, ProductInstance):
@@ -447,8 +692,29 @@ def _evaluate_term(term: Term, trace: Trace, time: int) -> RuntimeValue:
         if not isinstance(value, VariantInstance):
             raise TypeError("CaseExpr value must evaluate to a variant.")
         return _evaluate_term(_case_term_branch(term.cases, value.variant), trace, time)
+    if isinstance(term, FunctionCall):
+        argument_values = [
+            _evaluate_term(argument, trace, time)
+            for argument in term.arguments
+        ]
+        bound_values = {
+            parameter.name: value
+            for parameter, value in zip(term.function.parameters, argument_values)
+        }
+        return _evaluate_term(
+            term.function.body_term(),
+            _bind_values(trace, bound_values),
+            time,
+        )
 
     raise TypeError(f"Unsupported term: {term!r}")
+
+
+def _bind_values(trace: Trace, values: dict[str, RuntimeValue]) -> Trace:
+    return tuple(
+        TraceState(state.propositions, {**state.values, **values})
+        for state in trace
+    )
 
 
 def _case_term_branch(cases: tuple[tuple[str, Term], ...], variant: str) -> Term:
