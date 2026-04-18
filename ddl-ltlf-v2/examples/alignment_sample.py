@@ -14,10 +14,9 @@ def main() -> None:
     right_doc = right.build()
 
     matches = mdl.align(left_doc, right_doc)
-    assert matches == (mdl.Alignment("status", "status", 1.0),)
 
-    result = mdl.solve(left_doc, right_doc)
-    assert not result.is_consistent
+    result = mdl.solve(left_doc, right_doc, alignments=matches)
+    print(result)
 
 
 if __name__ == "__main__":

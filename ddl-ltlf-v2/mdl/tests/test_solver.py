@@ -24,6 +24,40 @@ def test_opposite_obligations_without_temporality_are_inconsistent() -> None:
     assert result.trace is None
 
 
+def test_same_named_obligations_in_different_documents_without_alignment_are_consistent() -> None:
+    with mdl.ModuleBuilder() as left:
+        left.status = mdl.Proposition("status")
+        left.require_status = mdl.Rule("left-requires-status", "O", None, left.status)
+
+    with mdl.ModuleBuilder() as right:
+        right.status = mdl.Proposition("status")
+        right.forbid_status = mdl.Rule("right-forbids-status", "F", None, right.status)
+
+    result = mdl.solve(left.build(), right.build())
+
+    assert result.is_consistent
+
+
+def test_trivial_alignment_detects_conflicting_obligations_between_documents() -> None:
+    with mdl.ModuleBuilder() as left:
+        left.status = mdl.Proposition("status")
+        left.require_status = mdl.Rule("left-requires-status", "O", None, left.status)
+
+    with mdl.ModuleBuilder() as right:
+        right.status = mdl.Proposition("status")
+        right.forbid_status = mdl.Rule("right-forbids-status", "F", None, right.status)
+
+    left_doc = left.build()
+    right_doc = right.build()
+    alignments = mdl.align(left_doc, right_doc)
+
+    assert alignments == (mdl.Alignment("status", "status", 1.0),)
+
+    result = mdl.solve(left_doc, right_doc, alignments=alignments)
+
+    assert not result.is_consistent
+
+
 def test_forbidden_is_obligation_to_negation() -> None:
     with mdl.ModuleBuilder() as doc:
         doc.p = mdl.Proposition("p")

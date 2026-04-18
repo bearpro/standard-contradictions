@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from fractions import Fraction
 from itertools import product
 
+from mdl.lib.alignment import Alignment
 from mdl.lib.model import (
     BOOL,
     INT,
@@ -79,6 +80,7 @@ class SolveResult:
 def solve(
     *documents: Module,
     horizon: int = 1,
+    alignments: Iterable[Alignment] = (),
     max_recursive_depth: int = _MAX_RECURSIVE_SUM_DEPTH,
 ) -> SolveResult:
     if horizon < 1:
@@ -86,7 +88,7 @@ def solve(
     if max_recursive_depth < 0:
         raise ValueError("max_recursive_depth must be greater than or equal to 0.")
 
-    rules, priorities = _collect_norms(documents)
+    rules, priorities = _collect_norms(documents, tuple(alignments))
     formulas = _norm_formulas(rules, priorities)
     atoms = sorted(_collect_propositions_from_formulas(formulas))
     domain_hints = _collect_domain_hints(formulas)
@@ -172,18 +174,262 @@ def evaluate(formula: LtlfFormula, trace: Trace, time: int = 0) -> bool:
     raise TypeError(f"Unsupported LTLf formula: {formula!r}")
 
 
-def _collect_norms(documents: Iterable[Module]) -> tuple[list[Rule], list[Priority]]:
+NameMapper = Callable[[str], str]
+
+
+def _collect_norms(
+    documents: Iterable[Module],
+    alignments: tuple[Alignment, ...],
+) -> tuple[list[Rule], list[Priority]]:
     rules: list[Rule] = []
     priorities: list[Priority] = []
+    documents = tuple(documents)
+    if not alignments and len(documents) <= 1:
+        for document in documents:
+            for value in document.objects.values():
+                if isinstance(value, Rule):
+                    rules.append(value)
+                elif isinstance(value, Priority):
+                    priorities.append(value)
+        return rules, priorities
 
-    for document in documents:
+    name_mappers = _document_name_mappers(documents, alignments)
+
+    for document, name_mapper in zip(documents, name_mappers):
+        rule_map: dict[int, Rule] = {}
         for value in document.objects.values():
             if isinstance(value, Rule):
-                rules.append(value)
-            elif isinstance(value, Priority):
-                priorities.append(value)
+                renamed_rule = _rename_rule(value, name_mapper)
+                rule_map[id(value)] = renamed_rule
+                rules.append(renamed_rule)
+
+        for value in document.objects.values():
+            if isinstance(value, Priority):
+                priorities.append(_rename_priority(value, name_mapper, rule_map))
 
     return rules, priorities
+
+
+def _document_name_mappers(
+    documents: tuple[Module, ...],
+    alignments: tuple[Alignment, ...],
+) -> tuple[NameMapper, ...]:
+    if not alignments and len(documents) <= 1:
+        return tuple(lambda name: name for _ in documents)
+    if alignments and len(documents) != 2:
+        raise ValueError("alignments are currently supported only for two documents.")
+
+    aligned_names: list[dict[str, str]] = [dict() for _ in documents]
+    if alignments:
+        left_doc, right_doc = documents
+        for alignment in alignments:
+            canonical = _alignment_canonical_name(alignment)
+            left_name = _alignment_symbol_name(left_doc, alignment.left_name)
+            right_name = _alignment_symbol_name(right_doc, alignment.right_name)
+            if left_name is not None:
+                _add_aligned_name(aligned_names[0], left_name, canonical)
+            if right_name is not None:
+                _add_aligned_name(aligned_names[1], right_name, canonical)
+
+    return tuple(
+        _make_name_mapper(index, aligned)
+        for index, aligned in enumerate(aligned_names)
+    )
+
+
+def _make_name_mapper(index: int, aligned_names: dict[str, str]) -> NameMapper:
+    def map_name(name: str) -> str:
+        try:
+            return aligned_names[name]
+        except KeyError:
+            return f"__mdl_doc_{index}__{name}"
+
+    return map_name
+
+
+def _alignment_canonical_name(alignment: Alignment) -> str:
+    return f"__mdl_alignment__{alignment.left_name}__{alignment.right_name}"
+
+
+def _alignment_symbol_name(document: Module, name: str) -> str | None:
+    value = document.objects.get(name)
+    if isinstance(value, (Proposition, Variable)):
+        return value.name
+    if value is None:
+        return name
+    return None
+
+
+def _add_aligned_name(
+    aligned_names: dict[str, str],
+    source_name: str,
+    canonical_name: str,
+) -> None:
+    existing = aligned_names.get(source_name)
+    if existing is not None and existing != canonical_name:
+        raise ValueError(f"Conflicting alignments for symbol {source_name!r}.")
+    aligned_names[source_name] = canonical_name
+
+
+def _rename_rule(rule: Rule, name_mapper: NameMapper) -> Rule:
+    return Rule(
+        rule.source,
+        rule.kind,
+        None if rule.antecedent is None else _rename_formula(rule.antecedent, name_mapper),
+        _rename_formula(rule.consequent, name_mapper),
+        rule.strength,
+    )
+
+
+def _rename_priority(
+    priority: Priority,
+    name_mapper: NameMapper,
+    rule_map: dict[int, Rule],
+) -> Priority:
+    return Priority(
+        rule_map.get(id(priority.higher)) or _rename_rule(priority.higher, name_mapper),
+        rule_map.get(id(priority.lower)) or _rename_rule(priority.lower, name_mapper),
+        None if priority.condition is None else _rename_formula(priority.condition, name_mapper),
+        priority.source,
+    )
+
+
+def _rename_formula(formula: LtlfFormula, name_mapper: NameMapper) -> LtlfFormula:
+    if isinstance(formula, Proposition):
+        return Proposition(formula.source, name_mapper(formula.name))
+    if isinstance(formula, (Top, Bottom)):
+        return formula
+    if isinstance(formula, Relation):
+        return Relation(
+            formula.op,
+            _rename_term(formula.left, name_mapper),
+            _rename_term(formula.right, name_mapper),
+            formula.source,
+        )
+    if isinstance(formula, Truth):
+        return Truth(_rename_term(formula.value, name_mapper), formula.source)
+    if isinstance(formula, IsVariant):
+        return IsVariant(
+            _rename_term(formula.value, name_mapper),
+            formula.variant,
+            formula.source,
+        )
+    if isinstance(formula, Not):
+        return Not(_rename_formula(formula.operand, name_mapper), formula.source)
+    if isinstance(formula, And):
+        return And(
+            *(_rename_formula(operand, name_mapper) for operand in formula.operands),
+            source=formula.source,
+        )
+    if isinstance(formula, Or):
+        return Or(
+            *(_rename_formula(operand, name_mapper) for operand in formula.operands),
+            source=formula.source,
+        )
+    if isinstance(formula, Next):
+        return Next(_rename_formula(formula.operand, name_mapper), formula.source)
+    if isinstance(formula, Until):
+        return Until(
+            _rename_formula(formula.left, name_mapper),
+            _rename_formula(formula.right, name_mapper),
+            formula.source,
+        )
+    if isinstance(formula, Eventually):
+        return Eventually(_rename_formula(formula.operand, name_mapper), formula.source)
+    if isinstance(formula, Always):
+        return Always(_rename_formula(formula.operand, name_mapper), formula.source)
+    if isinstance(formula, IfFormula):
+        return IfFormula(
+            _rename_formula(formula.condition, name_mapper),
+            _rename_formula(formula.then_branch, name_mapper),
+            _rename_formula(formula.else_branch, name_mapper),
+            formula.source,
+        )
+    if isinstance(formula, CaseFormula):
+        return CaseFormula(
+            _rename_term(formula.value, name_mapper),
+            {
+                name: _rename_formula(branch, name_mapper)
+                for name, branch in formula.cases
+            },
+            formula.source,
+        )
+
+    raise TypeError(f"Unsupported LTLf formula: {formula!r}")
+
+
+def _rename_term(term: Term, name_mapper: NameMapper) -> Term:
+    if isinstance(term, Variable):
+        return Variable(name_mapper(term.name), term.type, term.source)
+    if isinstance(term, Const):
+        return term
+    if isinstance(term, Arithmetic):
+        return Arithmetic(
+            term.op,
+            _rename_term(term.left, name_mapper),
+            _rename_term(term.right, name_mapper),
+            term.source,
+        )
+    if isinstance(term, StringLength):
+        return StringLength(_rename_term(term.value, name_mapper), term.source)
+    if isinstance(term, StringCharAt):
+        return StringCharAt(
+            _rename_term(term.value, name_mapper),
+            _rename_term(term.index, name_mapper),
+            term.source,
+        )
+    if isinstance(term, ProductConstruct):
+        return ProductConstruct(
+            term.type,
+            {
+                name: _rename_term(field_value, name_mapper)
+                for name, field_value in term.fields
+            },
+            term.source,
+        )
+    if isinstance(term, VariantConstruct):
+        return VariantConstruct(
+            term.type,
+            term.variant,
+            None if term.payload is None else _rename_term(term.payload, name_mapper),
+            term.source,
+        )
+    if isinstance(term, FieldAccess):
+        return FieldAccess(
+            _rename_term(term.value, name_mapper),
+            term.field_name,
+            term.source,
+        )
+    if isinstance(term, VariantPayload):
+        return VariantPayload(
+            _rename_term(term.value, name_mapper),
+            term.variant,
+            term.source,
+        )
+    if isinstance(term, IfExpr):
+        return IfExpr(
+            _rename_formula(term.condition, name_mapper),
+            _rename_term(term.then_branch, name_mapper),
+            _rename_term(term.else_branch, name_mapper),
+            term.source,
+        )
+    if isinstance(term, CaseExpr):
+        return CaseExpr(
+            _rename_term(term.value, name_mapper),
+            {
+                name: _rename_term(branch, name_mapper)
+                for name, branch in term.cases
+            },
+            term.source,
+        )
+    if isinstance(term, FunctionCall):
+        return FunctionCall(
+            term.function,
+            tuple(_rename_term(argument, name_mapper) for argument in term.arguments),
+            term.source,
+        )
+
+    raise TypeError(f"Unsupported term: {term!r}")
 
 
 def _norm_formulas(
