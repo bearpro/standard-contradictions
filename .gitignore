@@ -5,3 +5,5 @@
 **/.env*
 **/data/*
 **/data/!gitignore
+
+.codex

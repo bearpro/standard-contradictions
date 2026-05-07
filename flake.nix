@@ -30,6 +30,10 @@
               pkgs.z3
               pkgs.fsautocomplete
               pkgs.basedpyright
+              pkgs.tree-sitter
+              pkgs.nodejs
+              pkgs.neovim
+              pkgs.gcc
             ];
 
             DOTNET_ROOT = "${dotnet}";
