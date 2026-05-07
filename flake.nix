@@ -5,23 +5,66 @@
 
   outputs = { nixpkgs, ... }:
     let
+      lib = nixpkgs.lib;
       systems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs systems;
+      forAllSystems = lib.genAttrs systems;
+      pkgsFor = system: import nixpkgs { inherit system; };
+      mdlFor = pkgs:
+        let
+          python = pkgs.python315;
+        in
+        python.pkgs.buildPythonPackage {
+          pname = "mdl-ddl-ltlf";
+          version = "0.1.0";
+          src = ./mdl-v3;
+          pyproject = true;
+
+          build-system = with python.pkgs; [
+            setuptools
+            wheel
+          ];
+
+          pythonImportsCheck = [ "mdl" ];
+
+          meta = {
+            description = "MDL / DDL-LTLf modelling language toolkit";
+            license = lib.licenses.mit;
+            mainProgram = "mdl";
+          };
+        };
     in
     {
+      formatter = forAllSystems (system:
+        let
+          pkgs = pkgsFor system;
+        in
+        pkgs.nixpkgs-fmt);
+
+      packages = forAllSystems (system:
+        let
+          pkgs = pkgsFor system;
+          mdl = mdlFor pkgs;
+        in
+        {
+          inherit mdl;
+          default = mdl;
+        });
+
       devShells = forAllSystems (system:
         let
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = pkgsFor system;
           dotnet = pkgs.dotnet-sdk_10;
           python = pkgs.python315;
           jre = pkgs.jre_headless;
+          mdl = mdlFor pkgs;
         in
         {
           default = pkgs.mkShell {
             packages = [
+              mdl
               dotnet
               python
               pkgs.uv
