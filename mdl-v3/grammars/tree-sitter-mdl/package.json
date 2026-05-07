@@ -1,0 +1,17 @@
+{
+  "name": "tree-sitter-mdl",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for MDL / DDL-LTLf.",
+  "main": "bindings/node",
+  "keywords": ["tree-sitter", "mdl", "ddl-ltlf"],
+  "license": "MIT",
+  "devDependencies": {
+    "tree-sitter-cli": "^0.22.0"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.mdl",
+      "file-types": ["mdl"]
+    }
+  ]
+}

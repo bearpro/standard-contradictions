@@ -1,0 +1,68 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MDL",
+  "scopeName": "source.mdl",
+  "patterns": [
+    {"include": "#comments"},
+    {"include": "#annotations"},
+    {"include": "#strings"},
+    {"include": "#numbers"},
+    {"include": "#keywords"},
+    {"include": "#operators"},
+    {"include": "#types"},
+    {"include": "#identifiers"}
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {"name": "comment.line.number-sign.mdl", "match": "#.*$"},
+        {"name": "comment.line.double-slash.mdl", "match": "//.*$"},
+        {"name": "comment.block.mdl", "begin": "/\\*", "end": "\\*/"}
+      ]
+    },
+    "annotations": {
+      "patterns": [
+        {"name": "meta.annotation.mdl", "match": "^\\s*@.*$"}
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {"name": "string.quoted.double.mdl", "begin": "\"", "end": "\"", "patterns": [{"name": "constant.character.escape.mdl", "match": "\\\\."}]},
+        {"name": "string.quoted.single.mdl", "begin": "'", "end": "'", "patterns": [{"name": "constant.character.escape.mdl", "match": "\\\\."}]}
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {"name": "constant.numeric.rational.mdl", "match": "\\b[0-9]+/[0-9]+\\b"},
+        {"name": "constant.numeric.decimal.mdl", "match": "\\b[0-9]+\\.[0-9]+\\b"},
+        {"name": "constant.numeric.integer.mdl", "match": "\\b[0-9]+\\b"}
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {"name": "keyword.control.mdl", "match": "\\b(if|then|else|case|switch|when|let|in|forall|exists)\\b"},
+        {"name": "keyword.declaration.mdl", "match": "\\b(module|import|as|exposing|private|public|type|val|func|entity|event|rule|strict|defeasible|defeater|priority|override|fact|assert|align|to)\\b"},
+        {"name": "keyword.operator.temporal.mdl", "match": "\\b(always|eventually|next|weak_next|never|until|release|weak_until|last)\\b"},
+        {"name": "keyword.operator.deontic.mdl", "match": "\\b(O|P|F)\\b"},
+        {"name": "constant.language.boolean.mdl", "match": "\\b(true|false)\\b"}
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {"name": "keyword.operator.logical.mdl", "match": "\\b(and|or|not|implies|iff)\\b"},
+        {"name": "keyword.operator.symbolic.mdl", "match": "(->|<->|=>|<=|>=|!=|==|=|<|>|\\+|-|\\*|/|%)"}
+      ]
+    },
+    "types": {
+      "patterns": [
+        {"name": "support.type.primitive.mdl", "match": "\\b(bool|int|rat|string|char|date|time|duration|unit)\\b"},
+        {"name": "entity.name.type.mdl", "match": "\\b[A-Z][A-Za-z0-9_']*\\b"}
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {"name": "variable.other.mdl", "match": "\\b[a-z_][A-Za-z0-9_']*\\b"}
+      ]
+    }
+  }
+}

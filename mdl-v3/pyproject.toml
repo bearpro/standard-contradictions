@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mdl-ddl-ltlf"
+version = "0.1.0"
+description = "MDL / DDL-LTLf modelling language toolkit: translator, runtime, linter, LSP and aligner."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "MDL contributors"}]
+license = {text = "MIT"}
+keywords = ["DDL-LTLf", "deontic logic", "LTLf", "normative documents", "language"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Software Development :: Compilers",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+mdl = "mdl.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

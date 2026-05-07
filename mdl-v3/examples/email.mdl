@@ -1,0 +1,38 @@
+@ rfc2822
+module email
+
+import std.system.strings as strings
+
+private type ProcessingState = LocalPart | Domain
+
+private func process_email(
+    email: List<string>,
+    state: ProcessingState
+) -> bool:
+    case email:
+    | List.Cons(char, tail):
+        if state = LocalPart and char = "@"
+        then process_email(tail, Domain)
+        else if char = "@" then false else process_email(tail, state)
+    | List.Empty:
+        true
+
+private func email_is_correct(email: string) -> bool:
+    let char_list = strings.to_list(email)
+    let state = LocalPart
+    process_email(char_list, state)
+
+entity email: string
+
+event email_received(email: string)
+
+@ 3.4.1. Addr-spec specification
+rule O email_addr_spec_correct = email_is_correct(email) always
+
+rule F malformed_email_received = { email_received(email) and not email_is_correct(email) } eventually
+
+align email to <urn:ietf:rfc:2822:addr-spec> equivalent
+
+fact email = "ti@example.org"
+
+assert email_is_correct(email) eventually

@@ -34,6 +34,7 @@
               pkgs.nodejs
               pkgs.neovim
               pkgs.gcc
+              pkgs.vsce
             ];
 
             DOTNET_ROOT = "${dotnet}";

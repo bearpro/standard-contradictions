@@ -1,0 +1,9 @@
+module pipe_spec
+
+type Pipe = { length: rat, radius: rat }
+
+entity pipe: Pipe
+
+rule O pipe_length_positive = pipe.length > 0 always
+
+fact pipe = { length = 10, radius = 2, }
