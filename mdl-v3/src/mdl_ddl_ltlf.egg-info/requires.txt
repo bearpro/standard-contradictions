@@ -1,3 +1,8 @@
 
+[align]
+pandas>=3.0.2
+valentine>=0.5.0
+bdi-kit>=0.10.0
+
 [dev]
 pytest>=8

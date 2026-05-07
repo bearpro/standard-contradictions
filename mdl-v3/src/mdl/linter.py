@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections import defaultdict
-
 from . import ast as A
 from .diagnostics import Diagnostic, ParseError
 from .parser import parse

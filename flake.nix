@@ -12,9 +12,107 @@
       ];
       forAllSystems = lib.genAttrs systems;
       pkgsFor = system: import nixpkgs { inherit system; };
+      mdlPythonPackagesFor = pkgs:
+        let
+          # Valentine currently declares support below Python 3.15.
+          python = pkgs.python312;
+          py = python.pkgs;
+          potNoCheck = py.pot.overridePythonAttrs (_old: {
+            doCheck = false;
+          });
+          valentine = py.buildPythonPackage rec {
+            pname = "valentine";
+            version = "0.5.0";
+            pyproject = true;
+
+            src = py.fetchPypi {
+              inherit pname version;
+              hash = "sha256-N+q+pYLg467lC85k7idNDy9wloK1Bj1yeqSy9tjuBFA=";
+            };
+
+            build-system = with py; [
+              setuptools
+            ];
+
+            dependencies = (with py; [
+              anytree
+              chardet
+              jellyfish
+              networkx
+              nltk
+              numpy
+              pandas
+              pulp
+              python-dateutil
+              scipy
+            ]) ++ [
+              potNoCheck
+            ];
+
+            # nixpkgs currently has slightly older compatible builds than
+            # Valentine declares for these two packages.
+            pythonRelaxDeps = [
+              "chardet"
+              "nltk"
+            ];
+
+            doCheck = false;
+            pythonImportsCheck = [
+              "valentine"
+              "valentine.algorithms"
+            ];
+          };
+          bdikit = py.buildPythonPackage rec {
+            pname = "bdi-kit";
+            version = "0.10.0";
+            pyproject = true;
+
+            src = pkgs.fetchurl {
+              url = "https://files.pythonhosted.org/packages/ba/e8/a51c8fdb3d65ad55af311209f24b291c6e051ed4831060259523a6197252/bdi_kit-0.10.0.tar.gz";
+              hash = "sha256-c2dPKI8LDM8u4rqkmz8WnAAlaimvVGMszlQ4yVTZmC4=";
+            };
+
+            build-system = with py; [
+              setuptools
+              wheel
+            ];
+
+            # mdl align only needs the BDI schema-matching adapter. The default
+            # package metadata pulls chatbot/value-matching extras that are not
+            # available in nixpkgs and are unrelated to the matcher backend.
+            postPatch = ''
+              printf '%s\n' \
+                numpy \
+                pandas \
+                'valentine>=0.5.0' \
+                > requirements.txt
+
+              printf '%s\n' '__version__ = "0.10.0"' > bdikit/__init__.py
+            '';
+
+            dependencies = with py; [
+              numpy
+              pandas
+              valentine
+            ];
+
+            doCheck = false;
+            pythonImportsCheck = [
+              "bdikit.schema_matching.valentine"
+            ];
+          };
+        in
+        {
+          inherit
+            python
+            valentine
+            bdikit
+            ;
+        };
       mdlFor = pkgs:
         let
-          python = pkgs.python315;
+          mdlPythonPackages = mdlPythonPackagesFor pkgs;
+          python = mdlPythonPackages.python;
         in
         python.pkgs.buildPythonPackage {
           pname = "mdl-ddl-ltlf";
@@ -27,7 +125,17 @@
             wheel
           ];
 
-          pythonImportsCheck = [ "mdl" ];
+          dependencies = with python.pkgs; [
+            pandas
+            mdlPythonPackages.valentine
+            mdlPythonPackages.bdikit
+          ];
+
+          pythonImportsCheck = [
+            "mdl"
+            "valentine"
+            "bdikit.schema_matching.valentine"
+          ];
 
           meta = {
             description = "MDL / DDL-LTLf modelling language toolkit";
@@ -57,22 +165,29 @@
         let
           pkgs = pkgsFor system;
           dotnet = pkgs.dotnet-sdk_10;
-          python = pkgs.python315;
           jre = pkgs.jre_headless;
           mdl = mdlFor pkgs;
+          mdlPythonPackages = mdlPythonPackagesFor pkgs;
+          pythonEnv = mdlPythonPackages.python.withPackages (ps: [
+            mdl
+            mdlPythonPackages.valentine
+            mdlPythonPackages.bdikit
+            ps.pytest
+          ]);
         in
         {
           default = pkgs.mkShell {
             packages = [
               mdl
               dotnet
-              python
+              pythonEnv
               pkgs.uv
               pkgs.antlr4
               jre
               pkgs.z3
               pkgs.fsautocomplete
               pkgs.basedpyright
+              pkgs.ruff
               pkgs.tree-sitter
               pkgs.nodejs
               pkgs.neovim

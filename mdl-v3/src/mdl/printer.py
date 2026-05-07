@@ -26,7 +26,13 @@ class PrettyPrinter:
         return "\n".join(parts).rstrip() + "\n"
 
     def annotations(self, annotations: list[str]) -> list[str]:
-        return [f"@ {ann}" for ann in annotations]
+        lines: list[str] = []
+        for ann in annotations:
+            if ann.startswith("#"):
+                lines.append(ann)
+            else:
+                lines.append(f"@ {ann}")
+        return lines
 
     def import_decl(self, decl: A.ImportDecl) -> str:
         prefix = "\n".join(self.annotations(decl.annotations))

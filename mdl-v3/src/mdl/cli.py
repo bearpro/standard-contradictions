@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__, ast as A
-from .aligner import suggest_alignments
-from .core import to_json, translate
+from .aligner import AlignmentOptions, align_modules, render_alignment_module
+from .core import to_json
 from .diagnostics import MDLError, ParseError
 from .linter import lint_source
 from .lsp import run_stdio
@@ -79,21 +79,35 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_align(args: argparse.Namespace) -> int:
-    modules = [parse(read_file(path)) for path in args.files]
-    report = suggest_alignments(modules, threshold=args.threshold)
+    left, right = [parse(read_file(path)) for path in args.files]
+    accept_threshold = args.threshold if args.threshold is not None else args.accept_threshold
+    candidate_threshold = min(args.candidate_threshold, accept_threshold)
+    options = AlignmentOptions(
+        matcher=args.matcher,
+        candidate_threshold=candidate_threshold,
+        accept_threshold=accept_threshold,
+        left_alias=args.left_alias,
+        right_alias=args.right_alias,
+    )
+    report = align_modules(left, right, options)
+    alignment_module = render_alignment_module(
+        report,
+        module_name=args.module_name,
+        left_alias=args.left_alias,
+        right_alias=args.right_alias,
+    )
+    source = format_module(alignment_module)
+    payload = json.dumps(report.to_dict(), ensure_ascii=False, indent=2)
+
+    if args.output:
+        write_or_print(source, args.output)
+    if args.report:
+        write_or_print(payload + "\n", args.report)
+
     if args.json:
-        print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
-    else:
-        if report.explicit:
-            print("Explicit alignments:")
-            for row in report.explicit:
-                print(f"  {row['module']}: {row['subject']} -> {row['target']} ({row['kind']})")
-        if report.suggestions:
-            print("Suggestions:")
-            for suggestion in report.suggestions:
-                print(f"  {suggestion.left.qualified} ~= {suggestion.right.qualified}  score={suggestion.score:.3f}  {suggestion.reason}")
-        if not report.explicit and not report.suggestions:
-            print("No alignments found.")
+        print(payload)
+    elif not args.output:
+        print(source, end="")
     return 0
 
 
@@ -130,10 +144,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--expr", help="expression to evaluate after applying facts")
     p.set_defaults(func=cmd_run)
 
-    p = sub.add_parser("align", help="print explicit alignments and heuristic suggestions")
-    p.add_argument("files", nargs="+")
-    p.add_argument("--threshold", type=float, default=0.78)
-    p.add_argument("--json", action="store_true")
+    p = sub.add_parser("align", help="align two MDL modules and render an alignment module")
+    p.add_argument("files", nargs=2)
+    p.add_argument("--matcher", choices=["auto", "builtin", "valentine:coma_py", "bdikit:coma"], default="auto")
+    p.add_argument("--candidate-threshold", type=float, default=0.55)
+    p.add_argument("--accept-threshold", type=float, default=0.75)
+    p.add_argument("--threshold", type=float, help=argparse.SUPPRESS)
+    p.add_argument("--left-alias", default="m1")
+    p.add_argument("--right-alias", default="m2")
+    p.add_argument("--module-name")
+    p.add_argument("-o", "--output")
+    p.add_argument("--report")
+    p.add_argument("--json", action="store_true", help="print the machine-readable alignment report")
     p.set_defaults(func=cmd_align)
 
     p = sub.add_parser("lsp", help="run stdio language server")

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from fractions import Fraction
 from typing import Any, Callable
 
 from . import ast as A
