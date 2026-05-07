@@ -1,0 +1,6 @@
+.vscode/**
+.vscode-test/**
+*.vsix
+npm-debug.log
+yarn-error.log
+node_modules/.cache/**

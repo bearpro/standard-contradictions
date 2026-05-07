@@ -1,1 +1,3 @@
 __pycache__/
+dist/
+grammars/vscode/node_modules/

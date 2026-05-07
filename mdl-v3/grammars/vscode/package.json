@@ -1,11 +1,38 @@
 {
   "name": "mdl-language-support",
   "displayName": "MDL / DDL-LTLf Language Support",
-  "description": "Syntax highlighting and language configuration for MDL normative models.",
+  "description": "Syntax highlighting, language configuration and LSP diagnostics for MDL normative models.",
   "version": "0.1.0",
   "publisher": "mdl",
-  "engines": {"vscode": "^1.80.0"},
-  "categories": ["Programming Languages"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/bearpro/standard-contradictions.git",
+    "directory": "mdl-v3/grammars/vscode"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:mdl"
+  ],
+  "main": "./extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "scripts": {
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.1"
+  },
   "contributes": {
     "languages": [
       {
@@ -20,6 +47,45 @@
         "language": "mdl",
         "scopeName": "source.mdl",
         "path": "./syntaxes/mdl.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "MDL",
+      "properties": {
+        "mdl.lsp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the MDL language server."
+        },
+        "mdl.lsp.command": {
+          "type": "string",
+          "default": "mdl",
+          "description": "Command used to start the MDL language server."
+        },
+        "mdl.lsp.args": {
+          "type": "array",
+          "default": [
+            "lsp"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments passed to the MDL language server command."
+        },
+        "mdl.lsp.cwd": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Working directory for the MDL language server process."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "mdl.restartLanguageServer",
+        "title": "MDL: Restart Language Server"
       }
     ]
   }
