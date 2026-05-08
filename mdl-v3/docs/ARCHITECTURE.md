@@ -8,6 +8,7 @@ source .mdl
   -> public Python AST (`mdl.ast` dataclasses)
   -> formatter / linter / runtime / aligner
   -> DDL-LTLf core JSON
+  -> bounded Z3 solver
 ```
 
 ## Python-first model inference
@@ -28,8 +29,13 @@ Subcommands:
 - `translate`: backend-agnostic DDL-LTLf core JSON;
 - `run`: point-wise runtime for pure term expressions and facts;
 - `align`: explicit and heuristic semantic alignments;
+- `solve`: bounded DDL-LTLf solve via Z3, returning JSON conflicts or a witness trace;
 - `lsp`: stdio language server.
 
 ## Runtime scope
 
 The runtime is point-wise and deterministic. It evaluates ordinary pure functions, records, lists, pattern matching and facts. It intentionally does not model full temporal semantics; temporal formulas are translated to the core layer and should be consumed by a dedicated DDL-LTLf/model-checking backend.
+
+## Solver scope
+
+The solver encodes a finite trace horizon into Z3. It accepts multiple modules, resolves imports among the input modules, ignores `assert` and declarative `align` entries, and treats alignment modules as ordinary rules. Use `--horizon K` for one bounded check or `--max-horizon N` to search `1..N`.

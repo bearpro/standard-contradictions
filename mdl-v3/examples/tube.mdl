@@ -4,5 +4,4 @@ type Tube = { length: rat, r: rat }
 
 entity tube: Tube
 
-rule O r1 = pipe.length > 0 always
-
+rule O r1 = tube.length > 0 always

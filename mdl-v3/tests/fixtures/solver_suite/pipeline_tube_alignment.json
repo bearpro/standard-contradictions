@@ -1,0 +1,831 @@
+{
+  "left_module": "fixture_pipeline_spec",
+  "right_module": "fixture_tube_model",
+  "accepted": [
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.length",
+      "right": "fixture_tube_model.tube.length",
+      "score": 0.8,
+      "matcher": "builtin",
+      "reason": "name=1.00; type=1.00; parent=0.09; path=0.47",
+      "accepted": true,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.length",
+        "qualified": "fixture_pipeline_spec.pipe.length",
+        "name": "length",
+        "parent": "pipe",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "pipe",
+            "length"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.length",
+        "qualified": "fixture_tube_model.tube.length",
+        "name": "length",
+        "parent": "tube",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "tube",
+            "length"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.pressure",
+      "right": "fixture_tube_model.tube.pressure",
+      "score": 0.8,
+      "matcher": "builtin",
+      "reason": "name=1.00; type=1.00; parent=0.09; path=0.49",
+      "accepted": true,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.pressure",
+        "qualified": "fixture_pipeline_spec.pipe.pressure",
+        "name": "pressure",
+        "parent": "pipe",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "pipe",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.pressure",
+        "qualified": "fixture_tube_model.tube.pressure",
+        "name": "pressure",
+        "parent": "tube",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "tube",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.length",
+      "right": "fixture_tube_model.tube.length",
+      "score": 0.8,
+      "matcher": "builtin",
+      "reason": "name=1.00; type=1.00; parent=0.09; path=0.47",
+      "accepted": true,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.length",
+        "qualified": "fixture_pipeline_spec.pipe.length",
+        "name": "length",
+        "parent": "pipe",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "pipe",
+            "length"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.length",
+        "qualified": "fixture_tube_model.tube.length",
+        "name": "length",
+        "parent": "tube",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "tube",
+            "length"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.pressure",
+      "right": "fixture_tube_model.tube.pressure",
+      "score": 0.8,
+      "matcher": "builtin",
+      "reason": "name=1.00; type=1.00; parent=0.09; path=0.49",
+      "accepted": true,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.pressure",
+        "qualified": "fixture_pipeline_spec.pipe.pressure",
+        "name": "pressure",
+        "parent": "pipe",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "pipe",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.pressure",
+        "qualified": "fixture_tube_model.tube.pressure",
+        "name": "pressure",
+        "parent": "tube",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "tube",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.radius",
+      "right": "fixture_tube_model.tube.r",
+      "score": 0.326,
+      "matcher": "builtin",
+      "reason": "name=0.10; type=1.00; parent=0.09; path=0.12",
+      "accepted": false,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.radius",
+        "qualified": "fixture_pipeline_spec.pipe.radius",
+        "name": "radius",
+        "parent": "pipe",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "radius"
+          ],
+          "path_tokens": [
+            "pipe",
+            "radius"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.r",
+        "qualified": "fixture_tube_model.tube.r",
+        "name": "r",
+        "parent": "tube",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "r"
+          ],
+          "path_tokens": [
+            "tube",
+            "r"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.radius",
+      "right": "fixture_tube_model.tube.pressure",
+      "score": 0.325,
+      "matcher": "builtin",
+      "reason": "name=0.10; type=1.00; parent=0.09; path=0.12",
+      "accepted": false,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.radius",
+        "qualified": "fixture_pipeline_spec.pipe.radius",
+        "name": "radius",
+        "parent": "pipe",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "radius"
+          ],
+          "path_tokens": [
+            "pipe",
+            "radius"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.pressure",
+        "qualified": "fixture_tube_model.tube.pressure",
+        "name": "pressure",
+        "parent": "tube",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "tube",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.pressure",
+      "right": "fixture_tube_model.tube.r",
+      "score": 0.315,
+      "matcher": "builtin",
+      "reason": "name=0.08; type=1.00; parent=0.09; path=0.11",
+      "accepted": false,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.pressure",
+        "qualified": "fixture_pipeline_spec.pipe.pressure",
+        "name": "pressure",
+        "parent": "pipe",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "pipe",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.r",
+        "qualified": "fixture_tube_model.tube.r",
+        "name": "r",
+        "parent": "tube",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "r"
+          ],
+          "path_tokens": [
+            "tube",
+            "r"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.length",
+      "right": "fixture_tube_model.tube.pressure",
+      "score": 0.301,
+      "matcher": "builtin",
+      "reason": "name=0.05; type=1.00; parent=0.09; path=0.09",
+      "accepted": false,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.length",
+        "qualified": "fixture_pipeline_spec.pipe.length",
+        "name": "length",
+        "parent": "pipe",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "pipe",
+            "length"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.pressure",
+        "qualified": "fixture_tube_model.tube.pressure",
+        "name": "pressure",
+        "parent": "tube",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "tube",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.pressure",
+      "right": "fixture_tube_model.tube.length",
+      "score": 0.301,
+      "matcher": "builtin",
+      "reason": "name=0.05; type=1.00; parent=0.09; path=0.09",
+      "accepted": false,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.pressure",
+        "qualified": "fixture_pipeline_spec.pipe.pressure",
+        "name": "pressure",
+        "parent": "pipe",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "pipe",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.length",
+        "qualified": "fixture_tube_model.tube.length",
+        "name": "length",
+        "parent": "tube",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "tube",
+            "length"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.length",
+      "right": "fixture_tube_model.tube.r",
+      "score": 0.28,
+      "matcher": "builtin",
+      "reason": "name=0.00; type=1.00; parent=0.09; path=0.08",
+      "accepted": false,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.length",
+        "qualified": "fixture_pipeline_spec.pipe.length",
+        "name": "length",
+        "parent": "pipe",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "pipe",
+            "length"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.r",
+        "qualified": "fixture_tube_model.tube.r",
+        "name": "r",
+        "parent": "tube",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "r"
+          ],
+          "path_tokens": [
+            "tube",
+            "r"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.radius",
+      "right": "fixture_tube_model.tube.length",
+      "score": 0.277,
+      "matcher": "builtin",
+      "reason": "name=0.00; type=1.00; parent=0.09; path=0.06",
+      "accepted": false,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.radius",
+        "qualified": "fixture_pipeline_spec.pipe.radius",
+        "name": "radius",
+        "parent": "pipe",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "radius"
+          ],
+          "path_tokens": [
+            "pipe",
+            "radius"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.length",
+        "qualified": "fixture_tube_model.tube.length",
+        "name": "length",
+        "parent": "tube",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "tube",
+            "length"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    }
+  ],
+  "explicit": [],
+  "diagnostics": [],
+  "suggestions": [
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.length",
+      "right": "fixture_tube_model.tube.length",
+      "score": 0.8,
+      "matcher": "builtin",
+      "reason": "name=1.00; type=1.00; parent=0.09; path=0.47",
+      "accepted": true,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.length",
+        "qualified": "fixture_pipeline_spec.pipe.length",
+        "name": "length",
+        "parent": "pipe",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "pipe",
+            "length"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.length",
+        "qualified": "fixture_tube_model.tube.length",
+        "name": "length",
+        "parent": "tube",
+        "type": "rat",
+        "metadata": {
+          "tokens": [
+            "length"
+          ],
+          "path_tokens": [
+            "tube",
+            "length"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "rat"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    },
+    {
+      "kind": "field",
+      "left": "fixture_pipeline_spec.pipe.pressure",
+      "right": "fixture_tube_model.tube.pressure",
+      "score": 0.8,
+      "matcher": "builtin",
+      "reason": "name=1.00; type=1.00; parent=0.09; path=0.49",
+      "accepted": true,
+      "left_element": {
+        "kind": "field",
+        "module": "fixture_pipeline_spec",
+        "path": "pipe.pressure",
+        "qualified": "fixture_pipeline_spec.pipe.pressure",
+        "name": "pressure",
+        "parent": "pipe",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "pipe",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "pipe"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      },
+      "right_element": {
+        "kind": "field",
+        "module": "fixture_tube_model",
+        "path": "tube.pressure",
+        "qualified": "fixture_tube_model.tube.pressure",
+        "name": "pressure",
+        "parent": "tube",
+        "type": "int",
+        "metadata": {
+          "tokens": [
+            "pressure"
+          ],
+          "path_tokens": [
+            "tube",
+            "pressure"
+          ],
+          "parent_tokens": [
+            "tube"
+          ],
+          "type_tokens": [
+            "int"
+          ],
+          "normalized_type": "number",
+          "cardinality": "single",
+          "relation_target": null
+        }
+      }
+    }
+  ]
+}

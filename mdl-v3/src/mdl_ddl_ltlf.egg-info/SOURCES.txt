@@ -26,6 +26,7 @@ src/mdl/lsp.py
 src/mdl/parser.py
 src/mdl/printer.py
 src/mdl/runtime.py
+src/mdl/solver.py
 src/mdl_ddl_ltlf.egg-info/PKG-INFO
 src/mdl_ddl_ltlf.egg-info/SOURCES.txt
 src/mdl_ddl_ltlf.egg-info/dependency_links.txt
@@ -37,4 +38,11 @@ tests/test_builder.py
 tests/test_linter.py
 tests/test_parser.py
 tests/test_runtime.py
+tests/test_solver_fixture_suite.py
+tests/test_solver.py
 tests/test_translate.py
+tests/fixtures/solver_suite/pipeline_spec.mdl
+tests/fixtures/solver_suite/pipeline_tube_alignment.json
+tests/fixtures/solver_suite/pipeline_tube_alignment.mdl
+tests/fixtures/solver_suite/policy_exceptions.mdl
+tests/fixtures/solver_suite/tube_model.mdl

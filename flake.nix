@@ -126,13 +126,23 @@
           ];
 
           dependencies = with python.pkgs; [
+            z3-solver
             pandas
             mdlPythonPackages.valentine
             mdlPythonPackages.bdikit
           ];
 
+          pythonRelaxDeps = [
+            "z3-solver"
+          ];
+
+          pythonRemoveDeps = [
+            "z3-solver"
+          ];
+
           pythonImportsCheck = [
             "mdl"
+            "z3"
             "valentine"
             "bdikit.schema_matching.valentine"
           ];

@@ -1,0 +1,13 @@
+module alignment_pipe_spec_tube
+
+import pipe_spec as m1
+import tube as m2
+
+# align kind=field score=0.583 matcher=bdikit:coma
+rule O alignment_001 = { m1.pipe.length = m2.tube.length } always
+
+# align kind=field score=0.266 matcher=bdikit:coma
+rule O alignment_002 = { m1.pipe.radius = m2.tube.r } always
+
+# align kind=entity score=0.100 matcher=bdikit:coma
+rule O alignment_003 = { m1.pipe = m2.tube } always

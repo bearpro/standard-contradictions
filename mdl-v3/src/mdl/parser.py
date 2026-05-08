@@ -538,6 +538,10 @@ class Parser:
                 left = A.TemporalBinary(op=op, left=left, right=right, line=tok.line, column=tok.column)
             else:
                 left = A.BinaryOp(op="=" if op == "==" else op, left=left, right=right, line=tok.line, column=tok.column)
+        if min_prec == 0:
+            while self.current().value in TEMPORAL_POSTFIX:
+                tok = self.advance()
+                left = A.TemporalUnary(op=tok.value, operand=left, position="postfix", line=tok.line, column=tok.column)
         return left
 
     def parse_prefix_expr(self) -> A.Expr:
@@ -649,10 +653,6 @@ class Parser:
                 idx = self.parse_expr()
                 self.expect_value("]")
                 expr = A.IndexAccess(target=expr, index=idx, line=tok.line, column=tok.column)
-                continue
-            if tok.value in TEMPORAL_POSTFIX:
-                self.advance()
-                expr = A.TemporalUnary(op=tok.value, operand=expr, position="postfix", line=tok.line, column=tok.column)
                 continue
             break
         return expr

@@ -15,6 +15,7 @@ from .lsp import run_stdio
 from .parser import parse
 from .printer import format_module
 from .runtime import Runtime
+from .solver import SolveOptions, solve_paths
 
 
 def read_file(path: str) -> str:
@@ -111,6 +112,24 @@ def cmd_align(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_solve(args: argparse.Namespace) -> int:
+    payload = solve_paths(
+        args.files,
+        SolveOptions(
+            horizon=args.horizon,
+            max_horizon=args.max_horizon,
+            permission=args.permission,
+            max_conflicts=args.max_conflicts,
+        ),
+    )
+    print(json.dumps(payload, ensure_ascii=False, indent=2, default=json_default))
+    if payload["status"] == "sat":
+        return 0
+    if payload["status"] == "unsat":
+        return 1
+    return 2
+
+
 def cmd_lsp(args: argparse.Namespace) -> int:
     return run_stdio()
 
@@ -157,6 +176,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--report")
     p.add_argument("--json", action="store_true", help="print the machine-readable alignment report")
     p.set_defaults(func=cmd_align)
+
+    p = sub.add_parser("solve", help="solve DDL-LTLf constraints with Z3")
+    p.add_argument("files", nargs="+")
+    p.add_argument("--horizon", type=int, help="check exactly one finite trace horizon")
+    p.add_argument("--max-horizon", type=int, default=3, help="search horizons 1..N when --horizon is not set")
+    p.add_argument("--permission", choices=["strong", "ignore"], default="strong")
+    p.add_argument("--max-conflicts", type=int, default=20)
+    p.set_defaults(func=cmd_solve)
 
     p = sub.add_parser("lsp", help="run stdio language server")
     p.set_defaults(func=cmd_lsp)

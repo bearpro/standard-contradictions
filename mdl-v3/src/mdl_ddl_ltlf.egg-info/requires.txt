@@ -1,4 +1,6 @@
 
+z3-solver>=4.13
+
 [align]
 pandas>=3.0.2
 valentine>=0.5.0

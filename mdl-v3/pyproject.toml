@@ -17,7 +17,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Topic :: Software Development :: Compilers",
 ]
-dependencies = []
+dependencies = ["z3-solver>=4.13"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

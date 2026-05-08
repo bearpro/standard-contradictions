@@ -8,6 +8,7 @@ The repository contains:
 - a parser and typed AST dataclasses;
 - a pretty-printer / formatter;
 - a translator to a JSON-like DDL-LTLf core;
+- a bounded Z3 solver for DDL-LTLf consistency checks;
 - a small deterministic runtime for evaluating pure functions and facts;
 - a linter;
 - a minimal stdio LSP server;
@@ -31,6 +32,7 @@ mdl lint examples/email.mdl
 mdl translate examples/email.mdl
 mdl run examples/email.mdl --expr 'email_is_correct(email)'
 mdl align examples/email.mdl examples/pipe.mdl
+mdl solve examples/pipe.mdl examples/tube.mdl examples/alignment.mdl --horizon 1
 mdl lsp
 ```
 
