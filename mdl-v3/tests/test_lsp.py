@@ -48,3 +48,43 @@ ru
     items = LSPServer().completion_items(source, 2, len("ru"))
 
     assert "rule" in labels(items)
+
+
+def test_lsp_completes_imported_alias_fields(tmp_path):
+    imported = tmp_path / "pipe.mdl"
+    imported.write_text("""module pipe_spec
+
+type Pipe = { length: rat, radius: rat }
+entity pipe: Pipe
+""", encoding="utf-8")
+    current = tmp_path / "alignment.mdl"
+    source = """module alignment
+
+import pipe_spec as m1
+
+rule O aligned: m1.
+"""
+    server = LSPServer()
+
+    items = server.completion_items(source, 4, len("rule O aligned: m1."), uri=str(current))
+
+    assert "pipe" in labels(items)
+
+
+def test_lsp_uses_open_document_for_import_completion():
+    source = """module alignment
+
+import pipe_spec as m1
+
+rule O aligned: m1.pipe.
+"""
+    server = LSPServer()
+    server.documents["file:///tmp/pipe.mdl"] = """module pipe_spec
+
+type Pipe = { length: rat, radius: rat }
+entity pipe: Pipe
+"""
+
+    items = server.completion_items(source, 4, len("rule O aligned: m1.pipe."), uri="file:///tmp/alignment.mdl")
+
+    assert labels(items) >= {"length", "radius"}

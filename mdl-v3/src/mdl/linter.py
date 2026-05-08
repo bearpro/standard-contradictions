@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from . import ast as A
 from .diagnostics import Diagnostic, ParseError
@@ -21,14 +23,99 @@ class Symbol:
     node: A.Node | None = None
 
 
+@dataclass
+class ResolvedModule:
+    module: A.Module
+    path: str | None = None
+
+
+def path_to_file(path: str | None) -> Path | None:
+    if not path:
+        return None
+    parsed = urlparse(path)
+    if parsed.scheme == "file":
+        return Path(unquote(parsed.path))
+    if parsed.scheme:
+        return None
+    return Path(path)
+
+
+class ImportResolver:
+    def __init__(self, path: str | None = None, documents: dict[str, str] | None = None):
+        self.path = path
+        self.documents = documents or {}
+        self.cache: dict[str, ResolvedModule | None] = {}
+
+    def resolve(self, import_path: str) -> ResolvedModule | None:
+        if import_path.startswith("std."):
+            return None
+        if import_path in self.cache:
+            return self.cache[import_path]
+
+        resolved = self.resolve_from_documents(import_path) or self.resolve_from_files(import_path)
+        self.cache[import_path] = resolved
+        return resolved
+
+    def resolve_from_documents(self, import_path: str) -> ResolvedModule | None:
+        for uri, text in self.documents.items():
+            try:
+                module = parse(text)
+            except ParseError:
+                continue
+            if module.name == import_path:
+                return ResolvedModule(module, uri)
+        return None
+
+    def resolve_from_files(self, import_path: str) -> ResolvedModule | None:
+        current = path_to_file(self.path)
+        if current is None:
+            return None
+        base_dir = current.resolve().parent if current.suffix else current.resolve()
+        candidates = [
+            base_dir / (import_path.replace(".", "/") + ".mdl"),
+            base_dir / f"{import_path}.mdl",
+            base_dir / f"{import_path.split('.')[-1]}.mdl",
+        ]
+        for candidate in candidates:
+            resolved = self.load_if_module(candidate, import_path)
+            if resolved is not None:
+                return resolved
+        for candidate in sorted(base_dir.glob("*.mdl")):
+            resolved = self.load_if_module(candidate, import_path)
+            if resolved is not None:
+                return resolved
+        return None
+
+    def load_if_module(self, path: Path, import_path: str) -> ResolvedModule | None:
+        if not path.exists() or not path.is_file():
+            return None
+        try:
+            module = parse(path.read_text(encoding="utf-8"))
+        except (OSError, ParseError):
+            return None
+        if module.name == import_path:
+            return ResolvedModule(module, str(path))
+        return None
+
+
 class SemanticChecker:
     """Order-aware symbol checks and lightweight type information for fields."""
 
-    def __init__(self, module: A.Module, path: str | None = None):
+    def __init__(
+        self,
+        module: A.Module,
+        path: str | None = None,
+        *,
+        resolver: ImportResolver | None = None,
+        import_stack: set[str] | None = None,
+    ):
         self.module = module
         self.path = path
+        self.resolver = resolver or ImportResolver(path)
+        self.import_stack = import_stack or {module.name}
         self.diagnostics: list[Diagnostic] = []
         self.imports: set[str] = set()
+        self.resolved_imports: set[str] = set()
         self.imported_names: set[str] = set()
         self.types: dict[str, Symbol] = {
             name: Symbol(name, "type", A.TypeRef(name=name)) for name in sorted(PRIMITIVE_TYPES | COLLECTION_TYPES)
@@ -45,18 +132,143 @@ class SemanticChecker:
 
     def check(self) -> list[Diagnostic]:
         for imp in self.module.imports:
-            alias = imp.alias or imp.path.split(".")[-1]
-            self.imports.add(alias)
-            self.terms[alias] = Symbol(alias, "import", node=imp)
-            for exposed, renamed in imp.exposing:
-                name = renamed or exposed
-                self.imported_names.add(name)
-                self.terms[name] = Symbol(name, "imported", node=imp)
-                self.types[name] = Symbol(name, "imported-type", node=imp)
+            self.register_import(imp)
 
         for decl in self.module.declarations:
             self.check_declaration(decl)
         return self.diagnostics
+
+    def register_import(self, imp: A.ImportDecl) -> None:
+        alias = imp.alias or imp.path.split(".")[-1]
+        self.imports.add(alias)
+        self.terms[alias] = Symbol(alias, "import", node=imp)
+
+        resolved = self.resolver.resolve(imp.path)
+        if resolved is None:
+            if not imp.path.startswith("std."):
+                self.error(f"unresolved import {imp.path!r}", imp, "unresolved-import")
+            self.register_unresolved_exposing(imp)
+            return
+        if resolved.module.name in self.import_stack:
+            self.register_unresolved_exposing(imp)
+            return
+
+        self.resolved_imports.add(alias)
+        imported = SemanticChecker(
+            resolved.module,
+            resolved.path,
+            resolver=self.resolver,
+            import_stack={*self.import_stack, resolved.module.name},
+        )
+        imported.check()
+        self.register_imported_module(alias, imp, imported)
+        self.register_exposing(imp, imported)
+
+    def register_unresolved_exposing(self, imp: A.ImportDecl) -> None:
+        for exposed, renamed in imp.exposing:
+            name = renamed or exposed
+            self.imported_names.add(name)
+            self.terms[name] = Symbol(name, "imported", node=imp)
+            self.types[name] = Symbol(name, "imported-type", node=imp)
+
+    def register_imported_module(self, alias: str, imp: A.ImportDecl, imported: "SemanticChecker") -> None:
+        module_fields: list[tuple[str, A.TypeExpr]] = []
+        for decl in imported.module.declarations:
+            if not isinstance(decl, (A.TypeDecl, A.ValueDecl, A.FuncDecl, A.EntityDecl, A.EventDecl)):
+                continue
+            if decl.visibility != "public":
+                continue
+            if isinstance(decl, A.TypeDecl):
+                qualified_name = f"{alias}.{decl.name}"
+                qualified_type = A.TypeRef(name=qualified_name, line=decl.line, column=decl.column)
+                self.types[qualified_name] = Symbol(qualified_name, "type", qualified_type, decl)
+                self.type_definitions[qualified_name] = self.qualify_type_definition(decl.definition, imported, alias)
+                module_fields.append((decl.name, qualified_type))
+                if isinstance(decl.definition, A.SumType):
+                    for variant in decl.definition.variants:
+                        module_fields.append((variant.name, qualified_type))
+                continue
+            symbol = imported.terms.get(decl.name)
+            typ = self.qualify_type_expr(symbol.type_expr if symbol else None, imported, alias)
+            module_fields.append((decl.name, typ or A.TypeRef(name="unit")))
+        self.terms[alias] = Symbol(alias, "import", A.RecordType(fields=module_fields), imp)
+
+    def register_exposing(self, imp: A.ImportDecl, imported: "SemanticChecker") -> None:
+        for exposed, renamed in imp.exposing:
+            name = renamed or exposed
+            self.imported_names.add(name)
+            if exposed in imported.types:
+                qualified_definition = imported.type_definitions.get(exposed)
+                exposed_type = A.TypeRef(name=name)
+                self.types[name] = Symbol(name, "imported-type", exposed_type, imp)
+                alias = imp.alias or imp.path.split(".")[-1]
+                self.type_definitions[name] = self.qualify_type_definition(qualified_definition, imported, alias)
+            if exposed in imported.terms:
+                symbol = imported.terms[exposed]
+                self.terms[name] = Symbol(
+                    name,
+                    f"imported-{symbol.kind}",
+                    self.qualify_type_expr(symbol.type_expr, imported, imp.alias or imp.path.split(".")[-1]),
+                    imp,
+                )
+
+    def qualify_type_definition(
+        self,
+        definition: A.TypeExpr | A.SumType | None,
+        imported: "SemanticChecker",
+        alias: str,
+    ) -> A.TypeExpr | A.SumType | None:
+        if isinstance(definition, A.SumType):
+            return A.SumType(
+                variants=[
+                    A.Variant(
+                        name=variant.name,
+                        fields=[(label, self.qualify_type_expr(typ, imported, alias) or typ) for label, typ in variant.fields],
+                        line=variant.line,
+                        column=variant.column,
+                    )
+                    for variant in definition.variants
+                ],
+                line=definition.line,
+                column=definition.column,
+            )
+        return self.qualify_type_expr(definition, imported, alias)
+
+    def qualify_type_expr(
+        self,
+        typ: A.TypeExpr | None,
+        imported: "SemanticChecker",
+        alias: str,
+    ) -> A.TypeExpr | None:
+        if typ is None:
+            return None
+        if isinstance(typ, A.TypeRef):
+            root = typ.name.split(".")[0]
+            if typ.name in PRIMITIVE_TYPES or root in COLLECTION_TYPES or root in BUILTIN_ROOTS:
+                name = typ.name
+            elif typ.name in imported.types:
+                name = f"{alias}.{typ.name}"
+            else:
+                name = typ.name
+            return A.TypeRef(
+                name=name,
+                args=[self.qualify_type_expr(arg, imported, alias) or arg for arg in typ.args],
+                line=typ.line,
+                column=typ.column,
+            )
+        if isinstance(typ, A.RecordType):
+            return A.RecordType(
+                fields=[(name, self.qualify_type_expr(field_type, imported, alias) or field_type) for name, field_type in typ.fields],
+                line=typ.line,
+                column=typ.column,
+            )
+        if isinstance(typ, A.TupleType):
+            return A.TupleType(
+                items=[self.qualify_type_expr(item, imported, alias) or item for item in typ.items],
+                line=typ.line,
+                column=typ.column,
+            )
+        return typ
 
     def check_declaration(self, decl: A.Declaration) -> None:
         if isinstance(decl, A.TypeDecl):
@@ -131,10 +343,11 @@ class SemanticChecker:
             return
         if isinstance(typ, A.TypeRef):
             root = typ.name.split(".")[0]
+            imported_type_missing = root in self.resolved_imports and typ.name not in self.types
             if (
                 typ.name not in type_params
                 and typ.name not in self.types
-                and root not in self.imports
+                and (root not in self.imports or imported_type_missing)
                 and root not in BUILTIN_ROOTS
             ):
                 self.error(f"undefined type {typ.name!r}", typ, "undefined-type")
@@ -446,10 +659,16 @@ class SemanticChecker:
 
 
 class Linter:
-    def lint_module(self, module: A.Module, path: str | None = None) -> list[Diagnostic]:
+    def lint_module(
+        self,
+        module: A.Module,
+        path: str | None = None,
+        *,
+        documents: dict[str, str] | None = None,
+    ) -> list[Diagnostic]:
         diagnostics: list[Diagnostic] = []
         diagnostics.extend(self.check_duplicates(module, path))
-        diagnostics.extend(SemanticChecker(module, path).check())
+        diagnostics.extend(SemanticChecker(module, path, resolver=ImportResolver(path, documents)).check())
         diagnostics.extend(self.check_rules(module, path))
         diagnostics.extend(self.check_alignments(module, path))
         diagnostics.extend(self.check_functions(module, path))
@@ -590,9 +809,9 @@ class Linter:
         return False
 
 
-def lint_source(source: str, path: str | None = None) -> list[Diagnostic]:
+def lint_source(source: str, path: str | None = None, documents: dict[str, str] | None = None) -> list[Diagnostic]:
     try:
         module = parse(source)
     except ParseError as exc:
         return [exc.to_diagnostic(path)]
-    return Linter().lint_module(module, path=path)
+    return Linter().lint_module(module, path=path, documents=documents)

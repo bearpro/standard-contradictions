@@ -65,3 +65,49 @@ func later() -> int:
     undefined = [d for d in diagnostics if d.code == "undefined-name"]
     assert len(undefined) == 1
     assert "later" in undefined[0].message
+
+
+def test_linter_resolves_import_alias_fields(tmp_path):
+    imported = tmp_path / "pipe.mdl"
+    imported.write_text('''
+module pipe_spec
+
+type Pipe = { length: rat }
+entity pipe: Pipe
+''', encoding="utf-8")
+    current = tmp_path / "alignment.mdl"
+    source = '''
+module alignment
+
+import pipe_spec as m1
+
+rule O ok: m1.pipe.length > 0 always
+rule O bad: m1.pipe.radius > 0 always
+'''
+
+    diagnostics = lint_source(source, path=str(current))
+
+    assert not any("m1.pipe.length" in d.message for d in diagnostics)
+    assert any(d.code == "unknown-field" and "radius" in d.message for d in diagnostics)
+
+
+def test_linter_resolves_exposed_imported_type(tmp_path):
+    imported = tmp_path / "pipe_model.mdl"
+    imported.write_text('''
+module pipe_spec
+
+type Pipe = { length: rat }
+''', encoding="utf-8")
+    current = tmp_path / "consumer.mdl"
+    source = '''
+module consumer
+
+import pipe_spec exposing (Pipe)
+
+entity pipe: Pipe
+rule O ok: pipe.length > 0 always
+'''
+
+    diagnostics = lint_source(source, path=str(current))
+
+    assert not any(d.severity == "error" for d in diagnostics)

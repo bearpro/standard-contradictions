@@ -6,7 +6,7 @@ import sys
 from typing import Any, BinaryIO
 
 from .lexer import KEYWORDS
-from .linter import SemanticChecker, lint_source
+from .linter import ImportResolver, SemanticChecker, lint_source
 from .parser import ParseError, parse
 
 
@@ -107,15 +107,30 @@ class LSPServer:
             uri = doc.get("uri", "")
             position = params.get("position", {})
             text = self.documents.get(uri, "")
-            self.response(id_, self.completion_items(text, int(position.get("line", 0)), int(position.get("character", 0))))
+            self.response(
+                id_,
+                self.completion_items(
+                    text,
+                    int(position.get("line", 0)),
+                    int(position.get("character", 0)),
+                    uri=uri,
+                ),
+            )
         elif id_ is not None:
             self.response(id_, error={"code": -32601, "message": f"unsupported method {method}"})
 
     def publish_diagnostics(self, uri: str, text: str) -> None:
-        diagnostics = [d.to_lsp() for d in lint_source(text, path=uri)]
+        diagnostics = [d.to_lsp() for d in lint_source(text, path=uri, documents=self.documents)]
         self.notification("textDocument/publishDiagnostics", {"uri": uri, "diagnostics": diagnostics})
 
-    def completion_items(self, text: str, line: int, character: int) -> list[dict[str, Any]]:
+    def completion_items(
+        self,
+        text: str,
+        line: int,
+        character: int,
+        *,
+        uri: str | None = None,
+    ) -> list[dict[str, Any]]:
         prefix = self.line_prefix(text, line, character)
         field_target = self.field_completion_target(prefix)
         try:
@@ -128,7 +143,7 @@ class LSPServer:
                 module = parse(repaired)
             except ParseError:
                 return self.keyword_items()
-        checker = SemanticChecker(module)
+        checker = SemanticChecker(module, uri, resolver=ImportResolver(uri, self.documents))
         checker.check()
         if field_target:
             fields = checker.fields_for_reference(field_target) or {}
