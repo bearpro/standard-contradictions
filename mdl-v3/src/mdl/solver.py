@@ -225,6 +225,7 @@ class SolverProblem:
         self.type_cache: dict[tuple[str, str], TypeSpec] = {}
         self.opaque_sorts: dict[str, Any] = {}
         self.functions: dict[str, Any] = {}
+        self.function_definitions: set[str] = set()
         self._build_scopes()
 
     # ------------------------------------------------------------------
@@ -517,6 +518,7 @@ class BoundedEncoder:
         self.rule_infos = self.problem.all_rules()
         self.rule_labels: dict[str, Any] = {}
         self.rule_applications: dict[str, Any] = {}
+        self.function_definitions_in_progress: set[str] = set()
 
     # ------------------------------------------------------------------
     # Top-level encoding
@@ -803,7 +805,7 @@ class BoundedEncoder:
         if isinstance(expr, A.BinaryOp):
             return self.binary_value(expr, scope, t, expected, env)
         if isinstance(expr, A.IfExpr):
-            cond = self.compile_formula(expr.condition, scope, t)
+            cond = self.compile_formula(expr.condition, scope, t, env=env)
             then_v = self.compile_expr(expr.then_branch, scope, t, expected=expected, env=env)
             else_v = self.compile_expr(expr.else_branch, scope, t, expected=then_v.typ, env=env)
             return self.if_value(cond, then_v, else_v)
@@ -1027,12 +1029,46 @@ class BoundedEncoder:
     def function_symbol(self, func: FunctionInfo) -> Any:
         key = f"func.{func.module}.{func.decl.name}"
         if key not in self.problem.functions:
-            self.problem.functions[key] = z3.Function(
+            factory = z3.RecFunction if self.can_define_function(func) else z3.Function
+            self.problem.functions[key] = factory(
                 self.safe(key),
                 *[self.sort_for(typ) for typ in func.params],
                 self.sort_for(func.return_type),
             )
+        if (
+            self.can_define_function(func)
+            and key not in self.problem.function_definitions
+            and key not in self.function_definitions_in_progress
+        ):
+            self.add_function_definition(key, func)
         return self.problem.functions[key]
+
+    def can_define_function(self, func: FunctionInfo) -> bool:
+        if not isinstance(func.return_type, PrimitiveType):
+            return False
+        if any(not isinstance(param_type, PrimitiveType) for param_type in func.params):
+            return False
+        return all(isinstance(param.pattern, A.VarPattern) for param in func.decl.params)
+
+    def add_function_definition(self, key: str, func: FunctionInfo) -> None:
+        self.function_definitions_in_progress.add(key)
+        try:
+            args = [
+                z3.Const(self.safe(f"{key}.arg.{idx}.{param.pattern.name}"), self.sort_for(param_type))
+                for idx, (param, param_type) in enumerate(zip(func.decl.params, func.params))
+                if isinstance(param.pattern, A.VarPattern)
+            ]
+            env = {
+                param.pattern.name: ZValue(param_type, expr=arg)
+                for param, param_type, arg in zip(func.decl.params, func.params, args)
+                if isinstance(param.pattern, A.VarPattern)
+            }
+            scope = self.problem.scopes[func.module]
+            body = self.compile_block(func.decl.body, scope, 0, func.return_type, env)
+            z3.RecAddDefinition(self.problem.functions[key], args, self.primitive_expr(body))
+            self.problem.function_definitions.add(key)
+        finally:
+            self.function_definitions_in_progress.remove(key)
 
     def opaque_atom(self, text: str, t: int) -> ZValue:
         return ZValue(BOOL, expr=z3.Bool(self.safe(f"atom.{text}@{t}")))
@@ -1067,7 +1103,7 @@ class BoundedEncoder:
             local = dict(env)
             local.update(bindings)
             if arm.guard is not None:
-                cond = z3.And(cond, self.compile_formula(arm.guard, scope, t))
+                cond = z3.And(cond, self.compile_formula(arm.guard, scope, t, env=local))
             body = self.compile_block(arm.body, scope, t, expected, local)
             branches.append((cond, body))
         if not branches:
@@ -1329,6 +1365,8 @@ class BoundedEncoder:
             return _NO_CONCRETE
         if not self.runtime_names_resolvable(expr, scope):
             return _NO_CONCRETE
+        if not self.runtime_references_have_values(expr, scope):
+            return _NO_CONCRETE
         if self.references_import_alias(expr, scope):
             return _NO_CONCRETE
         try:
@@ -1384,6 +1422,50 @@ class BoundedEncoder:
             return all(self.runtime_names_resolvable(item, scope) for _, item in expr.fields)
         if isinstance(expr, A.QuantifierExpr):
             return self.runtime_names_resolvable(expr.domain, scope) and self.runtime_names_resolvable(expr.body, scope)
+        return True
+
+    def runtime_references_have_values(self, expr: A.Expr | None, scope: ModuleScope) -> bool:
+        if expr is None or scope.runtime is None:
+            return True
+        if isinstance(expr, A.Name):
+            root = expr.name.split(".")[0]
+            if root in scope.entities or root in scope.values:
+                return scope.runtime.values.get(root) is not None
+            return True
+        if isinstance(expr, A.Call):
+            return self.runtime_references_have_values(expr.func, scope) and all(
+                self.runtime_references_have_values(arg, scope) for arg in expr.args
+            )
+        if isinstance(expr, A.FieldAccess):
+            return self.runtime_references_have_values(expr.target, scope)
+        if isinstance(expr, A.IndexAccess):
+            return self.runtime_references_have_values(expr.target, scope) and self.runtime_references_have_values(expr.index, scope)
+        if isinstance(expr, A.BinaryOp):
+            return self.runtime_references_have_values(expr.left, scope) and self.runtime_references_have_values(expr.right, scope)
+        if isinstance(expr, A.UnaryOp):
+            return self.runtime_references_have_values(expr.operand, scope)
+        if isinstance(expr, A.BracedExpr):
+            return self.runtime_references_have_values(expr.expr, scope)
+        if isinstance(expr, A.TemporalUnary):
+            return self.runtime_references_have_values(expr.operand, scope)
+        if isinstance(expr, A.TemporalBinary):
+            return self.runtime_references_have_values(expr.left, scope) and self.runtime_references_have_values(expr.right, scope)
+        if isinstance(expr, A.IfExpr):
+            return all(self.runtime_references_have_values(item, scope) for item in [expr.condition, expr.then_branch, expr.else_branch])
+        if isinstance(expr, A.LetExpr):
+            return self.runtime_references_have_values(expr.value, scope) and self.runtime_references_have_values(expr.body, scope)
+        if isinstance(expr, A.MatchExpr):
+            return self.runtime_references_have_values(expr.subject, scope) and all(
+                self.runtime_references_have_values(arm.guard, scope)
+                and self.runtime_references_have_values(arm.body.result if arm.body else None, scope)
+                for arm in expr.arms
+            )
+        if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
+            return all(self.runtime_references_have_values(item, scope) for item in expr.items)
+        if isinstance(expr, A.RecordLiteral):
+            return all(self.runtime_references_have_values(item, scope) for _, item in expr.fields)
+        if isinstance(expr, A.QuantifierExpr):
+            return self.runtime_references_have_values(expr.domain, scope) and self.runtime_references_have_values(expr.body, scope)
         return True
 
     def references_import_alias(self, expr: A.Expr | None, scope: ModuleScope) -> bool:

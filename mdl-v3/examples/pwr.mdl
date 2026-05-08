@@ -1,0 +1,13 @@
+module pwr
+
+func pwr(a: int, n: int) -> int:
+    if n = 0 then 1
+    else a * pwr(a, n - 1)
+
+entity number: int
+entity power: int
+entity result: int
+
+rule O power_positive = power >= 0 always
+rule O max_power = power < 20 always # constrain max power to limit recursion depth
+rule O result_is_power = result = pwr(number, power) always

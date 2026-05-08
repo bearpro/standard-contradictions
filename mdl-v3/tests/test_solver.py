@@ -176,6 +176,51 @@ def test_solve_email_uses_recursive_runtime_and_ignores_assert_align():
     assert payload["conflicts"] == []
 
 
+def test_solve_fib_example_evaluates_recursive_function():
+    payload = solve_paths([ROOT / "examples" / "fib.mdl"], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["fib.fibonacci_number"] == 2
+    assert "fib.r2" in payload["model"]["winning_rules"]
+
+
+def test_solve_pwr_example_uses_recursive_function_definition():
+    payload = solve_paths([ROOT / "examples" / "pwr.mdl"], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    entities = payload["model"]["trace"][0]["entities"]
+    assert entities["pwr.power"] >= 0
+    assert entities["pwr.result"] == entities["pwr.number"] ** entities["pwr.power"]
+    assert "pwr.r1" in payload["model"]["winning_rules"]
+
+
+def test_solve_recursive_power_with_facts_uses_recursive_case(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "pwr_pinned.mdl",
+        """
+        module pwr_pinned
+
+        func pwr(a: int, n: int) -> int:
+            if n = 0 then 1
+            else a * pwr(a, n - 1)
+
+        entity number: int
+        entity power: int
+        entity result: int
+
+        fact number = 2
+        fact power = 3
+        rule O computes_power = result = pwr(number, power) always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["pwr_pinned.result"] == 8
+
+
 def test_cli_solve_prints_json(capsys):
     code = main(["solve", str(ROOT / "examples" / "pipe.mdl"), "--horizon", "1"])
 
