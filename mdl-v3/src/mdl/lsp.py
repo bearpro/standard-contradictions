@@ -5,6 +5,7 @@ import re
 import sys
 from typing import Any, BinaryIO
 
+from .lexer import KEYWORDS
 from .linter import SemanticChecker, lint_source
 from .parser import ParseError, parse
 
@@ -122,11 +123,11 @@ class LSPServer:
         except ParseError:
             repaired = self.repair_completion_source(text, line, character, prefix)
             if repaired is None:
-                return []
+                return self.keyword_items()
             try:
                 module = parse(repaired)
             except ParseError:
-                return []
+                return self.keyword_items()
         checker = SemanticChecker(module)
         checker.check()
         if field_target:
@@ -138,15 +139,15 @@ class LSPServer:
         lsp_line = line + 1
         lsp_column = character + 1
         if self.is_type_context(prefix):
-            return [
+            return self.with_keywords([
                 {"label": name, "kind": 7, "detail": "type"}
                 for name in checker.visible_type_names(lsp_line, lsp_column)
-            ]
-        return [
+            ])
+        return self.with_keywords([
             {"label": name, "kind": self.completion_kind(symbol.kind), "detail": symbol.kind}
             for name, symbol in sorted(checker.terms.items())
             if checker.is_visible(symbol, lsp_line, lsp_column) and "." not in name
-        ]
+        ])
 
     def line_prefix(self, text: str, line: int, character: int) -> str:
         lines = text.splitlines()
@@ -197,6 +198,16 @@ class LSPServer:
         if kind == "constructor":
             return 4
         return 6
+
+    def keyword_items(self) -> list[dict[str, Any]]:
+        return [
+            {"label": keyword, "kind": 14, "detail": "keyword"}
+            for keyword in sorted(KEYWORDS)
+        ]
+
+    def with_keywords(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen = {item["label"] for item in items}
+        return items + [item for item in self.keyword_items() if item["label"] not in seen]
 
 
 def run_stdio() -> int:

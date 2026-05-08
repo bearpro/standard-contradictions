@@ -27,3 +27,24 @@ rule O has_length: pipe.
     items = LSPServer().completion_items(source, 4, len("rule O has_length: pipe."))
 
     assert labels(items) >= {"length", "radius"}
+
+
+def test_lsp_completes_language_keywords():
+    source = """module keywords
+
+"""
+    items = LSPServer().completion_items(source, 2, 0)
+    by_label = {item["label"]: item for item in items}
+
+    assert labels(items) >= {"entity", "rule", "when", "always"}
+    assert by_label["rule"]["kind"] == 14
+
+
+def test_lsp_completes_keywords_in_temporarily_invalid_source():
+    source = """module keywords
+
+ru
+"""
+    items = LSPServer().completion_items(source, 2, len("ru"))
+
+    assert "rule" in labels(items)

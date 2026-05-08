@@ -34,8 +34,8 @@ The repository contains:
 - a bounded Z3 solver for DDL-LTLf consistency checks;
 - a small deterministic runtime for evaluating pure functions and facts;
 - a linter;
-- a minimal stdio LSP server with diagnostics and completions for visible names,
-  type names and record fields;
+- a minimal stdio LSP server with diagnostics and completions for keywords,
+  visible names, type names and record fields;
 - a semantic aligner;
 - VS Code TextMate grammar and language configuration;
 - Tree-sitter grammar scaffold;
