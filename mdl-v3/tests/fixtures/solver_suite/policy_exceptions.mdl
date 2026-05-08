@@ -3,8 +3,8 @@ module fixture_policy_exceptions
 entity maintenance: bool
 entity work: bool
 
-rule O perform_work = work always
-defeater rule F maintenance_exception = work always
+rule O perform_work: work always
+defeater rule F maintenance_exception: work always
 
 override maintenance_exception > perform_work
 

@@ -144,7 +144,7 @@ class PrettyPrinter:
         if decl.antecedent is not None:
             header += f" when {self.expr(decl.antecedent)}"
         body = self.expr(decl.body)
-        text = f"{header} = {body}" if not decl.anonymous else f"{header} {body}"
+        text = f"{header}: {body}"
         if decl.otherwise is not None:
             text += f" otherwise {self.expr(decl.otherwise)}"
         return text

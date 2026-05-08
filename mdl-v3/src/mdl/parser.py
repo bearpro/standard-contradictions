@@ -294,25 +294,22 @@ class Parser:
 
         if self.current().value in {"O", "P", "F"}:
             modality = self.advance().value
-            if self.looks_like_rule_name_after_modality():
+            if self.current().value == ":":
+                anonymous = True
+                name = self.next_anonymous_rule_name(tok.line)
+                self.advance()
+                body = self.parse_expr()
+            else:
                 name = self.parse_qualified_name()
                 if self.match_value("when"):
                     antecedent = self.parse_expr()
-                self.expect_value("=")
-                body = self.parse_expr()
-            else:
-                anonymous = True
-                name = self.next_anonymous_rule_name(tok.line)
+                self.expect_rule_body_separator()
                 body = self.parse_expr()
         else:
             name = self.parse_qualified_name()
-            if self.match_value(":"):
-                if self.current().value not in {"O", "P", "F"}:
-                    raise ParseError("expected deontic modality after ':'", self.current().line, self.current().column)
-                modality = self.advance().value
             if self.match_value("when"):
                 antecedent = self.parse_expr()
-            self.expect_value("=")
+            self.expect_rule_body_separator()
             body = self.parse_expr()
 
         otherwise = None
@@ -331,14 +328,11 @@ class Parser:
             column=tok.column,
         )
 
-    def looks_like_rule_name_after_modality(self) -> bool:
-        if not self.is_name_token():
-            return False
-        i = self.pos + 1
-        # Accept qualified names as names only when followed by '=' or 'when'.
-        while i + 1 < len(self.tokens) and self.tokens[i].value == "." and self.is_name_token(self.tokens[i + 1]):
-            i += 2
-        return self.tokens[i].value in {"=", "when"}
+    def expect_rule_body_separator(self) -> None:
+        if self.current().value == "=":
+            tok = self.current()
+            raise ParseError("expected ':' before rule body; use `rule O name: ...`", tok.line, tok.column)
+        self.expect_value(":")
 
     def next_anonymous_rule_name(self, line: int) -> str:
         self._anonymous_rule_counter += 1

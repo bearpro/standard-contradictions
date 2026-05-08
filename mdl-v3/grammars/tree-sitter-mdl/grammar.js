@@ -70,7 +70,7 @@ module.exports = grammar({
 
     event_decl: $ => seq('event', $.identifier, optional(seq('(', optional(commaSep($.field_decl)), ')'))),
 
-    rule_decl: $ => seq(optional($.rule_strength), 'rule', optional($.deontic_mod), optional($.qualified_name), optional(seq('when', $.expr)), optional('='), $.expr, optional(seq('otherwise', $.expr))),
+    rule_decl: $ => seq(optional($.rule_strength), 'rule', optional($.deontic_mod), optional($.qualified_name), optional(seq('when', $.expr)), ':', $.expr, optional(seq('otherwise', $.expr))),
     rule_strength: $ => choice('strict', 'defeasible', 'defeater'),
     deontic_mod: $ => choice('O', 'P', 'F'),
 

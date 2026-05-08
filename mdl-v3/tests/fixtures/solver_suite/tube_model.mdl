@@ -6,7 +6,7 @@ entity tube: Tube
 
 event checked(tube: Tube)
 
-rule O tube_dimensions = { tube.length > 0 and tube.r > 0 } always
-rule O tube_pressure = tube.pressure > 0 always
+rule O tube_dimensions: { tube.length > 0 and tube.r > 0 } always
+rule O tube_pressure: tube.pressure > 0 always
 
 fact tube = { length = 12, r = 2, pressure = 5, status = "accepted", }

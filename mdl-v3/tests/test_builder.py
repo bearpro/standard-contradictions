@@ -9,7 +9,7 @@ def test_builder_prints_parseable_source():
     source = m.to_source()
     parsed = parse(source)
     assert parsed.name == "email"
-    assert "rule O email_addr_spec_correct" in source
+    assert "rule O email_addr_spec_correct:" in source
 
 
 def test_builder_from_dict():

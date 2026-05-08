@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from typing import Any, BinaryIO
 
-from .linter import lint_source
+from .linter import SemanticChecker, lint_source
+from .parser import ParseError, parse
 
 
 class LSPServer:
@@ -73,6 +75,9 @@ class LSPServer:
                 "capabilities": {
                     "textDocumentSync": 1,
                     "diagnosticProvider": False,
+                    "completionProvider": {
+                        "triggerCharacters": [".", ":", " "],
+                    },
                 },
                 "serverInfo": {"name": "mdl", "version": "0.1.0"},
             })
@@ -96,12 +101,102 @@ class LSPServer:
             if changes:
                 self.documents[uri] = changes[-1].get("text", self.documents.get(uri, ""))
             self.publish_diagnostics(uri, self.documents.get(uri, ""))
+        elif method == "textDocument/completion":
+            doc = params.get("textDocument", {})
+            uri = doc.get("uri", "")
+            position = params.get("position", {})
+            text = self.documents.get(uri, "")
+            self.response(id_, self.completion_items(text, int(position.get("line", 0)), int(position.get("character", 0))))
         elif id_ is not None:
             self.response(id_, error={"code": -32601, "message": f"unsupported method {method}"})
 
     def publish_diagnostics(self, uri: str, text: str) -> None:
         diagnostics = [d.to_lsp() for d in lint_source(text, path=uri)]
         self.notification("textDocument/publishDiagnostics", {"uri": uri, "diagnostics": diagnostics})
+
+    def completion_items(self, text: str, line: int, character: int) -> list[dict[str, Any]]:
+        prefix = self.line_prefix(text, line, character)
+        field_target = self.field_completion_target(prefix)
+        try:
+            module = parse(text)
+        except ParseError:
+            repaired = self.repair_completion_source(text, line, character, prefix)
+            if repaired is None:
+                return []
+            try:
+                module = parse(repaired)
+            except ParseError:
+                return []
+        checker = SemanticChecker(module)
+        checker.check()
+        if field_target:
+            fields = checker.fields_for_reference(field_target) or {}
+            return [
+                {"label": name, "kind": 5, "detail": "field"}
+                for name in sorted(fields)
+            ]
+        lsp_line = line + 1
+        lsp_column = character + 1
+        if self.is_type_context(prefix):
+            return [
+                {"label": name, "kind": 7, "detail": "type"}
+                for name in checker.visible_type_names(lsp_line, lsp_column)
+            ]
+        return [
+            {"label": name, "kind": self.completion_kind(symbol.kind), "detail": symbol.kind}
+            for name, symbol in sorted(checker.terms.items())
+            if checker.is_visible(symbol, lsp_line, lsp_column) and "." not in name
+        ]
+
+    def line_prefix(self, text: str, line: int, character: int) -> str:
+        lines = text.splitlines()
+        if line < 0 or line >= len(lines):
+            return ""
+        return lines[line][:max(0, character)]
+
+    def field_completion_target(self, prefix: str) -> str | None:
+        match = re.search(r"([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\.[A-Za-z0-9_']*$", prefix)
+        return match.group(1) if match else None
+
+    def repair_completion_source(self, text: str, line: int, character: int, prefix: str) -> str | None:
+        insertion = None
+        if self.field_completion_target(prefix):
+            insertion = "__completion__"
+        elif self.is_type_context(prefix):
+            insertion = "unit"
+        if insertion is None:
+            return None
+        return self.insert_at_position(text, line, character, insertion)
+
+    def insert_at_position(self, text: str, line: int, character: int, insertion: str) -> str:
+        lines = text.splitlines(keepends=True)
+        if line < 0 or line >= len(lines):
+            return text + insertion
+        offset = sum(len(item) for item in lines[:line]) + min(character, len(lines[line]))
+        return text[:offset] + insertion + text[offset:]
+
+    def is_type_context(self, prefix: str) -> bool:
+        stripped = prefix.strip()
+        if re.search(r"\b(entity|val|let)\s+[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$", stripped):
+            return True
+        if re.search(r"\bfunc\b.*(?:\(|,)\s*[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$", stripped):
+            return True
+        if re.search(r"->\s*[A-Za-z0-9_'.]*$", stripped):
+            return True
+        if re.search(r"\btype\s+[A-Za-z_][A-Za-z0-9_']*(?:<[^>]*>)?\s*=\s*[A-Za-z0-9_'.]*$", stripped):
+            return True
+        return False
+
+    def completion_kind(self, kind: str) -> int:
+        if kind == "function":
+            return 3
+        if kind == "entity":
+            return 6
+        if kind == "event":
+            return 3
+        if kind == "constructor":
+            return 4
+        return 6
 
 
 def run_stdio() -> int:

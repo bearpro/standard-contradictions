@@ -4,8 +4,12 @@ README.md
 pyproject.toml
 docs/ARCHITECTURE.md
 docs/GRAMMAR.md
+examples/alignment.mdl
 examples/email.mdl
+examples/fib.mdl
 examples/pipe.mdl
+examples/pwr.mdl
+examples/tube.mdl
 grammars/tree-sitter-mdl/grammar.js
 grammars/tree-sitter-mdl/package.json
 grammars/tree-sitter-mdl/queries/highlights.scm
@@ -36,6 +40,7 @@ src/mdl_ddl_ltlf.egg-info/top_level.txt
 tests/test_aligner.py
 tests/test_builder.py
 tests/test_linter.py
+tests/test_lsp.py
 tests/test_parser.py
 tests/test_runtime.py
 tests/test_solver_fixture_suite.py

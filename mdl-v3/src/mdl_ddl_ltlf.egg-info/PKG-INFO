@@ -34,7 +34,8 @@ The repository contains:
 - a bounded Z3 solver for DDL-LTLf consistency checks;
 - a small deterministic runtime for evaluating pure functions and facts;
 - a linter;
-- a minimal stdio LSP server;
+- a minimal stdio LSP server with diagnostics and completions for visible names,
+  type names and record fields;
 - a semantic aligner;
 - VS Code TextMate grammar and language configuration;
 - Tree-sitter grammar scaffold;
@@ -88,4 +89,4 @@ The Tree-sitter grammar is a scaffold suitable for editor integration and increm
 
 ## Current status
 
-This is a deliberately compact but working project skeleton. It is suitable for evolving the language design, writing tests, and wiring external DDL-LTLf backends. The parser supports the main constructs used in the draft examples: modules, imports, annotations, ADTs, record types, functions, `let`, `if`, `case`, entities, events, rules, priorities, facts, assertions, alignments, temporal operators and deontic modalities.
+This is a deliberately compact but working project skeleton. It is suitable for evolving the language design, writing tests, and wiring external DDL-LTLf backends. The parser supports the main constructs used in the draft examples: modules, imports, annotations, ADTs, record types, functions, `let`, `if`, `case`, entities, events, `rule O name: ...` declarations, priorities, facts, assertions, alignments, temporal operators and deontic modalities. Names are checked in declaration order, with self-recursive function bodies supported.

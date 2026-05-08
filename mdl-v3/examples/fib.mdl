@@ -7,4 +7,4 @@ func fib(n: int) -> int:
 entity fibonacci_number: int
 entity fibonacci_number_index: int
 
-rule O r2 = { fibonacci_number = fib(fibonacci_number_index)} always
+rule O r2: { fibonacci_number = fib(fibonacci_number_index)} always
