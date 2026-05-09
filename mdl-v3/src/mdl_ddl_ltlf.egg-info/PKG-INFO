@@ -9,16 +9,15 @@ Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3 :: Only
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Topic :: Software Development :: Compilers
-Requires-Python: >=3.10
+Requires-Python: <3.13,>=3.11
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: z3-solver>=4.13
+Requires-Dist: pandas>=3.0.2
+Requires-Dist: valentine>=0.5.0
+Requires-Dist: bdi-kit>=0.10.0
 Provides-Extra: dev
 Requires-Dist: pytest>=8; extra == "dev"
-Provides-Extra: align
-Requires-Dist: pandas>=3.0.2; extra == "align"
-Requires-Dist: valentine>=0.5.0; extra == "align"
-Requires-Dist: bdi-kit>=0.10.0; extra == "align"
 Dynamic: license-file
 
 # MDL / DDL-LTLf Toolkit
@@ -45,6 +44,21 @@ The repository contains:
 
 ```bash
 python -m pip install -e .
+```
+
+For a system-style command from this checkout:
+
+```bash
+make install
+make uninstall
+```
+
+By default this runs `uv tool install --python 3.12 --editable .`, which
+installs the `mdl` console script into uv's tool directory while keeping this
+checkout editable. Override `UV_TOOL_PYTHON` if needed:
+
+```bash
+make install UV_TOOL_PYTHON=3.11
 ```
 
 ## CLI

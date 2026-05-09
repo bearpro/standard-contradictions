@@ -13,7 +13,12 @@ examples/tube.mdl
 grammars/tree-sitter-mdl/grammar.js
 grammars/tree-sitter-mdl/package.json
 grammars/tree-sitter-mdl/queries/highlights.scm
+grammars/vscode/.vscodeignore
+grammars/vscode/LICENSE
+grammars/vscode/README.md
+grammars/vscode/extension.js
 grammars/vscode/language-configuration.json
+grammars/vscode/package-lock.json
 grammars/vscode/package.json
 grammars/vscode/syntaxes/mdl.tmLanguage.json
 src/mdl/__init__.py
@@ -43,8 +48,8 @@ tests/test_linter.py
 tests/test_lsp.py
 tests/test_parser.py
 tests/test_runtime.py
-tests/test_solver_fixture_suite.py
 tests/test_solver.py
+tests/test_solver_fixture_suite.py
 tests/test_translate.py
 tests/fixtures/solver_suite/pipeline_spec.mdl
 tests/fixtures/solver_suite/pipeline_tube_alignment.json

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlparse
+from urllib.request import url2pathname
 
 from . import ast as A
 from .diagnostics import Diagnostic, ParseError
@@ -34,8 +35,8 @@ def path_to_file(path: str | None) -> Path | None:
         return None
     parsed = urlparse(path)
     if parsed.scheme == "file":
-        return Path(unquote(parsed.path))
-    if parsed.scheme:
+        return Path(url2pathname(unquote(parsed.path)))
+    if parsed.scheme and not (len(parsed.scheme) == 1 and path[1:3] in {":/", ":\\"}):
         return None
     return Path(path)
 

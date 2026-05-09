@@ -24,6 +24,21 @@ The repository contains:
 python -m pip install -e .
 ```
 
+For a system-style command from this checkout:
+
+```bash
+make install
+make uninstall
+```
+
+By default this runs `UV_PYTHON=3.12 uv tool install --editable .`, which
+installs the `mdl` console script into uv's tool directory while keeping this
+checkout editable. Override `UV_PYTHON` if needed:
+
+```bash
+make install UV_PYTHON=3.11
+```
+
 ## CLI
 
 ```bash

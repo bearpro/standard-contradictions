@@ -7,7 +7,7 @@ name = "mdl-ddl-ltlf"
 version = "0.1.0"
 description = "MDL / DDL-LTLf modelling language toolkit: translator, runtime, linter, LSP and aligner."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11,<3.13"
 authors = [{name = "MDL contributors"}]
 license = {text = "MIT"}
 keywords = ["DDL-LTLf", "deontic logic", "LTLf", "normative documents", "language"]
@@ -17,11 +17,15 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Topic :: Software Development :: Compilers",
 ]
-dependencies = ["z3-solver>=4.13"]
+dependencies = [
+  "z3-solver>=4.13",
+  "pandas>=3.0.2",
+  "valentine>=0.5.0",
+  "bdi-kit>=0.10.0",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
-align = ["pandas>=3.0.2", "valentine>=0.5.0", "bdi-kit>=0.10.0"]
 
 [project.scripts]
 mdl = "mdl.cli:main"
