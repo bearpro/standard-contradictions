@@ -1,0 +1,14 @@
+module record
+
+type Complex = { r: rat, i: rat }
+
+func add(a: Complex, b: Complex) -> Complex:
+    Complex { r = a.r + b.r, i = a.i + b.i }
+
+entity a: Complex
+entity b: Complex
+
+rule O a_just_number: a.i = 0 always
+rule O b_just_number: b.i = 0 always
+
+fact add(a, b).r = 1.0 and add(a, b).i = 0.0

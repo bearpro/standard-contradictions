@@ -137,8 +137,6 @@ class CoreTranslator:
     def temporal(self, expr: A.Expr | None) -> dict[str, Any]:
         if expr is None:
             return {"op": "true"}
-        if isinstance(expr, A.BracedExpr):
-            return self.temporal(expr.expr)
         if isinstance(expr, A.TemporalUnary):
             if expr.op == "never":
                 return {"op": "not", "arg": {"op": "F", "arg": self.temporal(expr.operand)}}
@@ -210,16 +208,14 @@ class CoreTranslator:
             return {"kind": "unary", "op": expr.op, "operand": self.term(expr.operand)}
         if isinstance(expr, A.IfExpr):
             return {"kind": "if", "condition": self.term(expr.condition), "then": self.term(expr.then_branch), "else": self.term(expr.else_branch)}
-        if isinstance(expr, A.RecordLiteral):
-            return {"kind": "record", "fields": {k: self.term(v) for k, v in expr.fields}}
+        if isinstance(expr, A.RecordConstructor):
+            return {"kind": "record", "type": expr.type_name, "fields": {k: self.term(v) for k, v in expr.fields}}
         if isinstance(expr, A.ListLiteral):
             return {"kind": "list", "items": [self.term(i) for i in expr.items]}
         if isinstance(expr, A.SetLiteral):
             return {"kind": "set", "items": [self.term(i) for i in expr.items]}
         if isinstance(expr, A.TupleLiteral):
             return {"kind": "tuple", "items": [self.term(i) for i in expr.items]}
-        if isinstance(expr, A.BracedExpr):
-            return self.term(expr.expr)
         return {"kind": "expr", "text": format_expr(expr)}
 
     def type_definition(self, typ: A.TypeExpr | A.SumType | None) -> Any:

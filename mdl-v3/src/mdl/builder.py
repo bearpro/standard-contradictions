@@ -72,8 +72,8 @@ def next_(expr: A.Expr | str) -> A.TemporalUnary:
     return A.TemporalUnary(op="next", operand=coerce_expr(expr), position="postfix")
 
 
-def braced(expr: A.Expr | str) -> A.BracedExpr:
-    return A.BracedExpr(expr=coerce_expr(expr))
+def braced(expr: A.Expr | str) -> A.Expr:
+    return coerce_expr(expr)
 
 
 def coerce_expr(value: A.Expr | str | int | bool | float) -> A.Expr:

@@ -143,7 +143,10 @@ class Parser:
 
     def parse_import(self) -> A.ImportDecl:
         tok = self.expect_value("import")
-        path = self.parse_qualified_name()
+        if self.current().type == "STRING":
+            path = self.advance().value
+        else:
+            path = self.parse_qualified_name()
         alias = None
         exposing: list[tuple[str, str | None]] = []
         if self.match_value("as"):
@@ -626,6 +629,10 @@ class Parser:
         expr = self.parse_primary_expr()
         while True:
             tok = self.current()
+            if tok.value == "{" and isinstance(expr, A.Name):
+                fields = self.parse_record_constructor_fields()
+                expr = A.RecordConstructor(type_name=expr.name, fields=fields, line=expr.line, column=expr.column)
+                continue
             if self.match_value("("):
                 args: list[A.Expr] = []
                 if not self.match_value(")"):
@@ -675,23 +682,20 @@ class Parser:
         if self.is_name_token(tok) or tok.value in {"O", "P", "F"}:
             return A.Name(name=self.parse_qualified_name(), line=tok.line, column=tok.column)
         if tok.value == "{":
-            return self.parse_curly_expr()
-        if tok.value == "#{":
-            return self.parse_set_literal()
-        if tok.value == "[":
-            return self.parse_list_literal()
+            raise ParseError("record expressions must use `TypeName { field = value }`", tok.line, tok.column)
         if tok.value == "(":
             return self.parse_paren_expr()
         raise ParseError(f"expected expression, got {tok.value!r}", tok.line, tok.column)
 
-    def parse_curly_expr(self) -> A.Expr:
-        tok = self.expect_value("{")
-        if self.match_value("}"):
-            return A.RecordLiteral(fields=[], line=tok.line, column=tok.column)
-        if self.curly_looks_like_record_literal():
-            fields: list[tuple[str, A.Expr]] = []
+    def parse_record_constructor_fields(self) -> list[tuple[str, A.Expr]]:
+        self.expect_value("{")
+        fields: list[tuple[str, A.Expr]] = []
+        if not self.match_value("}"):
             while True:
+                name_tok = self.current()
                 name = self.expect_name_token().value
+                if self.current().value != "=":
+                    raise ParseError("record constructor fields must use `name = value`", name_tok.line, name_tok.column)
                 self.expect_value("=")
                 value = self.parse_expr()
                 fields.append((name, value))
@@ -701,38 +705,7 @@ class Parser:
                     continue
                 break
             self.expect_value("}")
-            return A.RecordLiteral(fields=fields, line=tok.line, column=tok.column)
-        expr = self.parse_expr()
-        self.expect_value("}")
-        return A.BracedExpr(expr=expr, line=tok.line, column=tok.column)
-
-    def curly_looks_like_record_literal(self) -> bool:
-        # To avoid ambiguity with temporal atom braces `{ a = b and c = d }`, one-field records
-        # should be written with a trailing comma: `{ field = value, }`.
-        if not self.is_name_token():
-            return False
-        if self.peek(1).value != "=":
-            return False
-        depth = 0
-        i = self.pos
-        while i < len(self.tokens):
-            v = self.tokens[i].value
-            if v in {"(", "[", "{"}:
-                depth += 1
-            elif v in {")", "]", "}"}:
-                if depth == 0:
-                    return False
-                depth -= 1
-                if depth < 0:
-                    return False
-                if depth == 0 and v == "}":
-                    return False
-            elif v == "," and depth == 0:
-                return True
-            elif v == "}" and depth == 0:
-                return False
-            i += 1
-        return False
+        return fields
 
     def parse_set_literal(self) -> A.SetLiteral:
         tok = self.expect_type("SET_START")
@@ -795,19 +768,6 @@ class Parser:
             lit = self.parse_primary_expr()
             assert isinstance(lit, A.Literal)
             return A.LiteralPattern(value=lit.value, kind=lit.kind, line=tok.line, column=tok.column)
-        if tok.value == "[":
-            self.advance()
-            items: list[A.Pattern] = []
-            if not self.match_value("]"):
-                while True:
-                    items.append(self.parse_pattern())
-                    if self.match_value(","):
-                        if self.current().value == "]":
-                            break
-                        continue
-                    break
-                self.expect_value("]")
-            return A.ListPattern(items=items, line=tok.line, column=tok.column)
         if tok.value == "(":
             self.advance()
             first = self.parse_pattern()

@@ -1,3 +1,6 @@
+import io
+import json
+
 from mdl.lsp import LSPServer
 
 
@@ -27,6 +30,36 @@ rule O has_length: pipe.
     items = LSPServer().completion_items(source, 4, len("rule O has_length: pipe."))
 
     assert labels(items) >= {"length", "radius"}
+
+
+def test_lsp_completes_record_constructor_fields():
+    source = """module complex
+
+type Complex = { r: rat, i: rat }
+
+func zero() -> Complex:
+    Complex { 
+"""
+    items = LSPServer().completion_items(source, 5, len("    Complex { "))
+
+    assert labels(items) >= {"r", "i"}
+
+
+def test_lsp_reports_braced_expression_parse_error():
+    source = """module bad
+
+entity x: bool
+rule O r: { x } always
+"""
+    out = io.BytesIO()
+    server = LSPServer(stdout=out)
+
+    server.publish_diagnostics("file:///bad.mdl", source)
+
+    payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
+    message = json.loads(payload.decode("utf-8"))
+    diagnostics = message["params"]["diagnostics"]
+    assert any(item["code"] == "parse-error" for item in diagnostics)
 
 
 def test_lsp_completes_language_keywords():
@@ -60,7 +93,7 @@ entity pipe: Pipe
     current = tmp_path / "alignment.mdl"
     source = """module alignment
 
-import pipe_spec as m1
+import "pipe.mdl" as m1
 
 rule O aligned: m1.
 """
@@ -74,7 +107,7 @@ rule O aligned: m1.
 def test_lsp_uses_open_document_for_import_completion():
     source = """module alignment
 
-import pipe_spec as m1
+import "pipe.mdl" as m1
 
 rule O aligned: m1.pipe.
 """

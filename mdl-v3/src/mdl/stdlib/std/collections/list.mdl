@@ -1,0 +1,8 @@
+module std.collections.list
+
+type List<T> = Empty | Cons(T, List<T>)
+
+func len<T>(l: List<T>) -> int:
+    case l:
+    | Empty: 0
+    | Cons(head, tail): 1 + len(tail)

@@ -149,22 +149,174 @@ def test_solve_defeater_blocks_lower_rule_without_requirement(tmp_path):
     assert payload["model"]["defeated_rules"] == ["ok.must"]
 
 
-def test_solve_finite_collection_quantifier_with_temporal_body(tmp_path):
+def test_solve_std_list_recursive_predicate_with_temporal_body(tmp_path):
     spec = write_module(
         tmp_path,
         "collections.mdl",
         """
         module collections
 
-        val xs = [1, 2, 3]
-        rule O all_positive: forall x in xs: x > 0 always
+        import "std/collections/list.mdl" as List exposing (List)
+
+        func all_positive(xs: List<int>) -> bool:
+            case xs:
+            | List.Cons(x, rest):
+                x > 0 and all_positive(rest)
+            | List.Empty:
+                true
+
+        val xs = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty)))
+        rule O all_positive_rule: all_positive(xs) always
         """,
     )
 
     payload = solve_paths([spec], SolveOptions(horizon=2))
 
     assert payload["status"] == "sat"
-    assert payload["model"]["winning_rules"] == ["collections.all_positive"]
+    assert payload["model"]["winning_rules"] == ["collections.all_positive_rule"]
+
+
+def test_solve_case_pattern_bindings_survive_boolean_operators(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "case_bindings.mdl",
+        """
+        module case_bindings
+
+        type Pair = Pair(int, int)
+        entity pair: Pair
+
+        fact case pair:
+        | Pair(a, b):
+            a = 1 and b = 2
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    pair = payload["model"]["trace"][0]["entities"]["case_bindings.pair"]
+    assert pair["constructor"] == "Pair"
+    assert pair["values"] == [1, 2]
+
+
+def test_solve_std_list_generic_len_is_instantiated_per_argument_type(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "generic_len.mdl",
+        """
+        module generic_len
+
+        import "std/collections/list.mdl" as List exposing (List, len)
+
+        val xs: List<int> = List.Cons(1, List.Cons(2, List.Empty))
+        rule O length_ok: len(xs) = 2 always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["winning_rules"] == ["generic_len.length_ok"]
+
+
+def test_solve_recursive_function_over_std_list_constructors(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "lists.mdl",
+        """
+        module lists
+
+        import "std/collections/list.mdl" as List exposing (List)
+
+        func positive_tags(tags: List<int>) -> bool:
+            case tags:
+            | List.Cons(tag, rest):
+                if tag > 0 then positive_tags(rest) else false
+            | List.Empty:
+                true
+
+        val tags = List.Cons(1, List.Empty)
+        rule O tags_positive: positive_tags(tags) always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["winning_rules"] == ["lists.tags_positive"]
+
+
+def test_solve_recursive_sum_type_with_nested_patterns(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "nat.mdl",
+        """
+        module nat
+
+        type Nat = Zero | Succ(Nat)
+
+        func is_two(n: Nat) -> bool:
+            case n:
+            | Succ(Succ(Zero)):
+                true
+            | _:
+                false
+
+        entity n: Nat
+
+        fact n = Succ(Succ(Zero))
+        rule O n_is_two: is_two(n) always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["winning_rules"] == ["nat.n_is_two"]
+    n = payload["model"]["trace"][0]["entities"]["nat.n"]
+    assert n["constructor"] == "Succ"
+    assert n["values"][0]["constructor"] == "Succ"
+    assert n["values"][0]["values"][0]["constructor"] == "Zero"
+
+
+def test_solve_std_collections_as_ordinary_adts(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "stdlib_adts.mdl",
+        """
+        module stdlib_adts
+
+        import "std/collections/option.mdl" as Option exposing (Option)
+        import "std/collections/set.mdl" as Set exposing (Set)
+        import "std/collections/map.mdl" as Map exposing (Map)
+
+        entity maybe: Option<int>
+        entity numbers: Set<int>
+        entity lookup: Map<string, int>
+
+        fact maybe = Option.Some(42)
+        fact numbers = Set.Insert(1, Set.Empty)
+        fact lookup = Map.Put("answer", 42, Map.Empty)
+
+        rule O option_ok: maybe = Option.Some(42) always
+        rule O set_ok: numbers = Set.Insert(1, Set.Empty) always
+        rule O map_ok: lookup = Map.Put("answer", 42, Map.Empty) always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["winning_rules"] == [
+        "stdlib_adts.option_ok",
+        "stdlib_adts.set_ok",
+        "stdlib_adts.map_ok",
+    ]
+    entities = payload["model"]["trace"][0]["entities"]
+    assert entities["stdlib_adts.maybe"]["constructor"] == "Some"
+    assert entities["stdlib_adts.numbers"]["constructor"] == "Insert"
+    assert entities["stdlib_adts.lookup"]["constructor"] == "Put"
 
 
 def test_solve_email_uses_recursive_runtime_and_ignores_assert_align():
@@ -180,7 +332,7 @@ def test_solve_fib_example_evaluates_recursive_function():
     payload = solve_paths([ROOT / "examples" / "fib.mdl"], SolveOptions(horizon=1))
 
     assert payload["status"] == "sat"
-    assert "fib.r2" in payload["model"]["winning_rules"]
+    assert "fib.r1" in payload["model"]["winning_rules"]
 
 
 def test_solve_pwr_example_uses_recursive_function_definition():

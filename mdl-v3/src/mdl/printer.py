@@ -36,7 +36,8 @@ class PrettyPrinter:
 
     def import_decl(self, decl: A.ImportDecl) -> str:
         prefix = "\n".join(self.annotations(decl.annotations))
-        text = f"import {decl.path}"
+        path = self.import_path(decl.path)
+        text = f"import {path}"
         if decl.alias:
             text += f" as {decl.alias}"
         if decl.exposing:
@@ -45,6 +46,11 @@ class PrettyPrinter:
                 exposed.append(f"{name} as {alias}" if alias else name)
             text += " exposing (" + ", ".join(exposed) + ")"
         return f"{prefix}\n{text}" if prefix else text
+
+    def import_path(self, path: str) -> str:
+        if path.endswith(".mdl") or "/" in path or "\\" in path:
+            return '"' + path.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        return path
 
     def declaration(self, decl: A.Declaration) -> str:
         prefix = "\n".join(self.annotations(decl.annotations))
@@ -209,18 +215,16 @@ class PrettyPrinter:
                     lines.append(f"| {self.pattern(arm.pattern)}{guard}:")
                     lines.append(self.block(arm.body, level=1))
             return "\n".join(lines)
-        if isinstance(expr, A.RecordLiteral):
+        if isinstance(expr, A.RecordConstructor):
             if not expr.fields:
-                return "{}"
-            return "{ " + ", ".join(f"{k} = {self.expr(v)}" for k, v in expr.fields) + ", }"
+                return f"{expr.type_name} {{}}"
+            return f"{expr.type_name} {{ " + ", ".join(f"{k} = {self.expr(v)}" for k, v in expr.fields) + " }"
         if isinstance(expr, A.ListLiteral):
             return "[" + ", ".join(self.expr(i) for i in expr.items) + "]"
         if isinstance(expr, A.SetLiteral):
             return "#{" + ", ".join(self.expr(i) for i in expr.items) + "}"
         if isinstance(expr, A.TupleLiteral):
             return "(" + ", ".join(self.expr(i) for i in expr.items) + ")"
-        if isinstance(expr, A.BracedExpr):
-            return "{ " + self.expr(expr.expr) + " }"
         if isinstance(expr, A.TemporalUnary):
             if expr.position == "postfix":
                 return f"{self.expr(expr.operand)} {expr.op}"

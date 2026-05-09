@@ -1,7 +1,8 @@
 @ rfc2822
 module email
 
-import std.system.strings as strings
+import "std/system/strings.mdl" as strings
+import "std/collections/list.mdl" as List exposing (List)
 
 private type ProcessingState = LocalPart | Domain
 
@@ -29,7 +30,7 @@ event email_received(email: string)
 @ 3.4.1. Addr-spec specification
 rule O email_addr_spec_correct: email_is_correct(email) always
 
-rule F malformed_email_received: { email_received(email) and not email_is_correct(email) } eventually
+rule F malformed_email_received: (email_received(email) and not email_is_correct(email)) eventually
 
 align email to <urn:ietf:rfc:2822:addr-spec> equivalent
 

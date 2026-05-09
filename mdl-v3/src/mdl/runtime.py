@@ -21,11 +21,14 @@ class Runtime:
     def __post_init__(self) -> None:
         self.functions: dict[str, A.FuncDecl] = {}
         self.entities: dict[str, A.EntityDecl] = {}
+        self.imports: dict[str, str] = {
+            (imp.alias or self.import_alias(imp.path)): imp.path.replace("\\", "/")
+            for imp in self.module.imports
+        }
         self.builtins: dict[str, Callable[..., Any]] = {
+            "to_list": lambda s: list(s),
             "strings.to_list": lambda s: list(s),
             "std.system.strings.to_list": lambda s: list(s),
-            "List.Cons": lambda head, tail: [head, *list(tail)],
-            "List.Empty": lambda: [],
         }
         for decl in self.module.declarations:
             if isinstance(decl, A.FuncDecl):
@@ -87,7 +90,7 @@ class Runtime:
             return self.eval_expr(expr.body, local)
         if isinstance(expr, A.MatchExpr):
             return self.eval_match(expr, env)
-        if isinstance(expr, A.RecordLiteral):
+        if isinstance(expr, A.RecordConstructor):
             return {k: self.eval_expr(v, env) for k, v in expr.fields}
         if isinstance(expr, A.ListLiteral):
             return [self.eval_expr(i, env) for i in expr.items]
@@ -95,8 +98,6 @@ class Runtime:
             return set(self.eval_expr(i, env) for i in expr.items)
         if isinstance(expr, A.TupleLiteral):
             return tuple(self.eval_expr(i, env) for i in expr.items)
-        if isinstance(expr, A.BracedExpr):
-            return self.eval_expr(expr.expr, env)
         if isinstance(expr, A.TemporalUnary):
             # Runtime is point-wise. Temporal semantics belongs to the translator / model checker.
             return self.eval_expr(expr.operand, env)
@@ -150,6 +151,9 @@ class Runtime:
         raise RuntimeError(f"unsupported binary operator {expr.op!r}")
 
     def call(self, func_name: str, args: list[Any], env: dict[str, Any]) -> Any:
+        collection = self.collection_constructor(func_name)
+        if collection is not None:
+            return self.call_collection_constructor(collection, args)
         if func_name in self.builtins:
             return self.builtins[func_name](*args)
         # Imported aliases are common in source: strings.to_list.
@@ -164,6 +168,53 @@ class Runtime:
         if func_name:
             return (func_name.split(".")[-1], tuple(args))
         raise RuntimeError(f"unknown function {func_name!r}")
+
+    def import_alias(self, path: str) -> str:
+        normalized = path.replace("\\", "/")
+        if normalized.endswith(".mdl") or "/" in normalized:
+            return normalized.rsplit("/", 1)[-1].removesuffix(".mdl")
+        return normalized.split(".")[-1]
+
+    def collection_constructor(self, name: str) -> tuple[str, str] | None:
+        parts = name.split(".")
+        if len(parts) < 2:
+            return None
+        target = self.imports.get(parts[0])
+        if target == "std/collections/list.mdl":
+            return "list", parts[-1]
+        if target == "std/collections/set.mdl":
+            return "set", parts[-1]
+        if target == "std/collections/map.mdl":
+            return "map", parts[-1]
+        if target == "std/collections/option.mdl":
+            return "option", parts[-1]
+        return None
+
+    def call_collection_constructor(self, collection: tuple[str, str], args: list[Any]) -> Any:
+        kind, ctor = collection
+        if kind == "list":
+            if ctor == "Empty":
+                return []
+            if ctor == "Cons" and len(args) == 2:
+                return [args[0], *list(args[1])]
+        if kind == "set":
+            if ctor == "Empty":
+                return set()
+            if ctor == "Insert" and len(args) == 2:
+                return {args[0], *set(args[1])}
+        if kind == "map":
+            if ctor == "Empty":
+                return {}
+            if ctor == "Put" and len(args) == 3:
+                result = dict(args[2])
+                result[args[0]] = args[1]
+                return result
+        if kind == "option":
+            if ctor == "None":
+                return "None"
+            if ctor == "Some" and len(args) == 1:
+                return ("Some", (args[0],))
+        raise RuntimeError(f"unsupported std collection constructor {kind}.{ctor}")
 
     def call_user_function(self, func: A.FuncDecl, args: list[Any], outer_env: dict[str, Any]) -> Any:
         if len(args) != len(func.params):
@@ -262,6 +313,17 @@ class Runtime:
             return env[name]
         if name in self.values:
             return self.values[name]
+        collection = self.collection_constructor(name)
+        if collection is not None:
+            kind, ctor = collection
+            if kind == "list" and ctor == "Empty":
+                return []
+            if kind == "set" and ctor == "Empty":
+                return set()
+            if kind == "map" and ctor == "Empty":
+                return {}
+            if kind == "option" and ctor == "None":
+                return "None"
         if "." in name:
             parts = name.split(".")
             root = parts[0]

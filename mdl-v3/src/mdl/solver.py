@@ -16,6 +16,7 @@ else:
 
 from . import ast as A
 from .diagnostics import Diagnostic, MDLError, ParseError
+from .linter import ImportResolver, import_alias
 from .parser import parse
 from .printer import format_expr
 from .runtime import Runtime
@@ -57,9 +58,8 @@ class SumSpec:
 
 
 @dataclass(frozen=True)
-class CollectionSpec:
-    kind: str
-    item: "TypeSpec"
+class NamedSpec:
+    name: str
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,7 @@ class OpaqueSpec:
     name: str
 
 
-TypeSpec = PrimitiveType | RecordSpec | TupleSpec | SumSpec | CollectionSpec | OpaqueSpec
+TypeSpec = PrimitiveType | RecordSpec | TupleSpec | SumSpec | NamedSpec | OpaqueSpec
 
 
 BOOL = PrimitiveType("bool")
@@ -82,10 +82,26 @@ class ZValue:
     typ: TypeSpec
     expr: Any | None = None
     fields: dict[str, "ZValue"] | None = None
-    tag: Any | None = None
-    variants: dict[str, list["ZValue"]] | None = None
     concrete: Any = None
     has_concrete: bool = False
+
+
+@dataclass
+class DatatypeEncoding:
+    sort: Any
+    constructors: dict[str, Any]
+    recognizers: dict[str, Any]
+    accessors: dict[str, list[Any]]
+    fields: dict[str, list[tuple[str | None, TypeSpec]]]
+
+
+@dataclass(frozen=True)
+class ConstructorInfo:
+    sum_type: SumSpec
+    variant: VariantSpec
+    module: str | None = None
+    local: str | None = None
+    type_args: tuple[TypeSpec, ...] = ()
 
 
 @dataclass
@@ -94,6 +110,7 @@ class FunctionInfo:
     decl: A.FuncDecl
     params: list[TypeSpec]
     return_type: TypeSpec
+    type_args: tuple[TypeSpec, ...] = ()
 
 
 @dataclass
@@ -183,7 +200,27 @@ def solve_paths(paths: Iterable[str | Path], options: SolveOptions | None = None
             diagnostics.append(Diagnostic(str(exc), severity="error", code="io-error", path=str(path)))
     if diagnostics:
         return error_payload(diagnostics)
+    modules = collect_imported_modules(modules)
     return solve_modules([m for m, _ in modules], opts, paths=[p for _, p in modules])
+
+
+def collect_imported_modules(modules: list[tuple[A.Module, Path]]) -> list[tuple[A.Module, Path]]:
+    result = list(modules)
+    seen_modules = {module.name for module, _ in result}
+    queue = list(result)
+    while queue:
+        module, path = queue.pop(0)
+        resolver = ImportResolver(str(path))
+        for imp in module.imports:
+            resolved = resolver.resolve(imp.path, str(path))
+            if resolved is None or resolved.module.name in seen_modules or resolved.path is None:
+                continue
+            resolved_path = Path(resolved.path)
+            seen_modules.add(resolved.module.name)
+            item = (resolved.module, resolved_path)
+            result.append(item)
+            queue.append(item)
+    return result
 
 
 def solve_modules(modules: list[A.Module], options: SolveOptions | None = None, *, paths: list[Path] | None = None) -> dict[str, Any]:
@@ -222,7 +259,9 @@ class SolverProblem:
         self.paths = paths or [None] * len(modules)  # type: ignore[list-item]
         self.diagnostics: list[Diagnostic] = []
         self.scopes: dict[str, ModuleScope] = {}
-        self.type_cache: dict[tuple[str, str], TypeSpec] = {}
+        self.type_cache: dict[tuple[str, str, tuple[TypeSpec, ...]], TypeSpec] = {}
+        self.type_specs_by_name: dict[str, TypeSpec] = {}
+        self.datatype_encodings: dict[str, DatatypeEncoding] = {}
         self.opaque_sorts: dict[str, Any] = {}
         self.functions: dict[str, Any] = {}
         self.function_definitions: set[str] = set()
@@ -296,11 +335,10 @@ class SolverProblem:
 
         for scope in self.scopes.values():
             for imp in scope.module.imports:
-                alias = imp.alias or imp.path.split(".")[-1]
-                if imp.path in self.scopes:
-                    scope.imports[alias] = imp.path
-                elif imp.path.startswith("std."):
-                    scope.imports[alias] = imp.path
+                alias = imp.alias or import_alias(imp.path)
+                target_module = self.resolve_import_module(scope, imp)
+                if target_module is not None:
+                    scope.imports[alias] = target_module
                 else:
                     self.diagnostics.append(Diagnostic(
                         f"import {imp.path!r} is not present in solve inputs",
@@ -311,7 +349,8 @@ class SolverProblem:
                         path=str(scope.path) if scope.path else None,
                     ))
                 for exposed, renamed in imp.exposing:
-                    scope.exposing[renamed or exposed] = (imp.path, exposed)
+                    if target_module is not None:
+                        scope.exposing[renamed or exposed] = (target_module, exposed)
 
         for scope in self.scopes.values():
             self._index_declarations(scope)
@@ -331,6 +370,15 @@ class SolverProblem:
                 scope.runtime = Runtime(scope.module)
             except Exception:
                 scope.runtime = None
+
+    def resolve_import_module(self, scope: ModuleScope, imp: A.ImportDecl) -> str | None:
+        if imp.path in self.scopes:
+            return imp.path
+        resolver = ImportResolver(str(scope.path) if scope.path else None)
+        resolved = resolver.resolve(imp.path, str(scope.path) if scope.path else None)
+        if resolved is not None and resolved.module.name in self.scopes:
+            return resolved.module.name
+        return None
 
     def _index_declarations(self, scope: ModuleScope) -> None:
         seen: set[tuple[str, str]] = set()
@@ -373,53 +421,79 @@ class SolverProblem:
     # Resolution
     # ------------------------------------------------------------------
 
-    def resolve_type(self, module_name: str, typ: A.TypeExpr | None) -> TypeSpec:
+    def resolve_type(
+        self,
+        module_name: str,
+        typ: A.TypeExpr | None,
+        type_env: dict[str, TypeSpec] | None = None,
+    ) -> TypeSpec:
+        type_env = type_env or {}
         if typ is None:
             return UNIT
         scope = self.scopes[module_name]
         if isinstance(typ, A.TypeRef):
             name = typ.name
+            if name in type_env and not typ.args:
+                return type_env[name]
             primitive = self.primitive_type(name)
             if primitive is not None:
-                if name in {"List", "list"} and typ.args:
-                    return CollectionSpec("list", self.resolve_type(module_name, typ.args[0]))
-                if name in {"Set", "set"} and typ.args:
-                    return CollectionSpec("set", self.resolve_type(module_name, typ.args[0]))
                 return primitive
             target_module, local = self.resolve_decl(scope, name, expected={"type"})
             if target_module is None or local is None:
                 return OpaqueSpec(name)
-            key = (target_module, local)
-            if key in self.type_cache:
-                return self.type_cache[key]
-            decl = self.scopes[target_module].types[local]
-            placeholder = OpaqueSpec(f"{target_module}.{local}")
-            self.type_cache[key] = placeholder
-            if isinstance(decl.definition, A.SumType):
-                variants = tuple(
-                    VariantSpec(v.name, tuple((label, self.resolve_type(target_module, item_type)) for label, item_type in v.fields))
-                    for v in decl.definition.variants
-                )
-                resolved: TypeSpec = SumSpec(f"{target_module}.{local}", variants)
-            else:
-                resolved = self.resolve_type_expr(target_module, decl.definition)
-            self.type_cache[key] = resolved
-            return resolved
-        return self.resolve_type_expr(module_name, typ)
+            arg_specs = tuple(self.resolve_type(module_name, arg, type_env) for arg in typ.args)
+            return self.resolve_declared_type(target_module, local, arg_specs)
+        return self.resolve_type_expr(module_name, typ, type_env)
 
-    def resolve_type_expr(self, module_name: str, typ: A.TypeExpr | A.SumType | None) -> TypeSpec:
+    def resolve_declared_type(self, module_name: str, local: str, arg_specs: tuple[TypeSpec, ...]) -> TypeSpec:
+        key = (module_name, local, arg_specs)
+        if key in self.type_cache:
+            return self.type_cache[key]
+        decl = self.scopes[module_name].types[local]
+        type_params = {
+            param: arg_specs[idx] if idx < len(arg_specs) else OpaqueSpec(param)
+            for idx, param in enumerate(decl.params)
+        }
+        full_name = self.type_name(module_name, local, arg_specs)
+        placeholder = NamedSpec(full_name)
+        self.type_cache[key] = placeholder
+        self.type_specs_by_name[full_name] = placeholder
+        if isinstance(decl.definition, A.SumType):
+            variants = tuple(
+                VariantSpec(v.name, tuple((label, self.resolve_type(module_name, item_type, type_params)) for label, item_type in v.fields))
+                for v in decl.definition.variants
+            )
+            resolved: TypeSpec = SumSpec(full_name, variants)
+        else:
+            resolved = self.resolve_type_expr(module_name, decl.definition, type_params)
+        self.type_cache[key] = resolved
+        self.type_specs_by_name[full_name] = resolved
+        return resolved
+
+    def resolve_type_expr(
+        self,
+        module_name: str,
+        typ: A.TypeExpr | A.SumType | None,
+        type_env: dict[str, TypeSpec] | None = None,
+    ) -> TypeSpec:
+        type_env = type_env or {}
         if typ is None:
             return UNIT
         if isinstance(typ, A.RecordType):
-            return RecordSpec(tuple((name, self.resolve_type(module_name, field_type)) for name, field_type in typ.fields))
+            return RecordSpec(tuple((name, self.resolve_type(module_name, field_type, type_env)) for name, field_type in typ.fields))
         if isinstance(typ, A.TupleType):
-            return TupleSpec(tuple(self.resolve_type(module_name, item) for item in typ.items))
+            return TupleSpec(tuple(self.resolve_type(module_name, item, type_env) for item in typ.items))
         if isinstance(typ, A.SumType):
             return SumSpec("<anonymous>", tuple(
-                VariantSpec(v.name, tuple((label, self.resolve_type(module_name, item_type)) for label, item_type in v.fields))
+                VariantSpec(v.name, tuple((label, self.resolve_type(module_name, item_type, type_env)) for label, item_type in v.fields))
                 for v in typ.variants
             ))
-        return self.resolve_type(module_name, typ)
+        return self.resolve_type(module_name, typ, type_env)
+
+    def type_name(self, module_name: str, local: str, args: tuple[TypeSpec, ...]) -> str:
+        if not args:
+            return f"{module_name}.{local}"
+        return f"{module_name}.{local}<{', '.join(repr(arg) for arg in args)}>"
 
     def primitive_type(self, name: str) -> TypeSpec | None:
         if name in {"bool", "boolean"}:
@@ -434,10 +508,6 @@ class SolverProblem:
             return STRING
         if name == "unit":
             return UNIT
-        if name in {"List", "list"}:
-            return CollectionSpec("list", OpaqueSpec("unknown"))
-        if name in {"Set", "set"}:
-            return CollectionSpec("set", OpaqueSpec("unknown"))
         return None
 
     def resolve_decl(
@@ -451,6 +521,10 @@ class SolverProblem:
         if not parts:
             return None, None
         if parts[0] in scope.imports:
+            if len(parts) == 1 and parts[0] in scope.exposing:
+                exposed_target, exposed = scope.exposing[parts[0]]
+                if exposed_target in self.scopes:
+                    return self._resolve_local_decl(self.scopes[exposed_target], [exposed], expected)
             target = scope.imports[parts[0]]
             if target not in self.scopes:
                 return target, ".".join(parts[1:]) if len(parts) > 1 else None
@@ -715,8 +789,6 @@ class BoundedEncoder:
         env = env or {}
         if expr is None:
             return z3.BoolVal(True)
-        if isinstance(expr, A.BracedExpr):
-            return self.compile_formula(expr.expr, scope, t, env=env)
         if isinstance(expr, A.Literal) and expr.kind == "bool":
             return z3.BoolVal(bool(expr.value))
         if isinstance(expr, A.Name) and expr.name == "last":
@@ -773,17 +845,40 @@ class BoundedEncoder:
         if isinstance(expr, A.Name):
             if expr.name in env:
                 return env[expr.name]
-            constructor = self.find_constructor(expr.name, expected)
+            constructor = self.find_constructor(expr.name, expected, scope)
             if constructor is not None:
-                sum_type, variant = constructor
-                if variant.fields:
+                if constructor.variant.fields:
                     raise UnsupportedExpression(f"constructor {expr.name!r} expects arguments")
-                payloads = {v.name: [] for v in sum_type.variants}
-                return ZValue(sum_type, tag=z3.IntVal(self.variant_index(sum_type, variant.name)), variants=payloads)
-            concrete = self.try_runtime_eval(expr, scope)
-            if concrete is not _NO_CONCRETE:
-                return self.python_value(concrete, expected)
+                return self.constructor_value(constructor, [])
+            if isinstance(expected, PrimitiveType):
+                concrete = self.try_runtime_eval(expr, scope)
+                if concrete is not _NO_CONCRETE:
+                    return self.python_value(concrete, expected)
             return self.resolve_value(expr.name, scope, t, expected)
+        if isinstance(expr, A.RecordConstructor):
+            typ = self.problem.resolve_type(
+                scope.module.name,
+                A.TypeRef(name=expr.type_name, line=expr.line, column=expr.column),
+            )
+            resolved = self.resolve_named_type(typ)
+            if not isinstance(resolved, RecordSpec):
+                raise UnsupportedExpression(f"type {expr.type_name!r} is not a record type")
+            expected_fields = dict(resolved.fields)
+            provided = {name for name, _ in expr.fields}
+            duplicates = [name for name in provided if sum(1 for field, _ in expr.fields if field == name) > 1]
+            if duplicates:
+                raise UnsupportedExpression(f"duplicate record field {duplicates[0]!r}")
+            missing = sorted(set(expected_fields) - provided)
+            if missing:
+                raise UnsupportedExpression(f"missing record field {missing[0]!r}")
+            extra = sorted(provided - set(expected_fields))
+            if extra:
+                raise UnsupportedExpression(f"unknown field {extra[0]!r}")
+            fields = {
+                name: self.compile_expr(value_expr, scope, t, expected=expected_fields[name], env=env)
+                for name, value_expr in expr.fields
+            }
+            return self.product_value(typ, fields)
         concrete = self.try_runtime_eval(expr, scope)
         if concrete is not _NO_CONCRETE:
             return self.python_value(concrete, expected)
@@ -816,36 +911,26 @@ class BoundedEncoder:
             return self.compile_expr(expr.body, scope, t, expected=expected, env=local)
         if isinstance(expr, A.MatchExpr):
             return self.match_value(expr, scope, t, expected, env)
-        if isinstance(expr, A.RecordLiteral):
-            fields: dict[str, ZValue] = {}
-            expected_fields = dict(expected.fields) if isinstance(expected, RecordSpec) else {}
-            for name, value_expr in expr.fields:
-                fields[name] = self.compile_expr(value_expr, scope, t, expected=expected_fields.get(name), env=env)
-            typ = expected if isinstance(expected, RecordSpec) else RecordSpec(tuple((name, value.typ) for name, value in fields.items()))
-            return ZValue(typ, fields=fields)
         if isinstance(expr, A.TupleLiteral):
-            expected_items = list(expected.items) if isinstance(expected, TupleSpec) else []
+            expected_resolved = self.resolve_named_type(expected) if expected is not None else None
+            expected_items = list(expected_resolved.items) if isinstance(expected_resolved, TupleSpec) else []
             items = {
                 f"_{idx}": self.compile_expr(item, scope, t, expected=expected_items[idx] if idx < len(expected_items) else None, env=env)
                 for idx, item in enumerate(expr.items)
             }
-            typ = expected if isinstance(expected, TupleSpec) else TupleSpec(tuple(item.typ for item in items.values()))
-            return ZValue(typ, fields=items)
+            typ = expected if isinstance(expected_resolved, TupleSpec) else TupleSpec(tuple(item.typ for item in items.values()))
+            return self.product_value(typ, items)
         if isinstance(expr, A.ListLiteral):
-            items = [self.compile_expr(item, scope, t, env=env) for item in expr.items]
-            return ZValue(CollectionSpec("list", items[0].typ if items else OpaqueSpec("empty")), concrete=items, has_concrete=True)
+            raise UnsupportedExpression("list literals are not solver primitives; use std.collections.list constructors")
         if isinstance(expr, A.SetLiteral):
-            items = [self.compile_expr(item, scope, t, env=env) for item in expr.items]
-            return ZValue(CollectionSpec("set", items[0].typ if items else OpaqueSpec("empty")), concrete=items, has_concrete=True)
-        if isinstance(expr, A.BracedExpr):
-            return self.compile_expr(expr.expr, scope, t, expected=expected, env=env)
+            raise UnsupportedExpression("set literals are not solver primitives; use std.collections.set constructors")
         if isinstance(expr, A.QuantifierExpr):
             return ZValue(BOOL, expr=self.quantifier_formula(expr, scope, t, env))
         raise UnsupportedExpression(f"unsupported expression: {format_expr(expr)}")
 
     def binary_value(self, expr: A.BinaryOp, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
         if expr.op in {"and", "or", "implies", "->", "iff", "<->"}:
-            return ZValue(BOOL, expr=self.compile_formula(expr, scope, t))
+            return ZValue(BOOL, expr=self.compile_formula(expr, scope, t, env=env))
         left = self.compile_expr(expr.left, scope, t, env=env)
         right = self.compile_expr(expr.right, scope, t, expected=left.typ, env=env)
         if expr.op == "=":
@@ -877,10 +962,14 @@ class BoundedEncoder:
 
     def call_value(self, expr: A.Call, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
         name = self.expr_to_name(expr.func)
-        if name.endswith("strings.to_list") or name in {"strings.to_list", "std.system.strings.to_list"}:
+        if name == "to_list" or name.endswith("strings.to_list") or name in {"strings.to_list", "std.system.strings.to_list"}:
             arg = self.compile_expr(expr.args[0], scope, t, env=env)
             if arg.has_concrete and isinstance(arg.concrete, str):
-                return self.python_value(list(arg.concrete), expected)
+                func = self.resolve_func(name, scope)
+                return_type = func.return_type if func is not None else expected
+                if return_type is None:
+                    return_type = self.std_list_type(STRING)
+                return self.adt_list_value(list(arg.concrete), return_type)
             raise UnsupportedExpression("strings.to_list requires a concrete string in solve")
         event = self.resolve_event(name, scope)
         if event is not None:
@@ -889,20 +978,30 @@ class BoundedEncoder:
             if event.fields:
                 return ZValue(BOOL, expr=symbol(*[self.primitive_expr(a) for a in args]))
             return ZValue(BOOL, expr=symbol)
-        constructor = self.find_constructor(name, expected)
+        constructor = self.find_constructor(name, expected, scope)
         if constructor is not None:
-            sum_type, variant = constructor
-            values = [self.compile_expr(arg, scope, t, expected=field_type, env=env) for arg, (_, field_type) in zip(expr.args, variant.fields)]
-            payloads = {v.name: [] for v in sum_type.variants}
-            payloads[variant.name] = values
-            return ZValue(sum_type, tag=z3.IntVal(self.variant_index(sum_type, variant.name)), variants=payloads)
+            if len(expr.args) != len(constructor.variant.fields):
+                raise UnsupportedExpression(f"constructor {name!r} expects {len(constructor.variant.fields)} args")
+            values = [
+                self.compile_expr(arg, scope, t, expected=field_type, env=env)
+                for arg, (_, field_type) in zip(expr.args, constructor.variant.fields)
+            ]
+            refined = self.refined_constructor_info(constructor, values)
+            if refined.sum_type is not constructor.sum_type:
+                values = [
+                    self.compile_expr(arg, scope, t, expected=field_type, env=env)
+                    for arg, (_, field_type) in zip(expr.args, refined.variant.fields)
+                ]
+            return self.constructor_value(refined, values)
         func = self.resolve_func(name, scope)
         if func is not None:
             args = [self.compile_expr(arg, scope, t, expected=typ, env=env) for arg, typ in zip(expr.args, func.params)]
-            if isinstance(func.return_type, PrimitiveType):
-                fn = self.function_symbol(func)
-                return ZValue(func.return_type, expr=fn(*[self.primitive_expr(arg) for arg in args]))
-            return self.opaque_call(name, args, func.return_type)
+            instance = self.instantiate_function(func, args, expected)
+            if instance.params != func.params:
+                args = [self.compile_expr(arg, scope, t, expected=typ, env=env) for arg, typ in zip(expr.args, instance.params)]
+                instance = self.instantiate_function(func, args, expected)
+            fn = self.function_symbol(instance)
+            return ZValue(instance.return_type, expr=fn(*[self.primitive_expr(arg) for arg in args]))
         return self.opaque_atom(format_expr(expr), t)
 
     def quantifier_formula(self, expr: A.QuantifierExpr, scope: ModuleScope, t: int, env: dict[str, ZValue]) -> Any:
@@ -951,19 +1050,6 @@ class BoundedEncoder:
             if typ.name == "string":
                 return ZValue(STRING, expr=z3.String(safe))
             return ZValue(UNIT, expr=z3.Int(safe))
-        if isinstance(typ, RecordSpec):
-            return ZValue(typ, fields={name: self.fresh_value(f"{prefix}.{name}", field_type) for name, field_type in typ.fields})
-        if isinstance(typ, TupleSpec):
-            return ZValue(typ, fields={f"_{idx}": self.fresh_value(f"{prefix}.{idx}", item) for idx, item in enumerate(typ.items)})
-        if isinstance(typ, SumSpec):
-            tag = z3.Int(f"{safe}__tag")
-            allowed = [tag == idx for idx, _ in enumerate(typ.variants)]
-            self.track(z3.Or(allowed), kind="type", module=None, name=prefix, line=1, column=1)
-            payloads = {
-                variant.name: [self.fresh_value(f"{prefix}.{variant.name}.{idx}", field_type) for idx, (_, field_type) in enumerate(variant.fields)]
-                for variant in typ.variants
-            }
-            return ZValue(typ, tag=tag, variants=payloads)
         sort = self.sort_for(typ)
         return ZValue(typ, expr=z3.Const(safe, sort))
 
@@ -1000,6 +1086,22 @@ class BoundedEncoder:
             return value.fields[field]
         if value.has_concrete and isinstance(value.concrete, dict):
             return self.python_value(value.concrete[field], None)
+        typ = self.resolve_named_type(value.typ)
+        if isinstance(typ, RecordSpec):
+            for idx, (name, field_type) in enumerate(typ.fields):
+                if name == field:
+                    encoding = self.datatype_encoding(value.typ)
+                    accessor = encoding.accessors[self.product_constructor_name()][idx]
+                    return ZValue(field_type, expr=accessor(self.primitive_expr(value)))
+        if isinstance(typ, TupleSpec) and field.startswith("_"):
+            try:
+                idx = int(field[1:])
+            except ValueError:
+                idx = -1
+            if 0 <= idx < len(typ.items):
+                encoding = self.datatype_encoding(value.typ)
+                accessor = encoding.accessors[self.product_constructor_name()][idx]
+                return ZValue(typ.items[idx], expr=accessor(self.primitive_expr(value)))
         raise UnsupportedExpression(f"field {field!r} is not available on value")
 
     def resolve_event(self, name: str, scope: ModuleScope) -> EventInfo | None:
@@ -1014,6 +1116,59 @@ class BoundedEncoder:
             return self.problem.scopes[module_name].funcs.get(local)
         return None
 
+    def instantiate_function(self, func: FunctionInfo, args: list[ZValue], expected: TypeSpec | None) -> FunctionInfo:
+        if not func.decl.type_params:
+            return func
+        params = set(func.decl.type_params)
+        bindings: dict[str, TypeSpec] = {}
+        for formal, actual in zip(func.params, args):
+            self.unify_type_params(formal, actual.typ, bindings, params)
+        if expected is not None:
+            self.unify_type_params(func.return_type, expected, bindings, params)
+        type_args = tuple(bindings.get(param, OpaqueSpec(param)) for param in func.decl.type_params)
+        type_env = dict(zip(func.decl.type_params, type_args))
+        return FunctionInfo(
+            module=func.module,
+            decl=func.decl,
+            params=[self.substitute_type_params(param, type_env, params) for param in func.params],
+            return_type=self.substitute_type_params(func.return_type, type_env, params),
+            type_args=type_args,
+        )
+
+    def substitute_type_params(
+        self,
+        typ: TypeSpec,
+        bindings: dict[str, TypeSpec],
+        params: set[str],
+    ) -> TypeSpec:
+        if isinstance(typ, OpaqueSpec) and typ.name in params:
+            return bindings.get(typ.name, typ)
+        if isinstance(typ, PrimitiveType):
+            return typ
+        origin = self.type_origin(typ)
+        if origin is not None:
+            module_name, local, args = origin
+            substituted_args = tuple(self.substitute_type_params(arg, bindings, params) for arg in args)
+            if substituted_args != args:
+                return self.problem.resolve_declared_type(module_name, local, substituted_args)
+        resolved = self.resolve_named_type(typ)
+        if isinstance(resolved, RecordSpec):
+            return RecordSpec(tuple(
+                (name, self.substitute_type_params(field_type, bindings, params))
+                for name, field_type in resolved.fields
+            ))
+        if isinstance(resolved, TupleSpec):
+            return TupleSpec(tuple(self.substitute_type_params(item, bindings, params) for item in resolved.items))
+        if isinstance(resolved, SumSpec):
+            return SumSpec(resolved.name, tuple(
+                VariantSpec(variant.name, tuple(
+                    (label, self.substitute_type_params(field_type, bindings, params))
+                    for label, field_type in variant.fields
+                ))
+                for variant in resolved.variants
+            ))
+        return typ
+
     def event_symbol(self, event: EventInfo, t: int) -> Any:
         key = (event.module, event.decl.name, t)
         if key in self.event_symbols:
@@ -1026,8 +1181,25 @@ class BoundedEncoder:
         self.event_symbols[key] = symbol
         return symbol
 
-    def function_symbol(self, func: FunctionInfo) -> Any:
+    def function_key(self, func: FunctionInfo) -> str:
         key = f"func.{func.module}.{func.decl.name}"
+        if func.type_args:
+            key += "<" + ",".join(self.type_key(arg) for arg in func.type_args) + ">"
+        return key
+
+    def type_key(self, typ: TypeSpec) -> str:
+        if isinstance(typ, PrimitiveType):
+            return typ.name
+        if isinstance(typ, OpaqueSpec):
+            return typ.name
+        if self.is_datatype_type(typ):
+            return self.datatype_key(typ)
+        if isinstance(typ, NamedSpec):
+            return typ.name
+        return repr(typ)
+
+    def function_symbol(self, func: FunctionInfo) -> Any:
+        key = self.function_key(func)
         if key not in self.problem.functions:
             factory = z3.RecFunction if self.can_define_function(func) else z3.Function
             self.problem.functions[key] = factory(
@@ -1044,10 +1216,6 @@ class BoundedEncoder:
         return self.problem.functions[key]
 
     def can_define_function(self, func: FunctionInfo) -> bool:
-        if not isinstance(func.return_type, PrimitiveType):
-            return False
-        if any(not isinstance(param_type, PrimitiveType) for param_type in func.params):
-            return False
         return all(isinstance(param.pattern, A.VarPattern) for param in func.decl.params)
 
     def add_function_definition(self, key: str, func: FunctionInfo) -> None:
@@ -1152,14 +1320,21 @@ class BoundedEncoder:
                 bindings.update(nested_bindings)
             return z3.And(conds) if conds else z3.BoolVal(True), bindings
         if isinstance(pattern, A.ConstructorPattern):
-            if not isinstance(value.typ, SumSpec) or value.tag is None or value.variants is None:
+            sum_type = self.resolve_named_type(value.typ)
+            if not isinstance(sum_type, SumSpec):
                 raise UnsupportedExpression("constructor pattern requires a sum value")
             variant_name = pattern.name.split(".")[-1]
-            idx = self.variant_index(value.typ, variant_name)
-            payloads = value.variants.get(variant_name, [])
-            conds = [value.tag == idx]
+            variant = next((item for item in sum_type.variants if item.name == variant_name), None)
+            if variant is None:
+                raise UnsupportedExpression(f"unknown constructor {variant_name!r}")
+            if len(pattern.args) != len(variant.fields):
+                return z3.BoolVal(False), {}
+            encoding = self.datatype_encoding(value.typ)
+            conds = [encoding.recognizers[variant_name](self.primitive_expr(value))]
             bindings: dict[str, ZValue] = {}
-            for nested, payload in zip(pattern.args, payloads):
+            accessors = encoding.accessors[variant_name]
+            for idx, (nested, (_, field_type)) in enumerate(zip(pattern.args, variant.fields)):
+                payload = ZValue(field_type, expr=accessors[idx](self.primitive_expr(value)))
                 cond, nested_bindings = self.pattern_condition(nested, payload)
                 conds.append(cond)
                 bindings.update(nested_bindings)
@@ -1180,26 +1355,165 @@ class BoundedEncoder:
     # Constructors, literals and equality
     # ------------------------------------------------------------------
 
-    def find_constructor(self, name: str, expected: TypeSpec | None) -> tuple[SumSpec, VariantSpec] | None:
+    def find_constructor(self, name: str, expected: TypeSpec | None, scope: ModuleScope | None = None) -> ConstructorInfo | None:
         short = name.split(".")[-1]
-        if isinstance(expected, SumSpec):
-            for variant in expected.variants:
+        expected_resolved = self.resolve_named_type(expected) if expected is not None else None
+        if isinstance(expected_resolved, SumSpec):
+            origin = self.type_origin(expected_resolved)
+            for variant in expected_resolved.variants:
                 if variant.name == short:
-                    return expected, variant
-        for scope in self.problem.scopes.values():
-            for decl in scope.types.values():
-                typ = self.problem.resolve_type(scope.module.name, A.TypeRef(name=decl.name))
+                    if origin is not None:
+                        module, local, args = origin
+                        return ConstructorInfo(expected_resolved, variant, module, local, args)
+                    return ConstructorInfo(expected_resolved, variant)
+
+        search_scopes: list[ModuleScope]
+        parts = name.split(".")
+        if scope is not None and len(parts) > 1 and parts[0] in scope.imports:
+            target_module = scope.imports[parts[0]]
+            search_scopes = [self.problem.scopes[target_module]] if target_module in self.problem.scopes else []
+        elif len(parts) > 1:
+            module_name = ".".join(parts[:-1])
+            search_scopes = [self.problem.scopes[module_name]] if module_name in self.problem.scopes else list(self.problem.scopes.values())
+        else:
+            search_scopes = list(self.problem.scopes.values())
+
+        for candidate_scope in search_scopes:
+            for decl in candidate_scope.types.values():
+                if not isinstance(decl.definition, A.SumType):
+                    continue
+                arg_specs = tuple(OpaqueSpec(param) for param in decl.params)
+                typ = self.problem.resolve_declared_type(candidate_scope.module.name, decl.name, arg_specs)
                 if isinstance(typ, SumSpec):
                     for variant in typ.variants:
                         if variant.name == short:
-                            return typ, variant
+                            return ConstructorInfo(typ, variant, candidate_scope.module.name, decl.name, arg_specs)
         return None
 
-    def variant_index(self, sum_type: SumSpec, variant_name: str) -> int:
-        for idx, variant in enumerate(sum_type.variants):
-            if variant.name == variant_name:
-                return idx
-        raise UnsupportedExpression(f"unknown constructor {variant_name!r}")
+    def type_origin(self, typ: TypeSpec) -> tuple[str, str, tuple[TypeSpec, ...]] | None:
+        resolved = self.resolve_named_type(typ)
+        resolved_name = resolved.name if isinstance(resolved, SumSpec) else None
+        for (module_name, local, args), cached in self.problem.type_cache.items():
+            cached_resolved = self.resolve_named_type(cached)
+            if cached_resolved is resolved:
+                return module_name, local, args
+            if (
+                resolved_name is not None
+                and isinstance(cached_resolved, SumSpec)
+                and cached_resolved.name == resolved_name
+            ):
+                return module_name, local, args
+        return None
+
+    def refined_constructor_info(self, info: ConstructorInfo, values: list[ZValue]) -> ConstructorInfo:
+        if info.module is None or info.local is None:
+            return info
+        decl = self.problem.scopes[info.module].types[info.local]
+        if not decl.params:
+            return info
+        bindings: dict[str, TypeSpec] = {}
+        params = set(decl.params)
+        for (_, field_type), value in zip(info.variant.fields, values):
+            self.unify_type_params(field_type, value.typ, bindings, params)
+        if not bindings:
+            return info
+        arg_specs = tuple(
+            bindings.get(param, info.type_args[idx] if idx < len(info.type_args) else OpaqueSpec(param))
+            for idx, param in enumerate(decl.params)
+        )
+        sum_type = self.problem.resolve_declared_type(info.module, info.local, arg_specs)
+        if not isinstance(sum_type, SumSpec):
+            return info
+        for variant in sum_type.variants:
+            if variant.name == info.variant.name:
+                return ConstructorInfo(sum_type, variant, info.module, info.local, arg_specs)
+        return info
+
+    def unify_type_params(
+        self,
+        pattern: TypeSpec,
+        actual: TypeSpec,
+        bindings: dict[str, TypeSpec],
+        params: set[str],
+        seen: set[tuple[int, int]] | None = None,
+    ) -> None:
+        seen = seen or set()
+        pair = (id(pattern), id(actual))
+        if pair in seen:
+            return
+        seen.add(pair)
+        pattern = self.resolve_named_type(pattern)
+        actual = self.resolve_named_type(actual)
+        if isinstance(pattern, OpaqueSpec) and pattern.name in params:
+            if not (isinstance(actual, OpaqueSpec) and actual.name == pattern.name):
+                bindings.setdefault(pattern.name, actual)
+            return
+        if isinstance(pattern, SumSpec) and isinstance(actual, SumSpec) and pattern.name == actual.name:
+            return
+        if isinstance(pattern, RecordSpec) and isinstance(actual, RecordSpec):
+            for (_, p_type), (_, a_type) in zip(pattern.fields, actual.fields):
+                self.unify_type_params(p_type, a_type, bindings, params, seen)
+            return
+        if isinstance(pattern, TupleSpec) and isinstance(actual, TupleSpec):
+            for p_type, a_type in zip(pattern.items, actual.items):
+                self.unify_type_params(p_type, a_type, bindings, params, seen)
+            return
+        if isinstance(pattern, SumSpec) and isinstance(actual, SumSpec):
+            for p_variant, a_variant in zip(pattern.variants, actual.variants):
+                for (_, p_type), (_, a_type) in zip(p_variant.fields, a_variant.fields):
+                    self.unify_type_params(p_type, a_type, bindings, params, seen)
+
+    def constructor_value(self, info: ConstructorInfo, values: list[ZValue]) -> ZValue:
+        encoding = self.datatype_encoding(info.sum_type)
+        constructor = encoding.constructors[info.variant.name]
+        exprs = [self.primitive_expr(value) for value in values]
+        return ZValue(info.sum_type, expr=constructor(*exprs))
+
+    def std_list_type(self, item_type: TypeSpec) -> TypeSpec:
+        if "std.collections.list" not in self.problem.scopes:
+            raise UnsupportedExpression("std.collections.list is not available")
+        return self.problem.resolve_declared_type("std.collections.list", "List", (item_type,))
+
+    def adt_list_value(self, items: list[Any], expected: TypeSpec | None) -> ZValue:
+        if expected is None:
+            item_type = self.python_value(items[0], None).typ if items else OpaqueSpec("item")
+            list_type = self.std_list_type(item_type)
+        else:
+            list_type = expected
+        sum_type = self.resolve_named_type(list_type)
+        if not isinstance(sum_type, SumSpec):
+            raise UnsupportedExpression("expected std List ADT")
+        variants = {variant.name: variant for variant in sum_type.variants}
+        if "Empty" not in variants or "Cons" not in variants:
+            raise UnsupportedExpression("expected std List constructors Empty and Cons")
+        head_type = variants["Cons"].fields[0][1] if variants["Cons"].fields else OpaqueSpec("item")
+        if items and isinstance(self.resolve_named_type(head_type), OpaqueSpec):
+            head_type = self.python_value(items[0], None).typ
+            list_type = self.std_list_type(head_type)
+            sum_type = self.resolve_named_type(list_type)
+            if not isinstance(sum_type, SumSpec):
+                raise UnsupportedExpression("expected std List ADT")
+            variants = {variant.name: variant for variant in sum_type.variants}
+            head_type = variants["Cons"].fields[0][1] if variants["Cons"].fields else head_type
+        concrete_items = [self.python_value(item, head_type) for item in items]
+        tail = self.constructor_value(ConstructorInfo(sum_type, variants["Empty"]), [])
+        for head in reversed(concrete_items):
+            tail = self.constructor_value(ConstructorInfo(sum_type, variants["Cons"]), [head, tail])
+        tail.concrete = concrete_items
+        tail.has_concrete = True
+        return tail
+
+    def product_value(self, typ: TypeSpec, fields: dict[str, ZValue]) -> ZValue:
+        resolved = self.resolve_named_type(typ)
+        encoding = self.datatype_encoding(typ)
+        constructor = encoding.constructors[self.product_constructor_name()]
+        if isinstance(resolved, RecordSpec):
+            ordered = [fields[name] for name, _ in resolved.fields]
+        elif isinstance(resolved, TupleSpec):
+            ordered = [fields[f"_{idx}"] for idx in range(len(resolved.items))]
+        else:
+            raise UnsupportedExpression(f"type {typ!r} is not a product ADT")
+        return ZValue(typ, expr=constructor(*[self.primitive_expr(value) for value in ordered]), fields=fields)
 
     def literal_value(self, value: Any, kind: str, expected: TypeSpec | None = None) -> ZValue:
         if kind == "bool" or isinstance(expected, PrimitiveType) and expected.name == "bool":
@@ -1222,77 +1536,208 @@ class BoundedEncoder:
         if isinstance(value, str):
             constructor = self.find_constructor(value, expected)
             if constructor is not None:
-                sum_type, variant = constructor
-                payloads = {v.name: [] for v in sum_type.variants}
-                return ZValue(
-                    sum_type,
-                    tag=z3.IntVal(self.variant_index(sum_type, variant.name)),
-                    variants=payloads,
-                    concrete=value,
-                    has_concrete=True,
-                )
+                return self.constructor_value(constructor, [])
             return self.literal_value(value, "string", expected)
         if isinstance(value, dict):
-            expected_fields = dict(expected.fields) if isinstance(expected, RecordSpec) else {}
+            expected_resolved = self.resolve_named_type(expected) if expected is not None else None
+            expected_fields = dict(expected_resolved.fields) if isinstance(expected_resolved, RecordSpec) else {}
             fields = {k: self.python_value(v, expected_fields.get(k)) for k, v in value.items()}
-            typ = expected if isinstance(expected, RecordSpec) else RecordSpec(tuple((k, v.typ) for k, v in fields.items()))
-            return ZValue(typ, fields=fields, concrete=value, has_concrete=True)
+            typ = expected if isinstance(expected_resolved, RecordSpec) else RecordSpec(tuple((k, v.typ) for k, v in fields.items()))
+            result = self.product_value(typ, fields)
+            result.concrete = value
+            result.has_concrete = True
+            return result
         if isinstance(value, tuple) and value and isinstance(value[0], str):
             constructor = self.find_constructor(value[0], expected)
             if constructor is not None:
-                sum_type, variant = constructor
                 raw_args = value[1] if len(value) > 1 else ()
-                payloads = {v.name: [] for v in sum_type.variants}
-                payloads[variant.name] = [
+                values = [
                     self.python_value(arg, field_type)
-                    for arg, (_, field_type) in zip(raw_args, variant.fields)
+                    for arg, (_, field_type) in zip(raw_args, constructor.variant.fields)
                 ]
-                return ZValue(sum_type, tag=z3.IntVal(self.variant_index(sum_type, variant.name)), variants=payloads, concrete=value, has_concrete=True)
-        if isinstance(value, (list, set)):
-            items = [self.python_value(item, None) for item in value]
-            kind = "set" if isinstance(value, set) else "list"
-            return ZValue(CollectionSpec(kind, items[0].typ if items else OpaqueSpec("empty")), concrete=items, has_concrete=True)
+                result = self.constructor_value(constructor, values)
+                result.concrete = value
+                result.has_concrete = True
+                return result
+        if isinstance(value, list):
+            return self.adt_list_value(value, expected)
+        if isinstance(value, set):
+            raise UnsupportedExpression("set runtime values require an explicit ADT constructor")
         return self.literal_value(value, "unit", expected)
 
     def equal_values(self, left: ZValue, right: ZValue) -> Any:
-        if left.fields is not None and right.fields is not None:
-            keys = sorted(set(left.fields) & set(right.fields))
-            if not keys:
-                return z3.BoolVal(True)
-            return z3.And([self.equal_values(left.fields[k], right.fields[k]) for k in keys])
-        if left.tag is not None and right.tag is not None and left.variants is not None and right.variants is not None:
-            conds = [left.tag == right.tag]
-            if isinstance(left.typ, SumSpec):
-                for variant in left.typ.variants:
-                    l_payloads = left.variants.get(variant.name, [])
-                    r_payloads = right.variants.get(variant.name, [])
-                    active = left.tag == self.variant_index(left.typ, variant.name)
-                    for l_val, r_val in zip(l_payloads, r_payloads):
-                        conds.append(z3.Implies(active, self.equal_values(l_val, r_val)))
-            return z3.And(conds)
-        if left.has_concrete and right.has_concrete and isinstance(left.concrete, list) and isinstance(right.concrete, list):
-            if len(left.concrete) != len(right.concrete):
-                return z3.BoolVal(False)
-            return z3.And([self.equal_values(l, r) for l, r in zip(left.concrete, right.concrete)])
         if self.is_numeric(left) and self.is_numeric(right):
             l_num, r_num = self.promote_numeric(left, right)
             return l_num == r_num
+        left_type = self.resolve_named_type(left.typ)
+        right_type = self.resolve_named_type(right.typ)
+        if isinstance(left_type, RecordSpec) and isinstance(right_type, RecordSpec):
+            left_fields = {name for name, _ in left_type.fields}
+            right_fields = {name for name, _ in right_type.fields}
+            common = sorted(left_fields & right_fields)
+            if not common:
+                return z3.BoolVal(True)
+            return z3.And([self.equal_values(self.field_value(left, name), self.field_value(right, name)) for name in common])
+        if isinstance(left_type, TupleSpec) and isinstance(right_type, TupleSpec):
+            if len(left_type.items) != len(right_type.items):
+                return z3.BoolVal(False)
+            return z3.And([
+                self.equal_values(self.field_value(left, f"_{idx}"), self.field_value(right, f"_{idx}"))
+                for idx in range(len(left_type.items))
+            ])
+        if self.is_datatype_type(left.typ) or self.is_datatype_type(right.typ):
+            left_expr = self.primitive_expr(left)
+            right_expr = self.primitive_expr(right)
+            if left_expr.sort().eq(right_expr.sort()):
+                return left_expr == right_expr
+            return z3.BoolVal(False)
         return self.primitive_expr(left) == self.primitive_expr(right)
 
     def if_value(self, cond: Any, then_v: ZValue, else_v: ZValue) -> ZValue:
-        if then_v.fields is not None and else_v.fields is not None:
-            return ZValue(then_v.typ, fields={k: self.if_value(cond, then_v.fields[k], else_v.fields[k]) for k in then_v.fields})
-        if then_v.tag is not None and else_v.tag is not None and then_v.variants is not None and else_v.variants is not None:
-            payloads = {
-                name: [self.if_value(cond, a, b) for a, b in zip(then_v.variants.get(name, []), else_v.variants.get(name, []))]
-                for name in then_v.variants
-            }
-            return ZValue(then_v.typ, tag=z3.If(cond, then_v.tag, else_v.tag), variants=payloads)
         return ZValue(then_v.typ, expr=z3.If(cond, self.primitive_expr(then_v), self.primitive_expr(else_v)))
 
     # ------------------------------------------------------------------
     # Z3 helpers
     # ------------------------------------------------------------------
+
+    def resolve_named_type(self, typ: TypeSpec) -> TypeSpec:
+        seen: set[str] = set()
+        while isinstance(typ, NamedSpec):
+            if typ.name in seen:
+                return typ
+            seen.add(typ.name)
+            resolved = self.problem.type_specs_by_name.get(typ.name)
+            if resolved is None or resolved == typ:
+                return typ
+            typ = resolved
+        return typ
+
+    def is_datatype_type(self, typ: TypeSpec) -> bool:
+        resolved = self.resolve_named_type(typ)
+        return isinstance(resolved, (RecordSpec, TupleSpec, SumSpec))
+
+    def datatype_key(self, typ: TypeSpec) -> str:
+        if isinstance(typ, NamedSpec):
+            return typ.name
+        resolved = self.resolve_named_type(typ)
+        if isinstance(resolved, SumSpec):
+            return resolved.name
+        if isinstance(resolved, RecordSpec):
+            return f"record:{repr(resolved)}"
+        if isinstance(resolved, TupleSpec):
+            return f"tuple:{repr(resolved)}"
+        raise UnsupportedExpression(f"type {typ!r} is not an ADT")
+
+    def product_constructor_name(self) -> str:
+        return "__value__"
+
+    def datatype_constructor_specs(
+        self,
+        key: str,
+        typ: TypeSpec,
+    ) -> list[tuple[str, str, list[tuple[str | None, TypeSpec]]]]:
+        resolved = self.resolve_named_type(typ)
+        if isinstance(resolved, SumSpec):
+            return [
+                (variant.name, self.safe(f"{key}.{variant.name}"), list(variant.fields))
+                for variant in resolved.variants
+            ]
+        if isinstance(resolved, RecordSpec):
+            return [(self.product_constructor_name(), self.safe(f"{key}.value"), list(resolved.fields))]
+        if isinstance(resolved, TupleSpec):
+            fields = [(f"_{idx}", item) for idx, item in enumerate(resolved.items)]
+            return [(self.product_constructor_name(), self.safe(f"{key}.value"), fields)]
+        raise UnsupportedExpression(f"type {typ!r} is not an ADT")
+
+    def collect_datatypes(self, typ: TypeSpec, pending: dict[str, TypeSpec]) -> None:
+        if not self.is_datatype_type(typ):
+            return
+        key = self.datatype_key(typ)
+        if key in self.problem.datatype_encodings or key in pending:
+            return
+        resolved = self.resolve_named_type(typ)
+        if isinstance(resolved, NamedSpec):
+            return
+        pending[key] = resolved
+        for _, _, fields in self.datatype_constructor_specs(key, resolved):
+            for _, field_type in fields:
+                self.collect_datatypes(field_type, pending)
+
+    def ensure_datatypes(self, typ: TypeSpec) -> None:
+        pending: dict[str, TypeSpec] = {}
+        self.collect_datatypes(typ, pending)
+        if not pending:
+            return
+        ordered = list(pending.items())
+        builders = {
+            key: z3.Datatype(f"DT__{self.safe(key)}")
+            for key, _ in ordered
+        }
+        for key, spec in ordered:
+            builder = builders[key]
+            for public_name, z3_name, fields in self.datatype_constructor_specs(key, spec):
+                z3_fields = []
+                for idx, (label, field_type) in enumerate(fields):
+                    label_text = label if label is not None else f"_{idx}"
+                    accessor_name = self.safe(f"{key}.{public_name}.{label_text}.{idx}")
+                    z3_fields.append((accessor_name, self.datatype_field_sort(field_type, builders)))
+                builder.declare(z3_name, *z3_fields)
+        created = z3.CreateDatatypes(*[builders[key] for key, _ in ordered])
+        if len(ordered) == 1 and not isinstance(created, (tuple, list)):
+            created = (created,)
+        for (key, spec), sort in zip(ordered, created):
+            constructors: dict[str, Any] = {}
+            recognizers: dict[str, Any] = {}
+            accessors: dict[str, list[Any]] = {}
+            fields_by_constructor: dict[str, list[tuple[str | None, TypeSpec]]] = {}
+            for idx, (public_name, _, fields) in enumerate(self.datatype_constructor_specs(key, spec)):
+                constructors[public_name] = sort.constructor(idx)
+                recognizers[public_name] = sort.recognizer(idx)
+                accessors[public_name] = [sort.accessor(idx, field_idx) for field_idx in range(len(fields))]
+                fields_by_constructor[public_name] = fields
+            self.problem.datatype_encodings[key] = DatatypeEncoding(
+                sort=sort,
+                constructors=constructors,
+                recognizers=recognizers,
+                accessors=accessors,
+                fields=fields_by_constructor,
+            )
+
+    def datatype_field_sort(self, typ: TypeSpec, builders: dict[str, Any]) -> Any:
+        if isinstance(typ, PrimitiveType):
+            return self.primitive_sort(typ)
+        if self.is_datatype_type(typ):
+            key = self.datatype_key(typ)
+            if key in builders:
+                return builders[key]
+            if key in self.problem.datatype_encodings:
+                return self.problem.datatype_encodings[key].sort
+            raise UnsupportedExpression(f"datatype dependency {key!r} was not collected")
+        return self.opaque_sort_for(typ)
+
+    def datatype_encoding(self, typ: TypeSpec) -> DatatypeEncoding:
+        self.ensure_datatypes(typ)
+        key = self.datatype_key(typ)
+        if key not in self.problem.datatype_encodings:
+            raise UnsupportedExpression(f"type {typ!r} is not encoded as an ADT")
+        return self.problem.datatype_encodings[key]
+
+    def primitive_sort(self, typ: PrimitiveType) -> Any:
+        if typ.name == "bool":
+            return z3.BoolSort()
+        if typ.name == "int":
+            return z3.IntSort()
+        if typ.name in {"rat", "decimal"}:
+            return z3.RealSort()
+        if typ.name == "string":
+            return z3.StringSort()
+        return z3.IntSort()
+
+    def opaque_sort_for(self, typ: TypeSpec) -> Any:
+        key = self.safe(repr(typ))
+        if key not in self.problem.opaque_sorts:
+            self.problem.opaque_sorts[key] = z3.DeclareSort(f"Sort__{key}")
+        return self.problem.opaque_sorts[key]
 
     def track(self, expr: Any, *, kind: str, module: str | None, name: str, line: int, column: int) -> None:
         self.track_counter += 1
@@ -1330,19 +1775,10 @@ class BoundedEncoder:
 
     def sort_for(self, typ: TypeSpec) -> Any:
         if isinstance(typ, PrimitiveType):
-            if typ.name == "bool":
-                return z3.BoolSort()
-            if typ.name == "int":
-                return z3.IntSort()
-            if typ.name in {"rat", "decimal"}:
-                return z3.RealSort()
-            if typ.name == "string":
-                return z3.StringSort()
-            return z3.IntSort()
-        key = self.safe(repr(typ))
-        if key not in self.problem.opaque_sorts:
-            self.problem.opaque_sorts[key] = z3.DeclareSort(f"Sort__{key}")
-        return self.problem.opaque_sorts[key]
+            return self.primitive_sort(typ)
+        if self.is_datatype_type(typ):
+            return self.datatype_encoding(typ).sort
+        return self.opaque_sort_for(typ)
 
     def real_val(self, value: Any) -> Any:
         if isinstance(value, Fraction):
@@ -1388,7 +1824,7 @@ class BoundedEncoder:
                 return True
             if root in scope.imports:
                 return True
-            if root in {"List", "std"} or root[:1].isupper():
+            if root[:1].isupper():
                 return True
             return False
         if isinstance(expr, A.Call):
@@ -1401,8 +1837,6 @@ class BoundedEncoder:
             return self.runtime_names_resolvable(expr.left, scope) and self.runtime_names_resolvable(expr.right, scope)
         if isinstance(expr, A.UnaryOp):
             return self.runtime_names_resolvable(expr.operand, scope)
-        if isinstance(expr, A.BracedExpr):
-            return self.runtime_names_resolvable(expr.expr, scope)
         if isinstance(expr, A.TemporalUnary):
             return self.runtime_names_resolvable(expr.operand, scope)
         if isinstance(expr, A.TemporalBinary):
@@ -1418,7 +1852,7 @@ class BoundedEncoder:
             )
         if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
             return all(self.runtime_names_resolvable(item, scope) for item in expr.items)
-        if isinstance(expr, A.RecordLiteral):
+        if isinstance(expr, A.RecordConstructor):
             return all(self.runtime_names_resolvable(item, scope) for _, item in expr.fields)
         if isinstance(expr, A.QuantifierExpr):
             return self.runtime_names_resolvable(expr.domain, scope) and self.runtime_names_resolvable(expr.body, scope)
@@ -1444,8 +1878,6 @@ class BoundedEncoder:
             return self.runtime_references_have_values(expr.left, scope) and self.runtime_references_have_values(expr.right, scope)
         if isinstance(expr, A.UnaryOp):
             return self.runtime_references_have_values(expr.operand, scope)
-        if isinstance(expr, A.BracedExpr):
-            return self.runtime_references_have_values(expr.expr, scope)
         if isinstance(expr, A.TemporalUnary):
             return self.runtime_references_have_values(expr.operand, scope)
         if isinstance(expr, A.TemporalBinary):
@@ -1462,7 +1894,7 @@ class BoundedEncoder:
             )
         if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
             return all(self.runtime_references_have_values(item, scope) for item in expr.items)
-        if isinstance(expr, A.RecordLiteral):
+        if isinstance(expr, A.RecordConstructor):
             return all(self.runtime_references_have_values(item, scope) for _, item in expr.fields)
         if isinstance(expr, A.QuantifierExpr):
             return self.runtime_references_have_values(expr.domain, scope) and self.runtime_references_have_values(expr.body, scope)
@@ -1483,8 +1915,6 @@ class BoundedEncoder:
             return self.references_import_alias(expr.left, scope) or self.references_import_alias(expr.right, scope)
         if isinstance(expr, A.UnaryOp):
             return self.references_import_alias(expr.operand, scope)
-        if isinstance(expr, A.BracedExpr):
-            return self.references_import_alias(expr.expr, scope)
         if isinstance(expr, A.TemporalUnary):
             return self.references_import_alias(expr.operand, scope)
         if isinstance(expr, A.TemporalBinary):
@@ -1498,8 +1928,8 @@ class BoundedEncoder:
             )
         if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
             return any(self.references_import_alias(item, scope) for item in expr.items)
-        if isinstance(expr, A.RecordLiteral):
-            return any(self.references_import_alias(item, scope) for _, item in expr.fields)
+        if isinstance(expr, A.RecordConstructor):
+            return expr.type_name.split(".")[0] in scope.imports or any(self.references_import_alias(item, scope) for _, item in expr.fields)
         return False
 
     def unresolved(self, scope: ModuleScope, name: str, node: A.Node | None = None) -> None:
@@ -1566,21 +1996,45 @@ class BoundedEncoder:
             "defeated_rules": defeated,
         }
 
-    def model_value(self, model: Any, value: ZValue) -> Any:
-        if value.fields is not None:
-            return {name: self.model_value(model, field_value) for name, field_value in value.fields.items()}
-        if value.tag is not None and isinstance(value.typ, SumSpec):
-            tag_value = model.eval(value.tag, model_completion=True)
-            tag_index = int(str(tag_value))
-            variant = value.typ.variants[tag_index]
-            payloads = value.variants.get(variant.name, []) if value.variants else []
+    def model_value(self, model: Any, value: ZValue, depth: int = 0) -> Any:
+        if depth > 50:
+            return "<max-depth>"
+        typ = self.resolve_named_type(value.typ)
+        if isinstance(typ, RecordSpec):
+            if value.fields is not None:
+                return {name: self.model_value(model, field_value, depth + 1) for name, field_value in value.fields.items()}
+            encoding = self.datatype_encoding(value.typ)
+            expr = self.primitive_expr(value)
             return {
-                "constructor": variant.name,
-                "values": [self.model_value(model, item) for item in payloads],
+                name: self.model_value(model, ZValue(field_type, expr=encoding.accessors[self.product_constructor_name()][idx](expr)), depth + 1)
+                for idx, (name, field_type) in enumerate(typ.fields)
             }
+        if isinstance(typ, TupleSpec):
+            if value.fields is not None:
+                return [self.model_value(model, value.fields[f"_{idx}"], depth + 1) for idx in range(len(typ.items))]
+            encoding = self.datatype_encoding(value.typ)
+            expr = self.primitive_expr(value)
+            return [
+                self.model_value(model, ZValue(item_type, expr=encoding.accessors[self.product_constructor_name()][idx](expr)), depth + 1)
+                for idx, item_type in enumerate(typ.items)
+            ]
+        if isinstance(typ, SumSpec):
+            encoding = self.datatype_encoding(value.typ)
+            expr = self.primitive_expr(value)
+            for variant in typ.variants:
+                if z3.is_true(model.eval(encoding.recognizers[variant.name](expr), model_completion=True)):
+                    payloads = [
+                        self.model_value(model, ZValue(field_type, expr=encoding.accessors[variant.name][idx](expr)), depth + 1)
+                        for idx, (_, field_type) in enumerate(variant.fields)
+                    ]
+                    return {
+                        "constructor": variant.name,
+                        "values": payloads,
+                    }
+            return str(model.eval(expr, model_completion=True))
         if value.has_concrete:
             if isinstance(value.concrete, list):
-                return [self.model_value(model, item) if isinstance(item, ZValue) else item for item in value.concrete]
+                return [self.model_value(model, item, depth + 1) if isinstance(item, ZValue) else item for item in value.concrete]
             if isinstance(value.concrete, set):
                 return sorted(value.concrete)
             return value.concrete

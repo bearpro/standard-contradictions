@@ -83,7 +83,7 @@ entity pipe: Pipe
     assert "# align kind=" in source
     assert "@ align" not in source
     assert "rule O alignment_001:" in source
-    assert "{ m1.pipe = m2.pipe } always" in source
+    assert "m1.pipe = m2.pipe always" in source
     assert "rule-without-temporal" not in codes
 
 

@@ -5,6 +5,7 @@ import re
 import sys
 from typing import Any, BinaryIO
 
+from . import ast as A
 from .lexer import KEYWORDS
 from .linter import ImportResolver, SemanticChecker, lint_source
 from .parser import ParseError, parse
@@ -133,6 +134,7 @@ class LSPServer:
     ) -> list[dict[str, Any]]:
         prefix = self.line_prefix(text, line, character)
         field_target = self.field_completion_target(prefix)
+        record_target = self.record_constructor_completion_target(prefix)
         try:
             module = parse(text)
         except ParseError:
@@ -147,6 +149,12 @@ class LSPServer:
         checker.check()
         if field_target:
             fields = checker.fields_for_reference(field_target) or {}
+            return [
+                {"label": name, "kind": 5, "detail": "field"}
+                for name in sorted(fields)
+            ]
+        if record_target:
+            fields = checker.fields_for_type(A.TypeRef(name=record_target)) or {}
             return [
                 {"label": name, "kind": 5, "detail": "field"}
                 for name in sorted(fields)
@@ -174,10 +182,22 @@ class LSPServer:
         match = re.search(r"([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\.[A-Za-z0-9_']*$", prefix)
         return match.group(1) if match else None
 
+    def record_constructor_completion_target(self, prefix: str) -> str | None:
+        match = re.search(r"(?:^|[\s:=,(])([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\s*\{[^{}]*$", prefix)
+        return match.group(1) if match else None
+
     def repair_completion_source(self, text: str, line: int, character: int, prefix: str) -> str | None:
         insertion = None
         if self.field_completion_target(prefix):
             insertion = "__completion__"
+        elif self.record_constructor_completion_target(prefix):
+            tail = prefix.rsplit("{", 1)[1].rsplit(",", 1)[-1]
+            if "=" in tail:
+                insertion = "unit }"
+            elif tail.strip():
+                insertion = " = unit }"
+            else:
+                insertion = "__completion__ = unit }"
         elif self.is_type_context(prefix):
             insertion = "unit"
         if insertion is None:

@@ -171,7 +171,8 @@ class MatchExpr(Expr):
 
 
 @dataclass
-class RecordLiteral(Expr):
+class RecordConstructor(Expr):
+    type_name: str = ""
     fields: list[tuple[str, Expr]] = field(default_factory=list)
 
 
@@ -188,11 +189,6 @@ class SetLiteral(Expr):
 @dataclass
 class TupleLiteral(Expr):
     items: list[Expr] = field(default_factory=list)
-
-
-@dataclass
-class BracedExpr(Expr):
-    expr: Expr | None = None
 
 
 @dataclass

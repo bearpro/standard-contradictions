@@ -724,8 +724,8 @@ def render_alignment_module(
     right_module = report.right_module or "right"
     name = module_name or f"alignment_{safe_identifier(left_module)}_{safe_identifier(right_module)}"
     module = A.Module(name=name)
-    module.imports.append(A.ImportDecl(path=left_module, alias=left_alias))
-    module.imports.append(A.ImportDecl(path=right_module, alias=right_alias))
+    module.imports.append(A.ImportDecl(path=f"{left_module}.mdl", alias=left_alias))
+    module.imports.append(A.ImportDecl(path=f"{right_module}.mdl", alias=right_alias))
 
     for index, candidate in enumerate(report.accepted, start=1):
         left_expr = expression_for_path(left_alias, candidate.left.path)
@@ -733,7 +733,7 @@ def render_alignment_module(
         equality = A.BinaryOp(op="=", left=left_expr, right=right_expr)
         body = A.TemporalUnary(
             op="always",
-            operand=A.BracedExpr(expr=equality),
+            operand=equality,
             position="postfix",
         )
         annotation = (

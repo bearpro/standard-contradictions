@@ -1,10 +1,10 @@
 module fixture_pipeline_tube_alignment
 
-import fixture_pipeline_spec as m1
-import fixture_tube_model as m2
+import "fixture_pipeline_spec.mdl" as m1
+import "fixture_tube_model.mdl" as m2
 
 # align kind=field score=0.800 matcher=builtin
-rule O alignment_001: { m1.pipe.length = m2.tube.length } always
+rule O alignment_001: m1.pipe.length = m2.tube.length always
 
 # align kind=field score=0.800 matcher=builtin
-rule O alignment_002: { m1.pipe.pressure = m2.tube.pressure } always
+rule O alignment_002: m1.pipe.pressure = m2.tube.pressure always

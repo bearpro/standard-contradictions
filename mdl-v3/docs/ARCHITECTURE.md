@@ -34,7 +34,7 @@ Subcommands:
 
 ## Runtime scope
 
-The runtime is point-wise and deterministic. It evaluates ordinary pure functions, records, lists, pattern matching and facts. It intentionally does not model full temporal semantics; temporal formulas are translated to the core layer and should be consumed by a dedicated DDL-LTLf/model-checking backend.
+The runtime is point-wise and deterministic. It evaluates ordinary pure functions, records, tuples, stdlib collection constructors, pattern matching and facts. It intentionally does not model full temporal semantics; temporal formulas are translated to the core layer and should be consumed by a dedicated DDL-LTLf/model-checking backend.
 
 ## Solver scope
 

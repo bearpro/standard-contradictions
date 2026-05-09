@@ -1,0 +1,3 @@
+module std.collections.map
+
+type Map<K, V> = Empty | Put(K, V, Map<K, V>)

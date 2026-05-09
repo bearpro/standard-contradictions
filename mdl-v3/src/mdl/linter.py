@@ -11,9 +11,8 @@ from .parser import parse
 
 
 PRIMITIVE_TYPES = {"bool", "int", "rat", "decimal", "string", "unit"}
-COLLECTION_TYPES = {"List", "Set", "Map", "Option"}
-BUILTIN_ROOTS = {"List", "std"}
-BUILTIN_TERMS = {"last", "List.Cons", "List.Empty", "std.system.strings.to_list"}
+BUILTIN_ROOTS: set[str] = set()
+BUILTIN_TERMS = {"last"}
 
 
 @dataclass
@@ -41,51 +40,109 @@ def path_to_file(path: str | None) -> Path | None:
     return Path(path)
 
 
+def import_alias(path: str) -> str:
+    normalized = path.replace("\\", "/")
+    if normalized.endswith(".mdl") or "/" in normalized:
+        return Path(normalized).stem
+    return normalized.split(".")[-1]
+
+
+def stdlib_root() -> Path:
+    return Path(__file__).resolve().parent / "stdlib"
+
+
+def is_file_import(path: str) -> bool:
+    normalized = path.replace("\\", "/")
+    return normalized.endswith(".mdl") or "/" in normalized
+
+
 class ImportResolver:
     def __init__(self, path: str | None = None, documents: dict[str, str] | None = None):
         self.path = path
         self.documents = documents or {}
-        self.cache: dict[str, ResolvedModule | None] = {}
+        self.cache: dict[tuple[str | None, str], ResolvedModule | None] = {}
 
-    def resolve(self, import_path: str) -> ResolvedModule | None:
-        if import_path.startswith("std."):
-            return None
-        if import_path in self.cache:
-            return self.cache[import_path]
+    def resolve(self, import_path: str, base_path: str | None = None) -> ResolvedModule | None:
+        base_path = base_path or self.path
+        key = (base_path, import_path)
+        if key in self.cache:
+            return self.cache[key]
 
-        resolved = self.resolve_from_documents(import_path) or self.resolve_from_files(import_path)
-        self.cache[import_path] = resolved
+        resolved = (
+            self.resolve_from_documents(import_path, base_path)
+            or self.resolve_from_stdlib(import_path)
+            or self.resolve_from_files(import_path, base_path)
+        )
+        self.cache[key] = resolved
         return resolved
 
-    def resolve_from_documents(self, import_path: str) -> ResolvedModule | None:
+    def resolve_from_documents(self, import_path: str, base_path: str | None) -> ResolvedModule | None:
+        candidates = {p.resolve() for p in self.file_candidates(import_path, base_path) if p.is_absolute() or base_path}
         for uri, text in self.documents.items():
+            document_path = path_to_file(uri)
             try:
                 module = parse(text)
             except ParseError:
                 continue
+            if document_path is not None and candidates:
+                try:
+                    if document_path.resolve() in candidates:
+                        return ResolvedModule(module, uri)
+                except OSError:
+                    pass
             if module.name == import_path:
                 return ResolvedModule(module, uri)
         return None
 
-    def resolve_from_files(self, import_path: str) -> ResolvedModule | None:
-        current = path_to_file(self.path)
+    def resolve_from_stdlib(self, import_path: str) -> ResolvedModule | None:
+        normalized = import_path.replace("\\", "/")
+        if not normalized.startswith("std/"):
+            return None
+        if ".." in Path(normalized).parts:
+            return None
+        candidate = stdlib_root() / normalized
+        return self.load_file(candidate)
+
+    def resolve_from_files(self, import_path: str, base_path: str | None) -> ResolvedModule | None:
+        for candidate in self.file_candidates(import_path, base_path):
+            resolved = self.load_file(candidate) if is_file_import(import_path) else self.load_if_module(candidate, import_path)
+            if resolved is not None:
+                return resolved
+        current = path_to_file(base_path)
         if current is None:
             return None
         base_dir = current.resolve().parent if current.suffix else current.resolve()
-        candidates = [
+        fallback_module = Path(import_path.replace("\\", "/")).stem if is_file_import(import_path) else import_path
+        for candidate in sorted(base_dir.glob("*.mdl")):
+            resolved = self.load_if_module(candidate, fallback_module)
+            if resolved is not None:
+                return resolved
+        return None
+
+    def file_candidates(self, import_path: str, base_path: str | None) -> list[Path]:
+        current = path_to_file(base_path)
+        if current is None:
+            base_dir = Path.cwd()
+        else:
+            base_dir = current.resolve().parent if current.suffix else current.resolve()
+        normalized = import_path.replace("\\", "/")
+        if is_file_import(normalized):
+            raw = Path(normalized)
+            return [raw if raw.is_absolute() else base_dir / raw]
+        return [
             base_dir / (import_path.replace(".", "/") + ".mdl"),
             base_dir / f"{import_path}.mdl",
             base_dir / f"{import_path.split('.')[-1]}.mdl",
         ]
-        for candidate in candidates:
-            resolved = self.load_if_module(candidate, import_path)
-            if resolved is not None:
-                return resolved
-        for candidate in sorted(base_dir.glob("*.mdl")):
-            resolved = self.load_if_module(candidate, import_path)
-            if resolved is not None:
-                return resolved
-        return None
+
+    def load_file(self, path: Path) -> ResolvedModule | None:
+        if not path.exists() or not path.is_file():
+            return None
+        try:
+            module = parse(path.read_text(encoding="utf-8"))
+        except (OSError, ParseError):
+            return None
+        return ResolvedModule(module, str(path))
 
     def load_if_module(self, path: Path, import_path: str) -> ResolvedModule | None:
         if not path.exists() or not path.is_file():
@@ -119,13 +176,10 @@ class SemanticChecker:
         self.resolved_imports: set[str] = set()
         self.imported_names: set[str] = set()
         self.types: dict[str, Symbol] = {
-            name: Symbol(name, "type", A.TypeRef(name=name)) for name in sorted(PRIMITIVE_TYPES | COLLECTION_TYPES)
+            name: Symbol(name, "type", A.TypeRef(name=name)) for name in sorted(PRIMITIVE_TYPES)
         }
         self.terms: dict[str, Symbol] = {
             "last": Symbol("last", "builtin", A.TypeRef(name="bool")),
-            "List.Cons": Symbol("List.Cons", "builtin"),
-            "List.Empty": Symbol("List.Empty", "builtin", A.TypeRef(name="List")),
-            "std.system.strings.to_list": Symbol("std.system.strings.to_list", "builtin"),
         }
         self.rules: dict[str, Symbol] = {}
         self.type_definitions: dict[str, A.TypeExpr | A.SumType | None] = {}
@@ -140,14 +194,13 @@ class SemanticChecker:
         return self.diagnostics
 
     def register_import(self, imp: A.ImportDecl) -> None:
-        alias = imp.alias or imp.path.split(".")[-1]
+        alias = imp.alias or import_alias(imp.path)
         self.imports.add(alias)
         self.terms[alias] = Symbol(alias, "import", node=imp)
 
-        resolved = self.resolver.resolve(imp.path)
+        resolved = self.resolver.resolve(imp.path, self.path)
         if resolved is None:
-            if not imp.path.startswith("std."):
-                self.error(f"unresolved import {imp.path!r}", imp, "unresolved-import")
+            self.error(f"unresolved import {imp.path!r}", imp, "unresolved-import")
             self.register_unresolved_exposing(imp)
             return
         if resolved.module.name in self.import_stack:
@@ -202,14 +255,14 @@ class SemanticChecker:
                 qualified_definition = imported.type_definitions.get(exposed)
                 exposed_type = A.TypeRef(name=name)
                 self.types[name] = Symbol(name, "imported-type", exposed_type, imp)
-                alias = imp.alias or imp.path.split(".")[-1]
+                alias = imp.alias or import_alias(imp.path)
                 self.type_definitions[name] = self.qualify_type_definition(qualified_definition, imported, alias)
             if exposed in imported.terms:
                 symbol = imported.terms[exposed]
                 self.terms[name] = Symbol(
                     name,
                     f"imported-{symbol.kind}",
-                    self.qualify_type_expr(symbol.type_expr, imported, imp.alias or imp.path.split(".")[-1]),
+                    self.qualify_type_expr(symbol.type_expr, imported, imp.alias or import_alias(imp.path)),
                     imp,
                 )
 
@@ -245,7 +298,7 @@ class SemanticChecker:
             return None
         if isinstance(typ, A.TypeRef):
             root = typ.name.split(".")[0]
-            if typ.name in PRIMITIVE_TYPES or root in COLLECTION_TYPES or root in BUILTIN_ROOTS:
+            if typ.name in PRIMITIVE_TYPES or root in BUILTIN_ROOTS:
                 name = typ.name
             elif typ.name in imported.types:
                 name = f"{alias}.{typ.name}"
@@ -427,12 +480,8 @@ class SemanticChecker:
             for item in expr.items:
                 self.check_expr(item, env)
             return
-        if isinstance(expr, A.RecordLiteral):
-            for _, value in expr.fields:
-                self.check_expr(value, env)
-            return
-        if isinstance(expr, A.BracedExpr):
-            self.check_expr(expr.expr, env)
+        if isinstance(expr, A.RecordConstructor):
+            self.check_record_constructor(expr, env)
             return
         if isinstance(expr, A.TemporalUnary):
             self.check_expr(expr.operand, env)
@@ -531,6 +580,25 @@ class SemanticChecker:
         if fields is not None and field not in fields:
             self.error(f"unknown field {field!r}", node, "unknown-field")
 
+    def check_record_constructor(self, expr: A.RecordConstructor, env: dict[str, A.TypeExpr | None]) -> None:
+        typ = A.TypeRef(name=expr.type_name, line=expr.line, column=expr.column)
+        self.check_type_expr(typ)
+        fields = self.fields_for_type(typ)
+        type_known = expr.type_name in self.types
+        if fields is None and type_known:
+            self.error(f"type {expr.type_name!r} is not a record type", expr, "not-record-type")
+        seen: set[str] = set()
+        for name, value in expr.fields:
+            if name in seen:
+                self.error(f"duplicate record field {name!r}", expr, "duplicate-record-field")
+            seen.add(name)
+            if fields is not None and name not in fields:
+                self.error(f"unknown field {name!r}", expr, "unknown-field")
+            self.check_expr(value, env)
+        if fields is not None:
+            for name in sorted(set(fields) - seen):
+                self.error(f"missing record field {name!r}", expr, "missing-record-field")
+
     def infer_expr_type(self, expr: A.Expr | None, env: dict[str, A.TypeExpr | None]) -> A.TypeExpr | None:
         if expr is None:
             return None
@@ -548,8 +616,8 @@ class SemanticChecker:
                 return self.terms[name].type_expr
             if name and name in self.constructors:
                 return A.TypeRef(name=self.constructors[name][0])
-            if name and name.endswith("strings.to_list") and expr.args:
-                return A.TypeRef(name="List", args=[A.TypeRef(name="char")])
+            if name and (name == "to_list" or name.endswith("strings.to_list")) and expr.args:
+                return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
         if isinstance(expr, A.BinaryOp):
             if expr.op in {"and", "or", "implies", "->", "iff", "<->", "=", "!=", "<", "<=", ">", ">="}:
                 return A.TypeRef(name="bool")
@@ -562,14 +630,14 @@ class SemanticChecker:
             local = dict(env)
             self.bind_pattern(expr.pattern, local, self.infer_expr_type(expr.value, env))
             return self.infer_expr_type(expr.body, local)
-        if isinstance(expr, A.RecordLiteral):
-            return A.RecordType(fields=[(name, self.infer_expr_type(value, env) or A.TypeRef(name="unit")) for name, value in expr.fields])
+        if isinstance(expr, A.RecordConstructor):
+            return A.TypeRef(name=expr.type_name)
         if isinstance(expr, A.TupleLiteral):
             return A.TupleType(items=[self.infer_expr_type(item, env) or A.TypeRef(name="unit") for item in expr.items])
         if isinstance(expr, (A.ListLiteral, A.SetLiteral)):
             item_type = self.infer_expr_type(expr.items[0], env) if expr.items else A.TypeRef(name="unit")
             return A.TypeRef(name="List" if isinstance(expr, A.ListLiteral) else "Set", args=[item_type or A.TypeRef(name="unit")])
-        if isinstance(expr, (A.BracedExpr, A.TemporalUnary, A.TemporalBinary, A.QuantifierExpr)):
+        if isinstance(expr, (A.TemporalUnary, A.TemporalBinary, A.QuantifierExpr)):
             return A.TypeRef(name="bool")
         return None
 
@@ -780,8 +848,6 @@ class Linter:
             return False
         if isinstance(expr, (A.TemporalUnary, A.TemporalBinary)):
             return True
-        if isinstance(expr, A.BracedExpr):
-            return self.has_temporal_operator(expr.expr)
         if isinstance(expr, A.BinaryOp):
             return self.has_temporal_operator(expr.left) or self.has_temporal_operator(expr.right)
         if isinstance(expr, A.UnaryOp):
@@ -805,7 +871,7 @@ class Linter:
             return self.has_temporal_operator(expr.domain) or self.has_temporal_operator(expr.body)
         if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
             return any(self.has_temporal_operator(i) for i in expr.items)
-        if isinstance(expr, A.RecordLiteral):
+        if isinstance(expr, A.RecordConstructor):
             return any(self.has_temporal_operator(v) for _, v in expr.fields)
         return False
 

@@ -79,7 +79,7 @@ entity pipe: Pipe
     source = '''
 module alignment
 
-import pipe_spec as m1
+import "pipe.mdl" as m1
 
 rule O ok: m1.pipe.length > 0 always
 rule O bad: m1.pipe.radius > 0 always
@@ -89,6 +89,21 @@ rule O bad: m1.pipe.radius > 0 always
 
     assert not any("m1.pipe.length" in d.message for d in diagnostics)
     assert any(d.code == "unknown-field" and "radius" in d.message for d in diagnostics)
+
+
+def test_linter_checks_record_constructor_fields():
+    diagnostics = lint_source('''
+module records
+
+type Pipe = { length: rat, radius: rat }
+
+val ok: Pipe = Pipe { length = 1, radius = 2 }
+val missing: Pipe = Pipe { length = 1 }
+val extra: Pipe = Pipe { length = 1, radius = 2, diameter = 3 }
+''')
+
+    assert any(d.code == "missing-record-field" and "radius" in d.message for d in diagnostics)
+    assert any(d.code == "unknown-field" and "diameter" in d.message for d in diagnostics)
 
 
 def test_linter_resolves_exposed_imported_type(tmp_path):
@@ -102,12 +117,44 @@ type Pipe = { length: rat }
     source = '''
 module consumer
 
-import pipe_spec exposing (Pipe)
+import "pipe_model.mdl" exposing (Pipe)
 
 entity pipe: Pipe
 rule O ok: pipe.length > 0 always
 '''
 
     diagnostics = lint_source(source, path=str(current))
+
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
+def test_linter_requires_std_import_for_collections():
+    diagnostics = lint_source('''
+module collections
+
+entity xs: List<int>
+rule O bad: List.Empty = List.Empty always
+''')
+
+    assert any(d.code == "undefined-type" and "List" in d.message for d in diagnostics)
+    assert any(d.code == "undefined-name" and "List.Empty" in d.message for d in diagnostics)
+
+
+def test_linter_resolves_std_collection_imports():
+    diagnostics = lint_source('''
+module collections
+
+import "std/collections/list.mdl" as List exposing (List)
+import "std/collections/set.mdl" as Set exposing (Set)
+import "std/collections/map.mdl" as Map exposing (Map)
+import "std/collections/option.mdl" as Option exposing (Option)
+
+entity xs: List<int>
+entity ys: Set<int>
+entity lookup: Map<string, int>
+entity maybe: Option<int>
+
+rule O ok: List.Empty = List.Empty always
+''')
 
     assert not any(d.severity == "error" for d in diagnostics)

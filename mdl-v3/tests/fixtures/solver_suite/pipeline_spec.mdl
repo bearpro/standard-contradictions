@@ -1,10 +1,12 @@
 module fixture_pipeline_spec
 
+import "std/collections/list.mdl" as List exposing (List)
+
 private type InspectionState = Pending | Accepted | Rejected
 
 type Pipe = { length: rat, radius: rat, pressure: int, state: InspectionState }
 
-val inspection_tags = [1, 2, 3]
+val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty)))
 
 private func positive_tags(tags: List<int>) -> bool:
     case tags:
@@ -32,9 +34,9 @@ entity pipe: Pipe
 event inspected(length: rat)
 event pressure_changed(pressure: int)
 
-rule O pipe_geometry: { pipe.length > 0 and pipe.radius > 0 } always
+rule O pipe_geometry: (pipe.length > 0 and pipe.radius > 0) always
 rule O pipe_quality: pipe_ok(pipe) always
-rule F reject_bad_inspection: { inspected(pipe.length) and not pipe_ok(pipe) } eventually
-rule O pressure_after_change: { pressure_changed(pipe.pressure) implies pipe.pressure > 0 } always
+rule F reject_bad_inspection: (inspected(pipe.length) and not pipe_ok(pipe)) eventually
+rule O pressure_after_change: (pressure_changed(pipe.pressure) implies pipe.pressure > 0) always
 
-fact pipe = { length = 12, radius = 2, pressure = 5, state = Accepted, }
+fact pipe = Pipe { length = 12, radius = 2, pressure = 5, state = Accepted }

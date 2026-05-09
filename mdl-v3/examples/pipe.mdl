@@ -6,4 +6,4 @@ entity pipe: Pipe
 
 rule O pipe_length_positive: pipe.length > 0 always
 
-fact pipe = { length = 10, radius = 2, }
+fact pipe = Pipe { length = 10, radius = 2 }
