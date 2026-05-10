@@ -133,6 +133,7 @@
           ];
 
           pythonRelaxDeps = [
+            "pandas"
             "z3-solver"
           ];
 
@@ -167,7 +168,7 @@
           mdl = mdlFor pkgs;
         in
         {
-          inherit mdl;
+          "mdl-v3" = mdl;
           default = mdl;
         });
 
