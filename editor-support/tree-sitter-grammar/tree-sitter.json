@@ -1,0 +1,16 @@
+{
+  "grammars": [
+    {
+      "name": "mdl",
+      "camelcase": "Mdl",
+      "scope": "source.mdl",
+      "path": ".",
+      "file-types": ["mdl"]
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Tree-sitter grammar scaffold for MDL / DDL-LTLf."
+  }
+}
