@@ -141,6 +141,11 @@
             "z3-solver"
           ];
 
+          makeWrapperArgs = [
+            "--unset"
+            "PYTHONPATH"
+          ];
+
           pythonImportsCheck = [
             "mdl"
             "z3"
