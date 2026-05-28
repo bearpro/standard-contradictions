@@ -107,6 +107,35 @@ import "std/collections/list.mdl" as List exposing (List)
     assert module.imports[0].alias == "List"
 
 
+def test_hash_comments_are_supported():
+    module = parse('''
+module comments
+
+# full-line comment
+entity ready: bool # inline comment
+entity still_ready: bool #{ inline comment, not set syntax
+rule O ok: ready always # trailing comment
+''')
+
+    assert module.name == "comments"
+    assert any(isinstance(d, A.EntityDecl) and d.name == "ready" for d in module.declarations)
+    assert any(isinstance(d, A.EntityDecl) and d.name == "still_ready" for d in module.declarations)
+    assert any(isinstance(d, A.RuleDecl) and d.name == "ok" for d in module.declarations)
+
+
+def test_slash_comments_are_rejected():
+    for source in [
+        'module bad\n// old comment\nentity x: bool\n',
+        'module bad\nentity x: bool /* old block comment */\n',
+    ]:
+        try:
+            parse(source)
+        except ParseError:
+            pass
+        else:  # pragma: no cover - defensive
+            raise AssertionError(f"old comment syntax unexpectedly parsed: {source!r}")
+
+
 def test_collection_literals_are_rejected():
     for source in [
         'module bad\nval xs = [1, 2]\n',

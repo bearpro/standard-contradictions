@@ -15,9 +15,7 @@
   "repository": {
     "comments": {
       "patterns": [
-        {"name": "comment.line.number-sign.mdl", "match": "#.*$"},
-        {"name": "comment.line.double-slash.mdl", "match": "//.*$"},
-        {"name": "comment.block.mdl", "begin": "/\\*", "end": "\\*/"}
+        {"name": "comment.line.number-sign.mdl", "match": "#.*$"}
       ]
     },
     "annotations": {

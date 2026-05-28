@@ -47,24 +47,15 @@ def tokenize(source: str) -> list[Token]:
     tokens: list[Token] = []
     indents = [0]
     bracket_depth = 0
-    in_block_comment = False
 
     lines = source.splitlines()
     for line_no, raw in enumerate(lines, start=1):
         line = raw.rstrip("\r")
         stripped = line.strip()
 
-        if in_block_comment:
-            end = line.find("*/")
-            if end == -1:
-                continue
-            in_block_comment = False
-            line = " " * (end + 2) + line[end + 2:]
-            stripped = line.strip()
-
         if not stripped:
             continue
-        if stripped.startswith("#") or stripped.startswith("//"):
+        if stripped.startswith("#"):
             continue
 
         prefix_len = len(line) - len(line.lstrip(" \t"))
@@ -98,21 +89,7 @@ def tokenize(source: str) -> list[Token]:
                 i += 1
                 continue
             if ch == "#":
-                if i + 1 < n and line[i + 1] == "{":
-                    tokens.append(Token("SET_START", "#{", line_no, col))
-                    bracket_depth += 1
-                    i += 2
-                    continue
                 break
-            if ch == "/" and i + 1 < n and line[i + 1] == "/":
-                break
-            if ch == "/" and i + 1 < n and line[i + 1] == "*":
-                end = line.find("*/", i + 2)
-                if end == -1:
-                    in_block_comment = True
-                    break
-                i = end + 2
-                continue
 
             matched = None
             for op in MULTI:
