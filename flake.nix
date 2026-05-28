@@ -1,5 +1,5 @@
 {
-  description = "Minimal dev shell for .NET 10, Python, uv, LSP servers, ANTLR, and Z3";
+  description = "MDL / DDL-LTLf Python toolkit";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
@@ -117,7 +117,7 @@
         python.pkgs.buildPythonPackage {
           pname = "mdl-ddl-ltlf";
           version = "0.1.0";
-          src = ./mdl-v3;
+          src = ./mdl;
           pyproject = true;
 
           build-system = with python.pkgs; [
@@ -168,15 +168,13 @@
           mdl = mdlFor pkgs;
         in
         {
-          "mdl-v3" = mdl;
+          mdl = mdl;
           default = mdl;
         });
 
       devShells = forAllSystems (system:
         let
           pkgs = pkgsFor system;
-          dotnet = pkgs.dotnet-sdk_10;
-          jre = pkgs.jre_headless;
           mdl = mdlFor pkgs;
           mdlPythonPackages = mdlPythonPackagesFor pkgs;
           pythonEnv = mdlPythonPackages.python.withPackages (ps: [
@@ -190,13 +188,9 @@
           default = pkgs.mkShell {
             packages = [
               mdl
-              dotnet
               pythonEnv
               pkgs.uv
-              pkgs.antlr4
-              jre
               pkgs.z3
-              pkgs.fsautocomplete
               pkgs.basedpyright
               pkgs.ruff
               pkgs.tree-sitter
@@ -206,8 +200,6 @@
               pkgs.vsce
             ];
 
-            DOTNET_ROOT = "${dotnet}";
-            JAVA_HOME = "${jre}";
             LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.z3 ];
             UV_PYTHON_DOWNLOADS = "never";
           };

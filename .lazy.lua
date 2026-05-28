@@ -1,30 +1,7 @@
 return {
   {
-    "nvim-treesitter/nvim-treesitter",
-    ft = { "fsharp" },
-    build = ":TSUpdate",
-    opts = {},
-    config = function(_, opts)
-      local treesitter = require("nvim-treesitter")
-
-      treesitter.setup(opts)
-      treesitter.install({ "fsharp" })
-
-      local group = vim.api.nvim_create_augroup("bearpro_treesitter_fsharp", { clear = true })
-
-      vim.api.nvim_create_autocmd("FileType", {
-        group = group,
-        pattern = { "fsharp" },
-        callback = function(args)
-          vim.treesitter.start(args.buf)
-          vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-        end,
-      })
-    end,
-  },
-  {
     "neovim/nvim-lspconfig",
-    ft = { "fsharp", "python" },
+    ft = { "python" },
     config = function()
       local function glob_matches(dir, patterns)
         for _, pattern in ipairs(patterns) do
@@ -36,13 +13,21 @@ return {
         return false
       end
 
-      local function find_root(fname, patterns)
+      local function py_root(fname)
         local path = vim.fs.normalize(fname)
         local dir = vim.fs.dirname(path)
 
         if not dir or dir == "" then
           return nil
         end
+
+        local patterns = {
+          "pyproject.toml",
+          "uv.lock",
+          "requirements.txt",
+          "setup.py",
+          "setup.cfg",
+        }
 
         if glob_matches(dir, patterns) then
           return dir
@@ -54,30 +39,8 @@ return {
           end
         end
 
-        return nil
+        return dir
       end
-
-      local fs_root = function(fname)
-        return find_root(fname, { "*.sln", "*.fsproj" })
-      end
-
-      local py_root = function(fname)
-        return find_root(fname, {
-          "pyproject.toml",
-          "uv.lock",
-          "requirements.txt",
-          "setup.py",
-          "setup.cfg",
-        }) or vim.fs.dirname(vim.fs.normalize(fname))
-      end
-
-      vim.lsp.config("fsautocomplete", {
-        root_dir = function(bufnr, on_dir)
-          local fname = vim.api.nvim_buf_get_name(bufnr)
-          on_dir(fs_root(fname))
-        end,
-        single_file_support = false,
-      })
 
       vim.lsp.config("basedpyright", {
         root_dir = function(bufnr, on_dir)
@@ -87,7 +50,6 @@ return {
         single_file_support = true,
       })
 
-      vim.lsp.enable("fsautocomplete")
       vim.lsp.enable("basedpyright")
     end,
   },

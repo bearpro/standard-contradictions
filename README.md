@@ -1,27 +1,42 @@
-# Standard contradiction analysis
+# MDL / DDL-LTLf Toolkit
 
-Set of tool to check for contradictions and conflicts inside and between normative documents 
+This repository contains the Python implementation of `mdl`, an ML-inspired
+language used as an intermediate representation for normative provisions. The
+language separates ordinary pure computations, LTLf temporal formulas, and
+defeasible deontic rules.
 
-# Repository overview
+The project lives in [`mdl/`](mdl/):
 
-- `ddl-ltlf/` - DSL that can represent normative statements as set of predicates and [deontic logic](https://en.wikipedia.org/wiki/Deontic_logic) formulas.  
-  This folder contains both grammar, parser, semantic analyzer, runtime (solver) and shell tool for this language.
-- `ddl-ltlf-from-text/` - Tool for generation `.mdl` (ddl-ltlf files) based on natural text, by using LLMs.
-- `semantic-segmenter/` - Tool for splitting large text into semantically complete chunks.
-- `embedding-clusters/` - my early attempt to find contradictions, based on the idea of somewhat similarity between contradictive statements.
+- command-line utility: `mdl`;
+- parser and typed AST dataclasses;
+- pretty-printer / formatter;
+- translator to a JSON-like DDL-LTLf core;
+- bounded Z3 solver for consistency checks;
+- deterministic runtime for evaluating pure functions and facts;
+- linter and stdio LSP server;
+- semantic aligner;
+- VS Code TextMate grammar and Tree-sitter grammar scaffold;
+- tests for the core language constructs.
 
-# Components
+## Development
 
-- Language: mostly F#, also Python for some relatevely light tools
-- Parsing: ANTLR4
-- LLM integration: OpenAI API
-- Solver backend: Z3 (via Microsoft.Z3)
+```bash
+nix develop
+cd mdl
+python -m pip install -e .
+pytest
+```
 
-# Status
+Useful CLI examples:
 
-This is early prototype - expect breaking changes.
-
-## Running tests
-
-- `dotnet test ddl-ltlf/src/Mprokazin.DdlLtlf.Tests` – parser and semantics tests that do not require the native Z3 library and can run in any environment.
-- `dotnet test ddl-ltlf/src/Mprokazin.DdlLtlf.Tests.Solver` – solver integration tests that require Microsoft Z3 (native) to be available on the machine.
+```bash
+cd mdl
+mdl parse examples/email.mdl
+mdl format examples/email.mdl
+mdl lint examples/email.mdl
+mdl translate examples/email.mdl
+mdl run examples/email.mdl --expr 'email_is_correct(email)'
+mdl align examples/email.mdl examples/pipe.mdl
+mdl solve examples/pipe.mdl examples/tube.mdl examples/alignment.mdl --horizon 1
+mdl lsp
+```

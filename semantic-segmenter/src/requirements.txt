@@ -1,6 +1,0 @@
-numpy
-scipy
-scikit-learn
-# optional
-sentence-transformers
-torch

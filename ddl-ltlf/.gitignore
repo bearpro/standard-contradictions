@@ -1,5 +1,0 @@
-**/bin/
-**/obj/
-**/.vs/
-**/.antlr/
-!data/sample.mdl
