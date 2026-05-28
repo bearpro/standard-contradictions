@@ -19,13 +19,15 @@ LTLf operators: always, eventually, next, weak_next, never, until, release, weak
 bounded quantifiers: forall / exists
 ```
 
-The grammar is ML-inspired but intentionally not a general-purpose programming language. Names must be used after they are defined; functions may refer to themselves from their body for recursion. Functions are expected to be pure, total and deterministic. Only boolean term expressions are lifted into temporal atoms.
+The grammar is ML-inspired but intentionally not a general-purpose programming
+language. Names must be used after they are defined; functions may refer to
+themselves from their body for recursion. Functions are expected to be pure,
+total and deterministic. Only boolean term expressions are lifted into temporal
+atoms.
 
-Record values are constructed with the record type name, for example `Pipe { length = 10, radius = 2 }`. Bare `{ ... }` is not expression syntax.
+Record values are constructed with the record type name, for example
+`Pipe { length = 10, radius = 2 }`. Bare `{ ... }` is not expression syntax.
 
-Collection types such as `List`, `Set`, `Map`, and `Option` live in stdlib files and must be imported explicitly, for example `import "std/collections/list.mdl" as List exposing (List)`.
-
-For editor integration see:
-
-- `grammars/vscode/` for TextMate syntax highlighting;
-- `grammars/tree-sitter-mdl/` for a Tree-sitter scaffold.
+Collection types such as `List`, `Set`, `Map`, and `Option` live in stdlib files
+and must be imported explicitly, for example
+`import "std/collections/list.mdl" as List exposing (List)`.

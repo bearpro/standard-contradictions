@@ -1,6 +1,7 @@
 .vscode/**
 .vscode-test/**
 *.vsix
+Makefile
 npm-debug.log
 yarn-error.log
 node_modules/.cache/**

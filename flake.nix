@@ -115,7 +115,7 @@
           python = mdlPythonPackages.python;
         in
         python.pkgs.buildPythonPackage {
-          pname = "mdl-ddl-ltlf";
+          pname = "mprokazin-mdl";
           version = "0.1.0";
           src = ./mdl;
           pyproject = true;

@@ -15,8 +15,12 @@ The project lives in [`mdl/`](mdl/):
 - deterministic runtime for evaluating pure functions and facts;
 - linter and stdio LSP server;
 - semantic aligner;
-- VS Code TextMate grammar and Tree-sitter grammar scaffold;
 - tests for the core language constructs.
+
+Editor integrations live under [`editor-support/`](editor-support/):
+
+- [`editor-support/vscode-extension/`](editor-support/vscode-extension/) - VS Code extension with TextMate highlighting and LSP wiring;
+- [`editor-support/tree-sitter-grammar/`](editor-support/tree-sitter-grammar/) - Tree-sitter grammar scaffold.
 
 ## Development
 
@@ -25,6 +29,13 @@ nix develop
 cd mdl
 python -m pip install -e .
 pytest
+```
+
+Build the VS Code extension from its own directory:
+
+```bash
+cd editor-support/vscode-extension
+make build
 ```
 
 Useful CLI examples:

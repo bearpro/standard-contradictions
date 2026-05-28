@@ -1,5 +1,4 @@
 include README.md
-recursive-include grammars *
 recursive-include examples *.mdl
 recursive-include docs *
 recursive-include src/mdl/stdlib *.mdl

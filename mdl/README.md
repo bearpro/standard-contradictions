@@ -14,8 +14,6 @@ The repository contains:
 - a minimal stdio LSP server with diagnostics and completions for keywords,
   visible names, type names and record fields;
 - a semantic aligner;
-- VS Code TextMate grammar and language configuration;
-- Tree-sitter grammar scaffold;
 - tests for the core language constructs.
 
 ## Install locally
@@ -72,10 +70,12 @@ print(m.to_source())
 
 This path is meant for LLM-assisted or external inference pipelines where the model is first represented as Python objects and only then converted to the canonical textual syntax.
 
-## Grammar locations
+## Editor Integrations
 
-- VS Code grammar: `grammars/vscode/`
-- Tree-sitter grammar: `grammars/tree-sitter-mdl/`
+Editor integration assets are kept outside the Python package:
+
+- VS Code extension: `../editor-support/vscode-extension/`
+- Tree-sitter grammar scaffold: `../editor-support/tree-sitter-grammar/`
 
 The Tree-sitter grammar is a scaffold suitable for editor integration and incremental parsing. The authoritative parser in this repository is the Python parser under `src/mdl/parser.py`.
 

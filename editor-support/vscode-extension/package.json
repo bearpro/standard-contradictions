@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/bearpro/standard-contradictions.git",
-    "directory": "mdl/grammars/vscode"
+    "directory": "editor-support/vscode-extension"
   },
   "engines": {
     "vscode": "^1.80.0"
