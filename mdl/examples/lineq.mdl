@@ -14,7 +14,7 @@ func pwr(a: int, n: int) -> int:
 
 func value(equation: List<Term>) -> int:
     case equation:
-    | List.Empty: 0
+    | List.Empty(()): 0
     | List.Cons(head, e): 
         let pow = 1 + len(equation)
         let termValue = (head).coef * pwr((head).var, pow)
@@ -24,7 +24,7 @@ func value(equation: List<Term>) -> int:
 func values_lt_5(equation: List<Term>) -> bool:
     let max = 3
     case equation:
-    | List.Empty: true
+    | List.Empty(()): true
     | List.Cons(head, tail): 
         (head).coef < max and (head).var < max and values_lt_5(tail)
 
@@ -35,6 +35,6 @@ rule O r1: len(equation) = 2 always
 rule O r2: values_lt_5(equation) always
 
 fact case equation:
-     | List.Cons(a, List.Cons(b, List.Empty)): 
+     | List.Cons(a, List.Cons(b, List.Empty(()))):
         ((a).coef = 2) and ((b).coef = -1)
      | _: false

@@ -153,7 +153,7 @@ func pwr(a: int, n: int) -> int:
 
 3. Текстовый язык v3 не делает литералы коллекций каноническим синтаксисом.
    Коллекции выражаются через явно импортированные ADT из stdlib, например
-   `List.Cons(1, List.Empty)`. Это исключает неявную магию вокруг `[]` и `#{}`.
+   `List.Cons(1, List.Empty(()))`. Это исключает неявную магию вокруг `[]` и `#{}`.
 
 4. Record value всегда строится через имя типа, а не через bare record:
 
@@ -212,7 +212,7 @@ import "./pipe.mdl" as m1
 2. `private` используется для реализации внутри модуля, например:
 
    ```mdl
-   private type ProcessingState = LocalPart | Domain
+   private type ProcessingState = LocalPart(unit) | Domain(unit)
    private func email_is_correct(email: string) -> bool:
        ...
    ```
@@ -239,7 +239,8 @@ bool, int, rat, decimal, string, char, unit
 3. `rat`, `rational`, `real`, `decimal` кодируются solver-ом как `Real`.
 4. `string` кодируется как Z3 String.
 5. `char` в solver-е трактуется как строковый тип.
-6. `unit` представляет отсутствие значимого значения.
+6. `unit` представляет отсутствие значимого значения; единственное значение
+   этого типа записывается как `()`.
 
 ### 5.2. TypeRef, record, tuple
 
@@ -267,8 +268,8 @@ List<int>
 Суммы задаются через варианты:
 
 ```mdl
-type ProcessingState = LocalPart | Domain
-type Nat = Zero | Succ(Nat)
+type ProcessingState = LocalPart(unit) | Domain(unit)
+type Nat = Zero(unit) | Succ(Nat)
 type Pair = Pair(int, int)
 ```
 
@@ -279,7 +280,11 @@ type Pair = Pair(int, int)
 3. Вариант может иметь именованные поля: `Variant(name: Type)`.
 4. Тип с одним конструктором и полями трактуется как одно-конструкторная сумма.
 5. Solver кодирует суммы через Z3 datatypes.
-6. Рекурсивные ADT поддерживаются, например `Nat = Zero | Succ(Nat)`.
+6. Рекурсивные ADT поддерживаются, например `Nat = Zero(unit) | Succ(Nat)`.
+7. Нульарные варианты не являются каноническим синтаксисом. Для marker-like
+   cases используется payload `unit`, например `Local(())`.
+8. Type aliases не поддерживаются: `type T = Existing` является ошибкой
+   парсинга.
 
 ### 5.4. Параметрический полиморфизм
 
@@ -288,7 +293,7 @@ type Pair = Pair(int, int)
 1. Типы и функции могут иметь параметры:
 
    ```mdl
-   type List<T> = Empty | Cons(T, List<T>)
+   type List<T> = Empty(unit) | Cons(T, List<T>)
    func len<T>(l: List<T>) -> int:
        ...
    ```
@@ -304,10 +309,10 @@ type Pair = Pair(int, int)
 Решения:
 
 1. `List`, `Set`, `Map`, `Option` определены в stdlib:
-   - `std/collections/list.mdl`: `List<T> = Empty | Cons(T, List<T>)`;
-   - `std/collections/set.mdl`: `Set<T> = Empty | Insert(T, Set<T>)`;
-   - `std/collections/map.mdl`: `Map<K, V> = Empty | Put(K, V, Map<K, V>)`;
-   - `std/collections/option.mdl`: `Option<T> = None | Some(T)`.
+   - `std/collections/list.mdl`: `List<T> = Empty(unit) | Cons(T, List<T>)`;
+   - `std/collections/set.mdl`: `Set<T> = Empty(unit) | Insert(T, Set<T>)`;
+   - `std/collections/map.mdl`: `Map<K, V> = Empty(unit) | Put(K, V, Map<K, V>)`;
+   - `std/collections/option.mdl`: `Option<T> = None(unit) | Some(T)`.
 2. Эти типы должны импортироваться явно.
 3. Конструкторы коллекций являются обычными ADT-конструкторами.
 4. Такой подход сохраняет единообразную семантику: коллекции не являются
@@ -320,7 +325,7 @@ type Pair = Pair(int, int)
 Поддержаны `val` и `let` как верхнеуровневые декларации значения:
 
 ```mdl
-val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty)))
+val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty(()))))
 ```
 
 Решения:
@@ -400,7 +405,7 @@ func pipe_ok(pipe: Pipe) -> bool:
 case tags:
 | List.Cons(tag, rest):
     if tag > 0 then positive_tags(rest) else false
-| List.Empty:
+| List.Empty(()):
     true
 ```
 
@@ -413,7 +418,7 @@ case tags:
 4. Runtime сообщает ошибку для non-exhaustive match.
 5. Solver компилирует pattern matching в условные выражения Z3, где это
    поддержано.
-6. Списки сопоставляются через ADT-конструкторы `List.Cons` и `List.Empty`, а
+6. Списки сопоставляются через ADT-конструкторы `List.Cons` и `List.Empty(())`, а
    не через синтаксис `[]`.
 
 ## 7. Сущности, события, факты и утверждения
@@ -731,16 +736,15 @@ mdl run examples/email.mdl --expr 'email_is_correct(email)'
 2. Runtime не моделирует полную темпоральную семантику.
 3. Runtime хранит records как Python dict.
 4. ADT constructors в runtime представлены стабильными symbolic values:
-   строками для нульарных конструкторов и tuple-структурами для конструкторов с
-   аргументами.
+   tuple-структурами для конструкторов с аргументами.
 5. Stdlib collections имеют Python-представления:
-   - `List.Empty` -> `[]`;
+   - `List.Empty(())` -> `[]`;
    - `List.Cons(x, xs)` -> list;
-   - `Set.Empty` -> `set()`;
+   - `Set.Empty(())` -> `set()`;
    - `Set.Insert(x, xs)` -> set;
-   - `Map.Empty` -> `{}`;
+   - `Map.Empty(())` -> `{}`;
    - `Map.Put(k, v, m)` -> dict;
-   - `Option.None` -> `"None"`;
+   - `Option.None(())` -> `"None"`;
    - `Option.Some(x)` -> `("Some", (x,))`.
 6. Runtime используется solver-ом для частичного вычисления concrete
    выражений, когда это безопасно.

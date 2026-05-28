@@ -133,7 +133,7 @@ def test_linter_requires_std_import_for_collections():
 module collections
 
 entity xs: List<int>
-rule O bad: List.Empty = List.Empty always
+rule O bad: List.Empty(()) = List.Empty(()) always
 ''')
 
     assert any(d.code == "undefined-type" and "List" in d.message for d in diagnostics)
@@ -154,7 +154,7 @@ entity ys: Set<int>
 entity lookup: Map<string, int>
 entity maybe: Option<int>
 
-rule O ok: List.Empty = List.Empty always
+rule O ok: List.Empty(()) = List.Empty(()) always
 ''')
 
     assert not any(d.severity == "error" for d in diagnostics)

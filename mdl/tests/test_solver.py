@@ -162,10 +162,10 @@ def test_solve_std_list_recursive_predicate_with_temporal_body(tmp_path):
             case xs:
             | List.Cons(x, rest):
                 x > 0 and all_positive(rest)
-            | List.Empty:
+            | List.Empty(()):
                 true
 
-        val xs = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty)))
+        val xs = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty(()))))
         rule O all_positive_rule: all_positive(xs) always
         """,
     )
@@ -209,7 +209,7 @@ def test_solve_std_list_generic_len_is_instantiated_per_argument_type(tmp_path):
 
         import "std/collections/list.mdl" as List exposing (List, len)
 
-        val xs: List<int> = List.Cons(1, List.Cons(2, List.Empty))
+        val xs: List<int> = List.Cons(1, List.Cons(2, List.Empty(())))
         rule O length_ok: len(xs) = 2 always
         """,
     )
@@ -233,10 +233,10 @@ def test_solve_recursive_function_over_std_list_constructors(tmp_path):
             case tags:
             | List.Cons(tag, rest):
                 if tag > 0 then positive_tags(rest) else false
-            | List.Empty:
+            | List.Empty(()):
                 true
 
-        val tags = List.Cons(1, List.Empty)
+        val tags = List.Cons(1, List.Empty(()))
         rule O tags_positive: positive_tags(tags) always
         """,
     )
@@ -254,18 +254,18 @@ def test_solve_recursive_sum_type_with_nested_patterns(tmp_path):
         """
         module nat
 
-        type Nat = Zero | Succ(Nat)
+        type Nat = Zero(unit) | Succ(Nat)
 
         func is_two(n: Nat) -> bool:
             case n:
-            | Succ(Succ(Zero)):
+            | Succ(Succ(Zero(()))):
                 true
             | _:
                 false
 
         entity n: Nat
 
-        fact n = Succ(Succ(Zero))
+        fact n = Succ(Succ(Zero(())))
         rule O n_is_two: is_two(n) always
         """,
     )
@@ -296,12 +296,12 @@ def test_solve_std_collections_as_ordinary_adts(tmp_path):
         entity lookup: Map<string, int>
 
         fact maybe = Option.Some(42)
-        fact numbers = Set.Insert(1, Set.Empty)
-        fact lookup = Map.Put("answer", 42, Map.Empty)
+        fact numbers = Set.Insert(1, Set.Empty(()))
+        fact lookup = Map.Put("answer", 42, Map.Empty(()))
 
         rule O option_ok: maybe = Option.Some(42) always
-        rule O set_ok: numbers = Set.Insert(1, Set.Empty) always
-        rule O map_ok: lookup = Map.Put("answer", 42, Map.Empty) always
+        rule O set_ok: numbers = Set.Insert(1, Set.Empty(())) always
+        rule O map_ok: lookup = Map.Put("answer", 42, Map.Empty(())) always
         """,
     )
 

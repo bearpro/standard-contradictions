@@ -4,7 +4,7 @@ module email
 import "std/system/strings.mdl" as strings
 import "std/collections/list.mdl" as List exposing (List)
 
-private type ProcessingState = LocalPart | Domain
+private type ProcessingState = LocalPart(unit) | Domain(unit)
 
 private func process_email(
     email: List<string>,
@@ -12,15 +12,15 @@ private func process_email(
 ) -> bool:
     case email:
     | List.Cons(char, tail):
-        if state = LocalPart and char = "@"
-        then process_email(tail, Domain)
+        if state = LocalPart(()) and char = "@"
+        then process_email(tail, Domain(()))
         else if char = "@" then false else process_email(tail, state)
-    | List.Empty:
+    | List.Empty(()):
         true
 
 private func email_is_correct(email: string) -> bool:
     let char_list = strings.to_list(email)
-    let state = LocalPart
+    let state = LocalPart(())
     process_email(char_list, state)
 
 entity email: string

@@ -6,6 +6,7 @@ from typing import Iterable
 from . import ast as A
 from .diagnostics import ParseError
 from .lexer import Token, tokenize
+from .names import is_qualified, local_name
 
 
 NAME_STOPWORDS = {
@@ -411,39 +412,40 @@ class Parser:
     def parse_type_definition(self) -> A.TypeExpr | A.SumType:
         if self.current().value == "{":
             return self.parse_type_expr()
-        save = self.pos
         if self.is_name_token():
             first = self.parse_variant()
-            if self.current().value == "|":
-                variants = [first]
-                while self.match_value("|"):
-                    variants.append(self.parse_variant())
-                return A.SumType(variants=variants, line=first.line, column=first.column)
-            # A constructor with fields is a one-constructor sum type.
-            if first.fields:
-                return A.SumType(variants=[first], line=first.line, column=first.column)
-            self.pos = save
-        return self.parse_type_expr()
+            variants = [first]
+            while self.match_value("|"):
+                variants.append(self.parse_variant())
+            return A.SumType(variants=variants, line=first.line, column=first.column)
+        tok = self.current()
+        raise ParseError(
+            "type declarations must define a record or payload-bearing sum type; type aliases are not supported",
+            tok.line,
+            tok.column,
+        )
 
     def parse_variant(self) -> A.Variant:
         tok = self.expect_name_token()
         fields: list[tuple[str | None, A.TypeExpr]] = []
-        if self.match_value("("):
-            if not self.match_value(")"):
-                while True:
-                    label = None
-                    # Named variant field: label: Type
-                    if self.is_name_token() and self.peek(1).value == ":":
-                        label = self.advance().value
-                        self.expect_value(":")
-                    typ = self.parse_type_expr()
-                    fields.append((label, typ))
-                    if self.match_value(","):
-                        if self.current().value == ")":
-                            break
-                        continue
+        if not self.match_value("("):
+            raise ParseError("sum type variants must declare payload fields, for example Variant(unit)", tok.line, tok.column)
+        if self.match_value(")"):
+            raise ParseError("sum type variants must declare at least one payload field", tok.line, tok.column)
+        while True:
+            label = None
+            # Named variant field: label: Type
+            if self.is_name_token() and self.peek(1).value == ":":
+                label = self.advance().value
+                self.expect_value(":")
+            typ = self.parse_type_expr()
+            fields.append((label, typ))
+            if self.match_value(","):
+                if self.current().value == ")":
                     break
-                self.expect_value(")")
+                continue
+            break
+        self.expect_value(")")
         return A.Variant(name=tok.value, fields=fields, line=tok.line, column=tok.column)
 
     def parse_type_expr(self) -> A.TypeExpr:
@@ -502,7 +504,7 @@ class Parser:
             while self.current().type not in {"DEDENT", "EOF"}:
                 if self.match_type("NEWLINE"):
                     continue
-                if self.current().value == "let":
+                if self.current().value == "let" and self.is_block_let_statement():
                     stmt_tok = self.advance()
                     pat = self.parse_pattern()
                     ann = self.parse_optional_type_annotation()
@@ -517,6 +519,27 @@ class Parser:
             return A.Block(statements=statements, result=result, line=tok.line, column=tok.column)
         expr = self.parse_expr()
         return A.Block(result=expr, line=expr.line, column=expr.column)
+
+    def is_block_let_statement(self) -> bool:
+        depth = 0
+        seen_equals = False
+        idx = self.pos
+        while idx < len(self.tokens):
+            tok = self.tokens[idx]
+            if tok.type in {"EOF", "DEDENT"}:
+                return True
+            if tok.type == "NEWLINE" and depth == 0:
+                return True
+            if tok.value in {"(", "[", "{"}:
+                depth += 1
+            elif tok.value in {")", "]", "}"}:
+                depth = max(0, depth - 1)
+            elif tok.value == "=" and depth == 0:
+                seen_equals = True
+            elif tok.value == "in" and depth == 0 and seen_equals:
+                return False
+            idx += 1
+        return True
 
     def parse_expr(self, min_prec: int = 0) -> A.Expr:
         left = self.parse_prefix_expr()
@@ -720,7 +743,7 @@ class Parser:
     def parse_paren_expr(self) -> A.Expr:
         tok = self.expect_value("(")
         if self.match_value(")"):
-            return A.TupleLiteral(items=[], line=tok.line, column=tok.column)
+            return A.Literal(value=None, kind="unit", line=tok.line, column=tok.column)
         first = self.parse_expr()
         if self.match_value(","):
             items = [first]
@@ -770,6 +793,8 @@ class Parser:
             return A.LiteralPattern(value=lit.value, kind=lit.kind, line=tok.line, column=tok.column)
         if tok.value == "(":
             self.advance()
+            if self.match_value(")"):
+                return A.LiteralPattern(value=None, kind="unit", line=tok.line, column=tok.column)
             first = self.parse_pattern()
             items = [first]
             if self.match_value(","):
@@ -803,7 +828,7 @@ class Parser:
             return A.RecordPattern(fields=fields, line=tok.line, column=tok.column)
         if self.is_name_token(tok):
             name = self.parse_qualified_name()
-            is_constructor = name.split(".")[-1][:1].isupper() or "." in name
+            is_constructor = local_name(name)[:1].isupper() or is_qualified(name)
             if is_constructor:
                 args: list[A.Pattern] = []
                 if self.match_value("("):

@@ -147,8 +147,14 @@ class LSPServer:
                 return self.keyword_items()
         checker = SemanticChecker(module, uri, resolver=ImportResolver(uri, self.documents))
         checker.check()
+        lsp_line = line + 1
+        lsp_column = character + 1
         if field_target:
-            fields = checker.fields_for_reference(field_target) or {}
+            fields = (
+                checker.fields_for_reference(field_target)
+                or self.local_fields_for_reference(module, checker, field_target, lsp_line)
+                or {}
+            )
             return [
                 {"label": name, "kind": 5, "detail": "field"}
                 for name in sorted(fields)
@@ -159,8 +165,6 @@ class LSPServer:
                 {"label": name, "kind": 5, "detail": "field"}
                 for name in sorted(fields)
             ]
-        lsp_line = line + 1
-        lsp_column = character + 1
         if self.is_type_context(prefix):
             return self.with_keywords([
                 {"label": name, "kind": 7, "detail": "type"}
@@ -179,8 +183,97 @@ class LSPServer:
         return lines[line][:max(0, character)]
 
     def field_completion_target(self, prefix: str) -> str | None:
+        parenthesized = re.search(r"\(([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\)\.[A-Za-z0-9_']*$", prefix)
+        if parenthesized:
+            return parenthesized.group(1)
         match = re.search(r"([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\.[A-Za-z0-9_']*$", prefix)
         return match.group(1) if match else None
+
+    def local_fields_for_reference(
+        self,
+        module: A.Module,
+        checker: SemanticChecker,
+        name: str,
+        line: int,
+    ) -> dict[str, A.TypeExpr] | None:
+        for decl in module.declarations:
+            if decl.line > line:
+                continue
+            typ = None
+            if isinstance(decl, A.FuncDecl):
+                env: dict[str, A.TypeExpr | None] = {}
+                for param in decl.params:
+                    checker.bind_pattern(param.pattern, env, param.type_annotation)
+                typ = self.local_reference_type_in_block(checker, decl.body, name, line, env)
+            elif isinstance(decl, A.ValueDecl):
+                typ = self.local_reference_type_in_expr(checker, decl.value, name, line, {})
+            elif isinstance(decl, A.FactDecl):
+                typ = self.local_reference_type_in_expr(checker, decl.value, name, line, {})
+            elif isinstance(decl, A.AssertDecl):
+                typ = self.local_reference_type_in_expr(checker, decl.expr, name, line, {})
+            elif isinstance(decl, A.RuleDecl):
+                typ = (
+                    self.local_reference_type_in_expr(checker, decl.antecedent, name, line, {})
+                    or self.local_reference_type_in_expr(checker, decl.body, name, line, {})
+                    or self.local_reference_type_in_expr(checker, decl.otherwise, name, line, {})
+                )
+            fields = checker.fields_for_type(typ)
+            if fields:
+                return fields
+        return None
+
+    def local_reference_type_in_block(
+        self,
+        checker: SemanticChecker,
+        block: A.Block | None,
+        name: str,
+        line: int,
+        env: dict[str, A.TypeExpr | None],
+    ) -> A.TypeExpr | None:
+        if block is None:
+            return checker.infer_name_type(name, env)
+        local = dict(env)
+        for stmt in block.statements:
+            if stmt.line > line:
+                break
+            nested = self.local_reference_type_in_expr(checker, stmt.value, name, line, local)
+            if nested is not None:
+                return nested
+            checker.bind_pattern(stmt.pattern, local, stmt.type_annotation or checker.infer_expr_type(stmt.value, local))
+        nested = self.local_reference_type_in_expr(checker, block.result, name, line, local)
+        return nested or checker.infer_name_type(name, local)
+
+    def local_reference_type_in_expr(
+        self,
+        checker: SemanticChecker,
+        expr: A.Expr | None,
+        name: str,
+        line: int,
+        env: dict[str, A.TypeExpr | None],
+    ) -> A.TypeExpr | None:
+        if expr is None:
+            return None
+        if isinstance(expr, A.MatchExpr):
+            subject_type = checker.infer_expr_type(expr.subject, env)
+            for idx, arm in enumerate(expr.arms):
+                next_line = expr.arms[idx + 1].line if idx + 1 < len(expr.arms) else 10**9
+                if arm.line <= line < next_line:
+                    local = dict(env)
+                    checker.bind_pattern(arm.pattern, local, subject_type)
+                    guard_type = self.local_reference_type_in_expr(checker, arm.guard, name, line, local)
+                    if guard_type is not None:
+                        return guard_type
+                    return self.local_reference_type_in_block(checker, arm.body, name, line, local)
+            return None
+        if isinstance(expr, A.LetExpr) and expr.line <= line:
+            local = dict(env)
+            checker.bind_pattern(expr.pattern, local, checker.infer_expr_type(expr.value, env))
+            return self.local_reference_type_in_expr(checker, expr.body, name, line, local) or checker.infer_name_type(name, local)
+        if isinstance(expr, A.QuantifierExpr) and expr.line <= line:
+            local = dict(env)
+            checker.bind_pattern(expr.pattern, local, checker.collection_item_type(checker.infer_expr_type(expr.domain, env)))
+            return self.local_reference_type_in_expr(checker, expr.body, name, line, local) or checker.infer_name_type(name, local)
+        return checker.infer_name_type(name, env)
 
     def record_constructor_completion_target(self, prefix: str) -> str | None:
         match = re.search(r"(?:^|[\s:=,(])([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\s*\{[^{}]*$", prefix)
@@ -193,11 +286,11 @@ class LSPServer:
         elif self.record_constructor_completion_target(prefix):
             tail = prefix.rsplit("{", 1)[1].rsplit(",", 1)[-1]
             if "=" in tail:
-                insertion = "unit }"
+                insertion = "() }"
             elif tail.strip():
-                insertion = " = unit }"
+                insertion = " = () }"
             else:
-                insertion = "__completion__ = unit }"
+                insertion = "__completion__ = () }"
         elif self.is_type_context(prefix):
             insertion = "unit"
         if insertion is None:

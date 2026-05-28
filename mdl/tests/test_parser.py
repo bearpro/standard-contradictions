@@ -3,6 +3,7 @@ from pathlib import Path
 from mdl import ast as A
 from mdl.diagnostics import ParseError
 from mdl.parser import parse, parse_expr
+from mdl.printer import format_expr
 
 
 SAMPLE = Path(__file__).resolve().parents[1] / "examples" / "email.mdl"
@@ -44,6 +45,81 @@ func add(a: Complex, b: Complex) -> Complex:
     assert isinstance(expr, A.RecordConstructor)
     assert expr.type_name == "Complex"
     assert [name for name, _ in expr.fields] == ["r", "i"]
+
+
+def without_locations(value):
+    if isinstance(value, dict):
+        return {k: without_locations(v) for k, v in value.items() if k not in {"line", "column"}}
+    if isinstance(value, list):
+        return [without_locations(item) for item in value]
+    return value
+
+
+def test_format_expr_preserves_precedence_round_trip():
+    for source in [
+        "a * (b + c)",
+        "(a or b) and c",
+        "(a implies b) implies c",
+        "not (a and b)",
+        "(a + b).field",
+        "(a and b) eventually",
+        "(if a then b else c) always",
+        "(let x = true in x) always",
+    ]:
+        expr = parse_expr(source)
+        reparsed = parse_expr(format_expr(expr))
+        assert without_locations(A.node_to_dict(reparsed)) == without_locations(A.node_to_dict(expr))
+
+
+def test_unit_literal_and_final_let_expr_in_function_block():
+    expr = parse_expr("()")
+    assert isinstance(expr, A.Literal)
+    assert expr.kind == "unit"
+    assert expr.value is None
+
+    module = parse("""
+module lets
+
+func f() -> int:
+    let x = 1 in x
+""")
+
+    func = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
+    assert func.body.statements == []
+    assert isinstance(func.body.result, A.LetExpr)
+
+
+def test_type_aliases_and_nullary_sum_variants_are_rejected():
+    for source in [
+        "module bad\ntype T = Existing\n",
+        "module bad\ntype T = Only\n",
+        "module bad\ntype T = Only()\n",
+        "module bad\ntype T = (int, int)\n",
+        "module bad\ntype T = A | B(unit)\n",
+    ]:
+        try:
+            parse(source)
+        except ParseError:
+            pass
+        else:  # pragma: no cover - defensive
+            raise AssertionError(f"invalid type declaration unexpectedly parsed: {source!r}")
+
+
+def test_payload_sum_variants_accept_unit_payload_patterns():
+    module = parse("""
+module states
+
+type State = Local(unit) | Remote(unit)
+
+func is_local(state: State) -> bool:
+    case state:
+    | Local(()): true
+    | Remote(()): false
+""")
+
+    typ = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
+    assert isinstance(typ.definition, A.SumType)
+    assert [variant.name for variant in typ.definition.variants] == ["Local", "Remote"]
 
 
 def test_braced_expressions_are_rejected():

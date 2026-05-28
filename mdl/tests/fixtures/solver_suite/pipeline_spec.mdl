@@ -2,26 +2,26 @@ module fixture_pipeline_spec
 
 import "std/collections/list.mdl" as List exposing (List)
 
-private type InspectionState = Pending | Accepted | Rejected
+private type InspectionState = Pending(unit) | Accepted(unit) | Rejected(unit)
 
 type Pipe = { length: rat, radius: rat, pressure: int, state: InspectionState }
 
-val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty)))
+val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty(()))))
 
 private func positive_tags(tags: List<int>) -> bool:
     case tags:
     | List.Cons(tag, rest):
         if tag > 0 then positive_tags(rest) else false
-    | List.Empty:
+    | List.Empty(()):
         true
 
 private func is_accepted(state: InspectionState) -> bool:
     case state:
-    | Accepted:
+    | Accepted(()):
         true
-    | Pending:
+    | Pending(()):
         false
-    | Rejected:
+    | Rejected(()):
         false
 
 private func pipe_ok(pipe: Pipe) -> bool:
@@ -39,4 +39,4 @@ rule O pipe_quality: pipe_ok(pipe) always
 rule F reject_bad_inspection: (inspected(pipe.length) and not pipe_ok(pipe)) eventually
 rule O pressure_after_change: (pressure_changed(pipe.pressure) implies pipe.pressure > 0) always
 
-fact pipe = Pipe { length = 12, radius = 2, pressure = 5, state = Accepted }
+fact pipe = Pipe { length = 12, radius = 2, pressure = 5, state = Accepted(()) }

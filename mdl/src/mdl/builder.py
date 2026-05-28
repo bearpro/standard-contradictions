@@ -28,6 +28,8 @@ def ref(name: str) -> A.Name:
 
 
 def lit(value: Any) -> A.Literal:
+    if value is None:
+        return A.Literal(value=None, kind="unit")
     if isinstance(value, bool):
         return A.Literal(value=value, kind="bool")
     if isinstance(value, int):
@@ -39,7 +41,7 @@ def lit(value: Any) -> A.Literal:
     return A.Literal(value=value, kind="unknown")
 
 
-def call(name_or_expr: str | A.Expr, *args: A.Expr | str | int | bool | float) -> A.Call:
+def call(name_or_expr: str | A.Expr, *args: A.Expr | str | int | bool | float | None) -> A.Call:
     func = ref(name_or_expr) if isinstance(name_or_expr, str) else name_or_expr
     return A.Call(func=func, args=[coerce_expr(a) for a in args])
 
@@ -48,11 +50,11 @@ def field(target: str | A.Expr, name: str) -> A.FieldAccess:
     return A.FieldAccess(target=coerce_expr(target), field=name)
 
 
-def eq(left: A.Expr | str | int | bool | float, right: A.Expr | str | int | bool | float) -> A.BinaryOp:
+def eq(left: A.Expr | str | int | bool | float | None, right: A.Expr | str | int | bool | float | None) -> A.BinaryOp:
     return binary("=", left, right)
 
 
-def binary(op: str, left: A.Expr | str | int | bool | float, right: A.Expr | str | int | bool | float) -> A.BinaryOp:
+def binary(op: str, left: A.Expr | str | int | bool | float | None, right: A.Expr | str | int | bool | float | None) -> A.BinaryOp:
     return A.BinaryOp(op=op, left=coerce_expr(left), right=coerce_expr(right))
 
 
@@ -76,7 +78,7 @@ def braced(expr: A.Expr | str) -> A.Expr:
     return coerce_expr(expr)
 
 
-def coerce_expr(value: A.Expr | str | int | bool | float) -> A.Expr:
+def coerce_expr(value: A.Expr | str | int | bool | float | None) -> A.Expr:
     if isinstance(value, A.Expr):
         return value
     if isinstance(value, str):
@@ -106,18 +108,26 @@ class ModelBuilder:
         self.module.imports.append(A.ImportDecl(path=path, alias=alias, exposing=exposing or []))
         return self
 
-    def type_alias(self, name: str, typ: str | A.TypeExpr, visibility: str = "public") -> A.TypeDecl:
+    def type_decl(self, name: str, typ: str | A.TypeExpr, visibility: str = "public") -> A.TypeDecl:
         decl = A.TypeDecl(name=name, definition=coerce_type(typ), visibility=visibility)
+        if not isinstance(decl.definition, A.RecordType):
+            raise ValueError("type declarations must define a record or use sum_type()")
         self.module.declarations.append(decl)
         return decl
 
     def sum_type(self, name: str, variants: list[str | A.Variant], visibility: str = "public") -> A.TypeDecl:
-        normalized = [v if isinstance(v, A.Variant) else A.Variant(name=v) for v in variants]
+        normalized = []
+        for variant in variants:
+            if not isinstance(variant, A.Variant):
+                raise ValueError("sum_type variants must be A.Variant values with payload fields")
+            if not variant.fields:
+                raise ValueError(f"sum type variant {variant.name!r} must declare payload fields")
+            normalized.append(variant)
         decl = A.TypeDecl(name=name, definition=A.SumType(variants=normalized), visibility=visibility)
         self.module.declarations.append(decl)
         return decl
 
-    def value(self, name: str, value: A.Expr | str | int | bool | float, typ: str | A.TypeExpr | None = None,
+    def value(self, name: str, value: A.Expr | str | int | bool | float | None, typ: str | A.TypeExpr | None = None,
               visibility: str = "public") -> A.ValueDecl:
         decl = A.ValueDecl(name=name, value=coerce_expr(value), type_annotation=coerce_type(typ) if typ else None, visibility=visibility)
         self.module.declarations.append(decl)
@@ -157,7 +167,7 @@ class ModelBuilder:
         self.module.declarations.append(decl)
         return decl
 
-    def fact(self, value: A.Expr | str | int | bool | float, target: str | None = None) -> A.FactDecl:
+    def fact(self, value: A.Expr | str | int | bool | float | None, target: str | None = None) -> A.FactDecl:
         decl = A.FactDecl(target=target, value=coerce_expr(value))
         self.module.declarations.append(decl)
         return decl
@@ -198,7 +208,7 @@ def from_python(value: Any) -> A.Module:
             if isinstance(typ, list):
                 builder.sum_type(type_name, typ)
             else:
-                builder.type_alias(type_name, typ)
+                builder.type_decl(type_name, typ)
         for ent, typ in value.get("entities", {}).items():
             builder.entity(ent, typ)
         for event_name, fields in value.get("events", {}).items():

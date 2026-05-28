@@ -17,6 +17,7 @@ else:
 from . import ast as A
 from .diagnostics import Diagnostic, MDLError, ParseError
 from .linter import ImportResolver, import_alias
+from .names import local_name, root_name, split_qualified
 from .parser import parse
 from .printer import format_expr
 from .runtime import Runtime
@@ -517,7 +518,7 @@ class SolverProblem:
         *,
         expected: set[str] | None = None,
     ) -> tuple[str | None, str | None]:
-        parts = name.split(".")
+        parts = split_qualified(name)
         if not parts:
             return None, None
         if parts[0] in scope.imports:
@@ -539,7 +540,7 @@ class SolverProblem:
         if parts[0] == scope.module.name:
             return self._resolve_local_decl(scope, parts[1:], expected)
         for module_name in sorted(self.scopes, key=len, reverse=True):
-            module_parts = module_name.split(".")
+            module_parts = split_qualified(module_name)
             if parts[:len(module_parts)] == module_parts:
                 return self._resolve_local_decl(self.scopes[module_name], parts[len(module_parts):], expected)
         return None, None
@@ -848,7 +849,7 @@ class BoundedEncoder:
             constructor = self.find_constructor(expr.name, expected, scope)
             if constructor is not None:
                 if constructor.variant.fields:
-                    raise UnsupportedExpression(f"constructor {expr.name!r} expects arguments")
+                    raise UnsupportedExpression(f"constructor {expr.name!r} expects arguments; use {expr.name}(()) for unit payloads")
                 return self.constructor_value(constructor, [])
             if isinstance(expected, PrimitiveType):
                 concrete = self.try_runtime_eval(expr, scope)
@@ -1061,8 +1062,8 @@ class BoundedEncoder:
         target_scope = self.problem.scopes.get(module_name)
         if target_scope is None:
             return self.opaque_atom(name, t)
-        root = name.split(".")[0]
-        parts = name.split(".")
+        root = root_name(name)
+        parts = split_qualified(name)
         if root in scope.imports:
             field_parts = parts[2:]
         elif parts[0] == module_name and len(parts) > 1 and parts[1] == local:
@@ -1356,7 +1357,7 @@ class BoundedEncoder:
     # ------------------------------------------------------------------
 
     def find_constructor(self, name: str, expected: TypeSpec | None, scope: ModuleScope | None = None) -> ConstructorInfo | None:
-        short = name.split(".")[-1]
+        short = local_name(name)
         expected_resolved = self.resolve_named_type(expected) if expected is not None else None
         if isinstance(expected_resolved, SumSpec):
             origin = self.type_origin(expected_resolved)
@@ -1368,7 +1369,7 @@ class BoundedEncoder:
                     return ConstructorInfo(expected_resolved, variant)
 
         search_scopes: list[ModuleScope]
-        parts = name.split(".")
+        parts = split_qualified(name)
         if scope is not None and len(parts) > 1 and parts[0] in scope.imports:
             target_module = scope.imports[parts[0]]
             search_scopes = [self.problem.scopes[target_module]] if target_module in self.problem.scopes else []
@@ -1496,7 +1497,12 @@ class BoundedEncoder:
             variants = {variant.name: variant for variant in sum_type.variants}
             head_type = variants["Cons"].fields[0][1] if variants["Cons"].fields else head_type
         concrete_items = [self.python_value(item, head_type) for item in items]
-        tail = self.constructor_value(ConstructorInfo(sum_type, variants["Empty"]), [])
+        empty = ConstructorInfo(sum_type, variants["Empty"])
+        empty_values = [
+            self.literal_value(None, "unit", field_type)
+            for _, field_type in empty.variant.fields
+        ]
+        tail = self.constructor_value(empty, empty_values)
         for head in reversed(concrete_items):
             tail = self.constructor_value(ConstructorInfo(sum_type, variants["Cons"]), [head, tail])
         tail.concrete = concrete_items
@@ -1536,7 +1542,13 @@ class BoundedEncoder:
         if isinstance(value, str):
             constructor = self.find_constructor(value, expected)
             if constructor is not None:
-                return self.constructor_value(constructor, [])
+                field_types = [self.resolve_named_type(field_type) for _, field_type in constructor.variant.fields]
+                if all(isinstance(field_type, PrimitiveType) and field_type.name == "unit" for field_type in field_types):
+                    values = [
+                        self.literal_value(None, "unit", field_type)
+                        for _, field_type in constructor.variant.fields
+                    ]
+                    return self.constructor_value(constructor, values)
             return self.literal_value(value, "string", expected)
         if isinstance(value, dict):
             expected_resolved = self.resolve_named_type(expected) if expected is not None else None

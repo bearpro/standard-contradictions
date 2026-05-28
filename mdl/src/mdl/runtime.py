@@ -5,6 +5,7 @@ from typing import Any, Callable
 
 from . import ast as A
 from .diagnostics import MDLError
+from .names import local_name, split_qualified
 from .parser import parse_expr
 
 
@@ -157,26 +158,26 @@ class Runtime:
         if func_name in self.builtins:
             return self.builtins[func_name](*args)
         # Imported aliases are common in source: strings.to_list.
-        if func_name.split(".")[-1] in self.builtins:
-            return self.builtins[func_name.split(".")[-1]](*args)
+        if local_name(func_name) in self.builtins:
+            return self.builtins[local_name(func_name)](*args)
         if func_name in self.functions:
             return self.call_user_function(self.functions[func_name], args, env)
-        short = func_name.split(".")[-1]
+        short = local_name(func_name)
         if short in self.functions:
             return self.call_user_function(self.functions[short], args, env)
         # ADT constructor fallback.
         if func_name:
-            return (func_name.split(".")[-1], tuple(args))
+            return (local_name(func_name), tuple(args))
         raise RuntimeError(f"unknown function {func_name!r}")
 
     def import_alias(self, path: str) -> str:
         normalized = path.replace("\\", "/")
         if normalized.endswith(".mdl") or "/" in normalized:
             return normalized.rsplit("/", 1)[-1].removesuffix(".mdl")
-        return normalized.split(".")[-1]
+        return local_name(normalized)
 
     def collection_constructor(self, name: str) -> tuple[str, str] | None:
-        parts = name.split(".")
+        parts = split_qualified(name)
         if len(parts) < 2:
             return None
         target = self.imports.get(parts[0])
@@ -193,24 +194,24 @@ class Runtime:
     def call_collection_constructor(self, collection: tuple[str, str], args: list[Any]) -> Any:
         kind, ctor = collection
         if kind == "list":
-            if ctor == "Empty":
+            if ctor == "Empty" and len(args) == 1:
                 return []
             if ctor == "Cons" and len(args) == 2:
                 return [args[0], *list(args[1])]
         if kind == "set":
-            if ctor == "Empty":
+            if ctor == "Empty" and len(args) == 1:
                 return set()
             if ctor == "Insert" and len(args) == 2:
                 return {args[0], *set(args[1])}
         if kind == "map":
-            if ctor == "Empty":
+            if ctor == "Empty" and len(args) == 1:
                 return {}
             if ctor == "Put" and len(args) == 3:
                 result = dict(args[2])
                 result[args[0]] = args[1]
                 return result
         if kind == "option":
-            if ctor == "None":
+            if ctor == "None" and len(args) == 1:
                 return "None"
             if ctor == "Some" and len(args) == 1:
                 return ("Some", (args[0],))
@@ -290,22 +291,22 @@ class Runtime:
         return False
 
     def constructor_pattern_matches(self, pattern: A.ConstructorPattern, value: Any, env: dict[str, Any]) -> bool:
-        name = pattern.name.split(".")[-1]
+        name = local_name(pattern.name)
         if name == "Cons" and isinstance(value, list) and value:
             if len(pattern.args) != 2:
                 return False
             return self.pattern_matches(pattern.args[0], value[0], env) and self.pattern_matches(pattern.args[1], value[1:], env)
         if name == "Empty" and isinstance(value, list):
-            return value == []
+            return value == [] and len(pattern.args) == 1 and self.pattern_matches(pattern.args[0], None, env)
         if isinstance(value, str):
-            return name == value.split(".")[-1]
+            return name == local_name(value)
         if isinstance(value, tuple) and value and isinstance(value[0], str):
             ctor, args = value[0], value[1] if len(value) > 1 else ()
-            if name != ctor.split(".")[-1] or len(args) != len(pattern.args):
+            if name != local_name(ctor) or len(args) != len(pattern.args):
                 return False
             return all(self.pattern_matches(p, arg, env) for p, arg in zip(pattern.args, args))
         if not pattern.args:
-            return name == str(value).split(".")[-1]
+            return name == local_name(str(value))
         return False
 
     def lookup_name(self, name: str, env: dict[str, Any]) -> Any:
@@ -325,7 +326,7 @@ class Runtime:
             if kind == "option" and ctor == "None":
                 return "None"
         if "." in name:
-            parts = name.split(".")
+            parts = split_qualified(name)
             root = parts[0]
             if root in env or root in self.values:
                 value = env.get(root, self.values.get(root))
@@ -337,7 +338,7 @@ class Runtime:
                 return value
         # Treat ADT constructors as stable symbolic values.
         if name[:1].isupper() or "." in name:
-            return name.split(".")[-1]
+            return local_name(name)
         raise RuntimeError(f"unknown name {name!r}")
 
     def expr_to_name(self, expr: A.Expr | None) -> str:

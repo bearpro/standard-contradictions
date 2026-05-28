@@ -9,6 +9,24 @@ class PrettyPrinter:
     def __init__(self, indent: str = "    "):
         self.indent = indent
 
+    PREC_LOWEST = 0
+    PREC_BINARY = {
+        "implies": (1, "right"), "->": (1, "right"),
+        "iff": (2, "left"), "<->": (2, "left"),
+        "or": (3, "left"),
+        "and": (4, "left"),
+        "until": (5, "left"), "release": (5, "left"), "weak_until": (5, "left"),
+        "=": (6, "left"), "==": (6, "left"), "!=": (6, "left"),
+        "<": (6, "left"), "<=": (6, "left"), ">": (6, "left"), ">=": (6, "left"),
+        "+": (7, "left"), "-": (7, "left"),
+        "*": (8, "left"), "/": (8, "left"), "%": (8, "left"),
+    }
+    PREC_PREFIX = 9
+    PREC_POSTFIX_TEMPORAL = 10
+    PREC_POSTFIX = 11
+    PREC_RECORD_CONSTRUCTOR = 12
+    PREC_ATOM = 13
+
     def module(self, module: A.Module) -> str:
         parts: list[str] = []
         parts.extend(self.annotations(module.annotations))
@@ -94,7 +112,7 @@ class PrettyPrinter:
 
     def variant(self, variant: A.Variant) -> str:
         if not variant.fields:
-            return variant.name
+            raise ValueError(f"sum type variant {variant.name!r} has no payload fields")
         fields = []
         for label, typ in variant.fields:
             fields.append(f"{label}: {self.type_expr(typ)}" if label else self.type_expr(typ))
@@ -171,7 +189,7 @@ class PrettyPrinter:
 
     def block(self, block: A.Block | None, level: int = 1) -> str:
         if block is None:
-            return self.indent * level + "unit"
+            return self.indent * level + "()"
         lines: list[str] = []
         for stmt in block.statements:
             ann = f": {self.type_expr(stmt.type_annotation)}" if stmt.type_annotation else ""
@@ -182,30 +200,41 @@ class PrettyPrinter:
                 lines.extend(self.indent * level + line if line else line for line in result.splitlines())
             else:
                 lines.append(self.indent * level + result)
-        return "\n".join(lines) if lines else self.indent * level + "unit"
+        return "\n".join(lines) if lines else self.indent * level + "()"
 
-    def expr(self, expr: A.Expr | None) -> str:
+    def expr(self, expr: A.Expr | None, parent_prec: int = PREC_LOWEST, side: str = "") -> str:
         if expr is None:
-            return "unit"
+            return "()"
         if isinstance(expr, A.Literal):
-            return self.literal(expr.value, expr.kind)
-        if isinstance(expr, A.Name):
-            return expr.name
-        if isinstance(expr, A.Call):
-            return f"{self.expr(expr.func)}(" + ", ".join(self.expr(a) for a in expr.args) + ")"
-        if isinstance(expr, A.FieldAccess):
-            return f"{self.expr(expr.target)}.{expr.field}"
-        if isinstance(expr, A.IndexAccess):
-            return f"{self.expr(expr.target)}[{self.expr(expr.index)}]"
-        if isinstance(expr, A.BinaryOp):
-            return f"{self.expr(expr.left)} {expr.op} {self.expr(expr.right)}"
-        if isinstance(expr, A.UnaryOp):
-            return f"{expr.op} {self.expr(expr.operand)}"
-        if isinstance(expr, A.IfExpr):
-            return f"if {self.expr(expr.condition)} then {self.expr(expr.then_branch)} else {self.expr(expr.else_branch)}"
-        if isinstance(expr, A.LetExpr):
-            return f"let {self.pattern(expr.pattern)} = {self.expr(expr.value)} in {self.expr(expr.body)}"
-        if isinstance(expr, A.MatchExpr):
+            text = self.literal(expr.value, expr.kind)
+            prec = self.PREC_ATOM
+        elif isinstance(expr, A.Name):
+            text = expr.name
+            prec = self.PREC_ATOM
+        elif isinstance(expr, A.Call):
+            text = f"{self.expr(expr.func, self.PREC_POSTFIX)}(" + ", ".join(self.expr(a) for a in expr.args) + ")"
+            prec = self.PREC_POSTFIX
+        elif isinstance(expr, A.FieldAccess):
+            text = f"{self.expr(expr.target, self.PREC_POSTFIX)}.{expr.field}"
+            prec = self.PREC_POSTFIX
+        elif isinstance(expr, A.IndexAccess):
+            text = f"{self.expr(expr.target, self.PREC_POSTFIX)}[{self.expr(expr.index)}]"
+            prec = self.PREC_POSTFIX
+        elif isinstance(expr, A.BinaryOp):
+            prec, assoc = self.PREC_BINARY[expr.op]
+            left_parent = prec + 1 if assoc == "right" else prec
+            right_parent = prec if assoc == "right" else prec + 1
+            text = f"{self.expr(expr.left, left_parent, 'left')} {expr.op} {self.expr(expr.right, right_parent, 'right')}"
+        elif isinstance(expr, A.UnaryOp):
+            text = f"{expr.op} {self.expr(expr.operand, self.PREC_PREFIX)}"
+            prec = self.PREC_PREFIX
+        elif isinstance(expr, A.IfExpr):
+            text = f"if {self.expr(expr.condition)} then {self.expr(expr.then_branch)} else {self.expr(expr.else_branch)}"
+            prec = self.PREC_LOWEST
+        elif isinstance(expr, A.LetExpr):
+            text = f"let {self.pattern(expr.pattern)} = {self.expr(expr.value)} in {self.expr(expr.body)}"
+            prec = self.PREC_LOWEST
+        elif isinstance(expr, A.MatchExpr):
             lines = [f"case {self.expr(expr.subject)}:"]
             for arm in expr.arms:
                 guard = f" when {self.expr(arm.guard)}" if arm.guard is not None else ""
@@ -214,26 +243,48 @@ class PrettyPrinter:
                 else:
                     lines.append(f"| {self.pattern(arm.pattern)}{guard}:")
                     lines.append(self.block(arm.body, level=1))
-            return "\n".join(lines)
-        if isinstance(expr, A.RecordConstructor):
+            text = "\n".join(lines)
+            prec = self.PREC_LOWEST
+        elif isinstance(expr, A.RecordConstructor):
             if not expr.fields:
-                return f"{expr.type_name} {{}}"
-            return f"{expr.type_name} {{ " + ", ".join(f"{k} = {self.expr(v)}" for k, v in expr.fields) + " }"
-        if isinstance(expr, A.ListLiteral):
-            return "[" + ", ".join(self.expr(i) for i in expr.items) + "]"
-        if isinstance(expr, A.SetLiteral):
-            return "#{" + ", ".join(self.expr(i) for i in expr.items) + "}"
-        if isinstance(expr, A.TupleLiteral):
-            return "(" + ", ".join(self.expr(i) for i in expr.items) + ")"
-        if isinstance(expr, A.TemporalUnary):
+                text = f"{expr.type_name} {{}}"
+            else:
+                text = f"{expr.type_name} {{ " + ", ".join(f"{k} = {self.expr(v)}" for k, v in expr.fields) + " }"
+            prec = self.PREC_RECORD_CONSTRUCTOR
+        elif isinstance(expr, A.ListLiteral):
+            raise ValueError("list literals are not canonical MDL syntax; use std.collections.list constructors")
+        elif isinstance(expr, A.SetLiteral):
+            raise ValueError("set literals are not canonical MDL syntax; use std.collections.set constructors")
+        elif isinstance(expr, A.TupleLiteral):
+            if len(expr.items) < 2:
+                raise ValueError("tuple literals must contain at least two items; use () for unit")
+            text = "(" + ", ".join(self.expr(i) for i in expr.items) + ")"
+            prec = self.PREC_ATOM
+        elif isinstance(expr, A.TemporalUnary):
             if expr.position == "postfix":
-                return f"{self.expr(expr.operand)} {expr.op}"
-            return f"{expr.op} {self.expr(expr.operand)}"
-        if isinstance(expr, A.TemporalBinary):
-            return f"{self.expr(expr.left)} {expr.op} {self.expr(expr.right)}"
-        if isinstance(expr, A.QuantifierExpr):
-            return f"{expr.quantifier} {self.pattern(expr.pattern)} in {self.expr(expr.domain)}: {self.expr(expr.body)}"
-        return repr(expr)
+                operand_prec = self.PREC_POSTFIX_TEMPORAL if isinstance(
+                    expr.operand,
+                    (A.IfExpr, A.LetExpr, A.MatchExpr, A.QuantifierExpr),
+                ) else self.PREC_LOWEST
+                text = f"{self.expr(expr.operand, operand_prec)} {expr.op}"
+                prec = self.PREC_POSTFIX_TEMPORAL
+            else:
+                text = f"{expr.op} {self.expr(expr.operand, self.PREC_PREFIX)}"
+                prec = self.PREC_PREFIX
+        elif isinstance(expr, A.TemporalBinary):
+            prec, assoc = self.PREC_BINARY[expr.op]
+            left_parent = prec if assoc == "left" else prec + 1
+            right_parent = prec + 1 if assoc == "left" else prec
+            text = f"{self.expr(expr.left, left_parent, 'left')} {expr.op} {self.expr(expr.right, right_parent, 'right')}"
+        elif isinstance(expr, A.QuantifierExpr):
+            text = f"{expr.quantifier} {self.pattern(expr.pattern)} in {self.expr(expr.domain)}: {self.expr(expr.body)}"
+            prec = self.PREC_LOWEST
+        else:
+            text = repr(expr)
+            prec = self.PREC_ATOM
+        if prec < parent_prec:
+            return f"({text})"
+        return text
 
     def pattern(self, pattern: A.Pattern | None) -> str:
         if pattern is None:
@@ -256,10 +307,12 @@ class PrettyPrinter:
         if isinstance(pattern, A.TuplePattern):
             return "(" + ", ".join(self.pattern(i) for i in pattern.items) + ")"
         if isinstance(pattern, A.ListPattern):
-            return "[" + ", ".join(self.pattern(i) for i in pattern.items) + "]"
+            raise ValueError("list patterns are not canonical MDL syntax; use std.collections.list constructor patterns")
         return "_"
 
     def literal(self, value: object, kind: str = "unknown") -> str:
+        if kind == "unit":
+            return "()"
         if kind == "string":
             return '"' + str(value).replace('"', '\\"') + '"'
         if kind == "char":

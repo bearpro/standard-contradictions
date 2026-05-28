@@ -1,5 +1,6 @@
 import io
 import json
+from pathlib import Path
 
 from mdl.lsp import LSPServer
 
@@ -121,3 +122,30 @@ entity pipe: Pipe
     items = server.completion_items(source, 4, len("rule O aligned: m1.pipe."), uri="file:///tmp/alignment.mdl")
 
     assert labels(items) >= {"length", "radius"}
+
+
+def test_lsp_lineq_rat_diagnostics_and_pattern_field_completions():
+    path = Path(__file__).resolve().parents[1] / "examples" / "lineq_rat.mdl"
+    text = path.read_text(encoding="utf-8")
+    uri = path.as_uri()
+    out = io.BytesIO()
+    server = LSPServer(stdout=out)
+    server.documents[uri] = text
+
+    server.publish_diagnostics(uri, text)
+    payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
+    message = json.loads(payload.decode("utf-8"))
+
+    assert message["params"]["diagnostics"] == []
+    assert labels(completion_at(text, server, "(head).", uri)) >= {"coef", "var"}
+    assert labels(completion_at(text, server, "((a).", uri)) >= {"coef", "var"}
+    assert labels(completion_at(text, server, "((b).", uri)) >= {"coef", "var"}
+
+
+def completion_at(text: str, server: LSPServer, needle: str, uri: str):
+    lines = text.splitlines()
+    for line_no, line in enumerate(lines):
+        column = line.find(needle)
+        if column >= 0:
+            return server.completion_items(text, line_no, column + len(needle), uri=uri)
+    raise AssertionError(f"needle not found: {needle!r}")

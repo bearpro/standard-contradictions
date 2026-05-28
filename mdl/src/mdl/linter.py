@@ -7,6 +7,7 @@ from urllib.request import url2pathname
 
 from . import ast as A
 from .diagnostics import Diagnostic, ParseError
+from .names import local_name, root_name, split_qualified
 from .parser import parse
 
 
@@ -178,6 +179,7 @@ class SemanticChecker:
         self.types: dict[str, Symbol] = {
             name: Symbol(name, "type", A.TypeRef(name=name)) for name in sorted(PRIMITIVE_TYPES)
         }
+        self.type_params: dict[str, list[str]] = {}
         self.terms: dict[str, Symbol] = {
             "last": Symbol("last", "builtin", A.TypeRef(name="bool")),
         }
@@ -236,6 +238,7 @@ class SemanticChecker:
                 qualified_name = f"{alias}.{decl.name}"
                 qualified_type = A.TypeRef(name=qualified_name, line=decl.line, column=decl.column)
                 self.types[qualified_name] = Symbol(qualified_name, "type", qualified_type, decl)
+                self.type_params[qualified_name] = list(decl.params)
                 self.type_definitions[qualified_name] = self.qualify_type_definition(decl.definition, imported, alias)
                 module_fields.append((decl.name, qualified_type))
                 if isinstance(decl.definition, A.SumType):
@@ -255,6 +258,7 @@ class SemanticChecker:
                 qualified_definition = imported.type_definitions.get(exposed)
                 exposed_type = A.TypeRef(name=name)
                 self.types[name] = Symbol(name, "imported-type", exposed_type, imp)
+                self.type_params[name] = list(imported.type_params.get(exposed, []))
                 alias = imp.alias or import_alias(imp.path)
                 self.type_definitions[name] = self.qualify_type_definition(qualified_definition, imported, alias)
             if exposed in imported.terms:
@@ -327,6 +331,7 @@ class SemanticChecker:
     def check_declaration(self, decl: A.Declaration) -> None:
         if isinstance(decl, A.TypeDecl):
             self.types[decl.name] = Symbol(decl.name, "type", A.TypeRef(name=decl.name), decl)
+            self.type_params[decl.name] = list(decl.params)
             self.type_definitions[decl.name] = decl.definition
             self.check_type_definition(decl.definition, set(decl.params))
             self.add_constructors(decl)
@@ -500,7 +505,7 @@ class SemanticChecker:
     def check_pattern(self, pattern: A.Pattern | None) -> None:
         if isinstance(pattern, A.ConstructorPattern):
             if pattern.name not in self.constructors and pattern.name not in BUILTIN_TERMS:
-                root = pattern.name.split(".")[0]
+                root = root_name(pattern.name)
                 if root not in self.imports and root not in BUILTIN_ROOTS:
                     self.error(f"undefined constructor {pattern.name!r}", pattern, "undefined-name")
             for arg in pattern.args:
@@ -519,7 +524,7 @@ class SemanticChecker:
             env[pattern.name] = typ
             return
         if isinstance(pattern, A.ConstructorPattern):
-            field_types = self.constructor_field_types(pattern.name)
+            field_types = self.constructor_field_types(pattern.name, typ)
             for idx, arg in enumerate(pattern.args):
                 self.bind_pattern(arg, env, field_types[idx] if idx < len(field_types) else None)
             return
@@ -545,7 +550,7 @@ class SemanticChecker:
     def check_name(self, name: str, node: A.Node, env: dict[str, A.TypeExpr | None]) -> None:
         if name in BUILTIN_TERMS or name in self.terms or name in env or name in self.imported_names:
             return
-        parts = name.split(".")
+        parts = split_qualified(name)
         root = parts[0]
         if root in env:
             self.check_field_chain(env[root], parts[1:], node)
@@ -646,7 +651,7 @@ class SemanticChecker:
             return env[name]
         if name in self.terms:
             return self.terms[name].type_expr
-        parts = name.split(".")
+        parts = split_qualified(name)
         root = parts[0]
         if root in env:
             return self.type_after_fields(env[root], parts[1:])
@@ -690,10 +695,43 @@ class SemanticChecker:
             return typ.args[0]
         return None
 
-    def constructor_field_types(self, name: str) -> list[A.TypeExpr]:
+    def constructor_field_types(self, name: str, typ: A.TypeExpr | None = None) -> list[A.TypeExpr]:
+        short = local_name(name)
+        if isinstance(typ, A.TypeRef):
+            definition = self.type_definitions.get(typ.name)
+            if isinstance(definition, A.SumType):
+                params = self.type_params.get(typ.name, [])
+                substitutions = dict(zip(params, typ.args))
+                for variant in definition.variants:
+                    if variant.name == short:
+                        return [self.substitute_type_params(field_type, substitutions) for _, field_type in variant.fields]
         if name in self.constructors:
             return [typ for _, typ in self.constructors[name][1].fields]
         return []
+
+    def substitute_type_params(self, typ: A.TypeExpr, substitutions: dict[str, A.TypeExpr]) -> A.TypeExpr:
+        if isinstance(typ, A.TypeRef):
+            if typ.name in substitutions and not typ.args:
+                return substitutions[typ.name]
+            return A.TypeRef(
+                name=typ.name,
+                args=[self.substitute_type_params(arg, substitutions) for arg in typ.args],
+                line=typ.line,
+                column=typ.column,
+            )
+        if isinstance(typ, A.RecordType):
+            return A.RecordType(
+                fields=[(name, self.substitute_type_params(field_type, substitutions)) for name, field_type in typ.fields],
+                line=typ.line,
+                column=typ.column,
+            )
+        if isinstance(typ, A.TupleType):
+            return A.TupleType(
+                items=[self.substitute_type_params(item, substitutions) for item in typ.items],
+                line=typ.line,
+                column=typ.column,
+            )
+        return typ
 
     def expr_to_name(self, expr: A.Expr | None) -> str | None:
         if isinstance(expr, A.Name):

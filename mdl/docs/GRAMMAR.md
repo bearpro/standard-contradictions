@@ -5,11 +5,11 @@ The Python parser supports the main language constructs:
 ```text
 module, string-path import, annotation
 private/public declarations
-sum types and record types
+payload-bearing sum types and record types
 val/let declarations
 pure functions with block bodies
 if / let-in / case expressions
-record types, nominal record constructors, and tuples
+record types, nominal record constructors, tuples, and unit value `()`
 entities, events, facts, asserts
 rules with `rule O name: body`, optional `when` applicability conditions,
 and strict/defeasible/defeater strength
@@ -27,6 +27,11 @@ atoms.
 
 Record values are constructed with the record type name, for example
 `Pipe { length = 10, radius = 2 }`. Bare `{ ... }` is not expression syntax.
+
+Type aliases are not part of canonical MDL syntax. A `type` declaration must
+define either a record type or a sum type whose variants all carry at least one
+payload field. Use the built-in `unit` type and `()` value for marker-like ADT
+cases, for example `type State = Local(unit) | Remote(unit)` and `Local(())`.
 
 Collection types such as `List`, `Set`, `Map`, and `Option` live in stdlib files
 and must be imported explicitly, for example
