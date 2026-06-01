@@ -159,6 +159,46 @@
             mainProgram = "mdl";
           };
         };
+      mdlMcpFor = pkgs:
+        let
+          mdlPythonPackages = mdlPythonPackagesFor pkgs;
+          python = mdlPythonPackages.python;
+          mdl = mdlFor pkgs;
+        in
+        python.pkgs.buildPythonPackage {
+          pname = "mprokazin-mdl-mcp";
+          version = "0.1.0";
+          src = ./mdl-mcp;
+          pyproject = true;
+
+          build-system = with python.pkgs; [
+            setuptools
+            wheel
+          ];
+
+          dependencies = with python.pkgs; [
+            mdl
+            mcp
+          ];
+
+          postInstall = ''
+            mkdir -p "$out/share/mdl-mcp/docs" "$out/share/mdl-mcp/examples"
+            cp ${./mdl/docs}/*.md "$out/share/mdl-mcp/docs/"
+            cp ${./mdl/examples}/*.mdl "$out/share/mdl-mcp/examples/"
+          '';
+
+          pythonImportsCheck = [
+            "mdl"
+            "mdl_mcp.server"
+            "mcp"
+          ];
+
+          meta = {
+            description = "Model Context Protocol server for verifying MDL models";
+            license = lib.licenses.mit;
+            mainProgram = "mdl-mcp";
+          };
+        };
     in
     {
       formatter = forAllSystems (system:
@@ -171,9 +211,11 @@
         let
           pkgs = pkgsFor system;
           mdl = mdlFor pkgs;
+          mdlMcp = mdlMcpFor pkgs;
         in
         {
           mdl = mdl;
+          mdl-mcp = mdlMcp;
           default = mdl;
         });
 
@@ -181,9 +223,11 @@
         let
           pkgs = pkgsFor system;
           mdl = mdlFor pkgs;
+          mdlMcp = mdlMcpFor pkgs;
           mdlPythonPackages = mdlPythonPackagesFor pkgs;
           pythonEnv = mdlPythonPackages.python.withPackages (ps: [
             mdl
+            mdlMcp
             mdlPythonPackages.valentine
             mdlPythonPackages.bdikit
             ps.pytest

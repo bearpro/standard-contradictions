@@ -17,6 +17,10 @@ The project lives in [`mdl/`](mdl/):
 - semantic aligner;
 - tests for the core language constructs.
 
+The MCP adapter lives in [`mdl-mcp/`](mdl-mcp/). It exposes `mdl-mcp` for
+LLM-assisted verification without adding MCP server dependencies to the core
+`mdl` package.
+
 Editor integrations live under [`editor-support/`](editor-support/):
 
 - [`editor-support/vscode-extension/`](editor-support/vscode-extension/) - VS Code extension with TextMate highlighting and LSP wiring;
