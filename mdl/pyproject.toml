@@ -17,15 +17,30 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Topic :: Software Development :: Compilers",
 ]
-dependencies = [
+dependencies = []
+
+[project.optional-dependencies]
+solver = [
+  "z3-solver>=4.13",
+]
+align = [
+  "pandas>=3.0.2",
+  "valentine>=0.5.0",
+  "bdi-kit>=0.10.0",
+]
+full = [
   "z3-solver>=4.13",
   "pandas>=3.0.2",
   "valentine>=0.5.0",
   "bdi-kit>=0.10.0",
 ]
-
-[project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = [
+  "pytest>=8",
+  "z3-solver>=4.13",
+  "pandas>=3.0.2",
+  "valentine>=0.5.0",
+  "bdi-kit>=0.10.0",
+]
 
 [project.scripts]
 mdl = "mdl.cli:main"

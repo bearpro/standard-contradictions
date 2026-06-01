@@ -1379,27 +1379,47 @@ wheels = [
 name = "mprokazin-mdl"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
+
+[package.optional-dependencies]
+align = [
+    { name = "bdi-kit" },
+    { name = "pandas" },
+    { name = "valentine" },
+]
+dev = [
+    { name = "bdi-kit" },
+    { name = "pandas" },
+    { name = "pytest" },
+    { name = "valentine" },
+    { name = "z3-solver" },
+]
+full = [
     { name = "bdi-kit" },
     { name = "pandas" },
     { name = "valentine" },
     { name = "z3-solver" },
 ]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
+solver = [
+    { name = "z3-solver" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "bdi-kit", specifier = ">=0.10.0" },
-    { name = "pandas", specifier = ">=3.0.2" },
+    { name = "bdi-kit", marker = "extra == 'align'", specifier = ">=0.10.0" },
+    { name = "bdi-kit", marker = "extra == 'dev'", specifier = ">=0.10.0" },
+    { name = "bdi-kit", marker = "extra == 'full'", specifier = ">=0.10.0" },
+    { name = "pandas", marker = "extra == 'align'", specifier = ">=3.0.2" },
+    { name = "pandas", marker = "extra == 'dev'", specifier = ">=3.0.2" },
+    { name = "pandas", marker = "extra == 'full'", specifier = ">=3.0.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
-    { name = "valentine", specifier = ">=0.5.0" },
-    { name = "z3-solver", specifier = ">=4.13" },
+    { name = "valentine", marker = "extra == 'align'", specifier = ">=0.5.0" },
+    { name = "valentine", marker = "extra == 'dev'", specifier = ">=0.5.0" },
+    { name = "valentine", marker = "extra == 'full'", specifier = ">=0.5.0" },
+    { name = "z3-solver", marker = "extra == 'dev'", specifier = ">=4.13" },
+    { name = "z3-solver", marker = "extra == 'full'", specifier = ">=4.13" },
+    { name = "z3-solver", marker = "extra == 'solver'", specifier = ">=4.13" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["solver", "align", "full", "dev"]
 
 [[package]]
 name = "multidict"

@@ -109,10 +109,31 @@
             bdikit
             ;
         };
-      mdlFor = pkgs:
+      mdlFor = pkgs: { withSolver ? true, withAligners ? true }:
         let
           mdlPythonPackages = mdlPythonPackagesFor pkgs;
           python = mdlPythonPackages.python;
+          solverDependencies = lib.optionals withSolver (with python.pkgs; [
+            z3-solver
+          ]);
+          alignerDependencies =
+            lib.optionals withAligners (with python.pkgs; [
+              pandas
+            ])
+            ++ lib.optionals withAligners [
+              mdlPythonPackages.valentine
+              mdlPythonPackages.bdikit
+            ];
+          importChecks = [
+            "mdl"
+          ]
+          ++ lib.optionals withSolver [
+            "z3"
+          ]
+          ++ lib.optionals withAligners [
+            "valentine"
+            "bdikit.schema_matching.valentine"
+          ];
         in
         python.pkgs.buildPythonPackage {
           pname = "mprokazin-mdl";
@@ -125,33 +146,20 @@
             wheel
           ];
 
-          dependencies = with python.pkgs; [
-            z3-solver
-            pandas
-            mdlPythonPackages.valentine
-            mdlPythonPackages.bdikit
-          ];
+          dependencies = solverDependencies ++ alignerDependencies;
 
-          pythonRelaxDeps = [
-            "pandas"
-            "z3-solver"
-          ];
+          pythonRelaxDeps =
+            lib.optionals withAligners [ "pandas" ]
+            ++ lib.optionals withSolver [ "z3-solver" ];
 
-          pythonRemoveDeps = [
-            "z3-solver"
-          ];
+          pythonRemoveDeps = lib.optionals withSolver [ "z3-solver" ];
 
           makeWrapperArgs = [
             "--unset"
             "PYTHONPATH"
           ];
 
-          pythonImportsCheck = [
-            "mdl"
-            "z3"
-            "valentine"
-            "bdikit.schema_matching.valentine"
-          ];
+          pythonImportsCheck = importChecks;
 
           meta = {
             description = "MDL / DDL-LTLf modelling language toolkit";
@@ -170,17 +178,22 @@
       packages = forAllSystems (system:
         let
           pkgs = pkgsFor system;
-          mdl = mdlFor pkgs;
+          mdl = mdlFor pkgs { };
+          mdlLanguage = mdlFor pkgs {
+            withSolver = false;
+            withAligners = false;
+          };
         in
         {
           mdl = mdl;
+          mdl-language = mdlLanguage;
           default = mdl;
         });
 
       devShells = forAllSystems (system:
         let
           pkgs = pkgsFor system;
-          mdl = mdlFor pkgs;
+          mdl = mdlFor pkgs { };
           mdlPythonPackages = mdlPythonPackagesFor pkgs;
           pythonEnv = mdlPythonPackages.python.withPackages (ps: [
             mdl
