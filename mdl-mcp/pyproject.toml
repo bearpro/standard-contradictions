@@ -23,7 +23,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+solver = [
+  "mprokazin-mdl[solver]==0.1.0",
+]
+dev = [
+  "pytest>=8",
+  "mprokazin-mdl[solver]==0.1.0",
+]
 
 [project.scripts]
 mdl-mcp = "mdl_mcp.server:main"
