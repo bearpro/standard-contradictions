@@ -1,8 +1,9 @@
 import io
 import json
-from pathlib import Path
 
 from mdl.lsp import LSPServer
+
+from sample_sources import LINEQ_RAT_SOURCE
 
 
 def labels(items):
@@ -125,9 +126,8 @@ entity pipe: Pipe
 
 
 def test_lsp_lineq_rat_diagnostics_and_pattern_field_completions():
-    path = Path(__file__).resolve().parents[1] / "examples" / "lineq_rat.mdl"
-    text = path.read_text(encoding="utf-8")
-    uri = path.as_uri()
+    text = LINEQ_RAT_SOURCE
+    uri = "file:///tmp/lineq_rat.mdl"
     out = io.BytesIO()
     server = LSPServer(stdout=out)
     server.documents[uri] = text

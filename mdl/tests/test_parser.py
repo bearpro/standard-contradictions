@@ -1,16 +1,13 @@
-from pathlib import Path
-
 from mdl import ast as A
 from mdl.diagnostics import ParseError
 from mdl.parser import parse, parse_expr
 from mdl.printer import format_expr
 
-
-SAMPLE = Path(__file__).resolve().parents[1] / "examples" / "email.mdl"
+from sample_sources import EMAIL_SOURCE
 
 
 def test_parse_email_module_constructs():
-    module = parse(SAMPLE.read_text(encoding="utf-8"))
+    module = parse(EMAIL_SOURCE)
     assert module.name == "email"
     assert module.annotations == ["rfc2822"]
     assert len(module.imports) == 2

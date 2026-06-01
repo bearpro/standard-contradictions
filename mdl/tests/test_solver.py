@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from textwrap import dedent
 from pathlib import Path
+from textwrap import dedent
 
 import pytest
 
@@ -11,8 +11,7 @@ pytest.importorskip("z3")
 from mdl.cli import main
 from mdl.solver import SolveOptions, solve_paths
 
-
-ROOT = Path(__file__).resolve().parents[1]
+from sample_sources import ALIGNMENT_SOURCE, EMAIL_SOURCE, FIB_SOURCE, PIPE_SOURCE, PWR_SOURCE, TUBE_SOURCE
 
 
 def write_module(tmp_path: Path, name: str, source: str) -> Path:
@@ -21,21 +20,21 @@ def write_module(tmp_path: Path, name: str, source: str) -> Path:
     return path
 
 
-def test_solve_pipe_example_is_sat():
-    payload = solve_paths([ROOT / "examples" / "pipe.mdl"], SolveOptions(horizon=1))
+def test_solve_pipe_example_is_sat(tmp_path):
+    pipe = write_module(tmp_path, "pipe.mdl", PIPE_SOURCE)
+    payload = solve_paths([pipe], SolveOptions(horizon=1))
 
     assert payload["status"] == "sat"
     assert payload["model"]["trace"][0]["entities"]["pipe_spec.pipe"]["length"] == "10"
     assert "pipe_spec.pipe_length_positive" in payload["model"]["winning_rules"]
 
 
-def test_solve_pipe_tube_alignment_modules_are_sat():
+def test_solve_pipe_tube_alignment_modules_are_sat(tmp_path):
+    pipe = write_module(tmp_path, "pipe.mdl", PIPE_SOURCE)
+    tube = write_module(tmp_path, "tube.mdl", TUBE_SOURCE)
+    alignment = write_module(tmp_path, "alignment.mdl", ALIGNMENT_SOURCE)
     payload = solve_paths(
-        [
-            ROOT / "examples" / "pipe.mdl",
-            ROOT / "examples" / "tube.mdl",
-            ROOT / "examples" / "alignment.mdl",
-        ],
+        [pipe, tube, alignment],
         SolveOptions(horizon=1),
     )
 
@@ -319,8 +318,9 @@ def test_solve_std_collections_as_ordinary_adts(tmp_path):
     assert entities["stdlib_adts.lookup"]["constructor"] == "Put"
 
 
-def test_solve_email_uses_recursive_runtime_and_ignores_assert_align():
-    payload = solve_paths([ROOT / "examples" / "email.mdl"], SolveOptions(horizon=2))
+def test_solve_email_uses_recursive_runtime_and_ignores_assert_align(tmp_path):
+    email = write_module(tmp_path, "email.mdl", EMAIL_SOURCE)
+    payload = solve_paths([email], SolveOptions(horizon=2))
 
     assert payload["status"] == "sat"
     assert payload["model"]["trace"][0]["entities"]["email.email"] == "ti@example.org"
@@ -328,15 +328,17 @@ def test_solve_email_uses_recursive_runtime_and_ignores_assert_align():
     assert payload["conflicts"] == []
 
 
-def test_solve_fib_example_evaluates_recursive_function():
-    payload = solve_paths([ROOT / "examples" / "fib.mdl"], SolveOptions(horizon=1))
+def test_solve_fib_example_evaluates_recursive_function(tmp_path):
+    fib = write_module(tmp_path, "fib.mdl", FIB_SOURCE)
+    payload = solve_paths([fib], SolveOptions(horizon=1))
 
     assert payload["status"] == "sat"
     assert "fib.r1" in payload["model"]["winning_rules"]
 
 
-def test_solve_pwr_example_uses_recursive_function_definition():
-    payload = solve_paths([ROOT / "examples" / "pwr.mdl"], SolveOptions(horizon=1))
+def test_solve_pwr_example_uses_recursive_function_definition(tmp_path):
+    pwr = write_module(tmp_path, "pwr.mdl", PWR_SOURCE)
+    payload = solve_paths([pwr], SolveOptions(horizon=1))
 
     assert payload["status"] == "sat"
     entities = payload["model"]["trace"][0]["entities"]
@@ -419,8 +421,9 @@ def test_solve_rule_antecedent_controls_applicability(tmp_path):
     assert payload["model"]["winning_rules"] == []
 
 
-def test_cli_solve_prints_json(capsys):
-    code = main(["solve", str(ROOT / "examples" / "pipe.mdl"), "--horizon", "1"])
+def test_cli_solve_prints_json(capsys, tmp_path):
+    pipe = write_module(tmp_path, "pipe.mdl", PIPE_SOURCE)
+    code = main(["solve", str(pipe), "--horizon", "1"])
 
     assert code == 0
     payload = json.loads(capsys.readouterr().out)

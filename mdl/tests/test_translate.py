@@ -1,11 +1,11 @@
-from pathlib import Path
-
 from mdl.core import translate
 from mdl.parser import parse
 
+from sample_sources import EMAIL_SOURCE
+
 
 def test_translate_rule_to_core():
-    module = parse((Path(__file__).resolve().parents[1] / "examples" / "email.mdl").read_text(encoding="utf-8"))
+    module = parse(EMAIL_SOURCE)
     core = translate(module)
     rule = next(r for r in core["rules"] if r["name"] == "email_addr_spec_correct")
     assert rule["modality"] == "O"
@@ -15,7 +15,7 @@ def test_translate_rule_to_core():
 
 
 def test_translate_forbidden_event_rule():
-    module = parse((Path(__file__).resolve().parents[1] / "examples" / "email.mdl").read_text(encoding="utf-8"))
+    module = parse(EMAIL_SOURCE)
     core = translate(module)
     rule = next(r for r in core["rules"] if r["name"] == "malformed_email_received")
     assert rule["modality"] == "F"
