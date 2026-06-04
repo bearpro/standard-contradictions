@@ -11,7 +11,7 @@ pytest.importorskip("z3")
 from mdl.cli import main
 from mdl.solver import SolveOptions, solve_paths
 
-from sample_sources import ALIGNMENT_SOURCE, EMAIL_SOURCE, FIB_SOURCE, PIPE_SOURCE, PWR_SOURCE, TUBE_SOURCE
+from .sample_sources import ALIGNMENT_SOURCE, EMAIL_SOURCE, FIB_SOURCE, PIPE_SOURCE, PWR_SOURCE, TUBE_SOURCE
 
 
 def write_module(tmp_path: Path, name: str, source: str) -> Path:

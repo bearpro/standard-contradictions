@@ -40,7 +40,7 @@ class CoreTranslator:
 
     def translate(self, module: A.Module) -> dict[str, Any]:
         self.atoms.clear()
-        core = {
+        core: dict[str, Any] = {
             "language": "MDL-DDL-LTLf-Core",
             "version": "0.1",
             "module": module.name,

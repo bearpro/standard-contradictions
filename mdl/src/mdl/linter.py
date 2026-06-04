@@ -729,9 +729,8 @@ class SemanticChecker:
             return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
 
         symbol = self.symbol_for_name(name)
-        if isinstance(symbol.node if symbol else None, A.EventDecl):
+        if symbol is not None and isinstance(symbol.node, A.EventDecl):
             event = symbol.node
-            assert isinstance(event, A.EventDecl)
             self.check_arity(name, len(expr.args), len(event.fields), expr)
             for arg, (_, typ) in zip(expr.args, event.fields):
                 self.check_expr(arg, env, expected=typ, type_params=type_params)
@@ -745,9 +744,8 @@ class SemanticChecker:
                 self.check_expr(arg, env, expected=typ, type_params=type_params)
             return constructor_type
 
-        if isinstance(symbol.node if symbol else None, A.FuncDecl):
+        if symbol is not None and isinstance(symbol.node, A.FuncDecl):
             func = symbol.node
-            assert isinstance(func, A.FuncDecl)
             self.check_arity(name, len(expr.args), len(func.params), expr)
             substitutions: dict[str, A.TypeExpr] = {}
             actuals: list[A.TypeExpr | None] = []
@@ -759,7 +757,7 @@ class SemanticChecker:
             if expected is not None:
                 self.unify_type_params(func.return_type, expected, substitutions, set(func.type_params))
             for actual, param, arg in zip(actuals, func.params, expr.args):
-                formal = self.substitute_type_params(param.type_annotation, substitutions)
+                formal = self.substitute_type_params(param.type_annotation, substitutions) if param.type_annotation else None
                 self.check_assignable(actual, formal, arg)
             return self.substitute_type_params(func.return_type, substitutions) if func.return_type else None
 

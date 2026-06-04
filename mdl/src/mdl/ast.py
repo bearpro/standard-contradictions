@@ -331,7 +331,7 @@ class Module(Node):
 def node_to_dict(value: Any) -> Any:
     """Convert dataclass AST nodes to JSON-serialisable dictionaries."""
     if is_dataclass(value):
-        data = {"kind": value.__class__.__name__}
+        data = {"kind": type(value).__name__}
         for f in fields(value):
             data[f.name] = node_to_dict(getattr(value, f.name))
         return data

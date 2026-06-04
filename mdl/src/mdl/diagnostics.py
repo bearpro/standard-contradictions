@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -12,7 +13,7 @@ class Diagnostic:
     code: str | None = None
     path: str | None = None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         data = {
             "message": self.message,
             "line": self.line,
@@ -25,7 +26,7 @@ class Diagnostic:
             data["path"] = self.path
         return data
 
-    def to_lsp(self) -> dict:
+    def to_lsp(self) -> dict[str, Any]:
         severity_map = {"error": 1, "warning": 2, "information": 3, "hint": 4}
         line = max(0, self.line - 1)
         col = max(0, self.column - 1)

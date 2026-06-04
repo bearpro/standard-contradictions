@@ -1,7 +1,7 @@
 from mdl.core import translate
 from mdl.parser import parse
 
-from sample_sources import EMAIL_SOURCE
+from .sample_sources import EMAIL_SOURCE
 
 
 def test_translate_rule_to_core():

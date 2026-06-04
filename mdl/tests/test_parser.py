@@ -3,7 +3,7 @@ from mdl.diagnostics import ParseError
 from mdl.parser import parse, parse_expr
 from mdl.printer import format_expr
 
-from sample_sources import EMAIL_SOURCE
+from .sample_sources import EMAIL_SOURCE
 
 
 def test_parse_email_module_constructs():
@@ -38,6 +38,7 @@ func add(a: Complex, b: Complex) -> Complex:
 """)
 
     func = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
+    assert func.body is not None
     expr = func.body.result
     assert isinstance(expr, A.RecordConstructor)
     assert expr.type_name == "Complex"
@@ -82,6 +83,7 @@ func f() -> int:
 """)
 
     func = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
+    assert func.body is not None
     assert func.body.statements == []
     assert isinstance(func.body.result, A.LetExpr)
 

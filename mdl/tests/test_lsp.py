@@ -3,7 +3,7 @@ import json
 
 from mdl.lsp import LSPServer
 
-from sample_sources import LINEQ_RAT_SOURCE
+from .sample_sources import LINEQ_RAT_SOURCE
 
 
 def labels(items):

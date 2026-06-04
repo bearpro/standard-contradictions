@@ -18,15 +18,19 @@ class Runtime:
     module: A.Module
     values: dict[str, Any] = field(default_factory=dict)
     facts: list[Any] = field(default_factory=list)
+    functions: dict[str, A.FuncDecl] = field(default_factory=dict, init=False)
+    entities: dict[str, A.EntityDecl] = field(default_factory=dict, init=False)
+    imports: dict[str, str] = field(default_factory=dict, init=False)
+    builtins: dict[str, Callable[..., Any]] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
-        self.functions: dict[str, A.FuncDecl] = {}
-        self.entities: dict[str, A.EntityDecl] = {}
-        self.imports: dict[str, str] = {
+        self.functions = {}
+        self.entities = {}
+        self.imports = {
             (imp.alias or self.import_alias(imp.path)): imp.path.replace("\\", "/")
             for imp in self.module.imports
         }
-        self.builtins: dict[str, Callable[..., Any]] = {
+        self.builtins = {
             "to_list": lambda s: list(s),
             "strings.to_list": lambda s: list(s),
             "std.system.strings.to_list": lambda s: list(s),

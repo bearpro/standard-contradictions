@@ -1,7 +1,7 @@
 from mdl.parser import parse
 from mdl.runtime import Runtime
 
-from sample_sources import EMAIL_SOURCE, PIPE_SOURCE
+from .sample_sources import EMAIL_SOURCE, PIPE_SOURCE
 
 
 def test_runtime_evaluates_recursive_function():

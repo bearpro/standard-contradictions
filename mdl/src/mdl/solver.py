@@ -4,15 +4,18 @@ import json
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
 
-try:  # pragma: no cover - exercised in environments without the optional wheel
+if TYPE_CHECKING:  # pragma: no cover
     import z3
-except Exception as exc:  # pragma: no cover
-    z3 = None  # type: ignore[assignment]
-    _Z3_IMPORT_ERROR = exc
+    z3_import_error: BaseException | None = None
 else:
-    _Z3_IMPORT_ERROR = None
+    try:  # pragma: no cover - exercised in environments without the optional wheel
+        import z3
+    except Exception as exc:  # pragma: no cover
+        z3_import_error = exc
+    else:
+        z3_import_error = None
 
 from . import ast as A
 from .diagnostics import Diagnostic, MDLError, ParseError
@@ -225,9 +228,9 @@ def collect_imported_modules(modules: list[tuple[A.Module, Path]]) -> list[tuple
 
 
 def solve_modules(modules: list[A.Module], options: SolveOptions | None = None, *, paths: list[Path] | None = None) -> dict[str, Any]:
-    if _Z3_IMPORT_ERROR is not None:
+    if z3_import_error is not None:
         return error_payload([Diagnostic(
-            f"z3-solver is not available: {_Z3_IMPORT_ERROR}",
+            f"z3-solver is not available: {z3_import_error}",
             severity="error",
             code="z3-unavailable",
         )])
@@ -917,7 +920,7 @@ class BoundedEncoder:
                 f"_{idx}": self.compile_expr(item, scope, t, expected=expected_items[idx] if idx < len(expected_items) else None, env=env)
                 for idx, item in enumerate(expr.items)
             }
-            typ = expected if isinstance(expected_resolved, TupleSpec) else TupleSpec(tuple(item.typ for item in items.values()))
+            typ: TypeSpec = expected if isinstance(expected_resolved, TupleSpec) and expected is not None else TupleSpec(tuple(item.typ for item in items.values()))
             return self.product_value(typ, items)
         if isinstance(expr, A.ListLiteral):
             raise UnsupportedExpression("list literals are not solver primitives; use std.collections.list constructors")
@@ -1006,7 +1009,8 @@ class BoundedEncoder:
     def quantifier_formula(self, expr: A.QuantifierExpr, scope: ModuleScope, t: int, env: dict[str, ZValue]) -> Any:
         domain = self.compile_expr(expr.domain, scope, t, env=env)
         if not domain.has_concrete or not isinstance(domain.concrete, list):
-            raise UnsupportedExpression(f"quantifier domain must be a finite collection: {format_expr(expr.domain)}")
+            domain_text = format_expr(expr.domain) if expr.domain is not None else "<missing>"
+            raise UnsupportedExpression(f"quantifier domain must be a finite collection: {domain_text}")
         formulas = []
         for item in domain.concrete:
             local = dict(env)
@@ -1076,8 +1080,8 @@ class BoundedEncoder:
             value = ZValue(BOOL, expr=self.event_symbol(target_scope.events[local], t))
         else:
             return self.opaque_atom(name, t)
-        for field in field_parts:
-            value = self.field_value(value, field)
+        for field_name in field_parts:
+            value = self.field_value(value, field_name)
         return value
 
     def field_value(self, value: ZValue, field: str) -> ZValue:
@@ -1552,7 +1556,7 @@ class BoundedEncoder:
             expected_resolved = self.resolve_named_type(expected) if expected is not None else None
             expected_fields = dict(expected_resolved.fields) if isinstance(expected_resolved, RecordSpec) else {}
             fields = {k: self.python_value(v, expected_fields.get(k)) for k, v in value.items()}
-            typ = expected if isinstance(expected_resolved, RecordSpec) else RecordSpec(tuple((k, v.typ) for k, v in fields.items()))
+            typ: TypeSpec = expected if isinstance(expected_resolved, RecordSpec) and expected is not None else RecordSpec(tuple((k, v.typ) for k, v in fields.items()))
             result = self.product_value(typ, fields)
             result.concrete = value
             result.has_concrete = True
@@ -1655,7 +1659,7 @@ class BoundedEncoder:
         if isinstance(resolved, RecordSpec):
             return [(self.product_constructor_name(), self.safe(f"{key}.value"), list(resolved.fields))]
         if isinstance(resolved, TupleSpec):
-            fields = [(f"_{idx}", item) for idx, item in enumerate(resolved.items)]
+            fields: list[tuple[str | None, TypeSpec]] = [(f"_{idx}", item) for idx, item in enumerate(resolved.items)]
             return [(self.product_constructor_name(), self.safe(f"{key}.value"), fields)]
         raise UnsupportedExpression(f"type {typ!r} is not an ADT")
 
