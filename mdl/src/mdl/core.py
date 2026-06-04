@@ -210,10 +210,6 @@ class CoreTranslator:
             return {"kind": "if", "condition": self.term(expr.condition), "then": self.term(expr.then_branch), "else": self.term(expr.else_branch)}
         if isinstance(expr, A.RecordConstructor):
             return {"kind": "record", "type": expr.type_name, "fields": {k: self.term(v) for k, v in expr.fields}}
-        if isinstance(expr, A.ListLiteral):
-            return {"kind": "list", "items": [self.term(i) for i in expr.items]}
-        if isinstance(expr, A.SetLiteral):
-            return {"kind": "set", "items": [self.term(i) for i in expr.items]}
         if isinstance(expr, A.TupleLiteral):
             return {"kind": "tuple", "items": [self.term(i) for i in expr.items]}
         return {"kind": "expr", "text": format_expr(expr)}

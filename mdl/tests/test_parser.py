@@ -197,7 +197,7 @@ module comments
 
 # full-line comment
 entity ready: bool # inline comment
-entity still_ready: bool #{ inline comment, not set syntax
+entity still_ready: bool # inline comment after a declaration
 rule O ok: ready always # trailing comment
 ''')
 
@@ -218,17 +218,3 @@ def test_slash_comments_are_rejected():
             pass
         else:  # pragma: no cover - defensive
             raise AssertionError(f"old comment syntax unexpectedly parsed: {source!r}")
-
-
-def test_collection_literals_are_rejected():
-    for source in [
-        'module bad\nval xs = [1, 2]\n',
-        'module bad\nval s = #{1}\n',
-        'module bad\nfunc f(xs: int) -> int:\n    case xs:\n    | []: 0\n',
-    ]:
-        try:
-            parse(source)
-        except ParseError:
-            pass
-        else:  # pragma: no cover - defensive
-            raise AssertionError(f"collection syntax unexpectedly parsed: {source!r}")

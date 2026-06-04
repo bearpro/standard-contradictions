@@ -97,10 +97,6 @@ class Runtime:
             return self.eval_match(expr, env)
         if isinstance(expr, A.RecordConstructor):
             return {k: self.eval_expr(v, env) for k, v in expr.fields}
-        if isinstance(expr, A.ListLiteral):
-            return [self.eval_expr(i, env) for i in expr.items]
-        if isinstance(expr, A.SetLiteral):
-            return set(self.eval_expr(i, env) for i in expr.items)
         if isinstance(expr, A.TupleLiteral):
             return tuple(self.eval_expr(i, env) for i in expr.items)
         if isinstance(expr, A.TemporalUnary):

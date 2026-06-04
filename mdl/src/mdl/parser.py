@@ -727,16 +727,6 @@ class Parser:
             self.expect_value("}")
         return fields
 
-    def parse_set_literal(self) -> A.SetLiteral:
-        tok = self.expect_type("SET_START")
-        items = self.parse_expr_list_until("}")
-        return A.SetLiteral(items=items, line=tok.line, column=tok.column)
-
-    def parse_list_literal(self) -> A.ListLiteral:
-        tok = self.expect_value("[")
-        items = self.parse_expr_list_until("]")
-        return A.ListLiteral(items=items, line=tok.line, column=tok.column)
-
     def parse_paren_expr(self) -> A.Expr:
         tok = self.expect_value("(")
         if self.match_value(")"):

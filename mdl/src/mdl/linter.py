@@ -545,14 +545,6 @@ class SemanticChecker:
             actual = A.TupleType(items=items)
             self.check_assignable(actual, expected, expr)
             return actual
-        if isinstance(expr, (A.ListLiteral, A.SetLiteral)):
-            item_type: A.TypeExpr | None = None
-            for item in expr.items:
-                current = self.check_expr(item, env, expected=item_type, type_params=type_params)
-                item_type = self.common_type(item_type, current, type_params) or item_type or current
-            actual = A.TypeRef(name="List" if isinstance(expr, A.ListLiteral) else "Set", args=[item_type or A.TypeRef(name="unit")])
-            self.check_assignable(actual, expected, expr)
-            return actual
         if isinstance(expr, A.RecordConstructor):
             actual = self.check_record_constructor(expr, env, type_params)
             self.check_assignable(actual, expected, expr)
@@ -1034,9 +1026,6 @@ class SemanticChecker:
             return A.TypeRef(name=expr.type_name)
         if isinstance(expr, A.TupleLiteral):
             return A.TupleType(items=[self.infer_expr_type(item, env) or A.TypeRef(name="unit") for item in expr.items])
-        if isinstance(expr, (A.ListLiteral, A.SetLiteral)):
-            item_type = self.infer_expr_type(expr.items[0], env) if expr.items else A.TypeRef(name="unit")
-            return A.TypeRef(name="List" if isinstance(expr, A.ListLiteral) else "Set", args=[item_type or A.TypeRef(name="unit")])
         if isinstance(expr, (A.TemporalUnary, A.TemporalBinary, A.QuantifierExpr)):
             return A.TypeRef(name="bool")
         return None
@@ -1302,7 +1291,7 @@ class Linter:
             return self.has_temporal_operator(expr.value) or self.has_temporal_operator(expr.body)
         if isinstance(expr, A.QuantifierExpr):
             return self.has_temporal_operator(expr.domain) or self.has_temporal_operator(expr.body)
-        if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
+        if isinstance(expr, A.TupleLiteral):
             return any(self.has_temporal_operator(i) for i in expr.items)
         if isinstance(expr, A.RecordConstructor):
             return any(self.has_temporal_operator(v) for _, v in expr.fields)

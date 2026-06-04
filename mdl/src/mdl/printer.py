@@ -251,10 +251,6 @@ class PrettyPrinter:
             else:
                 text = f"{expr.type_name} {{ " + ", ".join(f"{k} = {self.expr(v)}" for k, v in expr.fields) + " }"
             prec = self.PREC_RECORD_CONSTRUCTOR
-        elif isinstance(expr, A.ListLiteral):
-            raise ValueError("list literals are not canonical MDL syntax; use std.collections.list constructors")
-        elif isinstance(expr, A.SetLiteral):
-            raise ValueError("set literals are not canonical MDL syntax; use std.collections.set constructors")
         elif isinstance(expr, A.TupleLiteral):
             if len(expr.items) < 2:
                 raise ValueError("tuple literals must contain at least two items; use () for unit")

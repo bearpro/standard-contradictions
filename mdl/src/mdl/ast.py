@@ -177,16 +177,6 @@ class RecordConstructor(Expr):
 
 
 @dataclass
-class ListLiteral(Expr):
-    items: list[Expr] = field(default_factory=list)
-
-
-@dataclass
-class SetLiteral(Expr):
-    items: list[Expr] = field(default_factory=list)
-
-
-@dataclass
 class TupleLiteral(Expr):
     items: list[Expr] = field(default_factory=list)
 

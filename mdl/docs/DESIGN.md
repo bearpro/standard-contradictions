@@ -151,9 +151,8 @@ func pwr(a: int, n: int) -> int:
 
    Голая форма `{ x }` не является выражением.
 
-3. Текстовый язык v3 не делает литералы коллекций каноническим синтаксисом.
-   Коллекции выражаются через явно импортированные ADT из stdlib, например
-   `List.Cons(1, List.Empty(()))`. Это исключает неявную магию вокруг `[]` и `#{}`.
+3. Коллекции выражаются через явно импортированные ADT из stdlib, например
+   `List.Cons(1, List.Empty(()))`.
 
 4. Record value всегда строится через имя типа, а не через bare record:
 
@@ -417,8 +416,7 @@ case tags:
 4. Runtime сообщает ошибку для non-exhaustive match.
 5. Solver компилирует pattern matching в условные выражения Z3, где это
    поддержано.
-6. Списки сопоставляются через ADT-конструкторы `List.Cons` и `List.Empty(())`, а
-   не через синтаксис `[]`.
+6. Списки сопоставляются через ADT-конструкторы `List.Cons` и `List.Empty(())`.
 
 ## 7. Сущности, события, факты и утверждения
 
@@ -796,10 +794,8 @@ mdl solve examples/pipe.mdl examples/tube.mdl examples/alignment.mdl --horizon 1
 5. Функции с более сложными pattern-параметрами могут остаться
    uninterpreted.
 6. Concrete runtime values конвертируются обратно в Z3 values.
-7. Symbolic index access в общем случае не поддержан; литеральный индекс в
-   конкретном list literal поддержан только внутренне.
-8. List literals и set literals не являются solver primitives. Для коллекций
-   используются stdlib ADT-конструкторы.
+7. Symbolic index access в общем случае не поддержан.
+8. Для коллекций используются stdlib ADT-конструкторы.
 
 ### 13.4. Кодирование правил
 
@@ -966,11 +962,10 @@ print(m.to_source())
 4. Solver bounded, а не unbounded model checker.
 5. `assert` пока не участвует в solver-е.
 6. Declarative `align` не является solver constraint.
-7. Collection literals не являются каноническим текстовым синтаксисом.
-8. Stdlib должен импортироваться явно.
-9. Symbolic quantifiers ограничены конечными concrete domains.
-10. Symbolic index access в общем случае не поддержан solver-ом.
-11. Публичная/приватная видимость задает API-поверхность и tooling-поведение,
+7. Stdlib должен импортироваться явно.
+8. Symbolic quantifiers ограничены конечными concrete domains.
+9. Symbolic index access в общем случае не поддержан solver-ом.
+10. Публичная/приватная видимость задает API-поверхность и tooling-поведение,
     но не является полноценной security boundary.
 12. Tree-sitter grammar - scaffold для редакторов, а не источник истины.
 

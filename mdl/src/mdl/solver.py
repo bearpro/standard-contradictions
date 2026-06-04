@@ -888,8 +888,6 @@ class BoundedEncoder:
             target = self.compile_expr(expr.target, scope, t, env=env)
             return self.field_value(target, expr.field)
         if isinstance(expr, A.IndexAccess):
-            if isinstance(expr.target, A.ListLiteral) and isinstance(expr.index, A.Literal) and expr.index.kind == "int":
-                return self.compile_expr(expr.target.items[int(expr.index.value)], scope, t, expected=expected, env=env)
             raise UnsupportedExpression(f"symbolic index access is not supported: {format_expr(expr)}")
         if isinstance(expr, A.Call):
             return self.call_value(expr, scope, t, expected, env)
@@ -922,10 +920,6 @@ class BoundedEncoder:
             }
             typ: TypeSpec = expected if isinstance(expected_resolved, TupleSpec) and expected is not None else TupleSpec(tuple(item.typ for item in items.values()))
             return self.product_value(typ, items)
-        if isinstance(expr, A.ListLiteral):
-            raise UnsupportedExpression("list literals are not solver primitives; use std.collections.list constructors")
-        if isinstance(expr, A.SetLiteral):
-            raise UnsupportedExpression("set literals are not solver primitives; use std.collections.set constructors")
         if isinstance(expr, A.QuantifierExpr):
             return ZValue(BOOL, expr=self.quantifier_formula(expr, scope, t, env))
         raise UnsupportedExpression(f"unsupported expression: {format_expr(expr)}")
@@ -1864,7 +1858,7 @@ class BoundedEncoder:
                 self.runtime_names_resolvable(arm.guard, scope) and self.runtime_names_resolvable(arm.body.result if arm.body else None, scope)
                 for arm in expr.arms
             )
-        if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
+        if isinstance(expr, A.TupleLiteral):
             return all(self.runtime_names_resolvable(item, scope) for item in expr.items)
         if isinstance(expr, A.RecordConstructor):
             return all(self.runtime_names_resolvable(item, scope) for _, item in expr.fields)
@@ -1906,7 +1900,7 @@ class BoundedEncoder:
                 and self.runtime_references_have_values(arm.body.result if arm.body else None, scope)
                 for arm in expr.arms
             )
-        if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
+        if isinstance(expr, A.TupleLiteral):
             return all(self.runtime_references_have_values(item, scope) for item in expr.items)
         if isinstance(expr, A.RecordConstructor):
             return all(self.runtime_references_have_values(item, scope) for _, item in expr.fields)
@@ -1940,7 +1934,7 @@ class BoundedEncoder:
                 self.references_import_alias(arm.guard, scope) or self.references_import_alias(arm.body.result if arm.body else None, scope)
                 for arm in expr.arms
             )
-        if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
+        if isinstance(expr, A.TupleLiteral):
             return any(self.references_import_alias(item, scope) for item in expr.items)
         if isinstance(expr, A.RecordConstructor):
             return expr.type_name.split(".")[0] in scope.imports or any(self.references_import_alias(item, scope) for _, item in expr.fields)
