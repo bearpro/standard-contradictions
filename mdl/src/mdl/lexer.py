@@ -126,31 +126,6 @@ def tokenize(source: str) -> list[Token]:
                 i = j + 1
                 continue
 
-            if ch == "'":
-                j = i + 1
-                escaped = False
-                value_chars: list[str] = []
-                while j < n:
-                    c = line[j]
-                    if escaped:
-                        value_chars.append("\\" + c)
-                        escaped = False
-                        j += 1
-                        continue
-                    if c == "\\":
-                        escaped = True
-                        j += 1
-                        continue
-                    if c == "'":
-                        break
-                    value_chars.append(c)
-                    j += 1
-                if j >= n or line[j] != "'":
-                    raise ParseError("unterminated character literal", line_no, col)
-                tokens.append(Token("CHAR", "".join(value_chars), line_no, col))
-                i = j + 1
-                continue
-
             if ch.isdigit():
                 j = i + 1
                 while j < n and line[j].isdigit():

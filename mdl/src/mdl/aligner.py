@@ -136,7 +136,6 @@ _PRIMITIVE_TYPES = {
     "rational": "number",
     "str": "string",
     "string": "string",
-    "char": "string",
 }
 _COLLECTION_TYPES = {"list", "set", "seq", "array", "vector", "collection"}
 

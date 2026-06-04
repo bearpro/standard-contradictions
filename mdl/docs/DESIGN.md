@@ -229,7 +229,7 @@ import "./pipe.mdl" as m1
 Примитивные типы:
 
 ```text
-bool, int, rat, decimal, string, char, unit
+bool, int, rat, decimal, string, unit
 ```
 
 Решения:
@@ -238,8 +238,7 @@ bool, int, rat, decimal, string, char, unit
 2. `int` кодируется в Z3 как `Int`.
 3. `rat`, `rational`, `real`, `decimal` кодируются solver-ом как `Real`.
 4. `string` кодируется как Z3 String.
-5. `char` в solver-е трактуется как строковый тип.
-6. `unit` представляет отсутствие значимого значения; единственное значение
+5. `unit` представляет отсутствие значимого значения; единственное значение
    этого типа записывается как `()`.
 
 ### 5.2. TypeRef, record, tuple
@@ -365,7 +364,7 @@ func pipe_ok(pipe: Pipe) -> bool:
 
 Поддержанные выражения:
 
-1. literals: string, char, int, decimal, rational, bool;
+1. literals: string, int, decimal, rational, bool;
 2. names и qualified names;
 3. calls;
 4. field access;

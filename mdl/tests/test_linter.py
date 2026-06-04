@@ -158,3 +158,111 @@ rule O ok: List.Empty(()) = List.Empty(()) always
 ''')
 
     assert not any(d.severity == "error" for d in diagnostics)
+
+
+def test_linter_reports_function_return_type_mismatch():
+    diagnostics = lint_source('''
+module bad
+
+func wrong() -> int:
+    true
+''')
+
+    assert any(d.code == "type-mismatch" and "expected int, got bool" in d.message for d in diagnostics)
+
+
+def test_linter_reports_value_and_let_annotation_mismatches():
+    diagnostics = lint_source('''
+module bad
+
+val wrong: int = "x"
+
+func also_wrong() -> int:
+    let x: int = true
+    x
+''')
+
+    assert sum(1 for d in diagnostics if d.code == "type-mismatch") >= 2
+
+
+def test_linter_reports_non_bool_formula_positions():
+    diagnostics = lint_source('''
+module bad
+
+entity x: int
+
+rule O bad_rule: x always
+assert x
+fact x
+''')
+
+    assert sum(1 for d in diagnostics if d.code == "non-bool-expression") >= 3
+
+
+def test_linter_reports_if_type_errors():
+    diagnostics = lint_source('''
+module bad
+
+func bad_condition() -> int:
+    if 1 then 2 else 3
+
+func bad_branches() -> int:
+    if true then 2 else false
+''')
+    codes = [d.code for d in diagnostics]
+
+    assert "non-bool-expression" in codes
+    assert "type-mismatch" in codes
+
+
+def test_linter_reports_call_arity_and_argument_type_mismatches():
+    diagnostics = lint_source('''
+module bad
+
+func f(x: int) -> int:
+    x
+
+event changed(x: int)
+
+entity y: int
+rule O missing_arg: y = f() always
+rule O extra_arg: y = f(1, 2) always
+rule O wrong_arg: y = f(true) always
+rule O event_missing: changed() always
+rule O event_wrong: changed(true) always
+''')
+
+    assert sum(1 for d in diagnostics if d.code == "arity-mismatch") >= 3
+    assert any(d.code == "type-mismatch" and "expected int, got bool" in d.message for d in diagnostics)
+
+
+def test_linter_reports_record_field_and_numeric_operand_type_mismatches():
+    diagnostics = lint_source('''
+module bad
+
+type Pipe = { length: int }
+
+val p: Pipe = Pipe { length = true }
+entity x: int
+rule O bad_numeric: x = (true + 1) always
+''')
+
+    assert any(d.code == "type-mismatch" and "expected int, got bool" in d.message for d in diagnostics)
+    assert any(d.code == "non-numeric-expression" for d in diagnostics)
+
+
+def test_linter_preserves_alignment_record_comparison_and_numeric_widening():
+    diagnostics = lint_source('''
+module ok
+
+type Pipe = { length: rat, radius: rat }
+type Tube = { length: rat, r: rat }
+
+entity pipe: Pipe
+entity tube: Tube
+val length: rat = 1
+
+rule O aligned: (pipe = tube) always
+''')
+
+    assert not any(d.severity == "error" for d in diagnostics)

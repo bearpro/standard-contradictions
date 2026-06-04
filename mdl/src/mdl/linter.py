@@ -338,7 +338,7 @@ class SemanticChecker:
             return
         if isinstance(decl, A.ValueDecl):
             self.check_type_expr(decl.type_annotation)
-            self.check_expr(decl.value, {})
+            self.check_expr(decl.value, {}, expected=decl.type_annotation)
             self.terms[decl.name] = Symbol(decl.name, "value", decl.type_annotation, decl)
             return
         if isinstance(decl, A.FuncDecl):
@@ -349,16 +349,16 @@ class SemanticChecker:
             self.terms[decl.name] = Symbol(decl.name, "function", decl.return_type, decl)
             env: dict[str, A.TypeExpr | None] = {}
             for param in decl.params:
-                self.check_pattern(param.pattern)
+                self.check_pattern(param.pattern, param.type_annotation, type_params)
                 self.bind_pattern(param.pattern, env, param.type_annotation)
-            self.check_block(decl.body, env, type_params)
+            self.check_block(decl.body, env, type_params, expected=decl.return_type)
             return
         if isinstance(decl, A.EntityDecl):
             self.check_type_expr(decl.type_annotation)
             self.terms[decl.name] = Symbol(decl.name, "entity", decl.type_annotation, decl)
             env: dict[str, A.TypeExpr | None] = {}
-            for _, expr in decl.clauses:
-                self.check_expr(expr, env)
+            for kind, expr in decl.clauses:
+                self.check_expr(expr, env, expected=A.TypeRef(name="bool") if kind == "where" else None)
             return
         if isinstance(decl, A.EventDecl):
             for _, typ in decl.fields:
@@ -367,17 +367,22 @@ class SemanticChecker:
             return
         if isinstance(decl, A.RuleDecl):
             self.rules[decl.name] = Symbol(decl.name, "rule", node=decl)
-            self.check_expr(decl.antecedent, {})
-            self.check_expr(decl.body, {})
-            self.check_expr(decl.otherwise, {})
+            bool_type = A.TypeRef(name="bool")
+            self.check_expr(decl.antecedent, {}, expected=bool_type)
+            self.check_expr(decl.body, {}, expected=bool_type)
+            self.check_expr(decl.otherwise, {}, expected=bool_type)
             return
         if isinstance(decl, A.FactDecl):
+            expected = None
             if decl.target:
                 self.check_name(decl.target, decl, {})
-            self.check_expr(decl.value, {})
+                expected = self.infer_name_type(decl.target, {})
+            else:
+                expected = A.TypeRef(name="bool")
+            self.check_expr(decl.value, {}, expected=expected)
             return
         if isinstance(decl, A.AssertDecl):
-            self.check_expr(decl.expr, {})
+            self.check_expr(decl.expr, {}, expected=A.TypeRef(name="bool"))
             return
 
     def add_constructors(self, decl: A.TypeDecl) -> None:
@@ -421,101 +426,193 @@ class SemanticChecker:
             for item in typ.items:
                 self.check_type_expr(item, type_params)
 
-    def check_block(self, block: A.Block | None, env: dict[str, A.TypeExpr | None], type_params: set[str] | None = None) -> None:
+    def check_block(
+        self,
+        block: A.Block | None,
+        env: dict[str, A.TypeExpr | None],
+        type_params: set[str] | None = None,
+        *,
+        expected: A.TypeExpr | None = None,
+    ) -> A.TypeExpr | None:
         if block is None:
-            return
+            return None
         local = dict(env)
         for stmt in block.statements:
             self.check_type_expr(stmt.type_annotation, type_params or set())
-            self.check_expr(stmt.value, local)
-            self.check_pattern(stmt.pattern)
-            self.bind_pattern(stmt.pattern, local, stmt.type_annotation or self.infer_expr_type(stmt.value, local))
-        self.check_expr(block.result, local)
+            actual = self.check_expr(stmt.value, local, type_params=type_params, expected=stmt.type_annotation)
+            self.check_pattern(stmt.pattern, stmt.type_annotation or actual, type_params)
+            self.bind_pattern(stmt.pattern, local, stmt.type_annotation or actual)
+        actual = self.check_expr(block.result, local, type_params=type_params, expected=expected)
+        return actual
 
-    def check_expr(self, expr: A.Expr | None, env: dict[str, A.TypeExpr | None]) -> None:
-        if expr is None or isinstance(expr, A.Literal):
-            return
+    def check_expr(
+        self,
+        expr: A.Expr | None,
+        env: dict[str, A.TypeExpr | None],
+        *,
+        expected: A.TypeExpr | None = None,
+        type_params: set[str] | None = None,
+    ) -> A.TypeExpr | None:
+        type_params = type_params or set()
+        if expr is None:
+            return None
+        if isinstance(expr, A.Literal):
+            actual = self.literal_type(expr)
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.Name):
             self.check_name(expr.name, expr, env)
-            return
+            actual = self.infer_name_type(expr.name, env)
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.Call):
-            self.check_expr(expr.func, env)
-            for arg in expr.args:
-                self.check_expr(arg, env)
-            return
+            actual = self.check_call(expr, env, expected, type_params)
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.FieldAccess):
-            self.check_expr(expr.target, env)
-            target_type = self.infer_expr_type(expr.target, env)
+            target_type = self.check_expr(expr.target, env, type_params=type_params)
             self.check_field(target_type, expr.field, expr)
-            return
+            actual = self.type_after_fields(target_type, [expr.field])
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.IndexAccess):
-            self.check_expr(expr.target, env)
-            self.check_expr(expr.index, env)
-            return
+            target_type = self.check_expr(expr.target, env, type_params=type_params)
+            self.check_expr(expr.index, env, expected=A.TypeRef(name="int"), type_params=type_params)
+            actual = self.index_result_type(target_type, expr.index)
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.BinaryOp):
-            self.check_expr(expr.left, env)
-            self.check_expr(expr.right, env)
-            return
+            actual = self.check_binary_expr(expr, env, type_params)
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.UnaryOp):
-            self.check_expr(expr.operand, env)
-            return
+            if expr.op == "not":
+                self.check_expr(expr.operand, env, expected=A.TypeRef(name="bool"), type_params=type_params)
+                actual = A.TypeRef(name="bool")
+            elif expr.op == "-":
+                actual = self.check_expr(expr.operand, env, type_params=type_params)
+                if actual is not None and not self.is_numeric_type(actual, type_params):
+                    self.error(f"expected numeric expression, got {self.format_type(actual)}", expr, "non-numeric-expression")
+            else:
+                actual = self.check_expr(expr.operand, env, type_params=type_params)
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.IfExpr):
-            self.check_expr(expr.condition, env)
-            self.check_expr(expr.then_branch, env)
-            self.check_expr(expr.else_branch, env)
-            return
+            self.check_expr(expr.condition, env, expected=A.TypeRef(name="bool"), type_params=type_params)
+            then_type = self.check_expr(expr.then_branch, env, expected=expected, type_params=type_params)
+            else_type = self.check_expr(expr.else_branch, env, expected=expected or then_type, type_params=type_params)
+            actual = self.common_type(then_type, else_type, type_params)
+            if then_type is not None and else_type is not None and actual is None:
+                self.error(
+                    f"if branches have incompatible types {self.format_type(then_type)} and {self.format_type(else_type)}",
+                    expr,
+                    "type-mismatch",
+                )
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.LetExpr):
-            self.check_expr(expr.value, env)
+            value_type = self.check_expr(expr.value, env, type_params=type_params)
             local = dict(env)
-            self.check_pattern(expr.pattern)
-            self.bind_pattern(expr.pattern, local, self.infer_expr_type(expr.value, env))
-            self.check_expr(expr.body, local)
-            return
+            self.check_pattern(expr.pattern, value_type, type_params)
+            self.bind_pattern(expr.pattern, local, value_type)
+            actual = self.check_expr(expr.body, local, expected=expected, type_params=type_params)
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.MatchExpr):
-            self.check_expr(expr.subject, env)
-            subject_type = self.infer_expr_type(expr.subject, env)
+            subject_type = self.check_expr(expr.subject, env, type_params=type_params)
+            actual: A.TypeExpr | None = None
             for arm in expr.arms:
                 local = dict(env)
-                self.check_pattern(arm.pattern)
+                self.check_pattern(arm.pattern, subject_type, type_params)
                 self.bind_pattern(arm.pattern, local, subject_type)
-                self.check_expr(arm.guard, local)
-                self.check_block(arm.body, local)
-            return
-        if isinstance(expr, (A.ListLiteral, A.SetLiteral, A.TupleLiteral)):
+                self.check_expr(arm.guard, local, expected=A.TypeRef(name="bool"), type_params=type_params)
+                body_type = self.check_block(arm.body, local, type_params, expected=expected)
+                if actual is None:
+                    actual = body_type
+                else:
+                    common = self.common_type(actual, body_type, type_params)
+                    if body_type is not None and common is None:
+                        self.error(
+                            f"case arms have incompatible types {self.format_type(actual)} and {self.format_type(body_type)}",
+                            arm,
+                            "type-mismatch",
+                        )
+                    actual = common or actual
+            self.check_assignable(actual, expected, expr)
+            return actual
+        if isinstance(expr, A.TupleLiteral):
+            items = [self.check_expr(item, env, type_params=type_params) or A.TypeRef(name="unit") for item in expr.items]
+            actual = A.TupleType(items=items)
+            self.check_assignable(actual, expected, expr)
+            return actual
+        if isinstance(expr, (A.ListLiteral, A.SetLiteral)):
+            item_type: A.TypeExpr | None = None
             for item in expr.items:
-                self.check_expr(item, env)
-            return
+                current = self.check_expr(item, env, expected=item_type, type_params=type_params)
+                item_type = self.common_type(item_type, current, type_params) or item_type or current
+            actual = A.TypeRef(name="List" if isinstance(expr, A.ListLiteral) else "Set", args=[item_type or A.TypeRef(name="unit")])
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.RecordConstructor):
-            self.check_record_constructor(expr, env)
-            return
+            actual = self.check_record_constructor(expr, env, type_params)
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.TemporalUnary):
-            self.check_expr(expr.operand, env)
-            return
+            self.check_expr(expr.operand, env, expected=A.TypeRef(name="bool"), type_params=type_params)
+            actual = A.TypeRef(name="bool")
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.TemporalBinary):
-            self.check_expr(expr.left, env)
-            self.check_expr(expr.right, env)
-            return
+            self.check_expr(expr.left, env, expected=A.TypeRef(name="bool"), type_params=type_params)
+            self.check_expr(expr.right, env, expected=A.TypeRef(name="bool"), type_params=type_params)
+            actual = A.TypeRef(name="bool")
+            self.check_assignable(actual, expected, expr)
+            return actual
         if isinstance(expr, A.QuantifierExpr):
-            self.check_expr(expr.domain, env)
+            domain_type = self.check_expr(expr.domain, env, type_params=type_params)
+            item_type = self.collection_item_type(domain_type)
+            if domain_type is not None and item_type is None:
+                self.error(f"expected finite collection, got {self.format_type(domain_type)}", expr.domain or expr, "type-mismatch")
             local = dict(env)
-            self.check_pattern(expr.pattern)
-            self.bind_pattern(expr.pattern, local, self.collection_item_type(self.infer_expr_type(expr.domain, env)))
-            self.check_expr(expr.body, local)
+            self.check_pattern(expr.pattern, item_type, type_params)
+            self.bind_pattern(expr.pattern, local, item_type)
+            self.check_expr(expr.body, local, expected=A.TypeRef(name="bool"), type_params=type_params)
+            actual = A.TypeRef(name="bool")
+            self.check_assignable(actual, expected, expr)
+            return actual
+        return None
 
-    def check_pattern(self, pattern: A.Pattern | None) -> None:
+    def check_pattern(
+        self,
+        pattern: A.Pattern | None,
+        typ: A.TypeExpr | None = None,
+        type_params: set[str] | None = None,
+    ) -> None:
+        type_params = type_params or set()
+        if isinstance(pattern, A.LiteralPattern):
+            self.check_assignable(self.pattern_literal_type(pattern), typ, pattern)
         if isinstance(pattern, A.ConstructorPattern):
             if pattern.name not in self.constructors and pattern.name not in BUILTIN_TERMS:
                 root = root_name(pattern.name)
                 if root not in self.imports and root not in BUILTIN_ROOTS:
                     self.error(f"undefined constructor {pattern.name!r}", pattern, "undefined-name")
-            for arg in pattern.args:
-                self.check_pattern(arg)
+            field_types = self.constructor_field_types(pattern.name, typ)
+            if field_types and len(pattern.args) != len(field_types):
+                self.error(f"constructor {pattern.name!r} expects {len(field_types)} args, got {len(pattern.args)}", pattern, "arity-mismatch")
+            for idx, arg in enumerate(pattern.args):
+                self.check_pattern(arg, field_types[idx] if idx < len(field_types) else None, type_params)
         elif isinstance(pattern, A.RecordPattern):
-            for _, nested in pattern.fields:
-                self.check_pattern(nested)
-        elif isinstance(pattern, (A.TuplePattern, A.ListPattern)):
+            fields = self.fields_for_type(typ)
+            for name, nested in pattern.fields:
+                self.check_pattern(nested, fields.get(name) if fields else None, type_params)
+        elif isinstance(pattern, A.TuplePattern):
+            items = typ.items if isinstance(typ, A.TupleType) else []
+            for idx, item in enumerate(pattern.items):
+                self.check_pattern(item, items[idx] if idx < len(items) else None, type_params)
+        elif isinstance(pattern, A.ListPattern):
+            item_type = self.collection_item_type(typ)
             for item in pattern.items:
-                self.check_pattern(item)
+                self.check_pattern(item, item_type, type_params)
 
     def bind_pattern(self, pattern: A.Pattern | None, env: dict[str, A.TypeExpr | None], typ: A.TypeExpr | None = None) -> None:
         if pattern is None or isinstance(pattern, (A.WildcardPattern, A.LiteralPattern)):
@@ -585,7 +682,13 @@ class SemanticChecker:
         if fields is not None and field not in fields:
             self.error(f"unknown field {field!r}", node, "unknown-field")
 
-    def check_record_constructor(self, expr: A.RecordConstructor, env: dict[str, A.TypeExpr | None]) -> None:
+    def check_record_constructor(
+        self,
+        expr: A.RecordConstructor,
+        env: dict[str, A.TypeExpr | None],
+        type_params: set[str] | None = None,
+    ) -> A.TypeExpr | None:
+        type_params = type_params or set()
         typ = A.TypeRef(name=expr.type_name, line=expr.line, column=expr.column)
         self.check_type_expr(typ)
         fields = self.fields_for_type(typ)
@@ -599,10 +702,304 @@ class SemanticChecker:
             seen.add(name)
             if fields is not None and name not in fields:
                 self.error(f"unknown field {name!r}", expr, "unknown-field")
-            self.check_expr(value, env)
+            self.check_expr(value, env, expected=fields.get(name) if fields else None, type_params=type_params)
         if fields is not None:
             for name in sorted(set(fields) - seen):
                 self.error(f"missing record field {name!r}", expr, "missing-record-field")
+        return typ
+
+    def check_call(
+        self,
+        expr: A.Call,
+        env: dict[str, A.TypeExpr | None],
+        expected: A.TypeExpr | None,
+        type_params: set[str],
+    ) -> A.TypeExpr | None:
+        name = self.expr_to_name(expr.func)
+        if name is None:
+            self.check_expr(expr.func, env, type_params=type_params)
+            for arg in expr.args:
+                self.check_expr(arg, env, type_params=type_params)
+            return None
+
+        if name == "to_list" or name.endswith("strings.to_list"):
+            self.check_arity(name, len(expr.args), 1, expr)
+            if expr.args:
+                self.check_expr(expr.args[0], env, expected=A.TypeRef(name="string"), type_params=type_params)
+            return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
+
+        symbol = self.symbol_for_name(name)
+        if isinstance(symbol.node if symbol else None, A.EventDecl):
+            event = symbol.node
+            assert isinstance(event, A.EventDecl)
+            self.check_arity(name, len(expr.args), len(event.fields), expr)
+            for arg, (_, typ) in zip(expr.args, event.fields):
+                self.check_expr(arg, env, expected=typ, type_params=type_params)
+            return A.TypeRef(name="bool")
+
+        constructor_type = self.constructor_result_type(name, expected)
+        if constructor_type is not None:
+            field_types = self.constructor_field_types(name, constructor_type)
+            self.check_arity(name, len(expr.args), len(field_types), expr)
+            for arg, typ in zip(expr.args, field_types):
+                self.check_expr(arg, env, expected=typ, type_params=type_params)
+            return constructor_type
+
+        if isinstance(symbol.node if symbol else None, A.FuncDecl):
+            func = symbol.node
+            assert isinstance(func, A.FuncDecl)
+            self.check_arity(name, len(expr.args), len(func.params), expr)
+            substitutions: dict[str, A.TypeExpr] = {}
+            actuals: list[A.TypeExpr | None] = []
+            for arg, param in zip(expr.args, func.params):
+                actual = self.check_expr(arg, env, type_params=type_params)
+                actuals.append(actual)
+                if actual is not None:
+                    self.unify_type_params(param.type_annotation, actual, substitutions, set(func.type_params))
+            if expected is not None:
+                self.unify_type_params(func.return_type, expected, substitutions, set(func.type_params))
+            for actual, param, arg in zip(actuals, func.params, expr.args):
+                formal = self.substitute_type_params(param.type_annotation, substitutions)
+                self.check_assignable(actual, formal, arg)
+            return self.substitute_type_params(func.return_type, substitutions) if func.return_type else None
+
+        self.check_expr(expr.func, env, type_params=type_params)
+        for arg in expr.args:
+            self.check_expr(arg, env, type_params=type_params)
+        return self.infer_expr_type(expr, env)
+
+    def check_binary_expr(
+        self,
+        expr: A.BinaryOp,
+        env: dict[str, A.TypeExpr | None],
+        type_params: set[str],
+    ) -> A.TypeExpr:
+        bool_type = A.TypeRef(name="bool")
+        if expr.op in {"and", "or", "implies", "->", "iff", "<->"}:
+            self.check_expr(expr.left, env, expected=bool_type, type_params=type_params)
+            self.check_expr(expr.right, env, expected=bool_type, type_params=type_params)
+            return bool_type
+
+        left = self.check_expr(expr.left, env, type_params=type_params)
+        right = self.check_expr(expr.right, env, type_params=type_params)
+        if expr.op in {"=", "!="}:
+            if left is not None and right is not None and not self.are_comparable(left, right, type_params):
+                self.error(
+                    f"cannot compare {self.format_type(left)} and {self.format_type(right)}",
+                    expr,
+                    "type-mismatch",
+                )
+            return bool_type
+
+        if expr.op in {"<", "<=", ">", ">="}:
+            self.check_numeric_operand(left, expr.left or expr)
+            self.check_numeric_operand(right, expr.right or expr)
+            return bool_type
+
+        if expr.op in {"+", "-", "*", "/", "%"}:
+            self.check_numeric_operand(left, expr.left or expr)
+            self.check_numeric_operand(right, expr.right or expr)
+            if expr.op == "/" or self.type_name(left) in {"rat", "decimal"} or self.type_name(right) in {"rat", "decimal"}:
+                return A.TypeRef(name="rat")
+            return A.TypeRef(name="int")
+
+        return bool_type
+
+    def check_assignable(
+        self,
+        actual: A.TypeExpr | None,
+        expected: A.TypeExpr | None,
+        node: A.Node,
+    ) -> None:
+        if actual is None or expected is None:
+            return
+        if self.is_unknown_type(actual) or self.is_unknown_type(expected):
+            return
+        if self.is_assignable(actual, expected):
+            return
+        code = "non-bool-expression" if self.is_bool_type(expected) else "type-mismatch"
+        self.error(f"expected {self.format_type(expected)}, got {self.format_type(actual)}", node, code)
+
+    def check_numeric_operand(self, typ: A.TypeExpr | None, node: A.Node) -> None:
+        if typ is None or self.is_unknown_type(typ):
+            return
+        if not self.is_numeric_type(typ):
+            self.error(f"expected numeric expression, got {self.format_type(typ)}", node, "non-numeric-expression")
+
+    def check_arity(self, name: str, actual: int, expected: int, node: A.Node) -> None:
+        if actual != expected:
+            self.error(f"{name!r} expects {expected} args, got {actual}", node, "arity-mismatch")
+
+    def literal_type(self, expr: A.Literal) -> A.TypeExpr:
+        return A.TypeRef(name=expr.kind if expr.kind in PRIMITIVE_TYPES else "unit")
+
+    def pattern_literal_type(self, pattern: A.LiteralPattern) -> A.TypeExpr:
+        return A.TypeRef(name=pattern.kind if pattern.kind in PRIMITIVE_TYPES else "unit")
+
+    def symbol_for_name(self, name: str) -> Symbol | None:
+        if name in self.terms:
+            return self.terms[name]
+        parts = split_qualified(name)
+        if parts and parts[0] == self.module.name and len(parts) > 1:
+            return self.terms.get(parts[1])
+        return None
+
+    def constructor_result_type(self, name: str, expected: A.TypeExpr | None) -> A.TypeExpr | None:
+        short = local_name(name)
+        if isinstance(expected, A.TypeRef):
+            definition = self.type_definitions.get(expected.name)
+            if isinstance(definition, A.SumType) and any(variant.name == short for variant in definition.variants):
+                return expected
+        if name in self.constructors:
+            return A.TypeRef(name=self.constructors[name][0])
+        parts = split_qualified(name)
+        if len(parts) > 1 and parts[0] == self.module.name and short in self.constructors:
+            return A.TypeRef(name=self.constructors[short][0])
+        return None
+
+    def index_result_type(self, target_type: A.TypeExpr | None, index: A.Expr | None) -> A.TypeExpr | None:
+        if isinstance(target_type, A.TupleType) and isinstance(index, A.Literal) and index.kind == "int":
+            idx = int(index.value)
+            if 0 <= idx < len(target_type.items):
+                return target_type.items[idx]
+        item_type = self.collection_item_type(target_type)
+        return item_type
+
+    def is_assignable(self, actual: A.TypeExpr, expected: A.TypeExpr) -> bool:
+        actual_name = self.type_name(actual)
+        expected_name = self.type_name(expected)
+        if self.same_type_name(actual_name, expected_name):
+            if isinstance(actual, A.TypeRef) and isinstance(expected, A.TypeRef):
+                return len(actual.args) == len(expected.args) and all(
+                    self.is_assignable(a, e) for a, e in zip(actual.args, expected.args)
+                )
+            return True
+        if expected_name in {"rat", "decimal"} and actual_name in {"int", "rat", "decimal"}:
+            return True
+        if isinstance(actual, A.RecordType) and isinstance(expected, A.RecordType):
+            actual_fields = dict(actual.fields)
+            expected_fields = dict(expected.fields)
+            return set(actual_fields) == set(expected_fields) and all(
+                self.is_assignable(actual_fields[name], expected_fields[name]) for name in expected_fields
+            )
+        if isinstance(actual, A.TupleType) and isinstance(expected, A.TupleType):
+            return len(actual.items) == len(expected.items) and all(
+                self.is_assignable(a, e) for a, e in zip(actual.items, expected.items)
+            )
+        return False
+
+    def are_comparable(self, left: A.TypeExpr, right: A.TypeExpr, type_params: set[str]) -> bool:
+        if self.is_assignable(left, right) or self.is_assignable(right, left):
+            return True
+        if self.is_numeric_type(left, type_params) and self.is_numeric_type(right, type_params):
+            return True
+        left_fields = self.fields_for_type(left)
+        right_fields = self.fields_for_type(right)
+        if left_fields is not None and right_fields is not None:
+            common = sorted(set(left_fields) & set(right_fields))
+            return bool(common) and all(self.are_comparable(left_fields[name], right_fields[name], type_params) for name in common)
+        return False
+
+    def common_type(
+        self,
+        left: A.TypeExpr | None,
+        right: A.TypeExpr | None,
+        type_params: set[str],
+    ) -> A.TypeExpr | None:
+        if left is None:
+            return right
+        if right is None:
+            return left
+        if self.is_assignable(left, right):
+            return right
+        if self.is_assignable(right, left):
+            return left
+        if self.is_numeric_type(left, type_params) and self.is_numeric_type(right, type_params):
+            if self.type_name(left) in {"rat", "decimal"}:
+                return left
+            if self.type_name(right) in {"rat", "decimal"}:
+                return right
+            return A.TypeRef(name="int")
+        return None
+
+    def is_bool_type(self, typ: A.TypeExpr | None) -> bool:
+        return self.type_name(typ) == "bool"
+
+    def is_numeric_type(self, typ: A.TypeExpr | None, type_params: set[str] | None = None) -> bool:
+        name = self.type_name(typ)
+        return name in {"int", "rat", "decimal"} or bool(name and type_params and name in type_params)
+
+    def type_name(self, typ: A.TypeExpr | None) -> str | None:
+        if isinstance(typ, A.TypeRef):
+            return typ.name
+        return None
+
+    def same_type_name(self, left: str | None, right: str | None) -> bool:
+        if left is None or right is None:
+            return False
+        if left == right:
+            return True
+        left_parts = split_qualified(left)
+        right_parts = split_qualified(right)
+        if not left_parts or not right_parts or left_parts[-1] != right_parts[-1]:
+            return False
+        left_qualified = len(left_parts) > 1 and left_parts[0] in self.imports
+        right_qualified = len(right_parts) > 1 and right_parts[0] in self.imports
+        return left_qualified or right_qualified
+
+    def is_unknown_type(self, typ: A.TypeExpr | None) -> bool:
+        if typ is None:
+            return True
+        if isinstance(typ, A.TypeRef):
+            root = typ.name.split(".")[0]
+            if typ.name in PRIMITIVE_TYPES or typ.name in self.types or root in self.imports or root in BUILTIN_ROOTS:
+                return any(self.is_unknown_type(arg) for arg in typ.args)
+            return True
+        if isinstance(typ, A.RecordType):
+            return any(self.is_unknown_type(field_type) for _, field_type in typ.fields)
+        if isinstance(typ, A.TupleType):
+            return any(self.is_unknown_type(item) for item in typ.items)
+        return False
+
+    def format_type(self, typ: A.TypeExpr | None) -> str:
+        if typ is None:
+            return "unknown"
+        if isinstance(typ, A.TypeRef):
+            if typ.args:
+                return f"{typ.name}<" + ", ".join(self.format_type(arg) for arg in typ.args) + ">"
+            return typ.name
+        if isinstance(typ, A.RecordType):
+            return "{ " + ", ".join(f"{name}: {self.format_type(field_type)}" for name, field_type in typ.fields) + " }"
+        if isinstance(typ, A.TupleType):
+            return "(" + ", ".join(self.format_type(item) for item in typ.items) + ")"
+        return "unknown"
+
+    def unify_type_params(
+        self,
+        pattern: A.TypeExpr | None,
+        actual: A.TypeExpr,
+        substitutions: dict[str, A.TypeExpr],
+        type_params: set[str],
+    ) -> None:
+        if pattern is None:
+            return
+        if isinstance(pattern, A.TypeRef):
+            if pattern.name in type_params and not pattern.args:
+                substitutions.setdefault(pattern.name, actual)
+                return
+            if isinstance(actual, A.TypeRef):
+                for p_arg, a_arg in zip(pattern.args, actual.args):
+                    self.unify_type_params(p_arg, a_arg, substitutions, type_params)
+            return
+        if isinstance(pattern, A.RecordType) and isinstance(actual, A.RecordType):
+            actual_fields = dict(actual.fields)
+            for name, field_type in pattern.fields:
+                if name in actual_fields:
+                    self.unify_type_params(field_type, actual_fields[name], substitutions, type_params)
+            return
+        if isinstance(pattern, A.TupleType) and isinstance(actual, A.TupleType):
+            for p_item, a_item in zip(pattern.items, actual.items):
+                self.unify_type_params(p_item, a_item, substitutions, type_params)
 
     def infer_expr_type(self, expr: A.Expr | None, env: dict[str, A.TypeExpr | None]) -> A.TypeExpr | None:
         if expr is None:

@@ -686,9 +686,6 @@ class Parser:
         if tok.type == "STRING":
             self.advance()
             return A.Literal(value=tok.value, kind="string", line=tok.line, column=tok.column)
-        if tok.type == "CHAR":
-            self.advance()
-            return A.Literal(value=tok.value, kind="char", line=tok.line, column=tok.column)
         if tok.type in {"INT", "DECIMAL", "RAT"}:
             self.advance()
             if tok.type == "INT":
@@ -784,9 +781,6 @@ class Parser:
         if tok.type == "STRING":
             self.advance()
             return A.LiteralPattern(value=tok.value, kind="string", line=tok.line, column=tok.column)
-        if tok.type == "CHAR":
-            self.advance()
-            return A.LiteralPattern(value=tok.value, kind="char", line=tok.line, column=tok.column)
         if tok.type in {"INT", "DECIMAL", "RAT"}:
             lit = self.parse_primary_expr()
             assert isinstance(lit, A.Literal)

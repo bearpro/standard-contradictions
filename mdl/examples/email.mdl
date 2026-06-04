@@ -11,17 +11,17 @@ private func process_email(
     state: ProcessingState
 ) -> bool:
     case email:
-    | List.Cons(char, tail):
-        if state = LocalPart(()) and char = "@"
+    | List.Cons(symbol, tail):
+        if state = LocalPart(()) and symbol = "@"
         then process_email(tail, Domain(()))
-        else if char = "@" then false else process_email(tail, state)
+        else if symbol = "@" then false else process_email(tail, state)
     | List.Empty(()):
         true
 
 private func email_is_correct(email: string) -> bool:
-    let char_list = strings.to_list(email)
+    let symbols = strings.to_list(email)
     let state = LocalPart(())
-    process_email(char_list, state)
+    process_email(symbols, state)
 
 entity email: string
 

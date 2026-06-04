@@ -207,10 +207,9 @@ module.exports = grammar({
     record_pattern: $ => seq('{', optional(commaSep(choice($.identifier, seq($.identifier, '=', $.pattern)))), '}'),
     constructor_pattern: $ => seq($.qualified_name, '(', optional(commaSep($.pattern)), ')'),
 
-    literal: $ => choice($.string, $.char, $.rational, $.decimal, $.integer, $.boolean, 'last'),
+    literal: $ => choice($.string, $.rational, $.decimal, $.integer, $.boolean, 'last'),
     boolean: $ => choice('true', 'false'),
     string: $ => token(seq('"', repeat(choice(/[^"\\]/, /\\./)), '"')),
-    char: $ => token(seq("'", repeat(choice(/[^'\\]/, /\\./)), "'")),
     rational: $ => /[0-9]+\/[0-9]+/,
     decimal: $ => /[0-9]+\.[0-9]+/,
     integer: $ => /[0-9]+/,

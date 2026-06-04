@@ -1,7 +1,6 @@
 (annotation) @attribute
 (line_comment) @comment
 (string) @string
-(char) @string.special
 (integer) @number
 (decimal) @number.float
 (rational) @number

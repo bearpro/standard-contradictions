@@ -315,8 +315,6 @@ class PrettyPrinter:
             return "()"
         if kind == "string":
             return '"' + str(value).replace('"', '\\"') + '"'
-        if kind == "char":
-            return "'" + str(value).replace("'", "\\'") + "'"
         if kind == "bool":
             return "true" if value else "false"
         if isinstance(value, Fraction):

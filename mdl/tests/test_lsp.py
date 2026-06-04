@@ -64,6 +64,23 @@ rule O r: { x } always
     assert any(item["code"] == "parse-error" for item in diagnostics)
 
 
+def test_lsp_reports_static_type_error():
+    source = """module bad
+
+func wrong() -> int:
+    true
+"""
+    out = io.BytesIO()
+    server = LSPServer(stdout=out)
+
+    server.publish_diagnostics("file:///bad.mdl", source)
+
+    payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
+    message = json.loads(payload.decode("utf-8"))
+    diagnostics = message["params"]["diagnostics"]
+    assert any(item["code"] == "type-mismatch" and "expected int, got bool" in item["message"] for item in diagnostics)
+
+
 def test_lsp_completes_language_keywords():
     source = """module keywords
 

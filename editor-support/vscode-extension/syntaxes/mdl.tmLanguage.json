@@ -53,7 +53,7 @@
     },
     "types": {
       "patterns": [
-        {"name": "support.type.primitive.mdl", "match": "\\b(bool|int|rat|string|char|date|time|duration|unit)\\b"},
+        {"name": "support.type.primitive.mdl", "match": "\\b(bool|int|rat|string|date|time|duration|unit)\\b"},
         {"name": "entity.name.type.mdl", "match": "\\b[A-Z][A-Za-z0-9_']*\\b"}
       ]
     },

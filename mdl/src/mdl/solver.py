@@ -505,8 +505,6 @@ class SolverProblem:
             return REAL
         if name == "string":
             return STRING
-        if name == "char":
-            return STRING
         if name == "unit":
             return UNIT
         return None
@@ -1528,7 +1526,7 @@ class BoundedEncoder:
             return ZValue(INT, expr=z3.IntVal(int(value)), concrete=int(value), has_concrete=True)
         if kind in {"rat", "decimal"} or isinstance(expected, PrimitiveType) and expected.name in {"rat", "decimal"}:
             return ZValue(REAL, expr=self.real_val(value), concrete=value, has_concrete=True)
-        if kind in {"string", "char"} or isinstance(expected, PrimitiveType) and expected.name == "string":
+        if kind == "string" or isinstance(expected, PrimitiveType) and expected.name == "string":
             return ZValue(STRING, expr=z3.StringVal(str(value)), concrete=str(value), has_concrete=True)
         return ZValue(UNIT, expr=z3.IntVal(0), concrete=value, has_concrete=True)
 

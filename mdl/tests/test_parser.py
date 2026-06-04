@@ -133,6 +133,15 @@ def test_braced_expressions_are_rejected():
             raise AssertionError(f"braced expression unexpectedly parsed: {source!r}")
 
 
+def test_single_quoted_literals_are_rejected():
+    try:
+        parse_expr("'x'")
+    except ParseError:
+        pass
+    else:  # pragma: no cover - defensive
+        raise AssertionError("single-quoted literal unexpectedly parsed")
+
+
 def test_parse_quantifier():
     expr = parse_expr('forall pipe in pipes: pipe.length > 0 always')
     assert isinstance(expr, A.QuantifierExpr)
