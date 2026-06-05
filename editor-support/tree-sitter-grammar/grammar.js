@@ -99,8 +99,7 @@ module.exports = grammar({
     ),
     param: $ => seq($.pattern, ':', $.type_expr),
 
-    entity_decl: $ => seq('entity', field('name', $.identifier), ':', $.type_expr, repeat($.entity_clause)),
-    entity_clause: $ => seq('where', $.expr),
+    entity_decl: $ => seq('entity', field('name', $.identifier), ':', $.type_expr),
 
     event_decl: $ => seq('event', field('name', $.identifier), optional(seq('(', optional(commaSep($.field_decl)), ')'))),
 

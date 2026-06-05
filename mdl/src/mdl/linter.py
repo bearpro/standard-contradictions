@@ -415,9 +415,6 @@ class SemanticChecker:
         if isinstance(decl, A.EntityDecl):
             self.check_type_expr(decl.type_annotation)
             self.terms[decl.name] = Symbol(decl.name, "entity", decl.type_annotation, decl)
-            env: dict[str, A.TypeExpr | None] = {}
-            for expr in decl.where:
-                self.check_expr(expr, env, expected=A.TypeRef(name="bool"))
             return
         if isinstance(decl, A.EventDecl):
             for _, typ in decl.fields:

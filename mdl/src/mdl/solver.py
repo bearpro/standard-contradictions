@@ -617,7 +617,6 @@ class BoundedEncoder:
             self.encode_entities()
             self.encode_values()
             self.encode_facts()
-            self.encode_entity_clauses()
             self.encode_rules()
         except SolveError as exc:
             self.diagnostics.append(Diagnostic(str(exc), severity="error", code="solve-error"))
@@ -675,20 +674,6 @@ class BoundedEncoder:
                         line=fact.line or 1,
                         column=fact.column or 1,
                     )
-
-    def encode_entity_clauses(self) -> None:
-        for scope in self.problem.scopes.values():
-            for entity in scope.entities.values():
-                for expr in entity.decl.where:
-                    for t in range(self.horizon):
-                        self.track(
-                            self.compile_formula(expr, scope, t),
-                            kind="entity-where",
-                            module=scope.module.name,
-                            name=entity.decl.name,
-                            line=entity.decl.line or 1,
-                            column=entity.decl.column or 1,
-                        )
 
     def encode_rules(self) -> None:
         defeats = self.defeat_pairs()

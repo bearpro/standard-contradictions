@@ -25,7 +25,7 @@ KEYWORDS = {
     "type", "val", "let", "func",
     "entity", "event", "rule", "strict", "defeasible", "defeater",
     "priority", "override", "fact", "assert", "align", "to",
-    "equivalent", "broader", "narrower", "related", "where",
+    "equivalent", "broader", "narrower", "related",
     "if", "then", "else", "case", "when", "in",
     "true", "false", "last",
     "and", "or", "not",

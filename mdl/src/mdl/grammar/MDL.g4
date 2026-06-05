@@ -132,11 +132,7 @@ param
     ;
 
 entityDecl
-    : ENTITY nameToken COLON typeExpr entityClause*
-    ;
-
-entityClause
-    : WHERE expr
+    : ENTITY nameToken COLON typeExpr
     ;
 
 eventDecl
@@ -395,7 +391,6 @@ EQUIVALENT: 'equivalent';
 BROADER: 'broader';
 NARROWER: 'narrower';
 RELATED: 'related';
-WHERE: 'where';
 IF: 'if';
 THEN: 'then';
 ELSE: 'else';

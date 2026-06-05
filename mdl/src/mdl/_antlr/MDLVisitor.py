@@ -154,11 +154,6 @@ class MDLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by MDLParser#entityClause.
-    def visitEntityClause(self, ctx:MDLParser.EntityClauseContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by MDLParser#eventDecl.
     def visitEventDecl(self, ctx:MDLParser.EventDeclContext):
         return self.visitChildren(ctx)

@@ -81,7 +81,6 @@ class CoreTranslator:
                 core["entities"].append({
                     "name": decl.name,
                     "type": self.type_expr(decl.type_annotation),
-                    "where": [self.term(expr) for expr in decl.where],
                     "annotations": decl.annotations,
                 })
             elif isinstance(decl, A.EventDecl):

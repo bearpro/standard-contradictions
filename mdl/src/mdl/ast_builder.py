@@ -218,13 +218,9 @@ class AstBuilder(MDLVisitor):
         return A.EntityDecl(
             name=self.visit(ctx.nameToken()),
             type_annotation=self.visit(ctx.typeExpr()),
-            where=[self.visit(clause) for clause in ctx.entityClause()],
             line=line,
             column=column,
         )
-
-    def visitEntityClause(self, ctx: MDLParser.EntityClauseContext) -> A.Expr:
-        return self.visit(ctx.expr())
 
     def visitEventDecl(self, ctx: MDLParser.EventDeclContext) -> A.EventDecl:
         line, column = self.location(ctx)

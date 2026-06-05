@@ -144,10 +144,7 @@ class PrettyPrinter:
         return f"{self.pattern(param.pattern)}: {self.type_expr(param.type_annotation)}"
 
     def entity_decl(self, decl: A.EntityDecl) -> str:
-        text = f"entity {decl.name}: {self.type_expr(decl.type_annotation)}"
-        for expr in decl.where:
-            text += f" where {self.expr(expr)}"
-        return text
+        return f"entity {decl.name}: {self.type_expr(decl.type_annotation)}"
 
     def event_decl(self, decl: A.EventDecl) -> str:
         fields = ", ".join(f"{n}: {self.type_expr(t)}" for n, t in decl.fields)

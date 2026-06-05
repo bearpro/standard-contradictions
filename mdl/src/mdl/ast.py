@@ -258,7 +258,6 @@ class FuncDecl(Declaration):
 class EntityDecl(Declaration):
     name: str = ""
     type_annotation: TypeExpr | None = None
-    where: list[Expr] = field(default_factory=list)
 
 
 @dataclass
