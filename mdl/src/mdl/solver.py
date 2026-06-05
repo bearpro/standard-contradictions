@@ -20,7 +20,7 @@ else:
 from . import ast as A
 from .diagnostics import Diagnostic, MDLError, ParseError
 from .linter import ImportResolver
-from .names import local_name, root_name, split_qualified
+from .names import split_qualified
 from .parser import parse
 from .printer import format_expr
 from .runtime import Runtime

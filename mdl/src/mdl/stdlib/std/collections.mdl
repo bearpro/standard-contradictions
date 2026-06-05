@@ -7,5 +7,5 @@ type Option<T> = None(unit) | Some(T)
 
 func len<T>(l: List<T>) -> int:
     case l:
-    | List.Empty(): 0
-    | List.Cons(head, tail): 1 + len(tail)
+        | List.Empty(): 0
+        | List.Cons(head, tail): 1 + len(tail)

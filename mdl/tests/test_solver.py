@@ -162,10 +162,10 @@ def test_solve_std_list_recursive_predicate_with_temporal_body(tmp_path):
 
         func all_positive(xs: List<int>) -> bool:
             case xs:
-            | List.Cons(x, rest):
-                x > 0 and all_positive(rest)
-            | List.Empty():
-                true
+                | List.Cons(x, rest):
+                    x > 0 and all_positive(rest)
+                | List.Empty():
+                    true
 
         val xs = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
         rule O all_positive_rule: all_positive(xs) always
@@ -229,8 +229,8 @@ def test_solve_case_pattern_bindings_survive_boolean_operators(tmp_path):
         entity pair: Pair
 
         fact case pair:
-        | Pair.Pair(a, b):
-            a = 1 and b = 2
+                 | Pair.Pair(a, b):
+                     a = 1 and b = 2
         """,
     )
 
@@ -273,10 +273,10 @@ def test_solve_recursive_function_over_std_list_constructors(tmp_path):
 
         func positive_tags(tags: List<int>) -> bool:
             case tags:
-            | List.Cons(tag, rest):
-                if tag > 0 then positive_tags(rest) else false
-            | List.Empty():
-                true
+                | List.Cons(tag, rest):
+                    if tag > 0 then positive_tags(rest) else false
+                | List.Empty():
+                    true
 
         val tags = List.Cons(1, List.Empty())
         rule O tags_positive: positive_tags(tags) always
@@ -300,10 +300,10 @@ def test_solve_recursive_sum_type_with_nested_patterns(tmp_path):
 
         func is_two(n: Nat) -> bool:
             case n:
-            | Nat.Succ(Nat.Succ(Nat.Zero())):
-                true
-            | _:
-                false
+                | Nat.Succ(Nat.Succ(Nat.Zero())):
+                    true
+                | _:
+                    false
 
         entity n: Nat
 

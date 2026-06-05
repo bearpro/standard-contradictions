@@ -1,3 +1,5 @@
 include README.md
 recursive-include examples *.mdl
 recursive-include docs *
+recursive-include src/mdl/grammar *.g4
+recursive-include src/mdl/_antlr *.py *.interp *.tokens

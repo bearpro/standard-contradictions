@@ -112,8 +112,8 @@ type State = Local(unit) | Remote(unit)
 
 func is_local(state: State) -> bool:
     case state:
-    | State.Local(): true
-    | State.Remote(): false
+        | State.Local(): true
+        | State.Remote(): false
 """)
 
     typ = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
@@ -148,6 +148,22 @@ def test_parse_quantifier():
     expr = parse_expr('forall pipe in pipes: pipe.length > 0 always')
     assert isinstance(expr, A.QuantifierExpr)
     assert expr.quantifier == "forall"
+
+
+def test_case_arms_must_be_indented_deeper_than_case_expression():
+    try:
+        parse("""
+module bad
+
+func is_local(state: bool) -> bool:
+    case state:
+    | true: true
+    | false: false
+""")
+    except ParseError as exc:
+        assert "case arms must be indented deeper" in exc.message
+    else:  # pragma: no cover - defensive
+        raise AssertionError("same-indent case arms unexpectedly parsed")
 
 
 def test_parse_rule_colon_syntax_with_antecedent():

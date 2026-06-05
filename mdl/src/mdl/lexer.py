@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .diagnostics import ParseError
+from ._antlr.MDLLexer import MDLLexer
+from ._antlr.MDLParser import MDLParser
+from .antlr_bridge import visible_tokens
 
 
 @dataclass(frozen=True)
@@ -44,136 +46,46 @@ def _indent_width(prefix: str) -> int:
 
 
 def tokenize(source: str) -> list[Token]:
-    tokens: list[Token] = []
-    indents = [0]
-    bracket_depth = 0
+    return [_convert_token(token) for token in visible_tokens(source)]
 
-    lines = source.splitlines()
-    for line_no, raw in enumerate(lines, start=1):
-        line = raw.rstrip("\r")
-        stripped = line.strip()
 
-        if not stripped:
-            continue
-        if stripped.startswith("#"):
-            continue
+def _convert_token(token) -> Token:  # noqa: ANN001
+    value = token.text or ""
+    if token.type == -1:
+        typ = "EOF"
+    elif token.type in {MDLParser.INDENT, MDLParser.DEDENT}:
+        typ = MDLParser.symbolicNames[token.type]
+    elif 0 <= token.type < len(MDLLexer.symbolicNames):
+        typ = MDLLexer.symbolicNames[token.type]
+    else:
+        typ = MDLParser.symbolicNames[token.type]
+    if value in KEYWORDS:
+        typ = "KEYWORD"
+    elif typ == "ANNOT":
+        value = value[1:].strip()
+    elif typ == "STRING":
+        value = _string_value(value)
+    elif typ in {"ARROW", "LEFT_ARROW", "LE", "GE", "NE", "EQEQ", "BIARROW"}:
+        typ = "OP"
+    elif typ in {
+        "LPAREN", "RPAREN", "LBRACE", "RBRACE", "LBRACK", "RBRACK", "COMMA", "COLON", "DOT",
+        "BAR", "PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "EQ", "LT", "GT", "SEMI", "UNDERSCORE",
+    }:
+        typ = "SYMBOL"
+    return Token(typ, value, token.line, token.column + 1)
 
-        prefix_len = len(line) - len(line.lstrip(" \t"))
-        indent = _indent_width(line[:prefix_len])
-        i = prefix_len
 
-        if bracket_depth == 0:
-            if indent > indents[-1]:
-                indents.append(indent)
-                tokens.append(Token("INDENT", "<INDENT>", line_no, 1))
-            else:
-                while indent < indents[-1]:
-                    indents.pop()
-                    tokens.append(Token("DEDENT", "<DEDENT>", line_no, 1))
-                if indent != indents[-1]:
-                    raise ParseError("inconsistent indentation", line_no, 1)
-
-        if line[i:].lstrip().startswith("@") and bracket_depth == 0:
-            at_col = line.index("@", i) + 1
-            text = line[line.index("@", i) + 1:].strip()
-            tokens.append(Token("ANNOT", text, line_no, at_col))
-            tokens.append(Token("NEWLINE", "<NEWLINE>", line_no, len(line) + 1))
-            continue
-
-        n = len(line)
-        while i < n:
-            ch = line[i]
-            col = i + 1
-
-            if ch in " \t":
-                i += 1
-                continue
-            if ch == "#":
-                break
-
-            matched = None
-            for op in MULTI:
-                if line.startswith(op, i):
-                    matched = op
-                    break
-            if matched is not None:
-                tokens.append(Token("OP", matched, line_no, col))
-                i += len(matched)
-                continue
-
-            if ch == '"':
-                j = i + 1
-                escaped = False
-                value_chars: list[str] = []
-                while j < n:
-                    c = line[j]
-                    if escaped:
-                        value_chars.append("\\" + c)
-                        escaped = False
-                        j += 1
-                        continue
-                    if c == "\\":
-                        escaped = True
-                        j += 1
-                        continue
-                    if c == '"':
-                        break
-                    value_chars.append(c)
-                    j += 1
-                if j >= n or line[j] != '"':
-                    raise ParseError("unterminated string literal", line_no, col)
-                tokens.append(Token("STRING", "".join(value_chars), line_no, col))
-                i = j + 1
-                continue
-
-            if ch.isdigit():
-                j = i + 1
-                while j < n and line[j].isdigit():
-                    j += 1
-                typ = "INT"
-                if j < n and line[j] == "." and j + 1 < n and line[j + 1].isdigit():
-                    typ = "DECIMAL"
-                    j += 1
-                    while j < n and line[j].isdigit():
-                        j += 1
-                elif j < n and line[j] == "/" and j + 1 < n and line[j + 1].isdigit():
-                    typ = "RAT"
-                    j += 1
-                    while j < n and line[j].isdigit():
-                        j += 1
-                tokens.append(Token(typ, line[i:j], line_no, col))
-                i = j
-                continue
-
-            if ch.isalpha() or ch == "_":
-                j = i + 1
-                while j < n and (line[j].isalnum() or line[j] in "_'"):
-                    j += 1
-                word = line[i:j]
-                typ = "KEYWORD" if word in KEYWORDS else "IDENT"
-                tokens.append(Token(typ, word, line_no, col))
-                i = j
-                continue
-
-            if ch in SYMBOLS:
-                tokens.append(Token("SYMBOL", ch, line_no, col))
-                if ch in "([{":
-                    bracket_depth += 1
-                elif ch in ")]}":
-                    bracket_depth -= 1
-                    if bracket_depth < 0:
-                        raise ParseError("unmatched closing delimiter", line_no, col)
-                i += 1
-                continue
-
-            raise ParseError(f"unexpected character {ch!r}", line_no, col)
-
-        if bracket_depth == 0:
-            tokens.append(Token("NEWLINE", "<NEWLINE>", line_no, len(line) + 1))
-
-    eof_line = len(lines) + 1
-    while len(indents) > 1:
-        indents.pop()
-        tokens.append(Token("DEDENT", "<DEDENT>", eof_line, 1))
-    tokens.append(Token("EOF", "<EOF>", eof_line, 1))
-    return tokens
+def _string_value(text: str) -> str:
+    value_chars: list[str] = []
+    escaped = False
+    for char in text[1:-1]:
+        if escaped:
+            value_chars.append("\\" + char)
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        else:
+            value_chars.append(char)
+    if escaped:
+        value_chars.append("\\")
+    return "".join(value_chars)

@@ -239,10 +239,10 @@ class PrettyPrinter:
             for arm in expr.arms:
                 guard = f" when {self.expr(arm.guard)}" if arm.guard is not None else ""
                 if arm.body and not arm.body.statements and arm.body.result is not None:
-                    lines.append(f"| {self.pattern(arm.pattern)}{guard}: {self.expr(arm.body.result)}")
+                    lines.append(f"    | {self.pattern(arm.pattern)}{guard}: {self.expr(arm.body.result)}")
                 else:
-                    lines.append(f"| {self.pattern(arm.pattern)}{guard}:")
-                    lines.append(self.block(arm.body, level=1))
+                    lines.append(f"    | {self.pattern(arm.pattern)}{guard}:")
+                    lines.append(self.block(arm.body, level=2))
             text = "\n".join(lines)
             prec = self.PREC_LOWEST
         elif isinstance(expr, A.RecordConstructor):

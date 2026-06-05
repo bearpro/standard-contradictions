@@ -11,12 +11,12 @@ func process_email(
     state: ProcessingState
 ) -> bool:
     case email:
-    | List.Cons(symbol, tail):
-        if state = ProcessingState.LocalPart() and symbol = "@"
-        then process_email(tail, ProcessingState.Domain())
-        else if symbol = "@" then false else process_email(tail, state)
-    | List.Empty():
-        true
+        | List.Cons(symbol, tail):
+            if state = ProcessingState.LocalPart() and symbol = "@"
+            then process_email(tail, ProcessingState.Domain())
+            else if symbol = "@" then false else process_email(tail, state)
+        | List.Empty():
+            true
 
 func email_is_correct(email: string) -> bool:
     let symbols = to_list(email)

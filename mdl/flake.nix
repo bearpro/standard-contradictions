@@ -128,7 +128,18 @@
             wheel
           ];
 
+          nativeBuildInputs = [
+            pkgs.antlr4
+          ];
+
+          postPatch = ''
+            mkdir -p src/mdl/_antlr
+            touch src/mdl/_antlr/__init__.py
+            antlr4 -Dlanguage=Python3 -visitor -no-listener -o src/mdl/_antlr -Xexact-output-dir src/mdl/grammar/MDL.g4
+          '';
+
           dependencies = with python.pkgs; [
+            antlr4-python3-runtime
             z3-solver
             pandas
             bdikit
@@ -150,6 +161,8 @@
 
           pythonImportsCheck = [
             "mdl"
+            "mdl.parser"
+            "mdl.cli"
             "z3"
             "bdikit.schema_matching.valentine"
           ];

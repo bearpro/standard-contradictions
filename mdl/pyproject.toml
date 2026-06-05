@@ -17,7 +17,9 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Topic :: Software Development :: Compilers",
 ]
-dependencies = []
+dependencies = [
+  "antlr4-python3-runtime==4.13.2",
+]
 
 [project.optional-dependencies]
 solver = [
@@ -48,3 +50,9 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+extend-exclude = ["src/mdl/_antlr"]
+
+[tool.basedpyright]
+exclude = ["src/mdl/_antlr"]

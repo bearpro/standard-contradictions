@@ -12,12 +12,12 @@ func process_email(
     state: ProcessingState
 ) -> bool:
     case email:
-    | List.Cons(symbol, tail):
-        if state = ProcessingState.LocalPart() and symbol = "@"
-        then process_email(tail, ProcessingState.Domain())
-        else if symbol = "@" then false else process_email(tail, state)
-    | List.Empty():
-        true
+        | List.Cons(symbol, tail):
+            if state = ProcessingState.LocalPart() and symbol = "@"
+            then process_email(tail, ProcessingState.Domain())
+            else if symbol = "@" then false else process_email(tail, state)
+        | List.Empty():
+            true
 
 func email_is_correct(email: string) -> bool:
     let symbols = to_list(email)
@@ -124,18 +124,18 @@ func pwr(a: rat, n: int) -> rat:
 
 func value(equation: List<Term>) -> rat:
     case equation:
-    | List.Empty(): 0
-    | List.Cons(head, e): 
-        let pow = 1 + len(equation)
-        let termValue = (head).coef * pwr((head).var, pow)
-        termValue + value(e)
+        | List.Empty(): 0
+        | List.Cons(head, e):
+            let pow = 1 + len(equation)
+            let termValue = (head).coef * pwr((head).var, pow)
+            termValue + value(e)
 
 # Helps solver to not iterate over int32^pow
 func values_lt_3(equation: List<Term>) -> bool:
     case equation:
-    | List.Empty(): true
-    | List.Cons(head, tail): 
-        (head).coef < 3 and (head).var < 3 and values_lt_3(tail)
+        | List.Empty(): true
+        | List.Cons(head, tail):
+            (head).coef < 3 and (head).var < 3 and values_lt_3(tail)
 
 entity equation: List<Term>
 
@@ -144,7 +144,7 @@ rule O r1: len(equation) = 2 always
 # rule O r2: values_lt_3(equation) always
 
 fact case equation:
-     | List.Cons(a, List.Cons(b, List.Empty())):
-        ((a).coef = 2) and ((b).coef = -1)
-     | _: false
+         | List.Cons(a, List.Cons(b, List.Empty())):
+             ((a).coef = 2) and ((b).coef = -1)
+         | _: false
 """

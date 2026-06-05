@@ -10,19 +10,19 @@ val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
 
 func positive_tags(tags: List<int>) -> bool:
     case tags:
-    | List.Cons(tag, rest):
-        if tag > 0 then positive_tags(rest) else false
-    | List.Empty():
-        true
+        | List.Cons(tag, rest):
+            if tag > 0 then positive_tags(rest) else false
+        | List.Empty():
+            true
 
 func is_accepted(state: InspectionState) -> bool:
     case state:
-    | InspectionState.Accepted():
-        true
-    | InspectionState.Pending():
-        false
-    | InspectionState.Rejected():
-        false
+        | InspectionState.Accepted():
+            true
+        | InspectionState.Pending():
+            false
+        | InspectionState.Rejected():
+            false
 
 func pipe_ok(pipe: Pipe) -> bool:
     let geometry_ok = pipe.length > 0 and pipe.radius > 0
