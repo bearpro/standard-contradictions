@@ -284,6 +284,45 @@ rule O bad_numeric: x = (true + 1) always
     assert any(d.code == "non-numeric-expression" for d in diagnostics)
 
 
+def test_linter_infers_generic_adt_constructor_values():
+    diagnostics = lint_source('''
+module hm
+
+open std.collections
+
+val xs = List.Cons(1, List.Empty())
+
+rule O ok: len(xs) = 1 always
+''')
+
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
+def test_linter_generalizes_local_let_bindings():
+    diagnostics = lint_source('''
+module hm
+
+open std.collections
+
+func both() -> bool:
+    let empty = List.Empty()
+    len(List.Cons(1, empty)) = 1 and len(List.Cons("a", empty)) = 1
+''')
+
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
+def test_linter_warns_for_numeric_coercion_without_rejecting():
+    diagnostics = lint_source('''
+module hm
+
+val x: rat = 1
+''')
+
+    assert not any(d.severity == "error" for d in diagnostics)
+    assert any(d.code == "numeric-coercion" and d.severity == "warning" for d in diagnostics)
+
+
 def test_linter_preserves_alignment_record_comparison_and_numeric_widening():
     diagnostics = lint_source('''
 module ok
