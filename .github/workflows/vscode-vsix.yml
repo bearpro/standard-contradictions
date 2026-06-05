@@ -46,6 +46,7 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           short_sha="${HEAD_SHA::7}"
           vsix_name="mdl-language-support-${version}-${short_sha}.vsix"
+          mkdir -p dist
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
           echo "vsix_path=dist/${vsix_name}" >> "$GITHUB_OUTPUT"
 
