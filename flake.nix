@@ -113,6 +113,9 @@
         let
           mdlPythonPackages = mdlPythonPackagesFor pkgs;
           python = mdlPythonPackages.python;
+          antlrRuntime = with python.pkgs; [
+            antlr4-python3-runtime
+          ];
           solverDependencies = lib.optionals withSolver (with python.pkgs; [
             z3-solver
           ]);
@@ -126,6 +129,7 @@
               mdlPythonPackages.bdikit
             ];
           importChecks = [
+            "antlr4"
             "mdl"
           ]
           ++ lib.optionals withSolver [
@@ -147,7 +151,7 @@
             wheel
           ];
 
-          dependencies = solverDependencies ++ alignerDependencies;
+          dependencies = antlrRuntime ++ solverDependencies ++ alignerDependencies;
 
           pythonRelaxDeps =
             lib.optionals withAligners [ "pandas" ]
@@ -197,6 +201,8 @@
               pkgs.z3
               pkgs.basedpyright
               pkgs.ruff
+              pkgs.antlr4
+              pkgs.jdk
               pkgs.tree-sitter
               pkgs.nodejs
               pkgs.neovim
