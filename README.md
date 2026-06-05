@@ -26,6 +26,19 @@ Editor integrations live under [`editor-support/`](editor-support/):
 - [`editor-support/vscode-extension/`](editor-support/vscode-extension/) - VS Code extension with TextMate highlighting and LSP wiring;
 - [`editor-support/tree-sitter-grammar/`](editor-support/tree-sitter-grammar/) - Tree-sitter grammar scaffold.
 
+## Install from TestPyPI
+
+`mdl` development builds are published to TestPyPI after successful `master`
+builds. Install the latest test build with:
+
+```bash
+python -m pip install --extra-index-url https://test.pypi.org/simple/ mprokazin-mdl
+mdl --version
+```
+
+Use `--extra-index-url` instead of replacing the main index so third-party
+dependencies can still be resolved from PyPI.
+
 ## Development
 
 ```bash
