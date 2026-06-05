@@ -134,7 +134,7 @@ entityDecl
     ;
 
 eventDecl
-    : EVENT nameToken (LPAREN typeFieldList? RPAREN)?
+    : EVENT nameToken LPAREN typeFieldList? RPAREN
     ;
 
 ruleDecl

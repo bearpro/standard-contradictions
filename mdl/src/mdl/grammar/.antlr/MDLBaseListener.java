@@ -364,18 +364,6 @@ public class MDLBaseListener implements MDLListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterEntityClause(MDLParser.EntityClauseContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitEntityClause(MDLParser.EntityClauseContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterEventDecl(MDLParser.EventDeclContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -424,18 +412,6 @@ public class MDLBaseListener implements MDLListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterRuleSeparator(MDLParser.RuleSeparatorContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitRuleSeparator(MDLParser.RuleSeparatorContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterDeonticMod(MDLParser.DeonticModContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -467,66 +443,6 @@ public class MDLBaseListener implements MDLListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitFactDecl(MDLParser.FactDeclContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterAssertDecl(MDLParser.AssertDeclContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitAssertDecl(MDLParser.AssertDeclContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterAlignDecl(MDLParser.AlignDeclContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitAlignDecl(MDLParser.AlignDeclContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterAlignTarget(MDLParser.AlignTargetContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitAlignTarget(MDLParser.AlignTargetContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterIriLiteral(MDLParser.IriLiteralContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitIriLiteral(MDLParser.IriLiteralContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterAlignKind(MDLParser.AlignKindContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitAlignKind(MDLParser.AlignKindContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -599,18 +515,6 @@ public class MDLBaseListener implements MDLListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitImplication(MDLParser.ImplicationContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterIffExpr(MDLParser.IffExprContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitIffExpr(MDLParser.IffExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -755,18 +659,6 @@ public class MDLBaseListener implements MDLListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitCaseArm(MDLParser.CaseArmContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterQuantifierExpr(MDLParser.QuantifierExprContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitQuantifierExpr(MDLParser.QuantifierExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

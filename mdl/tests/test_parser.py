@@ -19,6 +19,31 @@ def test_parse_email_module_constructs():
     assert any(isinstance(d, A.RuleDecl) and d.name == "email_addr_spec_correct" for d in module.declarations)
 
 
+def test_event_declarations_require_parentheses():
+    module = parse("""
+module events
+
+event started()
+event changed(x: int)
+""")
+
+    events = [decl for decl in module.declarations if isinstance(decl, A.EventDecl)]
+    assert [event.name for event in events] == ["started", "changed"]
+    assert events[0].fields == []
+    assert [name for name, _ in events[1].fields] == ["x"]
+
+    try:
+        parse("""
+module bad
+
+event started
+""")
+    except ParseError:
+        pass
+    else:  # pragma: no cover - defensive
+        raise AssertionError("event declaration without parentheses unexpectedly parsed")
+
+
 def test_parse_temporal_postfix_grouped_atom():
     expr = parse_expr('(email_received(email) and not email_is_correct(email)) eventually')
     assert isinstance(expr, A.TemporalUnary)

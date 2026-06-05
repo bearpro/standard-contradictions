@@ -297,16 +297,6 @@ public interface MDLListener extends ParseTreeListener {
 	 */
 	void exitEntityDecl(MDLParser.EntityDeclContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link MDLParser#entityClause}.
-	 * @param ctx the parse tree
-	 */
-	void enterEntityClause(MDLParser.EntityClauseContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#entityClause}.
-	 * @param ctx the parse tree
-	 */
-	void exitEntityClause(MDLParser.EntityClauseContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link MDLParser#eventDecl}.
 	 * @param ctx the parse tree
 	 */
@@ -347,16 +337,6 @@ public interface MDLListener extends ParseTreeListener {
 	 */
 	void exitRuleBody(MDLParser.RuleBodyContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link MDLParser#ruleSeparator}.
-	 * @param ctx the parse tree
-	 */
-	void enterRuleSeparator(MDLParser.RuleSeparatorContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#ruleSeparator}.
-	 * @param ctx the parse tree
-	 */
-	void exitRuleSeparator(MDLParser.RuleSeparatorContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link MDLParser#deonticMod}.
 	 * @param ctx the parse tree
 	 */
@@ -386,56 +366,6 @@ public interface MDLListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitFactDecl(MDLParser.FactDeclContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MDLParser#assertDecl}.
-	 * @param ctx the parse tree
-	 */
-	void enterAssertDecl(MDLParser.AssertDeclContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#assertDecl}.
-	 * @param ctx the parse tree
-	 */
-	void exitAssertDecl(MDLParser.AssertDeclContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MDLParser#alignDecl}.
-	 * @param ctx the parse tree
-	 */
-	void enterAlignDecl(MDLParser.AlignDeclContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#alignDecl}.
-	 * @param ctx the parse tree
-	 */
-	void exitAlignDecl(MDLParser.AlignDeclContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MDLParser#alignTarget}.
-	 * @param ctx the parse tree
-	 */
-	void enterAlignTarget(MDLParser.AlignTargetContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#alignTarget}.
-	 * @param ctx the parse tree
-	 */
-	void exitAlignTarget(MDLParser.AlignTargetContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MDLParser#iriLiteral}.
-	 * @param ctx the parse tree
-	 */
-	void enterIriLiteral(MDLParser.IriLiteralContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#iriLiteral}.
-	 * @param ctx the parse tree
-	 */
-	void exitIriLiteral(MDLParser.IriLiteralContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MDLParser#alignKind}.
-	 * @param ctx the parse tree
-	 */
-	void enterAlignKind(MDLParser.AlignKindContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#alignKind}.
-	 * @param ctx the parse tree
-	 */
-	void exitAlignKind(MDLParser.AlignKindContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MDLParser#block}.
 	 * @param ctx the parse tree
@@ -496,16 +426,6 @@ public interface MDLListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitImplication(MDLParser.ImplicationContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MDLParser#iffExpr}.
-	 * @param ctx the parse tree
-	 */
-	void enterIffExpr(MDLParser.IffExprContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#iffExpr}.
-	 * @param ctx the parse tree
-	 */
-	void exitIffExpr(MDLParser.IffExprContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MDLParser#orExpr}.
 	 * @param ctx the parse tree
@@ -626,16 +546,6 @@ public interface MDLListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCaseArm(MDLParser.CaseArmContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link MDLParser#quantifierExpr}.
-	 * @param ctx the parse tree
-	 */
-	void enterQuantifierExpr(MDLParser.QuantifierExprContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link MDLParser#quantifierExpr}.
-	 * @param ctx the parse tree
-	 */
-	void exitQuantifierExpr(MDLParser.QuantifierExprContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link MDLParser#postfix}.
 	 * @param ctx the parse tree

@@ -27,6 +27,12 @@ def test_linter_parse_error():
     assert diagnostics[0].code == "parse-error"
 
 
+def test_linter_reports_event_declaration_without_parentheses_as_parse_error():
+    diagnostics = lint_source('module bad\n\nevent started\n')
+    assert diagnostics
+    assert diagnostics[0].code == "parse-error"
+
+
 def test_linter_reports_use_before_definition_and_unknown_field():
     diagnostics = lint_source('''
 module bad

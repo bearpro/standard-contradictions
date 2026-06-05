@@ -315,4 +315,3 @@ class MDLLexer(Lexer):
         self._actions = None
         self._predicates = None
 
-
