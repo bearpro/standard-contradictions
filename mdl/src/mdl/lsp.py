@@ -188,10 +188,14 @@ class LSPServer:
         except ParseError:
             repaired = self.repair_completion_source(text, line, character, prefix)
             if repaired is None:
+                if self.is_type_context(prefix):
+                    return self.primitive_type_items()
                 return self.keyword_items()
             try:
                 module = parse(repaired)
             except ParseError:
+                if self.is_type_context(prefix):
+                    return self.primitive_type_items()
                 return self.keyword_items()
         checker = SemanticChecker(module, uri, resolver=ImportResolver(uri, self.documents))
         checker.check()
@@ -214,10 +218,10 @@ class LSPServer:
                 for name in sorted(fields)
             ]
         if self.is_type_context(prefix):
-            return self.with_keywords([
+            return [
                 {"label": name, "kind": 7, "detail": "type"}
                 for name in checker.visible_type_names(lsp_line, lsp_column)
-            ])
+            ]
         return self.with_keywords([
             {"label": name, "kind": self.completion_kind(symbol.kind), "detail": symbol.kind}
             for name, symbol in sorted(checker.terms.items())
@@ -379,6 +383,12 @@ class LSPServer:
         return [
             {"label": keyword, "kind": 14, "detail": "keyword"}
             for keyword in sorted(KEYWORDS)
+        ]
+
+    def primitive_type_items(self) -> list[dict[str, Any]]:
+        return [
+            {"label": name, "kind": 7, "detail": "type"}
+            for name in ["bool", "decimal", "int", "rat", "string", "unit"]
         ]
 
     def with_keywords(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:

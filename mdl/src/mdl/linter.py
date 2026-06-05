@@ -1101,6 +1101,8 @@ class SemanticChecker:
             severity="error",
             code=code,
             path=self.path,
+            end_line=node.end_line or None,
+            end_column=node.end_column or None,
         ))
 
     def warning(self, message: str, node: A.Node, code: str) -> None:
@@ -1122,6 +1124,8 @@ class SemanticChecker:
             severity="warning",
             code=code,
             path=self.path,
+            end_line=node.end_line or None,
+            end_column=node.end_column or None,
         ))
 
 

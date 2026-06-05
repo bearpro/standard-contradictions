@@ -1,9 +1,14 @@
 import io
 import json
+from pathlib import Path
 
 from mdl.lsp import LSPServer
 
 from .sample_sources import LINEQ_RAT_SOURCE
+
+
+EXAMPLES = Path(__file__).parents[1] / "examples"
+STDLIB = Path(__file__).parents[1] / "src" / "mdl" / "stdlib"
 
 
 def labels(items):
@@ -186,7 +191,7 @@ rule O positive: pipe.length > 0 always
     definition = snapshot.definition(hover_line, hover_col)
     assert definition is not None
     assert definition["range"]["start"]["line"] == 4
-    assert definition["range"]["start"]["character"] == 0
+    assert definition["range"]["start"]["character"] == len("entity ")
 
     semantic = snapshot.semantic_tokens()
     assert semantic["data"]
@@ -195,6 +200,198 @@ rule O positive: pipe.length > 0 always
     assert summary["module"] == "pipe"
     assert summary["core"]["rules"][0]["name"] == "positive"
     assert "atoms" in summary["core"]
+
+
+def test_lsp_definition_for_opened_type_keeps_correct_line(monkeypatch):
+    monkeypatch.setenv("MDL_STDLIB_PATH", str(STDLIB))
+    source = """# comment
+module tmp
+
+open std.collections
+
+func foo() -> List<int>: List.Empty()
+"""
+    uri = (EXAMPLES / "1. tmp-wrong-line-open.mdl").as_uri()
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    line, col = position_of(source, "List<int>")
+    definition = snapshot.definition(line, col)
+
+    assert definition is not None
+    assert definition["uri"].endswith("/src/mdl/stdlib/std/collections.mdl")
+    assert definition["range"]["start"] == {"line": 2, "character": len("type ")}
+
+
+def test_lsp_definition_for_function_argument_uses_caller_scope():
+    source = """module tmp
+
+func foo(name: string) -> bool: true
+
+entity name: string
+
+fact foo(name)
+"""
+    uri = (EXAMPLES / "2. tmp-wrong-definition.mdl").as_uri()
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    line, col = position_of(source, "fact foo(")
+    col += len("fact foo(")
+    definition = snapshot.definition(line, col)
+
+    assert definition is not None
+    assert definition["range"]["start"] == {"line": 4, "character": len("entity ")}
+    assert definition["range"]["end"] == {"line": 4, "character": len("entity name")}
+
+    entity_line, entity_col = position_of(source, "entity name")
+    entity_definition = snapshot.definition(entity_line, entity_col + len("entity "))
+    assert entity_definition is not None
+    assert entity_definition["range"]["start"] == {"line": 4, "character": len("entity ")}
+
+
+def test_lsp_definition_for_function_body_parameter_uses_function_scope():
+    source = """module tmp
+
+func foo(name: unit) -> unit: name
+
+entity name: unit
+"""
+    uri = "file:///tmp/function-body-parameter.mdl"
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    line, col = position_of(source, "name", occurrence=1)
+    definition = snapshot.definition(line, col)
+
+    assert definition is not None
+    assert definition["range"]["start"] == {"line": 2, "character": len("func foo(")}
+    assert definition["range"]["end"] == {"line": 2, "character": len("func foo(name")}
+
+
+def test_lsp_diagnostic_range_uses_full_missing_symbol_span():
+    source = """module tmp
+
+entity t: int
+
+fact time > 0
+"""
+    uri = (EXAMPLES / "3. tmp-no-span-for-missing-symbol.mdl").as_uri()
+    out = io.BytesIO()
+    server = LSPServer(stdout=out)
+
+    server.publish_diagnostics(uri, source)
+
+    payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
+    message = json.loads(payload.decode("utf-8"))
+    diagnostic = next(item for item in message["params"]["diagnostics"] if item["code"] == "undefined-name")
+    assert diagnostic["range"] == {
+        "start": {"line": 4, "character": len("fact ")},
+        "end": {"line": 4, "character": len("fact time")},
+    }
+
+
+def test_lsp_union_type_and_constructor_have_distinct_semantic_tokens_and_definitions():
+    source = """module tmp
+
+type MyUnion = CaseA(unit) | CaseB(unit)
+
+func x() -> MyUnion: MyUnion.CaseA()
+"""
+    uri = (EXAMPLES / "4. tmp-union-costructor-missed-with-type.mdl").as_uri()
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    expr_type_line, expr_type_col = position_of(source, "MyUnion.CaseA", occurrence=0)
+    case_line, case_col = position_of(source, "CaseA()", occurrence=0)
+    type_index = snapshot.token_index_at(expr_type_line, expr_type_col)
+    case_index = snapshot.token_index_at(case_line, case_col)
+
+    assert type_index is not None
+    assert case_index is not None
+    assert snapshot.semantic_type_for_token(type_index) == "type"
+    assert snapshot.semantic_type_for_token(case_index) == "enumMember"
+
+    type_definition = snapshot.definition(expr_type_line, expr_type_col)
+    case_definition = snapshot.definition(case_line, case_col)
+
+    assert type_definition is not None
+    assert type_definition["range"]["start"] == {"line": 2, "character": len("type ")}
+    assert case_definition is not None
+    assert case_definition["range"]["start"] == {"line": 2, "character": len("type MyUnion = ")}
+
+
+def test_lsp_go_to_definition_for_record_field():
+    source = """module pipe
+
+type Pipe = { length: rat, radius: rat }
+entity pipe: Pipe
+rule O positive: pipe.length > 0 always
+"""
+    uri = "file:///tmp/pipe-fields.mdl"
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    line, col = position_of(source, "length >")
+    definition = snapshot.definition(line, col)
+
+    assert definition is not None
+    assert definition["range"]["start"] == {"line": 2, "character": len("type Pipe = { ")}
+    assert definition["range"]["end"] == {"line": 2, "character": len("type Pipe = { length")}
+
+
+def test_lsp_completion_after_function_return_arrow_suggests_types_only():
+    source = """module tmp
+
+func x(x: int) -> _: ()
+"""
+
+    items = LSPServer().completion_items(source, 2, len("func x(x: int) -> _"))
+    item_labels = labels(items)
+
+    assert item_labels >= {"bool", "int", "unit"}
+    assert item_labels.isdisjoint({"true", "false", "O", "F"})
+
+
+def test_lsp_not_messes_entity_with_function_parameter_1():
+    source = """module tmp      # 0
+func f(name: unit) -> unit: ()  # 1
+entity name: unit               # 2
+fact f(name) = ()               # 3
+    """
+
+    uri = "file:///tmp/pipe-fields.mdl"
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    line, col = position_of(source, "f(name)")
+    definition = snapshot.definition(line, col + 3)
+    assert definition is not None
+    assert definition["range"]["start"]["line"] == 2
+
+
+def test_lsp_not_messes_entity_with_function_parameter_2():
+    source = """module tmp      # 0
+entity name: unit               # 1
+func f(name: unit) -> unit: ()  # 2
+fact f(name) = ()               # 3
+    """
+
+    uri = "file:///tmp/pipe-fields.mdl"
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    line, col = position_of(source, "f(name)")
+    definition = snapshot.definition(line, col + 3)
+    assert definition is not None
+    assert definition["range"]["start"]["line"] == 1
 
 
 def completion_at(text: str, server: LSPServer, needle: str, uri: str):
@@ -206,10 +403,17 @@ def completion_at(text: str, server: LSPServer, needle: str, uri: str):
     raise AssertionError(f"needle not found: {needle!r}")
 
 
-def position_of(text: str, needle: str):
+def position_of(text: str, needle: str, *, occurrence: int = 0):
+    seen = 0
     lines = text.splitlines()
     for line_no, line in enumerate(lines):
-        column = line.find(needle)
-        if column >= 0:
-            return line_no, column
+        start = 0
+        while True:
+            column = line.find(needle, start)
+            if column < 0:
+                break
+            if seen == occurrence:
+                return line_no, column
+            seen += 1
+            start = column + len(needle)
     raise AssertionError(f"needle not found: {needle!r}")
