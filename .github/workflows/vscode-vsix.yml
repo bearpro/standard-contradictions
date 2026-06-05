@@ -1,0 +1,61 @@
+name: VS Code VSIX
+
+on:
+  workflow_run:
+    workflows:
+      - MDL Tests
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  build-vsix:
+    name: build VSIX artifact
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'master'
+    defaults:
+      run:
+        working-directory: editor-support/vscode-extension
+
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: editor-support/vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare artifact metadata
+        id: metadata
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          short_sha="${HEAD_SHA::7}"
+          vsix_name="mdl-language-support-${version}-${short_sha}.vsix"
+          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "vsix_path=dist/${vsix_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Build VSIX
+        run: npm run package -- --out "${{ steps.metadata.outputs.vsix_path }}"
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdl-language-support-vsix-${{ steps.metadata.outputs.short_sha }}
+          path: editor-support/vscode-extension/${{ steps.metadata.outputs.vsix_path }}
+          if-no-files-found: error
+          retention-days: 30

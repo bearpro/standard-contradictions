@@ -39,6 +39,19 @@ mdl --version
 Use `--extra-index-url` instead of replacing the main index so third-party
 dependencies can still be resolved from PyPI.
 
+## Install the VS Code extension
+
+After a successful `master` build, GitHub Actions publishes a VSIX artifact from
+the `VS Code VSIX` workflow. Download the `mdl-language-support-vsix-*` artifact
+from the workflow run, unzip it, and install the contained `.vsix` file:
+
+```bash
+code --install-extension mdl-language-support-0.1.1-<commit>.vsix
+```
+
+The extension starts `mdl lsp` by default, so install the Python package first
+and make sure the `mdl` command is available in the VS Code environment.
+
 ## Development
 
 ```bash
