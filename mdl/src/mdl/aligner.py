@@ -98,7 +98,6 @@ class AlignmentReport:
     right_module: str | None = None
     accepted: list[AlignmentCandidate] = field(default_factory=list)
     candidates: list[AlignmentCandidate] = field(default_factory=list)
-    explicit: list[dict[str, Any]] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
 
     @property
@@ -112,7 +111,6 @@ class AlignmentReport:
             "right_module": self.right_module,
             "accepted": [candidate.to_dict() for candidate in self.accepted],
             "candidates": [candidate.to_dict() for candidate in self.candidates],
-            "explicit": self.explicit,
             "diagnostics": self.diagnostics,
             "suggestions": [candidate.to_dict() for candidate in self.suggestions],
         }
@@ -203,20 +201,6 @@ def extract_symbols(module: A.Module) -> list[Symbol]:
         elif isinstance(decl, A.RuleDecl):
             symbols.append(Symbol(module.name, decl.name, "rule", decl.line, decl.column))
     return symbols
-
-
-def explicit_alignments(module: A.Module) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for decl in module.declarations:
-        if isinstance(decl, A.AlignDecl):
-            rows.append({
-                "module": module.name,
-                "subject": decl.subject,
-                "target": decl.target,
-                "kind": decl.kind,
-                "source_span": {"line": decl.line, "column": decl.column},
-            })
-    return rows
 
 
 def project_module(module: A.Module) -> list[AlignmentElement]:
@@ -635,7 +619,6 @@ def align_modules(
     options = options or AlignmentOptions()
     left_elements = project_module(left)
     right_elements = project_module(right)
-    explicit = explicit_alignments(left) + explicit_alignments(right)
 
     diagnostics: list[str] = []
     candidates: list[AlignmentCandidate] | None = None
@@ -653,7 +636,6 @@ def align_modules(
         right_module=right.name,
         accepted=accepted,
         candidates=candidates,
-        explicit=explicit,
         diagnostics=diagnostics,
     )
 
@@ -664,7 +646,7 @@ def suggest_alignments(
 ) -> AlignmentReport:
     mods = list(modules)
     if len(mods) < 2:
-        return AlignmentReport(explicit=[row for module in mods for row in explicit_alignments(module)])
+        return AlignmentReport()
     if len(mods) == 2:
         return align_modules(mods[0], mods[1], AlignmentOptions(
             candidate_threshold=min(0.55, threshold),
@@ -672,7 +654,7 @@ def suggest_alignments(
             matcher="builtin",
         ))
 
-    merged = AlignmentReport(explicit=[row for module in mods for row in explicit_alignments(module)])
+    merged = AlignmentReport()
     for index, left in enumerate(mods):
         for right in mods[index + 1:]:
             report = align_modules(left, right, AlignmentOptions(

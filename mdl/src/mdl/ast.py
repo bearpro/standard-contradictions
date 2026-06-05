@@ -289,13 +289,6 @@ class FactDecl(Declaration):
 
 
 @dataclass
-class AlignDecl(Declaration):
-    subject: str = ""
-    target: str = ""
-    kind: str = "equivalent"
-
-
-@dataclass
 class Module(Node):
     name: str = ""
     annotations: list[str] = field(default_factory=list)

@@ -13,7 +13,7 @@
 (rule_decl (deontic_mod) @keyword.operator)
 [
   "module" "import" "type" "val" "let" "func" "entity" "event" "rule"
-  "strict" "defeasible" "defeater" "priority" "override" "fact" "align"
+  "strict" "defeasible" "defeater" "priority" "override" "fact"
 ] @keyword
 [
   "if" "then" "else" "case" "when" "in"

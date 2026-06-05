@@ -189,26 +189,6 @@ class MDLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by MDLParser#alignDecl.
-    def visitAlignDecl(self, ctx:MDLParser.AlignDeclContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by MDLParser#alignTarget.
-    def visitAlignTarget(self, ctx:MDLParser.AlignTargetContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by MDLParser#iriLiteral.
-    def visitIriLiteral(self, ctx:MDLParser.IriLiteralContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by MDLParser#alignKind.
-    def visitAlignKind(self, ctx:MDLParser.AlignKindContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by MDLParser#block.
     def visitBlock(self, ctx:MDLParser.BlockContext):
         return self.visitChildren(ctx)

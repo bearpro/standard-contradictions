@@ -17,7 +17,6 @@ def test_parse_email_module_constructs():
     assert any(isinstance(d, A.EntityDecl) and d.name == "email" for d in module.declarations)
     assert any(isinstance(d, A.EventDecl) and d.name == "email_received" for d in module.declarations)
     assert any(isinstance(d, A.RuleDecl) and d.name == "email_addr_spec_correct" for d in module.declarations)
-    assert any(isinstance(d, A.AlignDecl) for d in module.declarations)
 
 
 def test_parse_temporal_postfix_grouped_atom():

@@ -50,7 +50,6 @@ module.exports = grammar({
       $.rule_decl,
       $.priority_decl,
       $.fact_decl,
-      $.align_decl,
     ),
 
     type_decl: $ => seq(
@@ -116,13 +115,6 @@ module.exports = grammar({
 
     priority_decl: $ => seq(choice('priority', 'override'), $.qualified_name, repeat(seq('>', $.qualified_name))),
     fact_decl: $ => seq('fact', choice(seq(field('target', $.identifier), '=', $.expr), $.expr)),
-    align_decl: $ => seq(
-      'align',
-      field('subject', $.qualified_name),
-      'to',
-      field('target', choice($.qualified_name, $.iri, $.string)),
-      optional(field('kind', choice('equivalent', 'broader', 'narrower', 'related'))),
-    ),
 
     block: $ => repeat1(choice($.let_stmt, $.expr)),
     let_stmt: $ => seq('let', $.pattern, optional($.type_annotation), '=', $.expr),

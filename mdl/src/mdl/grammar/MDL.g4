@@ -46,7 +46,6 @@ declaration
     | ruleDecl
     | priorityDecl
     | factDecl
-    | alignDecl
     ;
 
 typeDecl
@@ -165,27 +164,6 @@ priorityDecl
 
 factDecl
     : FACT (nameToken EQ)? expr
-    ;
-
-alignDecl
-    : ALIGN qualifiedName TO alignTarget alignKind?
-    ;
-
-alignTarget
-    : qualifiedName
-    | STRING
-    | iriLiteral
-    ;
-
-iriLiteral
-    : LT (~GT)* GT
-    ;
-
-alignKind
-    : EQUIVALENT
-    | BROADER
-    | NARROWER
-    | RELATED
     ;
 
 block
@@ -379,12 +357,6 @@ DEFEATER: 'defeater';
 PRIORITY: 'priority';
 OVERRIDE: 'override';
 FACT: 'fact';
-ALIGN: 'align';
-TO: 'to';
-EQUIVALENT: 'equivalent';
-BROADER: 'broader';
-NARROWER: 'narrower';
-RELATED: 'related';
 IF: 'if';
 THEN: 'then';
 ELSE: 'else';

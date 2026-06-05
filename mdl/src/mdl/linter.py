@@ -1127,7 +1127,6 @@ class Linter:
         diagnostics.extend(self.check_duplicates(module, path))
         diagnostics.extend(SemanticChecker(module, path, resolver=ImportResolver(path, documents, stdlib_path)).check())
         diagnostics.extend(self.check_rules(module, path))
-        diagnostics.extend(self.check_alignments(module, path))
         diagnostics.extend(self.check_functions(module, path))
         return diagnostics
 
@@ -1192,20 +1191,6 @@ class Linter:
                             decl.line or 1, decl.column or 1,
                             severity="warning", code="unknown-priority-rule", path=path,
                         ))
-        return diagnostics
-
-    def check_alignments(self, module: A.Module, path: str | None) -> list[Diagnostic]:
-        diagnostics: list[Diagnostic] = []
-        exported = {A.declaration_name(d) for d in module.declarations if A.declaration_name(d)}
-        for decl in module.declarations:
-            if isinstance(decl, A.AlignDecl):
-                subject_root = decl.subject.split(".")[0]
-                if subject_root not in exported and subject_root != module.name:
-                    diagnostics.append(Diagnostic(
-                        f"alignment subject {decl.subject!r} does not resolve to a declaration in this module",
-                        decl.line or 1, decl.column or 1,
-                        severity="warning", code="unresolved-alignment-subject", path=path,
-                    ))
         return diagnostics
 
     def check_functions(self, module: A.Module, path: str | None) -> list[Diagnostic]:

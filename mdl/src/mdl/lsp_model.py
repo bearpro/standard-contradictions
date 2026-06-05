@@ -253,7 +253,7 @@ class EditorSnapshot:
 
     def declaration_symbol(self, decl: A.Declaration) -> dict[str, Any] | None:
         name = A.declaration_name(decl)
-        if not name and not isinstance(decl, (A.PriorityDecl, A.FactDecl, A.AlignDecl)):
+        if not name and not isinstance(decl, (A.PriorityDecl, A.FactDecl)):
             return None
         if isinstance(decl, A.TypeDecl):
             kind, label = 5, decl.name
@@ -271,8 +271,6 @@ class EditorSnapshot:
             kind, label = 6, "priority"
         elif isinstance(decl, A.FactDecl):
             kind, label = 13, decl.target or "fact"
-        elif isinstance(decl, A.AlignDecl):
-            kind, label = 6, f"align {decl.subject}"
         else:
             return None
         return {
@@ -458,7 +456,6 @@ class EditorSnapshot:
             "core": {
                 "rules": core.get("rules", []) if core else [],
                 "atoms": core.get("atoms", {}) if core else {},
-                "alignments": core.get("alignments", []) if core else [],
             },
         }
 

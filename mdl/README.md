@@ -81,4 +81,4 @@ The Tree-sitter grammar is a scaffold suitable for editor integration and increm
 
 ## Current status
 
-This is a deliberately compact but working project skeleton. It is suitable for evolving the language design, writing tests, and wiring external DDL-LTLf backends. The parser supports the main constructs used in the draft examples: modules, imports, annotations, ADTs, record types, functions, `let`, `if`, `case`, entities, events, `rule O name: ...` declarations, priorities, facts, alignments, temporal operators and deontic modalities. Names are checked in declaration order, with self-recursive function bodies supported.
+This is a deliberately compact but working project skeleton. It is suitable for evolving the language design, writing tests, and wiring external DDL-LTLf backends. The parser supports the main constructs used in the draft examples: modules, imports, annotations, ADTs, record types, functions, `let`, `if`, `case`, entities, events, `rule O name: ...` declarations, priorities, facts, temporal operators and deontic modalities. Names are checked in declaration order, with self-recursive function bodies supported.

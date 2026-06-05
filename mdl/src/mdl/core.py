@@ -50,7 +50,6 @@ class CoreTranslator:
             "rules": [],
             "priorities": [],
             "facts": [],
-            "alignments": [],
             "atoms": {},
         }
         for decl in module.declarations:
@@ -94,13 +93,6 @@ class CoreTranslator:
                 core["priorities"].append({"chain": decl.chain, "annotations": decl.annotations})
             elif isinstance(decl, A.FactDecl):
                 core["facts"].append({"target": decl.target, "value": self.term(decl.value), "annotations": decl.annotations})
-            elif isinstance(decl, A.AlignDecl):
-                core["alignments"].append({
-                    "subject": decl.subject,
-                    "target": decl.target,
-                    "kind": decl.kind,
-                    "annotations": decl.annotations,
-                })
         core["atoms"] = self.atoms
         return core
 

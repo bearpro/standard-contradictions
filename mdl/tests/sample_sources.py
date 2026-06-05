@@ -33,8 +33,6 @@ rule O email_addr_spec_correct: email_is_correct(email) always
 
 rule F malformed_email_received: (email_received(email) and not email_is_correct(email)) eventually
 
-align email to <urn:ietf:rfc:2822:addr-spec> equivalent
-
 fact email = "ti@example.org"
 """
 

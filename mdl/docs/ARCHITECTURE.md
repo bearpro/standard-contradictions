@@ -13,7 +13,10 @@ source .mdl
 
 ## Python-first model inference
 
-The parser is not the only way to obtain a model. Any external process may create `mdl.ast.Module` directly or use `mdl.builder.ModelBuilder`. This supports pipelines where an LLM or a Python extraction script infers a normative model as Python objects first.
+The parser is not the only way to obtain a model. Any external process may
+create `mdl.ast.Module` directly or use `mdl.builder.ModelBuilder`. This
+supports pipelines where an LLM or a Python extraction script infers a normative
+model as Python objects first.
 
 The canonical text syntax is produced by `mdl.printer.format_module`.
 
@@ -28,14 +31,22 @@ Subcommands:
 - `lint`: diagnostics;
 - `translate`: backend-agnostic DDL-LTLf core JSON;
 - `run`: point-wise runtime for pure term expressions and facts;
-- `align`: explicit and heuristic semantic alignments;
-- `solve`: bounded DDL-LTLf solve via Z3, returning JSON conflicts or a witness trace;
+- `align`: heuristic semantic alignment module generation;
+- `solve`: bounded DDL-LTLf solve via Z3, returning JSON conflicts or a witness
+  trace;
 - `lsp`: stdio language server.
 
 ## Runtime scope
 
-The runtime is point-wise and deterministic. It evaluates ordinary pure functions, records, tuples, stdlib collection constructors, pattern matching and facts. It intentionally does not model full temporal semantics; temporal formulas are translated to the core layer and should be consumed by a dedicated DDL-LTLf/model-checking backend.
+The runtime is point-wise and deterministic. It evaluates ordinary pure
+functions, records, tuples, stdlib collection constructors, pattern matching and
+facts. It intentionally does not model full temporal semantics; temporal
+formulas are translated to the core layer and should be consumed by a dedicated
+DDL-LTLf/model-checking backend.
 
 ## Solver scope
 
-The solver encodes a finite trace horizon into Z3. It accepts multiple modules, resolves imports among the input modules, ignores declarative `align` entries, and treats alignment modules as ordinary rules. Use `--horizon K` for one bounded check or `--max-horizon N` to search `1..N`.
+The solver encodes a finite trace horizon into Z3. It accepts multiple modules,
+resolves imports among the input modules, and treats alignment modules as
+ordinary rules. Use `--horizon K` for one bounded check or `--max-horizon N` to
+search `1..N`.

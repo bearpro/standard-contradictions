@@ -171,11 +171,6 @@ class ModelBuilder:
         self.module.declarations.append(decl)
         return decl
 
-    def align(self, subject: str, target: str, kind: str = "equivalent") -> A.AlignDecl:
-        decl = A.AlignDecl(subject=subject, target=target, kind=kind)
-        self.module.declarations.append(decl)
-        return decl
-
     def to_ast(self) -> A.Module:
         return self.module
 

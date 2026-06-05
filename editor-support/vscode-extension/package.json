@@ -94,10 +94,6 @@
       {
         "command": "mdl.showCoreTraceability",
         "title": "MDL: Show Core Traceability"
-      },
-      {
-        "command": "mdl.showAlignments",
-        "title": "MDL: Show Alignments"
       }
     ]
   }

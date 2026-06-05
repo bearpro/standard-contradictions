@@ -284,29 +284,6 @@ class AstBuilder(MDLVisitor):
             column=column,
         )
 
-    def visitAlignDecl(self, ctx: MDLParser.AlignDeclContext) -> A.AlignDecl:
-        line, column = self.location(ctx)
-        return A.AlignDecl(
-            subject=self.visit(ctx.qualifiedName()),
-            target=self.visit(ctx.alignTarget()),
-            kind=self.visit(ctx.alignKind()) if ctx.alignKind() else "equivalent",
-            line=line,
-            column=column,
-        )
-
-    def visitAlignTarget(self, ctx: MDLParser.AlignTargetContext) -> str:
-        if ctx.STRING():
-            return self.string_value(ctx.STRING().getText())
-        if ctx.qualifiedName():
-            return self.visit(ctx.qualifiedName())
-        return self.visit(ctx.iriLiteral())
-
-    def visitIriLiteral(self, ctx: MDLParser.IriLiteralContext) -> str:
-        return "".join(child.getText() for child in ctx.getChildren())
-
-    def visitAlignKind(self, ctx: MDLParser.AlignKindContext) -> str:
-        return ctx.getText()
-
     def visitBlock(self, ctx: MDLParser.BlockContext) -> A.Block:
         line, column = self.location(ctx)
         if ctx.INDENT():

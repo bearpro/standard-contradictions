@@ -89,8 +89,6 @@ class PrettyPrinter:
             text = self.priority_decl(decl)
         elif isinstance(decl, A.FactDecl):
             text = self.fact_decl(decl)
-        elif isinstance(decl, A.AlignDecl):
-            text = self.align_decl(decl)
         else:  # pragma: no cover
             text = f"# unsupported declaration: {decl!r}"
         return f"{prefix}\n{text}" if prefix else text
@@ -170,9 +168,6 @@ class PrettyPrinter:
         if decl.target:
             return f"fact {decl.target} = {self.expr(decl.value)}"
         return f"fact {self.expr(decl.value)}"
-
-    def align_decl(self, decl: A.AlignDecl) -> str:
-        return f"align {decl.subject} to {decl.target} {decl.kind}"
 
     def block(self, block: A.Block | None, level: int = 1) -> str:
         if block is None:

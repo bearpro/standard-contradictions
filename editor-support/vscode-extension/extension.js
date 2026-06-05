@@ -93,11 +93,6 @@ async function showCoreTraceability() {
   await showJsonDocument("MDL Core Traceability", summary ? summary.core : undefined);
 }
 
-async function showAlignments() {
-  const summary = await requestModelSummary();
-  await showJsonDocument("MDL Alignments", summary && summary.core ? summary.core.alignments : undefined);
-}
-
 function startClient() {
   return restartClient().catch((error) => {
     const message = error && error.message ? error.message : String(error);
@@ -110,7 +105,6 @@ function activate(context) {
     vscode.commands.registerCommand("mdl.restartLanguageServer", startClient),
     vscode.commands.registerCommand("mdl.showModelSummary", showModelSummary),
     vscode.commands.registerCommand("mdl.showCoreTraceability", showCoreTraceability),
-    vscode.commands.registerCommand("mdl.showAlignments", showAlignments),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("mdl.lsp")) {
         startClient();
