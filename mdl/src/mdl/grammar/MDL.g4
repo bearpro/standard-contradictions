@@ -114,7 +114,7 @@ typeExprList
     ;
 
 valueDecl
-    : (VAL | LET) nameToken typeAnnotation? EQ expr
+    : LET nameToken typeAnnotation? EQ expr
     ;
 
 funcDecl
@@ -345,7 +345,6 @@ MODULE: 'module';
 IMPORT: 'import';
 OPEN: 'open';
 TYPE: 'type';
-VAL: 'val';
 LET: 'let';
 FUNC: 'func';
 ENTITY: 'entity';

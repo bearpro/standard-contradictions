@@ -167,7 +167,7 @@ def test_solve_std_list_recursive_predicate_with_temporal_body(tmp_path):
                 | List.Empty():
                     true
 
-        val xs = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
+        let xs = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
         rule O all_positive_rule: all_positive(xs) always
         """,
     )
@@ -188,7 +188,7 @@ def test_solve_uses_explicit_stdlib_path_without_env(tmp_path, monkeypatch):
 
         open std.collections
 
-        val xs: List<int> = List.Empty()
+        let xs: List<int> = List.Empty()
         rule O ok: xs = List.Empty() always
         """,
     )
@@ -208,7 +208,7 @@ def test_solve_has_no_embedded_stdlib_fallback(tmp_path, monkeypatch):
 
         open std.collections
 
-        val xs: List<int> = List.Empty()
+        let xs: List<int> = List.Empty()
         """,
     )
 
@@ -251,7 +251,7 @@ def test_solve_std_list_generic_len_is_instantiated_per_argument_type(tmp_path):
 
         open std.collections
 
-        val xs: List<int> = List.Cons(1, List.Cons(2, List.Empty()))
+        let xs: List<int> = List.Cons(1, List.Cons(2, List.Empty()))
         rule O length_ok: len(xs) = 2 always
         """,
     )
@@ -271,7 +271,7 @@ def test_solve_inferred_std_list_value_type(tmp_path):
 
         open std.collections
 
-        val xs = List.Cons(1, List.Empty())
+        let xs = List.Cons(1, List.Empty())
         rule O length_ok: len(xs) = 1 always
         """,
     )
@@ -298,7 +298,7 @@ def test_solve_recursive_function_over_std_list_constructors(tmp_path):
                 | List.Empty():
                     true
 
-        val tags = List.Cons(1, List.Empty())
+        let tags = List.Cons(1, List.Empty())
         rule O tags_positive: positive_tags(tags) always
         """,
     )

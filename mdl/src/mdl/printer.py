@@ -128,7 +128,7 @@ class PrettyPrinter:
 
     def value_decl(self, decl: A.ValueDecl) -> str:
         ann = f": {self.type_expr(decl.type_annotation)}" if decl.type_annotation else ""
-        return f"val {decl.name}{ann} = {self.expr(decl.value)}"
+        return f"let {decl.name}{ann} = {self.expr(decl.value)}"
 
     def func_decl(self, decl: A.FuncDecl) -> str:
         params = ", ".join(self.param(p) for p in decl.params)

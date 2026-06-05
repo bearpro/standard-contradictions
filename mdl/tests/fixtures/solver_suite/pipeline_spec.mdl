@@ -6,7 +6,7 @@ type InspectionState = Pending(unit) | Accepted(unit) | Rejected(unit)
 
 type Pipe = { length: rat, radius: rat, pressure: int, state: InspectionState }
 
-val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
+let inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
 
 func positive_tags(tags: List<int>) -> bool:
     case tags:

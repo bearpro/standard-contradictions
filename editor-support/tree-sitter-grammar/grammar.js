@@ -80,7 +80,7 @@ module.exports = grammar({
     tuple_type: $ => seq('(', $.type_expr, ',', commaSep($.type_expr), ')'),
     type_ref: $ => seq($.qualified_name, optional(seq('<', optional(commaSep($.type_expr)), '>'))),
 
-    value_decl: $ => seq(choice('val', 'let'), field('name', $.identifier), optional($.type_annotation), '=', $.expr),
+    value_decl: $ => seq('let', field('name', $.identifier), optional($.type_annotation), '=', $.expr),
     type_annotation: $ => seq(':', $.type_expr),
 
     func_decl: $ => seq(

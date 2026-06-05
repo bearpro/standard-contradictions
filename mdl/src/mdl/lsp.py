@@ -352,7 +352,7 @@ class LSPServer:
 
     def is_type_context(self, prefix: str) -> bool:
         stripped = prefix.strip()
-        if re.search(r"\b(entity|val|let)\s+[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$", stripped):
+        if re.search(r"\b(entity|let)\s+[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$", stripped):
             return True
         if re.search(r"\bfunc\b.*(?:\(|,)\s*[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$", stripped):
             return True
