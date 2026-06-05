@@ -1,30 +1,30 @@
 module fixture_pipeline_spec
 
-import "std/collections/list.mdl" as List exposing (List)
+open std.collections
 
-private type InspectionState = Pending(unit) | Accepted(unit) | Rejected(unit)
+type InspectionState = Pending(unit) | Accepted(unit) | Rejected(unit)
 
 type Pipe = { length: rat, radius: rat, pressure: int, state: InspectionState }
 
-val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty(()))))
+val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
 
-private func positive_tags(tags: List<int>) -> bool:
+func positive_tags(tags: List<int>) -> bool:
     case tags:
     | List.Cons(tag, rest):
         if tag > 0 then positive_tags(rest) else false
-    | List.Empty(()):
+    | List.Empty():
         true
 
-private func is_accepted(state: InspectionState) -> bool:
+func is_accepted(state: InspectionState) -> bool:
     case state:
-    | Accepted(()):
+    | InspectionState.Accepted():
         true
-    | Pending(()):
+    | InspectionState.Pending():
         false
-    | Rejected(()):
+    | InspectionState.Rejected():
         false
 
-private func pipe_ok(pipe: Pipe) -> bool:
+func pipe_ok(pipe: Pipe) -> bool:
     let geometry_ok = pipe.length > 0 and pipe.radius > 0
     let pressure_ok = if pipe.pressure > 0 then true else false
     geometry_ok and pressure_ok and positive_tags(inspection_tags) and is_accepted(pipe.state)
@@ -39,4 +39,4 @@ rule O pipe_quality: pipe_ok(pipe) always
 rule F reject_bad_inspection: (inspected(pipe.length) and not pipe_ok(pipe)) eventually
 rule O pressure_after_change: (pressure_changed(pipe.pressure) implies pipe.pressure > 0) always
 
-fact pipe = Pipe { length = 12, radius = 2, pressure = 5, state = Accepted(()) }
+fact pipe = Pipe { length = 12, radius = 2, pressure = 5, state = InspectionState.Accepted() }

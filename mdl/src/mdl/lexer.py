@@ -17,8 +17,8 @@ class Token:
 
 
 KEYWORDS = {
-    "module", "import", "as", "exposing",
-    "private", "public", "type", "val", "let", "func",
+    "module", "import", "open",
+    "type", "val", "let", "func",
     "entity", "event", "rule", "strict", "defeasible", "defeater",
     "priority", "override", "fact", "assert", "align", "to",
     "equivalent", "broader", "narrower", "related", "key", "where",

@@ -10,8 +10,8 @@ def test_parse_email_module_constructs():
     module = parse(EMAIL_SOURCE)
     assert module.name == "email"
     assert module.annotations == ["rfc2822"]
-    assert len(module.imports) == 2
-    assert module.imports[0].path == "std/system/strings.mdl"
+    assert module.imports == []
+    assert [opened.module for opened in module.opens] == ["std.collections", "std.system.strings"]
     assert any(isinstance(d, A.TypeDecl) and d.name == "ProcessingState" for d in module.declarations)
     assert any(isinstance(d, A.FuncDecl) and d.name == "process_email" for d in module.declarations)
     assert any(isinstance(d, A.EntityDecl) and d.name == "email" for d in module.declarations)
@@ -112,8 +112,8 @@ type State = Local(unit) | Remote(unit)
 
 func is_local(state: State) -> bool:
     case state:
-    | Local(()): true
-    | Remote(()): false
+    | State.Local(): true
+    | State.Remote(): false
 """)
 
     typ = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
@@ -184,11 +184,12 @@ def test_parse_file_import_path():
     module = parse('''
 module imports
 
-import "std/collections/list.mdl" as List exposing (List)
+import "./pipe.mdl"
+open std.collections
 ''')
 
-    assert module.imports[0].path == "std/collections/list.mdl"
-    assert module.imports[0].alias == "List"
+    assert module.imports[0].path == "./pipe.mdl"
+    assert module.opens[0].module == "std.collections"
 
 
 def test_hash_comments_are_supported():

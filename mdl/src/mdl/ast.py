@@ -222,15 +222,18 @@ class Block(Node):
 
 @dataclass
 class Declaration(Node):
-    visibility: str = "public"
     annotations: list[str] = field(default_factory=list)
 
 
 @dataclass
 class ImportDecl(Node):
     path: str = ""
-    alias: str | None = None
-    exposing: list[tuple[str, str | None]] = field(default_factory=list)
+    annotations: list[str] = field(default_factory=list)
+
+
+@dataclass
+class OpenDecl(Node):
+    module: str = ""
     annotations: list[str] = field(default_factory=list)
 
 
@@ -315,6 +318,7 @@ class Module(Node):
     name: str = ""
     annotations: list[str] = field(default_factory=list)
     imports: list[ImportDecl] = field(default_factory=list)
+    opens: list[OpenDecl] = field(default_factory=list)
     declarations: list[Declaration] = field(default_factory=list)
 
 

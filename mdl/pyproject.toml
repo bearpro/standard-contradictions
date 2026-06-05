@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mprokazin-mdl"
-version = "0.1.0"
+version = "0.1.1"
 description = "MDL / DDL-LTLf modelling language toolkit: translator, runtime, linter, LSP and aligner."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
@@ -25,20 +25,17 @@ solver = [
 ]
 align = [
   "pandas>=3.0.2",
-  "valentine>=0.5.0",
   "bdi-kit>=0.10.0",
 ]
 full = [
   "z3-solver>=4.13",
   "pandas>=3.0.2",
-  "valentine>=0.5.0",
   "bdi-kit>=0.10.0",
 ]
 dev = [
   "pytest>=8",
   "z3-solver>=4.13",
   "pandas>=3.0.2",
-  "valentine>=0.5.0",
   "bdi-kit>=0.10.0",
 ]
 
@@ -47,9 +44,6 @@ mdl = "mdl.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-mdl = ["stdlib/**/*.mdl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

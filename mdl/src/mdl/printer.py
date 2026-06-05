@@ -35,6 +35,11 @@ class PrettyPrinter:
             parts.append("")
             for imp in module.imports:
                 parts.append(self.import_decl(imp))
+        if module.opens:
+            if not module.imports:
+                parts.append("")
+            for opened in module.opens:
+                parts.append(self.open_decl(opened))
         if module.declarations:
             parts.append("")
             for idx, decl in enumerate(module.declarations):
@@ -56,13 +61,11 @@ class PrettyPrinter:
         prefix = "\n".join(self.annotations(decl.annotations))
         path = self.import_path(decl.path)
         text = f"import {path}"
-        if decl.alias:
-            text += f" as {decl.alias}"
-        if decl.exposing:
-            exposed = []
-            for name, alias in decl.exposing:
-                exposed.append(f"{name} as {alias}" if alias else name)
-            text += " exposing (" + ", ".join(exposed) + ")"
+        return f"{prefix}\n{text}" if prefix else text
+
+    def open_decl(self, decl: A.OpenDecl) -> str:
+        prefix = "\n".join(self.annotations(decl.annotations))
+        text = f"open {decl.module}"
         return f"{prefix}\n{text}" if prefix else text
 
     def import_path(self, path: str) -> str:
@@ -96,12 +99,9 @@ class PrettyPrinter:
             text = f"# unsupported declaration: {decl!r}"
         return f"{prefix}\n{text}" if prefix else text
 
-    def visibility(self, decl: A.Declaration) -> str:
-        return "" if decl.visibility == "public" else decl.visibility + " "
-
     def type_decl(self, decl: A.TypeDecl) -> str:
         params = f"<{', '.join(decl.params)}>" if decl.params else ""
-        return f"{self.visibility(decl)}type {decl.name}{params} = {self.type_definition(decl.definition)}"
+        return f"type {decl.name}{params} = {self.type_definition(decl.definition)}"
 
     def type_definition(self, typ: A.TypeExpr | A.SumType | None) -> str:
         if typ is None:
@@ -134,19 +134,19 @@ class PrettyPrinter:
 
     def value_decl(self, decl: A.ValueDecl) -> str:
         ann = f": {self.type_expr(decl.type_annotation)}" if decl.type_annotation else ""
-        return f"{self.visibility(decl)}val {decl.name}{ann} = {self.expr(decl.value)}"
+        return f"val {decl.name}{ann} = {self.expr(decl.value)}"
 
     def func_decl(self, decl: A.FuncDecl) -> str:
         params = ", ".join(self.param(p) for p in decl.params)
         tparams = f"<{', '.join(decl.type_params)}>" if decl.type_params else ""
-        header = f"{self.visibility(decl)}func {decl.name}{tparams}({params}) -> {self.type_expr(decl.return_type)}:"
+        header = f"func {decl.name}{tparams}({params}) -> {self.type_expr(decl.return_type)}:"
         return header + "\n" + self.block(decl.body, level=1)
 
     def param(self, param: A.Param) -> str:
         return f"{self.pattern(param.pattern)}: {self.type_expr(param.type_annotation)}"
 
     def entity_decl(self, decl: A.EntityDecl) -> str:
-        text = f"{self.visibility(decl)}entity {decl.name}: {self.type_expr(decl.type_annotation)}"
+        text = f"entity {decl.name}: {self.type_expr(decl.type_annotation)}"
         for kind, expr in decl.clauses:
             if kind == "key":
                 text += f" key ({self.expr(expr)})"
@@ -156,15 +156,15 @@ class PrettyPrinter:
 
     def event_decl(self, decl: A.EventDecl) -> str:
         fields = ", ".join(f"{n}: {self.type_expr(t)}" for n, t in decl.fields)
-        return f"{self.visibility(decl)}event {decl.name}({fields})"
+        return f"event {decl.name}({fields})"
 
     def rule_decl(self, decl: A.RuleDecl) -> str:
         strength = "" if decl.strength == "defeasible" else decl.strength + " "
         modality = f"{decl.modality} " if decl.modality else ""
         if decl.anonymous:
-            header = f"{self.visibility(decl)}{strength}rule {modality}".rstrip()
+            header = f"{strength}rule {modality}".rstrip()
         else:
-            header = f"{self.visibility(decl)}{strength}rule {modality}{decl.name}".rstrip()
+            header = f"{strength}rule {modality}{decl.name}".rstrip()
         if decl.antecedent is not None:
             header += f" when {self.expr(decl.antecedent)}"
         body = self.expr(decl.body)

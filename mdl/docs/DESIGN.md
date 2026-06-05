@@ -151,8 +151,8 @@ func pwr(a: int, n: int) -> int:
 
    Голая форма `{ x }` не является выражением.
 
-3. Коллекции выражаются через явно импортированные ADT из stdlib, например
-   `List.Cons(1, List.Empty(()))`.
+3. Коллекции выражаются через ADT из stdlib, например
+   `List.Cons(1, List.Empty())` после `open std.collections`.
 
 4. Record value всегда строится через имя типа, а не через bare record:
 
@@ -163,14 +163,14 @@ func pwr(a: int, n: int) -> int:
    Это решение делает конструктор номинальным, даже когда поля записи
    структурны.
 
-## 4. Модули, импорты и видимость
+## 4. Модули и пространства имен
 
 ### 4.1. Модули
 
 Модуль задает пространство имен:
 
 ```mdl
-module std.collections.list
+module std.collections
 ```
 
 Решения:
@@ -181,43 +181,38 @@ module std.collections.list
 3. В solver-е имя модуля включается в полные имена правил и сущностей:
    `pipe_spec.pipe`, `pipe_spec.pipe_length_positive`.
 
-### 4.2. Импорты
+### 4.2. Import и open
 
-Поддерживаются файловые и модульные импорты:
+Файловые зависимости и открытие namespace разделены:
 
 ```mdl
-import "std/collections/list.mdl" as List exposing (List, len)
-import "./pipe.mdl" as m1
+import "./pipe.mdl"
+open std.collections
 ```
 
 Решения:
 
-1. Импорт может иметь alias через `as`.
-2. Импорт может явно открыть имена через `exposing (...)`.
-3. В `exposing` поддержано переименование: `exposing (Pipe as PipeModel)`.
-4. Stdlib импортируется явно через путь `std/...`; коллекции не являются
-   глобальными builtins.
-5. `ImportResolver` ищет импорт в открытых LSP-документах, stdlib и файловой
-   системе.
-6. Если импорт не найден, linter сообщает `unresolved-import`, а solver
+1. `import` принимает только строковый путь к файлу.
+2. Импортированный файл становится доступен по имени `module ...` внутри файла,
+   например `pipe_spec.pipe`.
+3. `open module.name` вводит верхнеуровневые имена модуля в короткий namespace.
+4. Stdlib-модули доступны по полным именам, если задан stdlib root; для коротких
+   имен используется `open`, например `open std.collections`.
+5. Если импорт не найден, linter сообщает `unresolved-import`, а solver
    сообщает ошибку, если требуемый импорт отсутствует среди solve-входов или не
    может быть собран.
+6. Stdlib root настраивается через `MDL_STDLIB_PATH`, CLI-флаг `--stdlib` или
+   Python API (`stdlib_path`). Nix flake поставляет отдельный artifact
+   `mdl-stdlib` и настраивает `mdl` wrapper на путь в Nix store.
 
-### 4.3. Public/private
+### 4.3. Visibility
 
 Решения:
 
-1. Декларации по умолчанию `public`.
-2. `private` используется для реализации внутри модуля, например:
-
-   ```mdl
-   private type ProcessingState = LocalPart(unit) | Domain(unit)
-   private func email_is_correct(email: string) -> bool:
-       ...
-   ```
-
-3. Linter при построении импортируемой поверхности учитывает публичные
-   декларации как видимые через alias.
+1. В языке нет `public`/`private`.
+2. Все верхнеуровневые имена модуля публичны через полное имя.
+3. `open` не переименовывает и не фильтрует имена; конфликт коротких имен является
+   ошибкой.
 4. Видимость является языковым решением об API модуля, а не полноценной
    security-моделью.
 
@@ -279,8 +274,8 @@ type Pair = Pair(int, int)
 4. Тип с одним конструктором и полями трактуется как одно-конструкторная сумма.
 5. Solver кодирует суммы через Z3 datatypes.
 6. Рекурсивные ADT поддерживаются, например `Nat = Zero(unit) | Succ(Nat)`.
-7. Нульарные варианты не являются каноническим синтаксисом. Для marker-like
-   cases используется payload `unit`, например `Local(())`.
+7. Marker-like cases объявляются с payload `unit`, но вызываются без аргументов,
+   например `State.Local()`.
 8. Type aliases не поддерживаются: `type T = Existing` является ошибкой
    парсинга.
 
@@ -306,13 +301,11 @@ type Pair = Pair(int, int)
 
 Решения:
 
-1. `List`, `Set`, `Map`, `Option` определены в stdlib:
-   - `std/collections/list.mdl`: `List<T> = Empty(unit) | Cons(T, List<T>)`;
-   - `std/collections/set.mdl`: `Set<T> = Empty(unit) | Insert(T, Set<T>)`;
-   - `std/collections/map.mdl`: `Map<K, V> = Empty(unit) | Put(K, V, Map<K, V>)`;
-   - `std/collections/option.mdl`: `Option<T> = None(unit) | Some(T)`.
-2. Эти типы должны импортироваться явно.
-3. Конструкторы коллекций являются обычными ADT-конструкторами.
+1. `List`, `Set`, `Map`, `Option` определены в `std.collections`.
+2. Эти типы доступны как `std.collections.List` или как `List` после
+   `open std.collections`.
+3. Конструкторы коллекций являются type-scoped ADT-конструкторами:
+   `List.Empty()`, `List.Cons(x, xs)`, `Set.Insert(x, xs)`.
 4. Такой подход сохраняет единообразную семантику: коллекции не являются
    отдельным встроенным языковым механизмом.
 
@@ -323,7 +316,7 @@ type Pair = Pair(int, int)
 Поддержаны `val` и `let` как верхнеуровневые декларации значения:
 
 ```mdl
-val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty(()))))
+val inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
 ```
 
 Решения:
@@ -403,7 +396,7 @@ func pipe_ok(pipe: Pipe) -> bool:
 case tags:
 | List.Cons(tag, rest):
     if tag > 0 then positive_tags(rest) else false
-| List.Empty(()):
+| List.Empty():
     true
 ```
 
@@ -416,7 +409,7 @@ case tags:
 4. Runtime сообщает ошибку для non-exhaustive match.
 5. Solver компилирует pattern matching в условные выражения Z3, где это
    поддержано.
-6. Списки сопоставляются через ADT-конструкторы `List.Cons` и `List.Empty(())`.
+6. Списки сопоставляются через ADT-конструкторы `List.Cons` и `List.Empty()`.
 
 ## 7. Сущности, события, факты и утверждения
 
@@ -653,9 +646,8 @@ align pipe to tube related
 3. Для field учитываются имя, тип, parent и path.
 4. Встроенный matcher использует token similarity, Jaccard/SequenceMatcher и
    нормализацию типов.
-5. Optional external matchers поддержаны через COMA-style backend-и
-   `valentine:coma_py` и `bdikit:coma`.
-6. При `matcher=auto` внешние matcher-ы пробуются первыми, затем используется
+5. Optional external matcher поддержан через COMA-style backend `bdikit:coma`.
+6. При `matcher=auto` сначала пробуется `bdikit:coma`, затем используется
    builtin fallback.
 7. Accepted alignments выбираются one-to-one по порогу.
 8. Aligner возвращает JSON report и может сгенерировать MDL alignment module.
@@ -667,11 +659,11 @@ align pipe to tube related
 ```mdl
 module alignment_pipe_spec_tube
 
-import "./pipe.mdl" as m1
-import "./tube.mdl" as m2
+import "./pipe.mdl"
+import "./tube.mdl"
 
 # align kind=field score=0.800 matcher=builtin
-rule O alignment_001: m1.pipe.length = m2.tube.length always
+rule O alignment_001: pipe_spec.pipe.length = tube.tube.length always
 ```
 
 Решения:
@@ -735,13 +727,13 @@ mdl run examples/email.mdl --expr 'email_is_correct(email)'
 4. ADT constructors в runtime представлены стабильными symbolic values:
    tuple-структурами для конструкторов с аргументами.
 5. Stdlib collections имеют Python-представления:
-   - `List.Empty(())` -> `[]`;
+   - `List.Empty()` -> `[]`;
    - `List.Cons(x, xs)` -> list;
-   - `Set.Empty(())` -> `set()`;
+   - `Set.Empty()` -> `set()`;
    - `Set.Insert(x, xs)` -> set;
-   - `Map.Empty(())` -> `{}`;
+   - `Map.Empty()` -> `{}`;
    - `Map.Put(k, v, m)` -> dict;
-   - `Option.None(())` -> `"None"`;
+   - `Option.None()` -> `"None"`;
    - `Option.Some(x)` -> `("Some", (x,))`.
 6. Runtime используется solver-ом для частичного вычисления concrete
    выражений, когда это безопасно.
@@ -763,7 +755,7 @@ mdl solve examples/pipe.mdl examples/tube.mdl examples/alignment.mdl --horizon 1
    `1..N` через `--max-horizon N`.
 2. Минимальный horizon - 1.
 3. Solver принимает несколько модулей.
-4. Импорты собираются из входных модулей и stdlib.
+4. Импорты собираются из входных модулей и настроенного stdlib root.
 5. Alignment-модули не имеют специального статуса: они являются обычными
    модулями с правилами.
 6. `assert` и declarative `align` в solver-е игнорируются.
@@ -925,7 +917,7 @@ print(m.to_source())
 Решения:
 
 1. Formatter печатает один стабильный стиль.
-2. `public` не печатается явно, `private` печатается.
+2. Модификаторы доступа не печатаются: все top-level имена публичны.
 3. `priority` и `override` канонически печатаются как `override`.
 4. Default `defeasible` strength не печатается.
 5. Rule syntax всегда печатается через `:`.
@@ -979,8 +971,8 @@ print(m.to_source())
 | Деонтика | Rules с O/P/F, strength и priority | Моделирует нормы, запреты и исключения |
 | Синтаксис rules | `rule O name: body` | Отделяет декларацию от равенства термов |
 | Records | Номинальный constructor, структурные поля | Улучшает читаемость и проверку полей |
-| Collections | Stdlib ADT, явный import | Убирает неявные встроенные коллекции |
-| Imports | Alias + exposing | Поддерживает межмодельные alignment-модули |
+| Collections | Stdlib ADT, `open std.collections` для коротких имен | Убирает отдельный встроенный механизм коллекций |
+| Imports | File `import` + namespace `open` | Разделяет загрузку модулей и короткие имена |
 | AST | Публичные dataclasses | Поддерживает Python-first extraction |
 | Formatter | Канонический source | Стабилизирует модели и тесты |
 | Linter | Order-aware lightweight checks | Ловит ошибки до solver-а |
@@ -1022,6 +1014,7 @@ print(m.to_source())
 9. `src/mdl/aligner.py` - semantic alignment and alignment module rendering.
 10. `src/mdl/builder.py` - Python-first model construction.
 11. `src/mdl/lsp.py` - stdio LSP.
-12. `src/mdl/stdlib/std/` - стандартные ADT-модули.
+12. `src/mdl/stdlib/std/` - исходники стандартных ADT-модулей для отдельного
+    stdlib artifact.
 13. `examples/` и `tests/fixtures/solver_suite/` - минимальные и расширенные
     сценарии использования.

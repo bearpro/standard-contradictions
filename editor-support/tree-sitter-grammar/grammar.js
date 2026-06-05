@@ -34,21 +34,16 @@ module.exports = grammar({
   rules: {
     source_file: $ => seq(repeat($.annotation), $.module_decl, repeat($._top_item)),
 
-    _top_item: $ => seq(repeat($.annotation), choice($.import_decl, $.declaration)),
+    _top_item: $ => seq(repeat($.annotation), choice($.import_decl, $.open_decl, $.declaration)),
 
     annotation: $ => token(seq('@', /.*/)),
 
     module_decl: $ => seq('module', $.qualified_name),
 
-    import_decl: $ => seq(
-      'import',
-      field('path', choice($.string, $.qualified_name)),
-      optional(seq('as', field('alias', $.identifier))),
-      optional(seq('exposing', '(', optional(commaSep($.import_name)), ')')),
-    ),
-    import_name: $ => seq($.identifier, optional(seq('as', field('alias', $.identifier)))),
+    import_decl: $ => seq('import', field('path', $.string)),
+    open_decl: $ => seq('open', field('module', $.qualified_name)),
 
-    declaration: $ => seq(optional($.visibility), choice(
+    declaration: $ => choice(
       $.type_decl,
       $.value_decl,
       $.func_decl,
@@ -59,9 +54,7 @@ module.exports = grammar({
       $.fact_decl,
       $.assert_decl,
       $.align_decl,
-    )),
-
-    visibility: $ => choice('public', 'private'),
+    ),
 
     type_decl: $ => seq(
       'type',

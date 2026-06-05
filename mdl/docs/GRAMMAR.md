@@ -3,8 +3,7 @@
 The Python parser supports the main language constructs:
 
 ```text
-module, string-path import, annotation
-private/public declarations
+module, string-path import, open, annotation
 payload-bearing sum types and record types
 val/let declarations
 pure functions with block bodies
@@ -31,8 +30,8 @@ Record values are constructed with the record type name, for example
 Type aliases are not part of canonical MDL syntax. A `type` declaration must
 define either a record type or a sum type whose variants all carry at least one
 payload field. Use the built-in `unit` type and `()` value for marker-like ADT
-cases, for example `type State = Local(unit) | Remote(unit)` and `Local(())`.
+cases, for example `type State = Local(unit) | Remote(unit)` and `State.Local()`.
 
-Collection types such as `List`, `Set`, `Map`, and `Option` live in stdlib files
-and must be imported explicitly, for example
-`import "std/collections/list.mdl" as List exposing (List)`.
+Collection types such as `List`, `Set`, `Map`, and `Option` live in the
+`std.collections` module when a stdlib root is configured. Use full names such
+as `std.collections.List`, or `open std.collections` to use `List` directly.

@@ -1,9 +1,9 @@
 {
-  description = "MDL / DDL-LTLf Python toolkit";
+  description = "MDL command-line toolkit";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-  outputs = { nixpkgs, ... }:
+  outputs = { self, nixpkgs, ... }:
     let
       lib = nixpkgs.lib;
       systems = [
@@ -12,15 +12,35 @@
       ];
       forAllSystems = lib.genAttrs systems;
       pkgsFor = system: import nixpkgs { inherit system; };
-      mdlPythonPackagesFor = pkgs:
+
+      source = lib.cleanSourceWith {
+        src = ./.;
+        filter = path: _type:
+          let
+            name = baseNameOf path;
+          in
+            !(lib.hasSuffix ".egg-info" name
+              || name == ".venv"
+              || name == "__pycache__"
+              || name == ".pytest_cache"
+              || name == ".ruff_cache");
+      };
+
+      mdlStdlibFor = pkgs:
+        pkgs.runCommand "mdl-stdlib-0.1.1" { } ''
+          mkdir -p "$out"
+          cp -R "${source}/src/mdl/stdlib/." "$out/"
+        '';
+
+      mdlFor = pkgs:
         let
-          # Valentine currently declares support below Python 3.15.
+          mdlStdlib = mdlStdlibFor pkgs;
           python = pkgs.python312;
           py = python.pkgs;
           potNoCheck = py.pot.overridePythonAttrs (_old: {
             doCheck = false;
           });
-          valentine = py.buildPythonPackage rec {
+          valentineForBdikit = py.buildPythonPackage rec {
             pname = "valentine";
             version = "0.5.0";
             pyproject = true;
@@ -49,8 +69,6 @@
               potNoCheck
             ];
 
-            # nixpkgs currently has slightly older compatible builds than
-            # Valentine declares for these two packages.
             pythonRelaxDeps = [
               "chardet"
               "nltk"
@@ -77,9 +95,6 @@
               wheel
             ];
 
-            # mdl align only needs the BDI schema-matching adapter. The default
-            # package metadata pulls chatbot/value-matching extras that are not
-            # available in nixpkgs and are unrelated to the matcher backend.
             postPatch = ''
               printf '%s\n' \
                 numpy \
@@ -93,7 +108,7 @@
             dependencies = with py; [
               numpy
               pandas
-              valentine
+              valentineForBdikit
             ];
 
             doCheck = false;
@@ -102,44 +117,10 @@
             ];
           };
         in
-        {
-          inherit
-            python
-            valentine
-            bdikit
-            ;
-        };
-      mdlFor = pkgs: { withSolver ? true, withAligners ? true }:
-        let
-          mdlPythonPackages = mdlPythonPackagesFor pkgs;
-          python = mdlPythonPackages.python;
-          solverDependencies = lib.optionals withSolver (with python.pkgs; [
-            z3-solver
-          ]);
-          alignerDependencies =
-            lib.optionals withAligners
-              (with python.pkgs; [
-                pandas
-              ])
-            ++ lib.optionals withAligners [
-              mdlPythonPackages.valentine
-              mdlPythonPackages.bdikit
-            ];
-          importChecks = [
-            "mdl"
-          ]
-          ++ lib.optionals withSolver [
-            "z3"
-          ]
-          ++ lib.optionals withAligners [
-            "valentine"
-            "bdikit.schema_matching.valentine"
-          ];
-        in
         python.pkgs.buildPythonPackage {
           pname = "mprokazin-mdl";
           version = "0.1.1";
-          src = ./mdl;
+          src = source;
           pyproject = true;
 
           build-system = with python.pkgs; [
@@ -147,15 +128,31 @@
             wheel
           ];
 
-          dependencies = solverDependencies ++ alignerDependencies;
+          dependencies = with python.pkgs; [
+            z3-solver
+            pandas
+            bdikit
+          ];
 
-          pythonRelaxDeps =
-            lib.optionals withAligners [ "pandas" ]
-            ++ lib.optionals withSolver [ "z3-solver" ];
+          pythonRelaxDeps = [
+            "pandas"
+            "z3-solver"
+          ];
+          pythonRemoveDeps = [
+            "z3-solver"
+          ];
 
-          pythonRemoveDeps = lib.optionals withSolver [ "z3-solver" ];
+          makeWrapperArgs = [
+            "--set"
+            "MDL_STDLIB_PATH"
+            "${mdlStdlib}"
+          ];
 
-          pythonImportsCheck = importChecks;
+          pythonImportsCheck = [
+            "mdl"
+            "z3"
+            "bdikit.schema_matching.valentine"
+          ];
 
           meta = {
             description = "MDL / DDL-LTLf modelling language toolkit";
@@ -174,39 +171,22 @@
       packages = forAllSystems (system:
         let
           pkgs = pkgsFor system;
-          mdl = mdlFor pkgs { };
-          mdlLanguage = mdlFor pkgs {
-            withSolver = false;
-            withAligners = false;
-          };
+          mdl = mdlFor pkgs;
+          mdlStdlib = mdlStdlibFor pkgs;
         in
         {
-          mdl = mdl;
-          mdl-language = mdlLanguage;
+          inherit mdl;
+          mdl-stdlib = mdlStdlib;
           default = mdl;
         });
 
-      devShells = forAllSystems (system:
-        let
-          pkgs = pkgsFor system;
-        in
-        {
-          default = pkgs.mkShell {
-            packages = [
-              pkgs.uv
-              pkgs.z3
-              pkgs.basedpyright
-              pkgs.ruff
-              pkgs.tree-sitter
-              pkgs.nodejs
-              pkgs.neovim
-              pkgs.gcc
-              pkgs.vsce
-            ];
-
-            UV_PYTHON_DOWNLOADS = "never";
-            UV_PYTHON = "${pkgs.python312}/bin/python3";
-          };
-        });
+      apps = forAllSystems (system: {
+        mdl = {
+          type = "app";
+          program = "${self.packages.${system}.mdl}/bin/mdl";
+          meta.description = "Run the MDL command-line toolkit";
+        };
+        default = self.apps.${system}.mdl;
+      });
     };
 }

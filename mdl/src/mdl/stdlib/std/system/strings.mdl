@@ -1,6 +1,4 @@
 module std.system.strings
 
-import "std/collections/list.mdl" as List exposing (List)
-
-func to_list(value: string) -> List<string>:
-    List.Empty(())
+func to_list(value: string) -> std.collections.List<string>:
+    std.collections.List.Empty()

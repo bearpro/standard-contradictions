@@ -71,7 +71,7 @@ def test_mdl_verify_resolves_virtual_import():
         """
 module consumer
 
-import "dep.mdl" as dep
+import "dep.mdl"
 
 rule O imported_rule: dep.x always
 """,

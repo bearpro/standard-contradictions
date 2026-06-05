@@ -1,6 +1,6 @@
 module lineq_rat
 
-import "std/collections/list.mdl" as List exposing (List, len)
+open std.collections
 
 
 type Term = {
@@ -14,7 +14,7 @@ func pwr(a: rat, n: int) -> rat:
 
 func value(equation: List<Term>) -> rat:
     case equation:
-    | List.Empty(()): 0
+    | List.Empty(): 0
     | List.Cons(head, e): 
         let pow = 1 + len(equation)
         let termValue = (head).coef * pwr((head).var, pow)
@@ -23,7 +23,7 @@ func value(equation: List<Term>) -> rat:
 # Helps solver to not iterate over int32^pow
 func values_lt_3(equation: List<Term>) -> bool:
     case equation:
-    | List.Empty(()): true
+    | List.Empty(): true
     | List.Cons(head, tail): 
         (head).coef < 3 and (head).var < 3 and values_lt_3(tail)
 
@@ -34,6 +34,6 @@ rule O r1: len(equation) = 2 always
 # rule O r2: values_lt_3(equation) always
 
 fact case equation:
-     | List.Cons(a, List.Cons(b, List.Empty(()))):
+     | List.Cons(a, List.Cons(b, List.Empty())):
         ((a).coef = 2) and ((b).coef = -1)
      | _: false

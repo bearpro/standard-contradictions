@@ -81,7 +81,7 @@ class LSPServer:
                         "triggerCharacters": [".", ":", " "],
                     },
                 },
-                "serverInfo": {"name": "mdl", "version": "0.1.0"},
+                "serverInfo": {"name": "mdl", "version": "0.1.1"},
             })
         elif method == "initialized":
             return

@@ -2,7 +2,7 @@
   "name": "mdl-language-support",
   "displayName": "MDL / DDL-LTLf Language Support",
   "description": "Syntax highlighting, language configuration and LSP diagnostics for MDL normative models.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "mdl",
   "license": "MIT",
   "repository": {

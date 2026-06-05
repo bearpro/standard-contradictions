@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,7 @@ from . import __version__, ast as A
 from .aligner import AlignmentOptions, align_modules, render_alignment_module
 from .core import to_json
 from .diagnostics import MDLError, ParseError
-from .linter import lint_source
+from .linter import STDLIB_ENV, lint_source
 from .lsp import run_stdio
 from .parser import parse
 from .printer import format_module
@@ -43,7 +44,7 @@ def cmd_format(args: argparse.Namespace) -> int:
 
 
 def cmd_lint(args: argparse.Namespace) -> int:
-    diagnostics = lint_source(read_file(args.file), path=args.file)
+    diagnostics = lint_source(read_file(args.file), path=args.file, stdlib_path=args.stdlib_path)
     if args.json:
         print(json.dumps([d.to_dict() for d in diagnostics], ensure_ascii=False, indent=2))
     else:
@@ -87,15 +88,11 @@ def cmd_align(args: argparse.Namespace) -> int:
         matcher=args.matcher,
         candidate_threshold=candidate_threshold,
         accept_threshold=accept_threshold,
-        left_alias=args.left_alias,
-        right_alias=args.right_alias,
     )
     report = align_modules(left, right, options)
     alignment_module = render_alignment_module(
         report,
         module_name=args.module_name,
-        left_alias=args.left_alias,
-        right_alias=args.right_alias,
     )
     source = format_module(alignment_module)
     payload = json.dumps(report.to_dict(), ensure_ascii=False, indent=2)
@@ -120,6 +117,7 @@ def cmd_solve(args: argparse.Namespace) -> int:
             max_horizon=args.max_horizon,
             permission=args.permission,
             max_conflicts=args.max_conflicts,
+            stdlib_path=args.stdlib_path,
         ),
     )
     print(json.dumps(payload, ensure_ascii=False, indent=2, default=json_default))
@@ -131,12 +129,15 @@ def cmd_solve(args: argparse.Namespace) -> int:
 
 
 def cmd_lsp(args: argparse.Namespace) -> int:
+    if args.stdlib_path:
+        os.environ[STDLIB_ENV] = args.stdlib_path
     return run_stdio()
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mdl", description="MDL / DDL-LTLf language toolkit")
     parser.add_argument("--version", action="version", version=f"mdl {__version__}")
+    parser.add_argument("--stdlib", dest="stdlib_path", help="directory containing MDL stdlib modules")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("parse", help="parse a file and dump AST JSON")
@@ -165,12 +166,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("align", help="align two MDL modules and render an alignment module")
     p.add_argument("files", nargs=2)
-    p.add_argument("--matcher", choices=["auto", "builtin", "valentine:coma_py", "bdikit:coma"], default="auto")
+    p.add_argument("--matcher", choices=["auto", "builtin", "bdikit:coma"], default="auto")
     p.add_argument("--candidate-threshold", type=float, default=0.55)
     p.add_argument("--accept-threshold", type=float, default=0.75)
     p.add_argument("--threshold", type=float, help=argparse.SUPPRESS)
-    p.add_argument("--left-alias", default="m1")
-    p.add_argument("--right-alias", default="m2")
     p.add_argument("--module-name")
     p.add_argument("-o", "--output")
     p.add_argument("--report")

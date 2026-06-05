@@ -14,6 +14,9 @@ from mdl.solver import SolveOptions, solve_paths
 from .sample_sources import ALIGNMENT_SOURCE, EMAIL_SOURCE, FIB_SOURCE, PIPE_SOURCE, PWR_SOURCE, TUBE_SOURCE
 
 
+STDLIB = Path(__file__).resolve().parents[1] / "src" / "mdl" / "stdlib"
+
+
 def write_module(tmp_path: Path, name: str, source: str) -> Path:
     path = tmp_path / name
     path.write_text(dedent(source).strip() + "\n", encoding="utf-8")
@@ -155,16 +158,16 @@ def test_solve_std_list_recursive_predicate_with_temporal_body(tmp_path):
         """
         module collections
 
-        import "std/collections/list.mdl" as List exposing (List)
+        open std.collections
 
         func all_positive(xs: List<int>) -> bool:
             case xs:
             | List.Cons(x, rest):
                 x > 0 and all_positive(rest)
-            | List.Empty(()):
+            | List.Empty():
                 true
 
-        val xs = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty(()))))
+        val xs = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
         rule O all_positive_rule: all_positive(xs) always
         """,
     )
@@ -173,6 +176,46 @@ def test_solve_std_list_recursive_predicate_with_temporal_body(tmp_path):
 
     assert payload["status"] == "sat"
     assert payload["model"]["winning_rules"] == ["collections.all_positive_rule"]
+
+
+def test_solve_uses_explicit_stdlib_path_without_env(tmp_path, monkeypatch):
+    monkeypatch.delenv("MDL_STDLIB_PATH", raising=False)
+    spec = write_module(
+        tmp_path,
+        "collections.mdl",
+        """
+        module collections
+
+        open std.collections
+
+        val xs: List<int> = List.Empty()
+        rule O ok: xs = List.Empty() always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1, stdlib_path=STDLIB))
+
+    assert payload["status"] == "sat"
+
+
+def test_solve_has_no_embedded_stdlib_fallback(tmp_path, monkeypatch):
+    monkeypatch.delenv("MDL_STDLIB_PATH", raising=False)
+    spec = write_module(
+        tmp_path,
+        "collections.mdl",
+        """
+        module collections
+
+        open std.collections
+
+        val xs: List<int> = List.Empty()
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "error"
+    assert any(d["code"] == "unresolved-open" for d in payload["diagnostics"])
 
 
 def test_solve_case_pattern_bindings_survive_boolean_operators(tmp_path):
@@ -186,7 +229,7 @@ def test_solve_case_pattern_bindings_survive_boolean_operators(tmp_path):
         entity pair: Pair
 
         fact case pair:
-        | Pair(a, b):
+        | Pair.Pair(a, b):
             a = 1 and b = 2
         """,
     )
@@ -206,9 +249,9 @@ def test_solve_std_list_generic_len_is_instantiated_per_argument_type(tmp_path):
         """
         module generic_len
 
-        import "std/collections/list.mdl" as List exposing (List, len)
+        open std.collections
 
-        val xs: List<int> = List.Cons(1, List.Cons(2, List.Empty(())))
+        val xs: List<int> = List.Cons(1, List.Cons(2, List.Empty()))
         rule O length_ok: len(xs) = 2 always
         """,
     )
@@ -226,16 +269,16 @@ def test_solve_recursive_function_over_std_list_constructors(tmp_path):
         """
         module lists
 
-        import "std/collections/list.mdl" as List exposing (List)
+        open std.collections
 
         func positive_tags(tags: List<int>) -> bool:
             case tags:
             | List.Cons(tag, rest):
                 if tag > 0 then positive_tags(rest) else false
-            | List.Empty(()):
+            | List.Empty():
                 true
 
-        val tags = List.Cons(1, List.Empty(()))
+        val tags = List.Cons(1, List.Empty())
         rule O tags_positive: positive_tags(tags) always
         """,
     )
@@ -257,14 +300,14 @@ def test_solve_recursive_sum_type_with_nested_patterns(tmp_path):
 
         func is_two(n: Nat) -> bool:
             case n:
-            | Succ(Succ(Zero(()))):
+            | Nat.Succ(Nat.Succ(Nat.Zero())):
                 true
             | _:
                 false
 
         entity n: Nat
 
-        fact n = Succ(Succ(Zero(())))
+        fact n = Nat.Succ(Nat.Succ(Nat.Zero()))
         rule O n_is_two: is_two(n) always
         """,
     )
@@ -286,21 +329,19 @@ def test_solve_std_collections_as_ordinary_adts(tmp_path):
         """
         module stdlib_adts
 
-        import "std/collections/option.mdl" as Option exposing (Option)
-        import "std/collections/set.mdl" as Set exposing (Set)
-        import "std/collections/map.mdl" as Map exposing (Map)
+        open std.collections
 
         entity maybe: Option<int>
         entity numbers: Set<int>
         entity lookup: Map<string, int>
 
         fact maybe = Option.Some(42)
-        fact numbers = Set.Insert(1, Set.Empty(()))
-        fact lookup = Map.Put("answer", 42, Map.Empty(()))
+        fact numbers = Set.Insert(1, Set.Empty())
+        fact lookup = Map.Put("answer", 42, Map.Empty())
 
         rule O option_ok: maybe = Option.Some(42) always
-        rule O set_ok: numbers = Set.Insert(1, Set.Empty(())) always
-        rule O map_ok: lookup = Map.Put("answer", 42, Map.Empty(())) always
+        rule O set_ok: numbers = Set.Insert(1, Set.Empty()) always
+        rule O map_ok: lookup = Map.Put("answer", 42, Map.Empty()) always
         """,
     )
 

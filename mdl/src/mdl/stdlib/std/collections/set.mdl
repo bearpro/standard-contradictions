@@ -1,3 +1,0 @@
-module std.collections.set
-
-type Set<T> = Empty(unit) | Insert(T, Set<T>)

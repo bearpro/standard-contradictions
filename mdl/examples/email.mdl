@@ -1,26 +1,26 @@
 @ rfc2822
 module email
 
-import "std/system/strings.mdl" as strings
-import "std/collections/list.mdl" as List exposing (List)
+open std.collections
+open std.system.strings
 
-private type ProcessingState = LocalPart(unit) | Domain(unit)
+type ProcessingState = LocalPart(unit) | Domain(unit)
 
-private func process_email(
+func process_email(
     email: List<string>,
     state: ProcessingState
 ) -> bool:
     case email:
     | List.Cons(symbol, tail):
-        if state = LocalPart(()) and symbol = "@"
-        then process_email(tail, Domain(()))
+        if state = ProcessingState.LocalPart() and symbol = "@"
+        then process_email(tail, ProcessingState.Domain())
         else if symbol = "@" then false else process_email(tail, state)
-    | List.Empty(()):
+    | List.Empty():
         true
 
-private func email_is_correct(email: string) -> bool:
-    let symbols = strings.to_list(email)
-    let state = LocalPart(())
+func email_is_correct(email: string) -> bool:
+    let symbols = to_list(email)
+    let state = ProcessingState.LocalPart()
     process_email(symbols, state)
 
 entity email: string

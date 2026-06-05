@@ -10,7 +10,7 @@ from .names import is_qualified, local_name
 
 
 NAME_STOPWORDS = {
-    "module", "import", "as", "exposing", "private", "public", "type", "val", "let", "func",
+    "module", "import", "open", "type", "val", "let", "func",
     "entity", "event", "rule", "strict", "defeasible", "defeater", "priority", "override",
     "fact", "assert", "align", "to", "if", "then", "else", "case", "switch", "when",
     "in", "forall", "exists", "and", "or", "not", "implies", "iff", "always", "eventually",
@@ -128,6 +128,10 @@ class Parser:
                 imp = self.parse_import()
                 imp.annotations = annotations
                 module.imports.append(imp)
+            elif self.current().value == "open":
+                opened = self.parse_open()
+                opened.annotations = annotations
+                module.opens.append(opened)
             else:
                 decl = self.parse_declaration()
                 decl.annotations = annotations
@@ -144,82 +148,61 @@ class Parser:
 
     def parse_import(self) -> A.ImportDecl:
         tok = self.expect_value("import")
-        if self.current().type == "STRING":
-            path = self.advance().value
-        else:
-            path = self.parse_qualified_name()
-        alias = None
-        exposing: list[tuple[str, str | None]] = []
-        if self.match_value("as"):
-            alias = self.expect_name_token().value
-        if self.match_value("exposing"):
-            self.expect_value("(")
-            if not self.match_value(")"):
-                while True:
-                    name = self.expect_name_token().value
-                    renamed = None
-                    if self.match_value("as"):
-                        renamed = self.expect_name_token().value
-                    exposing.append((name, renamed))
-                    if self.match_value(","):
-                        if self.current().value == ")":
-                            break
-                        continue
-                    break
-                self.expect_value(")")
-        return A.ImportDecl(path=path, alias=alias, exposing=exposing, line=tok.line, column=tok.column)
+        path = self.expect_type("STRING").value
+        return A.ImportDecl(path=path, line=tok.line, column=tok.column)
+
+    def parse_open(self) -> A.OpenDecl:
+        tok = self.expect_value("open")
+        module = self.parse_qualified_name()
+        return A.OpenDecl(module=module, line=tok.line, column=tok.column)
 
     def parse_declaration(self) -> A.Declaration:
-        visibility = "public"
-        if self.current().value in {"public", "private"}:
-            visibility = self.advance().value
-
         strength = None
         if self.current().value in {"strict", "defeasible", "defeater"}:
             strength = self.advance().value
 
         tok = self.current()
         if tok.value == "type":
-            return self.parse_type_decl(visibility)
+            return self.parse_type_decl()
         if tok.value in {"val", "let"}:
-            return self.parse_value_decl(visibility)
+            return self.parse_value_decl()
         if tok.value == "func":
-            return self.parse_func_decl(visibility)
+            return self.parse_func_decl()
         if tok.value == "entity":
-            return self.parse_entity_decl(visibility)
+            return self.parse_entity_decl()
         if tok.value == "event":
-            return self.parse_event_decl(visibility)
+            return self.parse_event_decl()
         if tok.value == "rule":
-            return self.parse_rule_decl(visibility, strength or "defeasible")
+            return self.parse_rule_decl(strength or "defeasible")
         if strength is not None:
             raise ParseError("rule strength must be followed by 'rule'", tok.line, tok.column)
         if tok.value in {"priority", "override"}:
-            return self.parse_priority_decl(visibility)
+            return self.parse_priority_decl()
         if tok.value == "fact":
-            return self.parse_fact_decl(visibility)
+            return self.parse_fact_decl()
         if tok.value == "assert":
-            return self.parse_assert_decl(visibility)
+            return self.parse_assert_decl()
         if tok.value == "align":
-            return self.parse_align_decl(visibility)
+            return self.parse_align_decl()
         raise ParseError(f"unexpected declaration {tok.value!r}", tok.line, tok.column)
 
-    def parse_type_decl(self, visibility: str) -> A.TypeDecl:
+    def parse_type_decl(self) -> A.TypeDecl:
         tok = self.expect_value("type")
         name = self.expect_name_token().value
         params = self.parse_type_params() if self.current().value == "<" else []
         self.expect_value("=")
         definition = self.parse_type_definition()
-        return A.TypeDecl(visibility=visibility, name=name, params=params, definition=definition, line=tok.line, column=tok.column)
+        return A.TypeDecl(name=name, params=params, definition=definition, line=tok.line, column=tok.column)
 
-    def parse_value_decl(self, visibility: str) -> A.ValueDecl:
+    def parse_value_decl(self) -> A.ValueDecl:
         tok = self.advance()  # val | let
         name = self.expect_name_token().value
         ann = self.parse_optional_type_annotation()
         self.expect_value("=")
         value = self.parse_expr()
-        return A.ValueDecl(visibility=visibility, name=name, type_annotation=ann, value=value, line=tok.line, column=tok.column)
+        return A.ValueDecl(name=name, type_annotation=ann, value=value, line=tok.line, column=tok.column)
 
-    def parse_func_decl(self, visibility: str) -> A.FuncDecl:
+    def parse_func_decl(self) -> A.FuncDecl:
         tok = self.expect_value("func")
         name = self.expect_name_token().value
         type_params = self.parse_type_params() if self.current().value == "<" else []
@@ -243,7 +226,6 @@ class Parser:
         self.expect_value(":")
         body = self.parse_block()
         return A.FuncDecl(
-            visibility=visibility,
             name=name,
             params=params,
             return_type=ret,
@@ -253,7 +235,7 @@ class Parser:
             column=tok.column,
         )
 
-    def parse_entity_decl(self, visibility: str) -> A.EntityDecl:
+    def parse_entity_decl(self) -> A.EntityDecl:
         tok = self.expect_value("entity")
         name = self.expect_name_token().value
         self.expect_value(":")
@@ -268,9 +250,9 @@ class Parser:
             else:
                 expr = self.parse_expr()
             clauses.append((kind, expr))
-        return A.EntityDecl(visibility=visibility, name=name, type_annotation=typ, clauses=clauses, line=tok.line, column=tok.column)
+        return A.EntityDecl(name=name, type_annotation=typ, clauses=clauses, line=tok.line, column=tok.column)
 
-    def parse_event_decl(self, visibility: str) -> A.EventDecl:
+    def parse_event_decl(self) -> A.EventDecl:
         tok = self.expect_value("event")
         name = self.expect_name_token().value
         fields: list[tuple[str, A.TypeExpr]] = []
@@ -287,9 +269,9 @@ class Parser:
                         continue
                     break
                 self.expect_value(")")
-        return A.EventDecl(visibility=visibility, name=name, fields=fields, line=tok.line, column=tok.column)
+        return A.EventDecl(name=name, fields=fields, line=tok.line, column=tok.column)
 
-    def parse_rule_decl(self, visibility: str, strength: str) -> A.RuleDecl:
+    def parse_rule_decl(self, strength: str) -> A.RuleDecl:
         tok = self.expect_value("rule")
         modality = None
         name = ""
@@ -320,7 +302,6 @@ class Parser:
         if self.match_value("otherwise"):
             otherwise = self.parse_expr()
         return A.RuleDecl(
-            visibility=visibility,
             strength=strength,
             modality=modality,
             name=name,
@@ -342,28 +323,28 @@ class Parser:
         self._anonymous_rule_counter += 1
         return f"anonymous_rule_{line}_{self._anonymous_rule_counter}"
 
-    def parse_priority_decl(self, visibility: str) -> A.PriorityDecl:
+    def parse_priority_decl(self) -> A.PriorityDecl:
         tok = self.advance()  # priority | override
         chain = [self.parse_qualified_name()]
         while self.match_value(">"):
             chain.append(self.parse_qualified_name())
-        return A.PriorityDecl(visibility=visibility, chain=chain, line=tok.line, column=tok.column)
+        return A.PriorityDecl(chain=chain, line=tok.line, column=tok.column)
 
-    def parse_fact_decl(self, visibility: str) -> A.FactDecl:
+    def parse_fact_decl(self) -> A.FactDecl:
         tok = self.expect_value("fact")
         target = None
         if self.is_name_token() and self.peek(1).value == "=":
             target = self.advance().value
             self.expect_value("=")
         value = self.parse_expr()
-        return A.FactDecl(visibility=visibility, target=target, value=value, line=tok.line, column=tok.column)
+        return A.FactDecl(target=target, value=value, line=tok.line, column=tok.column)
 
-    def parse_assert_decl(self, visibility: str) -> A.AssertDecl:
+    def parse_assert_decl(self) -> A.AssertDecl:
         tok = self.expect_value("assert")
         expr = self.parse_expr()
-        return A.AssertDecl(visibility=visibility, expr=expr, line=tok.line, column=tok.column)
+        return A.AssertDecl(expr=expr, line=tok.line, column=tok.column)
 
-    def parse_align_decl(self, visibility: str) -> A.AlignDecl:
+    def parse_align_decl(self) -> A.AlignDecl:
         tok = self.expect_value("align")
         subject = self.parse_qualified_name()
         self.expect_value("to")
@@ -384,7 +365,7 @@ class Parser:
         kind = "equivalent"
         if self.current().value in {"equivalent", "broader", "narrower", "related"}:
             kind = self.advance().value
-        return A.AlignDecl(visibility=visibility, subject=subject, target=target, kind=kind, line=tok.line, column=tok.column)
+        return A.AlignDecl(subject=subject, target=target, kind=kind, line=tok.line, column=tok.column)
 
     # ---------------------------
     # Types

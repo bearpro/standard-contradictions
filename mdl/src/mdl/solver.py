@@ -19,7 +19,7 @@ else:
 
 from . import ast as A
 from .diagnostics import Diagnostic, MDLError, ParseError
-from .linter import ImportResolver, import_alias
+from .linter import ImportResolver
 from .names import local_name, root_name, split_qualified
 from .parser import parse
 from .printer import format_expr
@@ -136,7 +136,7 @@ class ModuleScope:
     module: A.Module
     path: Path | None = None
     imports: dict[str, str] = field(default_factory=dict)
-    exposing: dict[str, tuple[str, str]] = field(default_factory=dict)
+    opens: set[str] = field(default_factory=set)
     types: dict[str, A.TypeDecl] = field(default_factory=dict)
     values: dict[str, A.ValueDecl] = field(default_factory=dict)
     funcs: dict[str, FunctionInfo] = field(default_factory=dict)
@@ -184,6 +184,7 @@ class SolveOptions:
     max_horizon: int = 3
     permission: str = "strong"
     max_conflicts: int = 20
+    stdlib_path: str | Path | None = None
 
 
 def read_module(path: Path) -> A.Module:
@@ -204,17 +205,25 @@ def solve_paths(paths: Iterable[str | Path], options: SolveOptions | None = None
             diagnostics.append(Diagnostic(str(exc), severity="error", code="io-error", path=str(path)))
     if diagnostics:
         return error_payload(diagnostics)
-    modules = collect_imported_modules(modules)
+    modules = collect_imported_modules(modules, opts.stdlib_path)
     return solve_modules([m for m, _ in modules], opts, paths=[p for _, p in modules])
 
 
-def collect_imported_modules(modules: list[tuple[A.Module, Path]]) -> list[tuple[A.Module, Path]]:
+def collect_imported_modules(
+    modules: list[tuple[A.Module, Path]],
+    stdlib_path: str | Path | None = None,
+) -> list[tuple[A.Module, Path]]:
     result = list(modules)
     seen_modules = {module.name for module, _ in result}
+    resolver = ImportResolver(stdlib_path=stdlib_path)
+    for resolved in resolver.stdlib_modules().values():
+        if resolved.module.name not in seen_modules:
+            seen_modules.add(resolved.module.name)
+            result.append((resolved.module, Path(resolved.path) if resolved.path else Path("<stdlib>")))
     queue = list(result)
     while queue:
         module, path = queue.pop(0)
-        resolver = ImportResolver(str(path))
+        resolver = ImportResolver(str(path), stdlib_path=stdlib_path)
         for imp in module.imports:
             resolved = resolver.resolve(imp.path, str(path))
             if resolved is None or resolved.module.name in seen_modules or resolved.path is None:
@@ -258,9 +267,12 @@ def error_payload(diagnostics: list[Diagnostic]) -> dict[str, Any]:
 
 class SolverProblem:
     def __init__(self, modules: list[A.Module], options: SolveOptions, *, paths: list[Path] | None = None):
-        self.modules = modules
+        stdlib = ImportResolver(stdlib_path=options.stdlib_path).stdlib_modules()
+        seen = {module.name for module in modules}
+        std_modules = [resolved.module for resolved in stdlib.values() if resolved.module.name not in seen]
+        self.modules = [*modules, *std_modules]
         self.options = options
-        self.paths = paths or [None] * len(modules)  # type: ignore[list-item]
+        self.paths = [*(paths or [None] * len(modules)), *[Path(resolved.path) if resolved.path else None for resolved in stdlib.values() if resolved.module.name not in seen]]  # type: ignore[list-item]
         self.diagnostics: list[Diagnostic] = []
         self.scopes: dict[str, ModuleScope] = {}
         self.type_cache: dict[tuple[str, str, tuple[TypeSpec, ...]], TypeSpec] = {}
@@ -339,10 +351,9 @@ class SolverProblem:
 
         for scope in self.scopes.values():
             for imp in scope.module.imports:
-                alias = imp.alias or import_alias(imp.path)
                 target_module = self.resolve_import_module(scope, imp)
                 if target_module is not None:
-                    scope.imports[alias] = target_module
+                    scope.imports[target_module] = target_module
                 else:
                     self.diagnostics.append(Diagnostic(
                         f"import {imp.path!r} is not present in solve inputs",
@@ -352,9 +363,18 @@ class SolverProblem:
                         code="unresolved-import",
                         path=str(scope.path) if scope.path else None,
                     ))
-                for exposed, renamed in imp.exposing:
-                    if target_module is not None:
-                        scope.exposing[renamed or exposed] = (target_module, exposed)
+            for opened in scope.module.opens:
+                if opened.module in self.scopes:
+                    scope.opens.add(opened.module)
+                else:
+                    self.diagnostics.append(Diagnostic(
+                        f"open {opened.module!r} is not present in solve inputs",
+                        line=opened.line or 1,
+                        column=opened.column or 1,
+                        severity="error",
+                        code="unresolved-open",
+                        path=str(scope.path) if scope.path else None,
+                    ))
 
         for scope in self.scopes.values():
             self._index_declarations(scope)
@@ -378,7 +398,7 @@ class SolverProblem:
     def resolve_import_module(self, scope: ModuleScope, imp: A.ImportDecl) -> str | None:
         if imp.path in self.scopes:
             return imp.path
-        resolver = ImportResolver(str(scope.path) if scope.path else None)
+        resolver = ImportResolver(str(scope.path) if scope.path else None, stdlib_path=self.options.stdlib_path)
         resolved = resolver.resolve(imp.path, str(scope.path) if scope.path else None)
         if resolved is not None and resolved.module.name in self.scopes:
             return resolved.module.name
@@ -522,24 +542,16 @@ class SolverProblem:
         parts = split_qualified(name)
         if not parts:
             return None, None
-        if parts[0] in scope.imports:
-            if len(parts) == 1 and parts[0] in scope.exposing:
-                exposed_target, exposed = scope.exposing[parts[0]]
-                if exposed_target in self.scopes:
-                    return self._resolve_local_decl(self.scopes[exposed_target], [exposed], expected)
-            target = scope.imports[parts[0]]
-            if target not in self.scopes:
-                return target, ".".join(parts[1:]) if len(parts) > 1 else None
-            return self._resolve_local_decl(self.scopes[target], parts[1:], expected)
-        if parts[0] in scope.exposing:
-            target, exposed = scope.exposing[parts[0]]
-            if target in self.scopes:
-                return self._resolve_local_decl(self.scopes[target], [exposed, *parts[1:]], expected)
         local_module, local_name = self._resolve_local_decl(scope, parts, expected)
         if local_module is not None:
             return local_module, local_name
-        if parts[0] == scope.module.name:
-            return self._resolve_local_decl(scope, parts[1:], expected)
+        for opened in sorted(scope.opens):
+            target_scope = self.scopes.get(opened)
+            if target_scope is None:
+                continue
+            open_module, open_name = self._resolve_local_decl(target_scope, parts, expected)
+            if open_module is not None:
+                return open_module, open_name
         for module_name in sorted(self.scopes, key=len, reverse=True):
             module_parts = split_qualified(module_name)
             if parts[:len(module_parts)] == module_parts:
@@ -976,7 +988,8 @@ class BoundedEncoder:
             return ZValue(BOOL, expr=symbol)
         constructor = self.find_constructor(name, expected, scope)
         if constructor is not None:
-            if len(expr.args) != len(constructor.variant.fields):
+            zero_unit = len(expr.args) == 0 and len(constructor.variant.fields) == 1 and constructor.variant.fields[0][1] == UNIT
+            if len(expr.args) != len(constructor.variant.fields) and not zero_unit:
                 raise UnsupportedExpression(f"constructor {name!r} expects {len(constructor.variant.fields)} args")
             values = [
                 self.compile_expr(arg, scope, t, expected=field_type, env=env)
@@ -1058,12 +1071,10 @@ class BoundedEncoder:
         target_scope = self.problem.scopes.get(module_name)
         if target_scope is None:
             return self.opaque_atom(name, t)
-        root = root_name(name)
         parts = split_qualified(name)
-        if root in scope.imports:
-            field_parts = parts[2:]
-        elif parts[0] == module_name and len(parts) > 1 and parts[1] == local:
-            field_parts = parts[2:]
+        module_parts = split_qualified(module_name)
+        if parts[:len(module_parts)] == module_parts and len(parts) > len(module_parts) and parts[len(module_parts)] == local:
+            field_parts = parts[len(module_parts) + 1:]
         else:
             field_parts = parts[1:]
         if local in target_scope.entities:
@@ -1324,11 +1335,14 @@ class BoundedEncoder:
             variant = next((item for item in sum_type.variants if item.name == variant_name), None)
             if variant is None:
                 raise UnsupportedExpression(f"unknown constructor {variant_name!r}")
-            if len(pattern.args) != len(variant.fields):
+            zero_unit = len(pattern.args) == 0 and len(variant.fields) == 1 and variant.fields[0][1] == UNIT
+            if len(pattern.args) != len(variant.fields) and not zero_unit:
                 return z3.BoolVal(False), {}
             encoding = self.datatype_encoding(value.typ)
             conds = [encoding.recognizers[variant_name](self.primitive_expr(value))]
             bindings: dict[str, ZValue] = {}
+            if zero_unit:
+                return z3.And(conds), bindings
             accessors = encoding.accessors[variant_name]
             for idx, (nested, (_, field_type)) in enumerate(zip(pattern.args, variant.fields)):
                 payload = ZValue(field_type, expr=accessors[idx](self.primitive_expr(value)))
@@ -1353,38 +1367,50 @@ class BoundedEncoder:
     # ------------------------------------------------------------------
 
     def find_constructor(self, name: str, expected: TypeSpec | None, scope: ModuleScope | None = None) -> ConstructorInfo | None:
-        short = local_name(name)
-        expected_resolved = self.resolve_named_type(expected) if expected is not None else None
-        if isinstance(expected_resolved, SumSpec):
-            origin = self.type_origin(expected_resolved)
-            for variant in expected_resolved.variants:
-                if variant.name == short:
-                    if origin is not None:
-                        module, local, args = origin
-                        return ConstructorInfo(expected_resolved, variant, module, local, args)
-                    return ConstructorInfo(expected_resolved, variant)
-
-        search_scopes: list[ModuleScope]
         parts = split_qualified(name)
-        if scope is not None and len(parts) > 1 and parts[0] in scope.imports:
-            target_module = scope.imports[parts[0]]
-            search_scopes = [self.problem.scopes[target_module]] if target_module in self.problem.scopes else []
-        elif len(parts) > 1:
-            module_name = ".".join(parts[:-1])
-            search_scopes = [self.problem.scopes[module_name]] if module_name in self.problem.scopes else list(self.problem.scopes.values())
+        if len(parts) < 2:
+            return None
+        variant_name = parts[-1]
+        type_name = ".".join(parts[:-1])
+        if scope is None:
+            expected_resolved = self.resolve_named_type(expected) if expected is not None else None
+            origin = self.type_origin(expected_resolved) if expected_resolved is not None else None
+            if origin is None:
+                return None
+            module_name, local_type, arg_specs = origin
+            if type_name not in {local_type, f"{module_name}.{local_type}"}:
+                return None
+            typ = expected_resolved
+            if isinstance(typ, SumSpec):
+                for variant in typ.variants:
+                    if variant.name == variant_name:
+                        return ConstructorInfo(typ, variant, module_name, local_type, arg_specs)
+            return None
+        if scope is None:
+            return None
+        module_name, local_type = self.problem.resolve_decl(scope, type_name, expected={"type"})
+        if module_name is None or local_type is None:
+            return None
+        decl = self.problem.scopes[module_name].types.get(local_type)
+        if decl is None or not isinstance(decl.definition, A.SumType):
+            return None
+        expected_resolved = self.resolve_named_type(expected) if expected is not None else None
+        origin = self.type_origin(expected_resolved) if expected_resolved is not None else None
+        if (
+            isinstance(expected_resolved, SumSpec)
+            and origin is not None
+            and origin[0] == module_name
+            and origin[1] == local_type
+        ):
+            typ = expected_resolved
+            arg_specs = origin[2]
         else:
-            search_scopes = list(self.problem.scopes.values())
-
-        for candidate_scope in search_scopes:
-            for decl in candidate_scope.types.values():
-                if not isinstance(decl.definition, A.SumType):
-                    continue
-                arg_specs = tuple(OpaqueSpec(param) for param in decl.params)
-                typ = self.problem.resolve_declared_type(candidate_scope.module.name, decl.name, arg_specs)
-                if isinstance(typ, SumSpec):
-                    for variant in typ.variants:
-                        if variant.name == short:
-                            return ConstructorInfo(typ, variant, candidate_scope.module.name, decl.name, arg_specs)
+            arg_specs = tuple(OpaqueSpec(param) for param in decl.params)
+            typ = self.problem.resolve_declared_type(module_name, local_type, arg_specs)
+        if isinstance(typ, SumSpec):
+            for variant in typ.variants:
+                if variant.name == variant_name:
+                    return ConstructorInfo(typ, variant, module_name, local_type, arg_specs)
         return None
 
     def type_origin(self, typ: TypeSpec) -> tuple[str, str, tuple[TypeSpec, ...]] | None:
@@ -1463,13 +1489,15 @@ class BoundedEncoder:
     def constructor_value(self, info: ConstructorInfo, values: list[ZValue]) -> ZValue:
         encoding = self.datatype_encoding(info.sum_type)
         constructor = encoding.constructors[info.variant.name]
+        if not values and len(info.variant.fields) == 1 and info.variant.fields[0][1] == UNIT:
+            values = [self.literal_value(None, "unit", UNIT)]
         exprs = [self.primitive_expr(value) for value in values]
         return ZValue(info.sum_type, expr=constructor(*exprs))
 
     def std_list_type(self, item_type: TypeSpec) -> TypeSpec:
-        if "std.collections.list" not in self.problem.scopes:
-            raise UnsupportedExpression("std.collections.list is not available")
-        return self.problem.resolve_declared_type("std.collections.list", "List", (item_type,))
+        if "std.collections" not in self.problem.scopes:
+            raise UnsupportedExpression("std.collections is not available")
+        return self.problem.resolve_declared_type("std.collections", "List", (item_type,))
 
     def adt_list_value(self, items: list[Any], expected: TypeSpec | None) -> ZValue:
         if expected is None:
@@ -1811,7 +1839,9 @@ class BoundedEncoder:
             return _NO_CONCRETE
         if not self.runtime_references_have_values(expr, scope):
             return _NO_CONCRETE
-        if self.references_import_alias(expr, scope):
+        if self.references_external_module(expr, scope):
+            return _NO_CONCRETE
+        if self.references_non_list_collection_constructor(expr):
             return _NO_CONCRETE
         try:
             value = scope.runtime.eval_expr(expr, dict(scope.runtime.values))
@@ -1827,6 +1857,9 @@ class BoundedEncoder:
         if isinstance(expr, A.Name):
             root = expr.name.split(".")[0]
             if expr.name == "last":
+                return True
+            parts = split_qualified(expr.name)
+            if len(parts) >= 2 and parts[-2] in {"List", "Set", "Map", "Option"}:
                 return True
             if root in scope.entities or root in scope.values or root in scope.funcs or root in scope.events or root in scope.types:
                 return True
@@ -1908,36 +1941,83 @@ class BoundedEncoder:
             return self.runtime_references_have_values(expr.domain, scope) and self.runtime_references_have_values(expr.body, scope)
         return True
 
-    def references_import_alias(self, expr: A.Expr | None, scope: ModuleScope) -> bool:
+    def references_external_module(self, expr: A.Expr | None, scope: ModuleScope) -> bool:
         if expr is None:
             return False
         if isinstance(expr, A.Name):
-            return expr.name.split(".")[0] in scope.imports
+            parts = split_qualified(expr.name)
+            for module_name in sorted(self.problem.scopes, key=len, reverse=True):
+                if module_name == scope.module.name:
+                    continue
+                module_parts = split_qualified(module_name)
+                if parts[:len(module_parts)] == module_parts:
+                    return True
+            return False
         if isinstance(expr, A.Call):
-            return self.references_import_alias(expr.func, scope) or any(self.references_import_alias(arg, scope) for arg in expr.args)
+            return self.references_external_module(expr.func, scope) or any(self.references_external_module(arg, scope) for arg in expr.args)
         if isinstance(expr, A.FieldAccess):
-            return self.references_import_alias(expr.target, scope)
+            return self.references_external_module(expr.target, scope)
         if isinstance(expr, A.IndexAccess):
-            return self.references_import_alias(expr.target, scope) or self.references_import_alias(expr.index, scope)
+            return self.references_external_module(expr.target, scope) or self.references_external_module(expr.index, scope)
         if isinstance(expr, A.BinaryOp):
-            return self.references_import_alias(expr.left, scope) or self.references_import_alias(expr.right, scope)
-        if isinstance(expr, A.UnaryOp):
-            return self.references_import_alias(expr.operand, scope)
-        if isinstance(expr, A.TemporalUnary):
-            return self.references_import_alias(expr.operand, scope)
+            return self.references_external_module(expr.left, scope) or self.references_external_module(expr.right, scope)
+        if isinstance(expr, (A.UnaryOp, A.TemporalUnary)):
+            return self.references_external_module(expr.operand, scope)
         if isinstance(expr, A.TemporalBinary):
-            return self.references_import_alias(expr.left, scope) or self.references_import_alias(expr.right, scope)
+            return self.references_external_module(expr.left, scope) or self.references_external_module(expr.right, scope)
         if isinstance(expr, A.IfExpr):
-            return any(self.references_import_alias(item, scope) for item in [expr.condition, expr.then_branch, expr.else_branch])
+            return any(self.references_external_module(item, scope) for item in [expr.condition, expr.then_branch, expr.else_branch])
+        if isinstance(expr, A.LetExpr):
+            return self.references_external_module(expr.value, scope) or self.references_external_module(expr.body, scope)
         if isinstance(expr, A.MatchExpr):
-            return self.references_import_alias(expr.subject, scope) or any(
-                self.references_import_alias(arm.guard, scope) or self.references_import_alias(arm.body.result if arm.body else None, scope)
+            return self.references_external_module(expr.subject, scope) or any(
+                self.references_external_module(arm.guard, scope) or self.references_external_module(arm.body.result if arm.body else None)
                 for arm in expr.arms
             )
         if isinstance(expr, A.TupleLiteral):
-            return any(self.references_import_alias(item, scope) for item in expr.items)
+            return any(self.references_external_module(item, scope) for item in expr.items)
         if isinstance(expr, A.RecordConstructor):
-            return expr.type_name.split(".")[0] in scope.imports or any(self.references_import_alias(item, scope) for _, item in expr.fields)
+            return any(self.references_external_module(item, scope) for _, item in expr.fields)
+        if isinstance(expr, A.QuantifierExpr):
+            return self.references_external_module(expr.domain, scope) or self.references_external_module(expr.body, scope)
+        return False
+
+    def references_non_list_collection_constructor(self, expr: A.Expr | None) -> bool:
+        if expr is None:
+            return False
+        if isinstance(expr, A.Call):
+            name = self.expr_to_name(expr.func)
+            parts = split_qualified(name or "")
+            if len(parts) >= 2 and parts[-2] in {"Set", "Map", "Option"}:
+                return True
+            return self.references_non_list_collection_constructor(expr.func) or any(
+                self.references_non_list_collection_constructor(arg) for arg in expr.args
+            )
+        if isinstance(expr, A.FieldAccess):
+            return self.references_non_list_collection_constructor(expr.target)
+        if isinstance(expr, A.IndexAccess):
+            return self.references_non_list_collection_constructor(expr.target) or self.references_non_list_collection_constructor(expr.index)
+        if isinstance(expr, A.BinaryOp):
+            return self.references_non_list_collection_constructor(expr.left) or self.references_non_list_collection_constructor(expr.right)
+        if isinstance(expr, (A.UnaryOp, A.TemporalUnary)):
+            return self.references_non_list_collection_constructor(expr.operand)
+        if isinstance(expr, A.TemporalBinary):
+            return self.references_non_list_collection_constructor(expr.left) or self.references_non_list_collection_constructor(expr.right)
+        if isinstance(expr, A.IfExpr):
+            return any(self.references_non_list_collection_constructor(item) for item in [expr.condition, expr.then_branch, expr.else_branch])
+        if isinstance(expr, A.LetExpr):
+            return self.references_non_list_collection_constructor(expr.value) or self.references_non_list_collection_constructor(expr.body)
+        if isinstance(expr, A.MatchExpr):
+            return self.references_non_list_collection_constructor(expr.subject) or any(
+                self.references_non_list_collection_constructor(arm.guard) or self.references_non_list_collection_constructor(arm.body.result if arm.body else None)
+                for arm in expr.arms
+            )
+        if isinstance(expr, A.TupleLiteral):
+            return any(self.references_non_list_collection_constructor(item) for item in expr.items)
+        if isinstance(expr, A.RecordConstructor):
+            return any(self.references_non_list_collection_constructor(item) for _, item in expr.fields)
+        if isinstance(expr, A.QuantifierExpr):
+            return self.references_non_list_collection_constructor(expr.domain) or self.references_non_list_collection_constructor(expr.body)
         return False
 
     def unresolved(self, scope: ModuleScope, name: str, node: A.Node | None = None) -> None:

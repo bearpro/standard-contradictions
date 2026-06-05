@@ -102,7 +102,7 @@ ru
     assert "rule" in labels(items)
 
 
-def test_lsp_completes_imported_alias_fields(tmp_path):
+def test_lsp_completes_imported_module_fields(tmp_path):
     imported = tmp_path / "pipe.mdl"
     imported.write_text("""module pipe_spec
 
@@ -112,13 +112,13 @@ entity pipe: Pipe
     current = tmp_path / "alignment.mdl"
     source = """module alignment
 
-import "pipe.mdl" as m1
+import "pipe.mdl"
 
-rule O aligned: m1.
+rule O aligned: pipe_spec.
 """
     server = LSPServer()
 
-    items = server.completion_items(source, 4, len("rule O aligned: m1."), uri=str(current))
+    items = server.completion_items(source, 4, len("rule O aligned: pipe_spec."), uri=str(current))
 
     assert "pipe" in labels(items)
 
@@ -126,9 +126,9 @@ rule O aligned: m1.
 def test_lsp_uses_open_document_for_import_completion():
     source = """module alignment
 
-import "pipe.mdl" as m1
+import "pipe.mdl"
 
-rule O aligned: m1.pipe.
+rule O aligned: pipe_spec.pipe.
 """
     server = LSPServer()
     server.documents["file:///tmp/pipe.mdl"] = """module pipe_spec
@@ -137,7 +137,7 @@ type Pipe = { length: rat, radius: rat }
 entity pipe: Pipe
 """
 
-    items = server.completion_items(source, 4, len("rule O aligned: m1.pipe."), uri="file:///tmp/alignment.mdl")
+    items = server.completion_items(source, 4, len("rule O aligned: pipe_spec.pipe."), uri="file:///tmp/alignment.mdl")
 
     assert labels(items) >= {"length", "radius"}
 

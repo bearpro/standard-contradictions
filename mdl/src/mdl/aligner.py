@@ -15,8 +15,6 @@ class AlignmentOptions:
     matcher: str = "auto"
     candidate_threshold: float = 0.55
     accept_threshold: float = 0.75
-    left_alias: str = "m1"
-    right_alias: str = "m2"
 
 
 @dataclass(frozen=True)
@@ -487,22 +485,19 @@ def external_candidates(
 ) -> tuple[list[AlignmentCandidate] | None, list[str]]:
     matcher = options.matcher
     if matcher == "auto":
-        for candidate_matcher in ["valentine:coma_py", "bdikit:coma"]:
-            result, diagnostics = run_external_matcher(
-                left_elements,
-                right_elements,
-                options=AlignmentOptions(
-                    matcher=candidate_matcher,
-                    candidate_threshold=options.candidate_threshold,
-                    accept_threshold=options.accept_threshold,
-                    left_alias=options.left_alias,
-                    right_alias=options.right_alias,
-                ),
-            )
-            if result is not None:
-                return result, diagnostics
+        result, diagnostics = run_external_matcher(
+            left_elements,
+            right_elements,
+            options=AlignmentOptions(
+                matcher="bdikit:coma",
+                candidate_threshold=options.candidate_threshold,
+                accept_threshold=options.accept_threshold,
+            ),
+        )
+        if result is not None:
+            return result, diagnostics
         return None, ["optional align dependencies are unavailable; using builtin matcher"]
-    if matcher in {"valentine:coma_py", "bdikit:coma"}:
+    if matcher == "bdikit:coma":
         return run_external_matcher(left_elements, right_elements, options=options)
     return None, []
 
@@ -592,13 +587,6 @@ def dedupe_column_name(base: str, existing: dict[str, Any], index: int) -> str:
 
 
 def execute_external_matcher(source_df: Any, target_df: Any, matcher: str) -> list[tuple[str, str, float]]:
-    if matcher == "valentine:coma_py":
-        from valentine import valentine_match  # type: ignore
-        from valentine.algorithms import ComaPy  # type: ignore
-
-        results = valentine_match(source_df, target_df, ComaPy(use_instances=False)).one_to_one()
-        return normalize_match_rows(results)
-
     if matcher == "bdikit:coma":
         from bdikit.schema_matching.valentine import Coma  # type: ignore
 
@@ -715,20 +703,17 @@ def align_sources(
 def render_alignment_module(
     report: AlignmentReport,
     module_name: str | None = None,
-    *,
-    left_alias: str = "m1",
-    right_alias: str = "m2",
 ) -> A.Module:
     left_module = report.left_module or "left"
     right_module = report.right_module or "right"
     name = module_name or f"alignment_{safe_identifier(left_module)}_{safe_identifier(right_module)}"
     module = A.Module(name=name)
-    module.imports.append(A.ImportDecl(path=f"{left_module}.mdl", alias=left_alias))
-    module.imports.append(A.ImportDecl(path=f"{right_module}.mdl", alias=right_alias))
+    module.imports.append(A.ImportDecl(path=f"{left_module}.mdl"))
+    module.imports.append(A.ImportDecl(path=f"{right_module}.mdl"))
 
     for index, candidate in enumerate(report.accepted, start=1):
-        left_expr = expression_for_path(left_alias, candidate.left.path)
-        right_expr = expression_for_path(right_alias, candidate.right.path)
+        left_expr = expression_for_path(left_module, candidate.left.path)
+        right_expr = expression_for_path(right_module, candidate.right.path)
         equality = A.BinaryOp(op="=", left=left_expr, right=right_expr)
         body = A.TemporalUnary(
             op="always",
@@ -748,8 +733,8 @@ def render_alignment_module(
     return module
 
 
-def expression_for_path(alias: str, path: str) -> A.Expr:
-    parts = [alias, *path.split(".")]
+def expression_for_path(module_name: str, path: str) -> A.Expr:
+    parts = [module_name, *path.split(".")]
     expr: A.Expr = A.Name(name=parts[0])
     for part in parts[1:]:
         expr = A.FieldAccess(target=expr, field=part)

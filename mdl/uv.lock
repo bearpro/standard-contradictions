@@ -1384,19 +1384,16 @@ source = { editable = "." }
 align = [
     { name = "bdi-kit" },
     { name = "pandas" },
-    { name = "valentine" },
 ]
 dev = [
     { name = "bdi-kit" },
     { name = "pandas" },
     { name = "pytest" },
-    { name = "valentine" },
     { name = "z3-solver" },
 ]
 full = [
     { name = "bdi-kit" },
     { name = "pandas" },
-    { name = "valentine" },
     { name = "z3-solver" },
 ]
 solver = [
@@ -1412,9 +1409,6 @@ requires-dist = [
     { name = "pandas", marker = "extra == 'dev'", specifier = ">=3.0.2" },
     { name = "pandas", marker = "extra == 'full'", specifier = ">=3.0.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
-    { name = "valentine", marker = "extra == 'align'", specifier = ">=0.5.0" },
-    { name = "valentine", marker = "extra == 'dev'", specifier = ">=0.5.0" },
-    { name = "valentine", marker = "extra == 'full'", specifier = ">=0.5.0" },
     { name = "z3-solver", marker = "extra == 'dev'", specifier = ">=4.13" },
     { name = "z3-solver", marker = "extra == 'full'", specifier = ">=4.13" },
     { name = "z3-solver", marker = "extra == 'solver'", specifier = ">=4.13" },

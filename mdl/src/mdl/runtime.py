@@ -20,16 +20,11 @@ class Runtime:
     facts: list[Any] = field(default_factory=list)
     functions: dict[str, A.FuncDecl] = field(default_factory=dict, init=False)
     entities: dict[str, A.EntityDecl] = field(default_factory=dict, init=False)
-    imports: dict[str, str] = field(default_factory=dict, init=False)
     builtins: dict[str, Callable[..., Any]] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         self.functions = {}
         self.entities = {}
-        self.imports = {
-            (imp.alias or self.import_alias(imp.path)): imp.path.replace("\\", "/")
-            for imp in self.module.imports
-        }
         self.builtins = {
             "to_list": lambda s: list(s),
             "strings.to_list": lambda s: list(s),
@@ -157,7 +152,7 @@ class Runtime:
             return self.call_collection_constructor(collection, args)
         if func_name in self.builtins:
             return self.builtins[func_name](*args)
-        # Imported aliases are common in source: strings.to_list.
+        # Opened modules can make builtins available through a qualified name.
         if local_name(func_name) in self.builtins:
             return self.builtins[local_name(func_name)](*args)
         if func_name in self.functions:
@@ -167,51 +162,45 @@ class Runtime:
             return self.call_user_function(self.functions[short], args, env)
         # ADT constructor fallback.
         if func_name:
-            return (local_name(func_name), tuple(args))
+            return (func_name, tuple(args))
         raise RuntimeError(f"unknown function {func_name!r}")
-
-    def import_alias(self, path: str) -> str:
-        normalized = path.replace("\\", "/")
-        if normalized.endswith(".mdl") or "/" in normalized:
-            return normalized.rsplit("/", 1)[-1].removesuffix(".mdl")
-        return local_name(normalized)
 
     def collection_constructor(self, name: str) -> tuple[str, str] | None:
         parts = split_qualified(name)
         if len(parts) < 2:
             return None
-        target = self.imports.get(parts[0])
-        if target == "std/collections/list.mdl":
+        type_name = parts[-2]
+        if type_name == "List":
             return "list", parts[-1]
-        if target == "std/collections/set.mdl":
+        if type_name == "Set":
             return "set", parts[-1]
-        if target == "std/collections/map.mdl":
+        if type_name == "Map":
             return "map", parts[-1]
-        if target == "std/collections/option.mdl":
+        if type_name == "Option":
             return "option", parts[-1]
         return None
 
     def call_collection_constructor(self, collection: tuple[str, str], args: list[Any]) -> Any:
         kind, ctor = collection
         if kind == "list":
-            if ctor == "Empty" and len(args) == 1:
+            if ctor == "Empty" and len(args) == 0:
                 return []
             if ctor == "Cons" and len(args) == 2:
                 return [args[0], *list(args[1])]
         if kind == "set":
-            if ctor == "Empty" and len(args) == 1:
+            if ctor == "Empty" and len(args) == 0:
                 return set()
             if ctor == "Insert" and len(args) == 2:
                 return {args[0], *set(args[1])}
         if kind == "map":
-            if ctor == "Empty" and len(args) == 1:
+            if ctor == "Empty" and len(args) == 0:
                 return {}
             if ctor == "Put" and len(args) == 3:
                 result = dict(args[2])
                 result[args[0]] = args[1]
                 return result
         if kind == "option":
-            if ctor == "None" and len(args) == 1:
+            if ctor == "None" and len(args) == 0:
                 return "None"
             if ctor == "Some" and len(args) == 1:
                 return ("Some", (args[0],))
@@ -297,7 +286,7 @@ class Runtime:
                 return False
             return self.pattern_matches(pattern.args[0], value[0], env) and self.pattern_matches(pattern.args[1], value[1:], env)
         if name == "Empty" and isinstance(value, list):
-            return value == [] and len(pattern.args) == 1 and self.pattern_matches(pattern.args[0], None, env)
+            return value == [] and len(pattern.args) == 0
         if isinstance(value, str):
             return name == local_name(value)
         if isinstance(value, tuple) and value and isinstance(value[0], str):

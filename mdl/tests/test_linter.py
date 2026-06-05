@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from mdl.linter import lint_source
+
+
+STDLIB = Path(__file__).resolve().parents[1] / "src" / "mdl" / "stdlib"
 
 
 def test_linter_duplicate_rule_and_missing_temporal_warning():
@@ -67,7 +72,7 @@ func later() -> int:
     assert "later" in undefined[0].message
 
 
-def test_linter_resolves_import_alias_fields(tmp_path):
+def test_linter_resolves_imported_module_fields(tmp_path):
     imported = tmp_path / "pipe.mdl"
     imported.write_text('''
 module pipe_spec
@@ -79,15 +84,15 @@ entity pipe: Pipe
     source = '''
 module alignment
 
-import "pipe.mdl" as m1
+import "pipe.mdl"
 
-rule O ok: m1.pipe.length > 0 always
-rule O bad: m1.pipe.radius > 0 always
+rule O ok: pipe_spec.pipe.length > 0 always
+rule O bad: pipe_spec.pipe.radius > 0 always
 '''
 
     diagnostics = lint_source(source, path=str(current))
 
-    assert not any("m1.pipe.length" in d.message for d in diagnostics)
+    assert not any("pipe_spec.pipe.length" in d.message for d in diagnostics)
     assert any(d.code == "unknown-field" and "radius" in d.message for d in diagnostics)
 
 
@@ -106,7 +111,7 @@ val extra: Pipe = Pipe { length = 1, radius = 2, diameter = 3 }
     assert any(d.code == "unknown-field" and "diameter" in d.message for d in diagnostics)
 
 
-def test_linter_resolves_exposed_imported_type(tmp_path):
+def test_linter_resolves_opened_imported_type(tmp_path):
     imported = tmp_path / "pipe_model.mdl"
     imported.write_text('''
 module pipe_spec
@@ -117,7 +122,8 @@ type Pipe = { length: rat }
     source = '''
 module consumer
 
-import "pipe_model.mdl" exposing (Pipe)
+import "pipe_model.mdl"
+open pipe_spec
 
 entity pipe: Pipe
 rule O ok: pipe.length > 0 always
@@ -128,33 +134,60 @@ rule O ok: pipe.length > 0 always
     assert not any(d.severity == "error" for d in diagnostics)
 
 
-def test_linter_requires_std_import_for_collections():
+def test_linter_requires_open_for_short_std_collection_names():
     diagnostics = lint_source('''
 module collections
 
 entity xs: List<int>
-rule O bad: List.Empty(()) = List.Empty(()) always
+rule O bad: List.Empty() = List.Empty() always
 ''')
 
     assert any(d.code == "undefined-type" and "List" in d.message for d in diagnostics)
-    assert any(d.code == "undefined-name" and "List.Empty" in d.message for d in diagnostics)
 
 
-def test_linter_resolves_std_collection_imports():
+def test_linter_uses_explicit_stdlib_path_without_env(monkeypatch):
+    monkeypatch.delenv("MDL_STDLIB_PATH", raising=False)
     diagnostics = lint_source('''
 module collections
 
-import "std/collections/list.mdl" as List exposing (List)
-import "std/collections/set.mdl" as Set exposing (Set)
-import "std/collections/map.mdl" as Map exposing (Map)
-import "std/collections/option.mdl" as Option exposing (Option)
+open std.collections
+
+entity xs: List<int>
+rule O ok: List.Empty() = List.Empty() always
+''', stdlib_path=STDLIB)
+
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
+def test_linter_has_no_embedded_stdlib_fallback(monkeypatch):
+    monkeypatch.delenv("MDL_STDLIB_PATH", raising=False)
+    diagnostics = lint_source('''
+module collections
+
+open std.collections
+
+entity xs: List<int>
+rule O bad: List.Empty() = List.Empty() always
+''')
+
+    codes = {d.code for d in diagnostics}
+    assert "unresolved-open" in codes
+    assert "undefined-type" in codes
+    assert any(d.code == "undefined-name" and "List.Empty" in d.message for d in diagnostics)
+
+
+def test_linter_resolves_std_collection_open():
+    diagnostics = lint_source('''
+module collections
+
+open std.collections
 
 entity xs: List<int>
 entity ys: Set<int>
 entity lookup: Map<string, int>
 entity maybe: Option<int>
 
-rule O ok: List.Empty(()) = List.Empty(()) always
+rule O ok: List.Empty() = List.Empty() always
 ''')
 
     assert not any(d.severity == "error" for d in diagnostics)

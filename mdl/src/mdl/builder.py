@@ -104,18 +104,22 @@ class ModelBuilder:
         self.module.annotations.append(text)
         return self
 
-    def import_(self, path: str, alias: str | None = None, exposing: list[tuple[str, str | None]] | None = None) -> "ModelBuilder":
-        self.module.imports.append(A.ImportDecl(path=path, alias=alias, exposing=exposing or []))
+    def import_(self, path: str) -> "ModelBuilder":
+        self.module.imports.append(A.ImportDecl(path=path))
         return self
 
-    def type_decl(self, name: str, typ: str | A.TypeExpr, visibility: str = "public") -> A.TypeDecl:
-        decl = A.TypeDecl(name=name, definition=coerce_type(typ), visibility=visibility)
+    def open(self, module: str) -> "ModelBuilder":
+        self.module.opens.append(A.OpenDecl(module=module))
+        return self
+
+    def type_decl(self, name: str, typ: str | A.TypeExpr) -> A.TypeDecl:
+        decl = A.TypeDecl(name=name, definition=coerce_type(typ))
         if not isinstance(decl.definition, A.RecordType):
             raise ValueError("type declarations must define a record or use sum_type()")
         self.module.declarations.append(decl)
         return decl
 
-    def sum_type(self, name: str, variants: list[str | A.Variant], visibility: str = "public") -> A.TypeDecl:
+    def sum_type(self, name: str, variants: list[str | A.Variant]) -> A.TypeDecl:
         normalized = []
         for variant in variants:
             if not isinstance(variant, A.Variant):
@@ -123,38 +127,34 @@ class ModelBuilder:
             if not variant.fields:
                 raise ValueError(f"sum type variant {variant.name!r} must declare payload fields")
             normalized.append(variant)
-        decl = A.TypeDecl(name=name, definition=A.SumType(variants=normalized), visibility=visibility)
+        decl = A.TypeDecl(name=name, definition=A.SumType(variants=normalized))
         self.module.declarations.append(decl)
         return decl
 
-    def value(self, name: str, value: A.Expr | str | int | bool | float | None, typ: str | A.TypeExpr | None = None,
-              visibility: str = "public") -> A.ValueDecl:
-        decl = A.ValueDecl(name=name, value=coerce_expr(value), type_annotation=coerce_type(typ) if typ else None, visibility=visibility)
+    def value(self, name: str, value: A.Expr | str | int | bool | float | None, typ: str | A.TypeExpr | None = None) -> A.ValueDecl:
+        decl = A.ValueDecl(name=name, value=coerce_expr(value), type_annotation=coerce_type(typ) if typ else None)
         self.module.declarations.append(decl)
         return decl
 
-    def entity(self, name: str, typ: str | A.TypeExpr, visibility: str = "public") -> A.EntityDecl:
-        decl = A.EntityDecl(name=name, type_annotation=coerce_type(typ), visibility=visibility)
+    def entity(self, name: str, typ: str | A.TypeExpr) -> A.EntityDecl:
+        decl = A.EntityDecl(name=name, type_annotation=coerce_type(typ))
         self.module.declarations.append(decl)
         return decl
 
-    def event(self, name: str, fields: list[tuple[str, str | A.TypeExpr]] | None = None,
-              visibility: str = "public") -> A.EventDecl:
-        decl = A.EventDecl(name=name, fields=[(n, coerce_type(t)) for n, t in (fields or [])], visibility=visibility)
+    def event(self, name: str, fields: list[tuple[str, str | A.TypeExpr]] | None = None) -> A.EventDecl:
+        decl = A.EventDecl(name=name, fields=[(n, coerce_type(t)) for n, t in (fields or [])])
         self.module.declarations.append(decl)
         return decl
 
-    def func(self, name: str, params: list[tuple[str, str | A.TypeExpr]], return_type: str | A.TypeExpr,
-             body: A.Block | A.Expr, visibility: str = "private") -> A.FuncDecl:
+    def func(self, name: str, params: list[tuple[str, str | A.TypeExpr]], return_type: str | A.TypeExpr, body: A.Block | A.Expr) -> A.FuncDecl:
         ps = [A.Param(pattern=A.VarPattern(name=p), type_annotation=coerce_type(t)) for p, t in params]
         block = body if isinstance(body, A.Block) else A.Block(result=body)
-        decl = A.FuncDecl(name=name, params=ps, return_type=coerce_type(return_type), body=block, visibility=visibility)
+        decl = A.FuncDecl(name=name, params=ps, return_type=coerce_type(return_type), body=block)
         self.module.declarations.append(decl)
         return decl
 
     def rule(self, name: str, modality: str, body: A.Expr | str, strength: str = "defeasible",
-             antecedent: A.Expr | None = None, otherwise: A.Expr | None = None,
-             visibility: str = "public") -> A.RuleDecl:
+             antecedent: A.Expr | None = None, otherwise: A.Expr | None = None) -> A.RuleDecl:
         decl = A.RuleDecl(
             name=name,
             modality=modality,
@@ -162,7 +162,6 @@ class ModelBuilder:
             strength=strength,
             antecedent=antecedent,
             otherwise=otherwise,
-            visibility=visibility,
         )
         self.module.declarations.append(decl)
         return decl
@@ -203,7 +202,9 @@ def from_python(value: Any) -> A.Module:
             if isinstance(imp, str):
                 builder.import_(imp)
             else:
-                builder.import_(imp["path"], alias=imp.get("alias"))
+                builder.import_(imp["path"])
+        for opened in value.get("opens", []):
+            builder.open(str(opened["module"] if isinstance(opened, dict) else opened))
         for type_name, typ in value.get("types", {}).items():
             if isinstance(typ, list):
                 builder.sum_type(type_name, typ)

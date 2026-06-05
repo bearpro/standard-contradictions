@@ -46,6 +46,7 @@ class CoreTranslator:
             "module": module.name,
             "annotations": module.annotations,
             "imports": [self.import_decl(i) for i in module.imports],
+            "opens": [self.open_decl(o) for o in module.opens],
             "types": [],
             "values": [],
             "entities": [],
@@ -61,14 +62,12 @@ class CoreTranslator:
             if isinstance(decl, A.TypeDecl):
                 core["types"].append({
                     "name": decl.name,
-                    "visibility": decl.visibility,
                     "definition": self.type_definition(decl.definition),
                     "annotations": decl.annotations,
                 })
             elif isinstance(decl, A.ValueDecl):
                 core["values"].append({
                     "name": decl.name,
-                    "visibility": decl.visibility,
                     "type": self.type_expr(decl.type_annotation),
                     "value": self.term(decl.value),
                     "annotations": decl.annotations,
@@ -78,7 +77,6 @@ class CoreTranslator:
                 core["values"].append({
                     "kind": "function",
                     "name": decl.name,
-                    "visibility": decl.visibility,
                     "params": [self.param(p) for p in decl.params],
                     "return_type": self.type_expr(decl.return_type),
                     "annotations": decl.annotations,
@@ -115,7 +113,10 @@ class CoreTranslator:
         return core
 
     def import_decl(self, imp: A.ImportDecl) -> dict[str, Any]:
-        return {"path": imp.path, "alias": imp.alias, "exposing": imp.exposing, "annotations": imp.annotations}
+        return {"path": imp.path, "annotations": imp.annotations}
+
+    def open_decl(self, opened: A.OpenDecl) -> dict[str, Any]:
+        return {"module": opened.module, "annotations": opened.annotations}
 
     def param(self, p: A.Param) -> dict[str, Any]:
         return {"pattern": self.printer.pattern(p.pattern), "type": self.type_expr(p.type_annotation)}
@@ -123,7 +124,6 @@ class CoreTranslator:
     def rule(self, rule: A.RuleDecl) -> dict[str, Any]:
         return {
             "name": rule.name,
-            "visibility": rule.visibility,
             "strength": rule.strength,
             "modality": rule.modality,
             "antecedent": self.temporal(rule.antecedent) if rule.antecedent is not None else None,
