@@ -33,8 +33,8 @@ KEYWORDS = {
     "otherwise", "O", "P", "F",
 }
 
-SYMBOLS = set("(){}[],:.|+-*/%=<>;")
-MULTI = ("->", "<-", "<=", ">=", "!=", "==", "=>", "<->")
+SYMBOLS = set("(){}[],:.|+-*/%=<>")
+MULTI = ("->", "<=", ">=", "!=", "==", "<->")
 
 
 def _indent_width(prefix: str) -> int:
@@ -67,11 +67,11 @@ def _convert_token(token) -> Token:  # noqa: ANN001
         value = value[1:].strip()
     elif typ == "STRING":
         value = _string_value(value)
-    elif typ in {"ARROW", "LEFT_ARROW", "LE", "GE", "NE", "EQEQ", "BIARROW"}:
+    elif typ in {"ARROW", "LE", "GE", "NE", "EQEQ", "BIARROW"}:
         typ = "OP"
     elif typ in {
         "LPAREN", "RPAREN", "LBRACE", "RBRACE", "LBRACK", "RBRACK", "COMMA", "COLON", "DOT",
-        "BAR", "PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "EQ", "LT", "GT", "SEMI", "UNDERSCORE",
+        "BAR", "PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "EQ", "LT", "GT", "UNDERSCORE",
     }:
         typ = "SYMBOL"
     text = token.text or value or ""

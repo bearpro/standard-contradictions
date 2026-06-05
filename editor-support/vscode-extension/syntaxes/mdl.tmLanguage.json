@@ -48,7 +48,7 @@
     "operators": {
       "patterns": [
         {"name": "keyword.operator.logical.mdl", "match": "\\b(and|or|not|implies|iff)\\b"},
-        {"name": "keyword.operator.symbolic.mdl", "match": "(->|<->|=>|<=|>=|!=|==|=|<|>|\\+|-|\\*|/|%)"}
+        {"name": "keyword.operator.symbolic.mdl", "match": "(->|<->|<=|>=|!=|==|=|<|>|\\+|-|\\*|/|%)"}
       ]
     },
     "types": {

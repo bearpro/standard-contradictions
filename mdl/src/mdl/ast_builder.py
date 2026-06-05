@@ -139,11 +139,7 @@ class AstBuilder(MDLVisitor):
     def visitVariant(self, ctx: MDLParser.VariantContext) -> A.Variant:
         line, column = self.location(ctx)
         name = self.visit(ctx.nameToken())
-        if ctx.variantFieldList() is None:
-            raise ParseError("sum type variants must declare payload fields, for example Variant(unit)", line, column)
         fields = self.visit(ctx.variantFieldList())
-        if not fields:
-            raise ParseError("sum type variants must declare at least one payload field", line, column)
         return A.Variant(name=name, fields=fields, line=line, column=column)
 
     def visitVariantFieldList(self, ctx: MDLParser.VariantFieldListContext) -> list[tuple[str | None, A.TypeExpr]]:
@@ -242,9 +238,7 @@ class AstBuilder(MDLVisitor):
     def visitRuleDecl(self, ctx: MDLParser.RuleDeclContext) -> A.RuleDecl:
         line, column = self.location(ctx)
         strength = self.visit(ctx.ruleStrength()) if ctx.ruleStrength() else "defeasible"
-        modality, name, anonymous, antecedent, body, separator = self.visit(ctx.ruleBody())
-        if separator == "=":
-            raise ParseError("expected ':' before rule body; use `rule O name: ...`", line, column)
+        modality, name, anonymous, antecedent, body = self.visit(ctx.ruleBody())
         otherwise = self.visit(ctx.expr()) if ctx.expr() else None
         return A.RuleDecl(
             strength=strength,
@@ -261,22 +255,18 @@ class AstBuilder(MDLVisitor):
     def visitRuleStrength(self, ctx: MDLParser.RuleStrengthContext) -> str:
         return ctx.getText()
 
-    def visitRuleBody(self, ctx: MDLParser.RuleBodyContext) -> tuple[str | None, str, bool, A.Expr | None, A.Expr, str]:
+    def visitRuleBody(self, ctx: MDLParser.RuleBodyContext) -> tuple[str | None, str, bool, A.Expr | None, A.Expr]:
         modality = self.visit(ctx.deonticMod()) if ctx.deonticMod() else None
         if ctx.qualifiedName() is None:
             line = ctx.start.line
-            return modality, self.next_anonymous_rule_name(line), True, None, self.visit(ctx.expr(0)), ":"
+            return modality, self.next_anonymous_rule_name(line), True, None, self.visit(ctx.expr(0))
         exprs = ctx.expr()
         antecedent = None
         body_index = 0
         if ctx.WHEN():
             antecedent = self.visit(exprs[0])
             body_index = 1
-        separator = self.visit(ctx.ruleSeparator())
-        return modality, self.visit(ctx.qualifiedName()), False, antecedent, self.visit(exprs[body_index]), separator
-
-    def visitRuleSeparator(self, ctx: MDLParser.RuleSeparatorContext) -> str:
-        return ctx.getText()
+        return modality, self.visit(ctx.qualifiedName()), False, antecedent, self.visit(exprs[body_index])
 
     def visitDeonticMod(self, ctx: MDLParser.DeonticModContext) -> str:
         return ctx.getText()

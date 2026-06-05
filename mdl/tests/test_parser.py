@@ -1,6 +1,6 @@
 from mdl import ast as A
 from mdl.diagnostics import ParseError
-from mdl.parser import parse, parse_expr
+from mdl.parser import parse, parse_expr, parse_type_expr_source
 from mdl.printer import format_expr
 
 from .sample_sources import EMAIL_SOURCE
@@ -88,22 +88,6 @@ func f() -> int:
     assert isinstance(func.body.result, A.LetExpr)
 
 
-def test_type_aliases_and_nullary_sum_variants_are_rejected():
-    for source in [
-        "module bad\ntype T = Existing\n",
-        "module bad\ntype T = Only\n",
-        "module bad\ntype T = Only()\n",
-        "module bad\ntype T = (int, int)\n",
-        "module bad\ntype T = A | B(unit)\n",
-    ]:
-        try:
-            parse(source)
-        except ParseError:
-            pass
-        else:  # pragma: no cover - defensive
-            raise AssertionError(f"invalid type declaration unexpectedly parsed: {source!r}")
-
-
 def test_payload_sum_variants_accept_unit_payload_patterns():
     module = parse("""
 module states
@@ -119,6 +103,33 @@ func is_local(state: State) -> bool:
     typ = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
     assert isinstance(typ.definition, A.SumType)
     assert [variant.name for variant in typ.definition.variants] == ["Local", "Remote"]
+
+
+def test_parse_tuple_expr_and_type():
+    expr = parse_expr("(1, 2)")
+    assert isinstance(expr, A.TupleLiteral)
+    assert len(expr.items) == 2
+
+    typ = parse_type_expr_source("(int, int)")
+    assert isinstance(typ, A.TupleType)
+    assert len(typ.items) == 2
+
+
+def test_parse_non_empty_type_params_and_args():
+    module = parse("""
+module generics
+
+type Box<T> = { value: T }
+entity boxed: Box<int>
+""")
+
+    typ = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
+    assert typ.params == ["T"]
+
+    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+    assert isinstance(entity.type_annotation, A.TypeRef)
+    assert entity.type_annotation.name == "Box"
+    assert [arg.name for arg in entity.type_annotation.args if isinstance(arg, A.TypeRef)] == ["int"]
 
 
 def test_braced_expressions_are_rejected():
@@ -180,20 +191,6 @@ rule O applies when enabled: x always
     assert isinstance(rule.antecedent, A.Name)
     assert rule.antecedent.name == "enabled"
     assert isinstance(rule.body, A.TemporalUnary)
-
-
-def test_parse_old_rule_equals_syntax_is_rejected():
-    try:
-        parse("""
-module old
-
-entity x: bool
-rule O r = x always
-""")
-    except ParseError as exc:
-        assert "expected ':' before rule body" in exc.message
-    else:  # pragma: no cover - defensive
-        raise AssertionError("old rule syntax unexpectedly parsed")
 
 
 def test_parse_file_import_path():

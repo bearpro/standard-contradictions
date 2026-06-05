@@ -60,7 +60,7 @@ typeDefinition
     ;
 
 typeParams
-    : LT nameList? GT
+    : LT nameList GT
     ;
 
 nameList
@@ -68,7 +68,7 @@ nameList
     ;
 
 variant
-    : nameToken LPAREN variantFieldList? RPAREN
+    : nameToken LPAREN variantFieldList RPAREN
     ;
 
 variantFieldList
@@ -99,7 +99,8 @@ typeField
     ;
 
 tupleOrParenType
-    : LPAREN typeExpr (COMMA typeExpr)* COMMA? RPAREN
+    : LPAREN typeExpr RPAREN
+    | LPAREN typeExpr COMMA typeExpr (COMMA typeExpr)* RPAREN
     ;
 
 typeRef
@@ -107,11 +108,11 @@ typeRef
     ;
 
 typeArgs
-    : LT typeExprList? GT
+    : LT typeExprList GT
     ;
 
 typeExprList
-    : typeExpr (COMMA typeExpr)* COMMA?
+    : typeExpr (COMMA typeExpr)*
     ;
 
 valueDecl
@@ -155,12 +156,7 @@ ruleStrength
 
 ruleBody
     : deonticMod COLON expr
-    | deonticMod? qualifiedName (WHEN expr)? ruleSeparator expr
-    ;
-
-ruleSeparator
-    : COLON
-    | EQ
+    | deonticMod? qualifiedName (WHEN expr)? COLON expr
     ;
 
 deonticMod
@@ -322,7 +318,8 @@ primary
     | LAST
     | qualifiedName
     | LPAREN RPAREN
-    | LPAREN expr (COMMA expr)* COMMA? RPAREN
+    | LPAREN expr RPAREN
+    | LPAREN expr COMMA expr (COMMA expr)* RPAREN
     ;
 
 exprList
@@ -336,7 +333,8 @@ pattern
     | DECIMAL
     | RAT
     | LPAREN RPAREN
-    | LPAREN pattern (COMMA pattern)* COMMA? RPAREN
+    | LPAREN pattern RPAREN
+    | LPAREN pattern COMMA pattern (COMMA pattern)* RPAREN
     | LBRACE recordPatternFieldList? RBRACE
     | qualifiedName (LPAREN patternList? RPAREN)?
     ;
@@ -380,12 +378,10 @@ newlines
     ;
 
 ARROW: '->';
-LEFT_ARROW: '<-';
 LE: '<=';
 GE: '>=';
 NE: '!=';
 EQEQ: '==';
-IMPLIES_ARROW: '=>';
 BIARROW: '<->';
 
 MODULE: 'module';
@@ -469,7 +465,6 @@ PERCENT: '%';
 EQ: '=';
 LT: '<';
 GT: '>';
-SEMI: ';';
 
 NEWLINE: '\r'? '\n' | '\r';
 COMMENT: '#' ~[\r\n]* -> channel(HIDDEN);

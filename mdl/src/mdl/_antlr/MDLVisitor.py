@@ -179,11 +179,6 @@ class MDLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by MDLParser#ruleSeparator.
-    def visitRuleSeparator(self, ctx:MDLParser.RuleSeparatorContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by MDLParser#deonticMod.
     def visitDeonticMod(self, ctx:MDLParser.DeonticModContext):
         return self.visitChildren(ctx)
