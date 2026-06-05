@@ -16,11 +16,11 @@
   "strict" "defeasible" "defeater" "priority" "override" "fact" "assert" "align"
 ] @keyword
 [
-  "if" "then" "else" "case" "switch" "when" "in" "forall" "exists"
+  "if" "then" "else" "case" "when" "in"
 ] @keyword.control
 [
   "always" "eventually" "next" "weak_next" "never" "until" "release" "weak_until"
 ] @keyword.operator
 [
-  "and" "or" "not" "implies" "iff"
+  "and" "or" "not"
 ] @operator

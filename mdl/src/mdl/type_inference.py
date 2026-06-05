@@ -127,13 +127,6 @@ class TypeInference:
             if expected is not None:
                 self.expect(field_type, expected, expr)
             return field_type
-        if isinstance(expr, A.IndexAccess):
-            target_type = self.infer_expr(expr.target, env)
-            self.expect(self.infer_expr(expr.index, env), TyCon("int"), expr.index or expr)
-            result = self.index_type(target_type, expr.index)
-            if expected is not None:
-                self.expect(result, expected, expr)
-            return result
         if isinstance(expr, A.BinaryOp):
             typ = self.infer_binary(expr, env)
             if expected is not None:
@@ -193,16 +186,6 @@ class TypeInference:
         if isinstance(expr, A.TemporalBinary):
             self.expect(self.infer_expr(expr.left, env), TyCon("bool"), expr.left or expr)
             self.expect(self.infer_expr(expr.right, env), TyCon("bool"), expr.right or expr)
-            return TyCon("bool")
-        if isinstance(expr, A.QuantifierExpr):
-            domain_type = self.infer_expr(expr.domain, env)
-            item_type = self.collection_item_type(domain_type)
-            if item_type is None:
-                self.host.error(f"expected finite collection, got {self.format_type(domain_type)}", expr.domain or expr, "type-mismatch")
-                item_type = self.fresh("item")
-            local = dict(env)
-            self.bind_pattern(expr.pattern, item_type, local, generalize=False)
-            self.expect(self.infer_expr(expr.body, local), TyCon("bool"), expr.body or expr)
             return TyCon("bool")
         return self.fresh("unknown")
 
@@ -272,7 +255,7 @@ class TypeInference:
         return expected or typ.ret
 
     def infer_binary(self, expr: A.BinaryOp, env: dict[str, Scheme]) -> Type:
-        if expr.op in {"and", "or", "implies", "->", "iff", "<->"}:
+        if expr.op in {"and", "or"}:
             self.expect(self.infer_expr(expr.left, env), TyCon("bool"), expr.left or expr)
             self.expect(self.infer_expr(expr.right, env), TyCon("bool"), expr.right or expr)
             return TyCon("bool")
@@ -567,11 +550,6 @@ class TypeInference:
         self.host.check_field(ast_type, field, node)
         field_type = self.host.type_after_fields(ast_type, [field])
         return self.from_ast(field_type) if field_type is not None else self.fresh(field)
-
-    def index_type(self, target_type: Type, index: A.Expr | None) -> Type:
-        target_ast = self.to_ast(target_type)
-        result = self.host.index_result_type(target_ast, index)
-        return self.from_ast(result) if result is not None else self.fresh("item")
 
     def collection_item_type(self, typ: Type) -> Type | None:
         typ = self.prune(typ)

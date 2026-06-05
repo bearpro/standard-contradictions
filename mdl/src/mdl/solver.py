@@ -679,9 +679,7 @@ class BoundedEncoder:
     def encode_entity_clauses(self) -> None:
         for scope in self.problem.scopes.values():
             for entity in scope.entities.values():
-                for kind, expr in entity.decl.clauses:
-                    if kind != "where":
-                        continue
+                for expr in entity.decl.where:
                     for t in range(self.horizon):
                         self.track(
                             self.compile_formula(expr, scope, t),
@@ -831,16 +829,12 @@ class BoundedEncoder:
                 return z3.Not(self.until(A.UnaryOp(op="not", operand=expr.left), A.UnaryOp(op="not", operand=expr.right), scope, t, env))
         if isinstance(expr, A.UnaryOp) and expr.op == "not":
             return z3.Not(self.compile_formula(expr.operand, scope, t, env=env))
-        if isinstance(expr, A.BinaryOp) and expr.op in {"and", "or", "implies", "->", "iff", "<->"}:
+        if isinstance(expr, A.BinaryOp) and expr.op in {"and", "or"}:
             left = self.compile_formula(expr.left, scope, t, env=env)
             right = self.compile_formula(expr.right, scope, t, env=env)
             if expr.op == "and":
                 return z3.And(left, right)
-            if expr.op == "or":
-                return z3.Or(left, right)
-            if expr.op in {"implies", "->"}:
-                return z3.Implies(left, right)
-            return left == right
+            return z3.Or(left, right)
         return self.as_bool(self.compile_expr(expr, scope, t, expected=BOOL, env=env))
 
     def until(self, left: A.Expr | None, right: A.Expr | None, scope: ModuleScope, t: int, env: dict[str, ZValue]) -> Any:
@@ -899,8 +893,6 @@ class BoundedEncoder:
         if isinstance(expr, A.FieldAccess):
             target = self.compile_expr(expr.target, scope, t, env=env)
             return self.field_value(target, expr.field)
-        if isinstance(expr, A.IndexAccess):
-            raise UnsupportedExpression(f"symbolic index access is not supported: {format_expr(expr)}")
         if isinstance(expr, A.Call):
             return self.call_value(expr, scope, t, expected, env)
         if isinstance(expr, A.UnaryOp):
@@ -932,12 +924,10 @@ class BoundedEncoder:
             }
             typ: TypeSpec = expected if isinstance(expected_resolved, TupleSpec) and expected is not None else TupleSpec(tuple(item.typ for item in items.values()))
             return self.product_value(typ, items)
-        if isinstance(expr, A.QuantifierExpr):
-            return ZValue(BOOL, expr=self.quantifier_formula(expr, scope, t, env))
         raise UnsupportedExpression(f"unsupported expression: {format_expr(expr)}")
 
     def binary_value(self, expr: A.BinaryOp, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
-        if expr.op in {"and", "or", "implies", "->", "iff", "<->"}:
+        if expr.op in {"and", "or"}:
             return ZValue(BOOL, expr=self.compile_formula(expr, scope, t, env=env))
         left = self.compile_expr(expr.left, scope, t, env=env)
         right = self.compile_expr(expr.right, scope, t, expected=left.typ, env=env)
@@ -1012,20 +1002,6 @@ class BoundedEncoder:
             fn = self.function_symbol(instance)
             return ZValue(instance.return_type, expr=fn(*[self.primitive_expr(arg) for arg in args]))
         return self.opaque_atom(format_expr(expr), t)
-
-    def quantifier_formula(self, expr: A.QuantifierExpr, scope: ModuleScope, t: int, env: dict[str, ZValue]) -> Any:
-        domain = self.compile_expr(expr.domain, scope, t, env=env)
-        if not domain.has_concrete or not isinstance(domain.concrete, list):
-            domain_text = format_expr(expr.domain) if expr.domain is not None else "<missing>"
-            raise UnsupportedExpression(f"quantifier domain must be a finite collection: {domain_text}")
-        formulas = []
-        for item in domain.concrete:
-            local = dict(env)
-            self.bind_pattern(expr.pattern, item, local, assumptions=[])
-            formulas.append(self.compile_formula(expr.body, scope, t, env=local))
-        if expr.quantifier == "forall":
-            return z3.And(formulas) if formulas else z3.BoolVal(True)
-        return z3.Or(formulas) if formulas else z3.BoolVal(False)
 
     # ------------------------------------------------------------------
     # Values, symbols and name resolution
@@ -1872,8 +1848,6 @@ class BoundedEncoder:
             return self.runtime_names_resolvable(expr.func, scope) and all(self.runtime_names_resolvable(arg, scope) for arg in expr.args)
         if isinstance(expr, A.FieldAccess):
             return self.runtime_names_resolvable(expr.target, scope)
-        if isinstance(expr, A.IndexAccess):
-            return self.runtime_names_resolvable(expr.target, scope) and self.runtime_names_resolvable(expr.index, scope)
         if isinstance(expr, A.BinaryOp):
             return self.runtime_names_resolvable(expr.left, scope) and self.runtime_names_resolvable(expr.right, scope)
         if isinstance(expr, A.UnaryOp):
@@ -1895,8 +1869,6 @@ class BoundedEncoder:
             return all(self.runtime_names_resolvable(item, scope) for item in expr.items)
         if isinstance(expr, A.RecordConstructor):
             return all(self.runtime_names_resolvable(item, scope) for _, item in expr.fields)
-        if isinstance(expr, A.QuantifierExpr):
-            return self.runtime_names_resolvable(expr.domain, scope) and self.runtime_names_resolvable(expr.body, scope)
         return True
 
     def runtime_references_have_values(self, expr: A.Expr | None, scope: ModuleScope) -> bool:
@@ -1913,8 +1885,6 @@ class BoundedEncoder:
             )
         if isinstance(expr, A.FieldAccess):
             return self.runtime_references_have_values(expr.target, scope)
-        if isinstance(expr, A.IndexAccess):
-            return self.runtime_references_have_values(expr.target, scope) and self.runtime_references_have_values(expr.index, scope)
         if isinstance(expr, A.BinaryOp):
             return self.runtime_references_have_values(expr.left, scope) and self.runtime_references_have_values(expr.right, scope)
         if isinstance(expr, A.UnaryOp):
@@ -1937,8 +1907,6 @@ class BoundedEncoder:
             return all(self.runtime_references_have_values(item, scope) for item in expr.items)
         if isinstance(expr, A.RecordConstructor):
             return all(self.runtime_references_have_values(item, scope) for _, item in expr.fields)
-        if isinstance(expr, A.QuantifierExpr):
-            return self.runtime_references_have_values(expr.domain, scope) and self.runtime_references_have_values(expr.body, scope)
         return True
 
     def references_external_module(self, expr: A.Expr | None, scope: ModuleScope) -> bool:
@@ -1957,8 +1925,6 @@ class BoundedEncoder:
             return self.references_external_module(expr.func, scope) or any(self.references_external_module(arg, scope) for arg in expr.args)
         if isinstance(expr, A.FieldAccess):
             return self.references_external_module(expr.target, scope)
-        if isinstance(expr, A.IndexAccess):
-            return self.references_external_module(expr.target, scope) or self.references_external_module(expr.index, scope)
         if isinstance(expr, A.BinaryOp):
             return self.references_external_module(expr.left, scope) or self.references_external_module(expr.right, scope)
         if isinstance(expr, (A.UnaryOp, A.TemporalUnary)):
@@ -1978,8 +1944,6 @@ class BoundedEncoder:
             return any(self.references_external_module(item, scope) for item in expr.items)
         if isinstance(expr, A.RecordConstructor):
             return any(self.references_external_module(item, scope) for _, item in expr.fields)
-        if isinstance(expr, A.QuantifierExpr):
-            return self.references_external_module(expr.domain, scope) or self.references_external_module(expr.body, scope)
         return False
 
     def references_non_list_collection_constructor(self, expr: A.Expr | None) -> bool:
@@ -1995,8 +1959,6 @@ class BoundedEncoder:
             )
         if isinstance(expr, A.FieldAccess):
             return self.references_non_list_collection_constructor(expr.target)
-        if isinstance(expr, A.IndexAccess):
-            return self.references_non_list_collection_constructor(expr.target) or self.references_non_list_collection_constructor(expr.index)
         if isinstance(expr, A.BinaryOp):
             return self.references_non_list_collection_constructor(expr.left) or self.references_non_list_collection_constructor(expr.right)
         if isinstance(expr, (A.UnaryOp, A.TemporalUnary)):
@@ -2016,8 +1978,6 @@ class BoundedEncoder:
             return any(self.references_non_list_collection_constructor(item) for item in expr.items)
         if isinstance(expr, A.RecordConstructor):
             return any(self.references_non_list_collection_constructor(item) for _, item in expr.fields)
-        if isinstance(expr, A.QuantifierExpr):
-            return self.references_non_list_collection_constructor(expr.domain) or self.references_non_list_collection_constructor(expr.body)
         return False
 
     def unresolved(self, scope: ModuleScope, name: str, node: A.Node | None = None) -> None:

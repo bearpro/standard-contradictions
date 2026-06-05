@@ -127,12 +127,6 @@ class FieldAccess(Expr):
 
 
 @dataclass
-class IndexAccess(Expr):
-    target: Expr | None = None
-    index: Expr | None = None
-
-
-@dataclass
 class BinaryOp(Expr):
     op: str = ""
     left: Expr | None = None
@@ -195,14 +189,6 @@ class TemporalBinary(Expr):
     op: str = ""
     left: Expr | None = None
     right: Expr | None = None
-
-
-@dataclass
-class QuantifierExpr(Expr):
-    quantifier: str = "forall"
-    pattern: Pattern | None = None
-    domain: Expr | None = None
-    body: Expr | None = None
 
 
 # ---------------------------
@@ -272,7 +258,7 @@ class FuncDecl(Declaration):
 class EntityDecl(Declaration):
     name: str = ""
     type_annotation: TypeExpr | None = None
-    clauses: list[tuple[str, Expr]] = field(default_factory=list)
+    where: list[Expr] = field(default_factory=list)
 
 
 @dataclass

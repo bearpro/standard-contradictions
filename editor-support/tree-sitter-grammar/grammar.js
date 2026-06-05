@@ -2,8 +2,6 @@
 // The authoritative parser for the toolkit lives in mdl/src/mdl/parser.py.
 
 const PREC = {
-  implies: 1,
-  iff: 2,
   or: 3,
   and: 4,
   temporal: 5,
@@ -102,7 +100,7 @@ module.exports = grammar({
     param: $ => seq($.pattern, ':', $.type_expr),
 
     entity_decl: $ => seq('entity', field('name', $.identifier), ':', $.type_expr, repeat($.entity_clause)),
-    entity_clause: $ => choice(seq('key', '(', $.expr, ')'), seq('where', $.expr)),
+    entity_clause: $ => seq('where', $.expr),
 
     event_decl: $ => seq('event', field('name', $.identifier), optional(seq('(', optional(commaSep($.field_decl)), ')'))),
 
@@ -136,7 +134,6 @@ module.exports = grammar({
       $.if_expr,
       $.let_expr,
       $.case_expr,
-      $.quantifier_expr,
       $.temporal_prefix_expr,
       $.temporal_postfix_expr,
       $.unary_expr,
@@ -144,22 +141,18 @@ module.exports = grammar({
       $.record_constructor,
       $.call_expr,
       $.field_expr,
-      $.index_expr,
       $._primary_expr,
     ),
 
     if_expr: $ => seq('if', $.expr, 'then', $.expr, 'else', $.expr),
     let_expr: $ => prec.right(seq('let', $.pattern, optional($.type_annotation), '=', $.expr, 'in', $.expr)),
-    case_expr: $ => prec.right(seq(choice('case', 'switch'), $.expr, ':', repeat1($.case_arm))),
+    case_expr: $ => prec.right(seq('case', $.expr, ':', repeat1($.case_arm))),
     case_arm: $ => seq('|', $.pattern, optional(seq('when', $.expr)), ':', $.block),
-    quantifier_expr: $ => seq(choice('forall', 'exists'), $.pattern, 'in', $.expr, ':', $.expr),
 
     temporal_prefix_expr: $ => prec(PREC.prefix, seq(choice('always', 'eventually', 'next', 'weak_next', 'never'), $.expr)),
     temporal_postfix_expr: $ => prec.left(PREC.postfix_temporal, seq($.expr, choice('always', 'eventually', 'next', 'weak_next', 'never'))),
     unary_expr: $ => prec(PREC.prefix, seq(choice('not', '-'), $.expr)),
     binary_expr: $ => choice(
-      prec.right(PREC.implies, seq($.expr, choice('implies', '->'), $.expr)),
-      prec.left(PREC.iff, seq($.expr, choice('iff', '<->'), $.expr)),
       prec.left(PREC.or, seq($.expr, 'or', $.expr)),
       prec.left(PREC.and, seq($.expr, 'and', $.expr)),
       prec.left(PREC.temporal, seq($.expr, choice('until', 'release', 'weak_until'), $.expr)),
@@ -171,7 +164,6 @@ module.exports = grammar({
     record_constructor_fields: $ => seq('{', optional(commaSep(seq($.identifier, '=', $.expr))), '}'),
     call_expr: $ => prec(PREC.postfix, seq($.expr, '(', optional(commaSep($.expr)), ')')),
     field_expr: $ => prec(PREC.postfix, seq($.expr, '.', $.identifier)),
-    index_expr: $ => prec(PREC.postfix, seq($.expr, '[', $.expr, ']')),
 
     _primary_expr: $ => choice(
       $.qualified_name,

@@ -249,11 +249,6 @@ class MDLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by MDLParser#iffExpr.
-    def visitIffExpr(self, ctx:MDLParser.IffExprContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by MDLParser#orExpr.
     def visitOrExpr(self, ctx:MDLParser.OrExprContext):
         return self.visitChildren(ctx)
@@ -311,11 +306,6 @@ class MDLVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by MDLParser#caseArm.
     def visitCaseArm(self, ctx:MDLParser.CaseArmContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by MDLParser#quantifierExpr.
-    def visitQuantifierExpr(self, ctx:MDLParser.QuantifierExprContext):
         return self.visitChildren(ctx)
 
 

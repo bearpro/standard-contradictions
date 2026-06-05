@@ -136,8 +136,7 @@ entityDecl
     ;
 
 entityClause
-    : KEY LPAREN expr RPAREN
-    | WHERE expr
+    : WHERE expr
     ;
 
 eventDecl
@@ -220,11 +219,7 @@ temporalPostfix
     ;
 
 implication
-    : iffExpr ((IMPLIES | ARROW) implication)?
-    ;
-
-iffExpr
-    : orExpr ((IFF | BIARROW) orExpr)*
+    : orExpr
     ;
 
 orExpr
@@ -255,7 +250,6 @@ unary
     : ifExpr
     | letExpr
     | matchExpr
-    | quantifierExpr
     | (NOT | MINUS | temporalUnaryOp) unary
     | postfix
     ;
@@ -269,7 +263,7 @@ letExpr
     ;
 
 matchExpr
-    : (CASE | SWITCH) expr COLON caseBody
+    : CASE expr COLON caseBody
     ;
 
 caseBody
@@ -281,10 +275,6 @@ caseArm
     : BAR pattern (WHEN expr)? COLON block
     ;
 
-quantifierExpr
-    : (FORALL | EXISTS) pattern IN expr COLON expr
-    ;
-
 postfix
     : primary postfixSuffix*
     ;
@@ -293,7 +283,6 @@ postfixSuffix
     : recordConstructorFields
     | LPAREN exprList? RPAREN
     | DOT nameToken
-    | LBRACK expr RBRACK
     ;
 
 recordConstructorFields
@@ -382,7 +371,6 @@ LE: '<=';
 GE: '>=';
 NE: '!=';
 EQEQ: '==';
-BIARROW: '<->';
 
 MODULE: 'module';
 IMPORT: 'import';
@@ -407,25 +395,19 @@ EQUIVALENT: 'equivalent';
 BROADER: 'broader';
 NARROWER: 'narrower';
 RELATED: 'related';
-KEY: 'key';
 WHERE: 'where';
 IF: 'if';
 THEN: 'then';
 ELSE: 'else';
 CASE: 'case';
-SWITCH: 'switch';
 WHEN: 'when';
 IN: 'in';
-FORALL: 'forall';
-EXISTS: 'exists';
 TRUE: 'true';
 FALSE: 'false';
 LAST: 'last';
 AND: 'and';
 OR: 'or';
 NOT: 'not';
-IMPLIES: 'implies';
-IFF: 'iff';
 ALWAYS: 'always';
 EVENTUALLY: 'eventually';
 NEXT: 'next';
@@ -451,8 +433,6 @@ LPAREN: '(';
 RPAREN: ')';
 LBRACE: '{';
 RBRACE: '}';
-LBRACK: '[';
-RBRACK: ']';
 COMMA: ',';
 COLON: ':';
 DOT: '.';

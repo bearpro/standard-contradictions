@@ -82,9 +82,9 @@ def inject_layout(raw_tokens: Iterable[AntlrToken]) -> list[AntlrToken]:
             pending.appendleft(next_token)
             continue
 
-        if token.type in {MDLLexer.LPAREN, MDLLexer.LBRACK, MDLLexer.LBRACE}:
+        if token.type in {MDLLexer.LPAREN, MDLLexer.LBRACE}:
             bracket_depth += 1
-        elif token.type in {MDLLexer.RPAREN, MDLLexer.RBRACK, MDLLexer.RBRACE}:
+        elif token.type in {MDLLexer.RPAREN, MDLLexer.RBRACE}:
             bracket_depth -= 1
             if bracket_depth < 0:
                 raise ParseError("unmatched closing delimiter", token.line, token.column + 1)

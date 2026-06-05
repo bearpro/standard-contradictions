@@ -25,16 +25,16 @@ KEYWORDS = {
     "type", "val", "let", "func",
     "entity", "event", "rule", "strict", "defeasible", "defeater",
     "priority", "override", "fact", "assert", "align", "to",
-    "equivalent", "broader", "narrower", "related", "key", "where",
-    "if", "then", "else", "case", "switch", "when", "in",
-    "forall", "exists", "true", "false", "last",
-    "and", "or", "not", "implies", "iff",
+    "equivalent", "broader", "narrower", "related", "where",
+    "if", "then", "else", "case", "when", "in",
+    "true", "false", "last",
+    "and", "or", "not",
     "always", "eventually", "next", "weak_next", "never", "until", "release", "weak_until",
     "otherwise", "O", "P", "F",
 }
 
-SYMBOLS = set("(){}[],:.|+-*/%=<>")
-MULTI = ("->", "<=", ">=", "!=", "==", "<->")
+SYMBOLS = set("(){},:.|+-*/%=<>")
+MULTI = ("->", "<=", ">=", "!=", "==")
 
 
 def _indent_width(prefix: str) -> int:
@@ -67,10 +67,10 @@ def _convert_token(token) -> Token:  # noqa: ANN001
         value = value[1:].strip()
     elif typ == "STRING":
         value = _string_value(value)
-    elif typ in {"ARROW", "LE", "GE", "NE", "EQEQ", "BIARROW"}:
+    elif typ in {"ARROW", "LE", "GE", "NE", "EQEQ"}:
         typ = "OP"
     elif typ in {
-        "LPAREN", "RPAREN", "LBRACE", "RBRACE", "LBRACK", "RBRACK", "COMMA", "COLON", "DOT",
+        "LPAREN", "RPAREN", "LBRACE", "RBRACE", "COMMA", "COLON", "DOT",
         "BAR", "PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "EQ", "LT", "GT", "UNDERSCORE",
     }:
         typ = "SYMBOL"

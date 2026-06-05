@@ -57,7 +57,6 @@ def test_format_expr_preserves_precedence_round_trip():
     for source in [
         "a * (b + c)",
         "(a or b) and c",
-        "(a implies b) implies c",
         "not (a and b)",
         "(a + b).field",
         "(a and b) eventually",
@@ -153,12 +152,6 @@ def test_single_quoted_literals_are_rejected():
         pass
     else:  # pragma: no cover - defensive
         raise AssertionError("single-quoted literal unexpectedly parsed")
-
-
-def test_parse_quantifier():
-    expr = parse_expr('forall pipe in pipes: pipe.length > 0 always')
-    assert isinstance(expr, A.QuantifierExpr)
-    assert expr.quantifier == "forall"
 
 
 def test_case_arms_must_be_indented_deeper_than_case_expression():

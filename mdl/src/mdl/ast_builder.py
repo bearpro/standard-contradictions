@@ -218,13 +218,13 @@ class AstBuilder(MDLVisitor):
         return A.EntityDecl(
             name=self.visit(ctx.nameToken()),
             type_annotation=self.visit(ctx.typeExpr()),
-            clauses=[self.visit(clause) for clause in ctx.entityClause()],
+            where=[self.visit(clause) for clause in ctx.entityClause()],
             line=line,
             column=column,
         )
 
-    def visitEntityClause(self, ctx: MDLParser.EntityClauseContext) -> tuple[str, A.Expr]:
-        return ("key" if ctx.KEY() else "where"), self.visit(ctx.expr())
+    def visitEntityClause(self, ctx: MDLParser.EntityClauseContext) -> A.Expr:
+        return self.visit(ctx.expr())
 
     def visitEventDecl(self, ctx: MDLParser.EventDeclContext) -> A.EventDecl:
         line, column = self.location(ctx)
@@ -357,15 +357,7 @@ class AstBuilder(MDLVisitor):
         return expr
 
     def visitImplication(self, ctx: MDLParser.ImplicationContext) -> A.Expr:
-        left = self.visit(ctx.iffExpr())
-        if ctx.implication():
-            token = ctx.getChild(1).symbol
-            line, column = self.token_location(token)
-            return A.BinaryOp(op=token.text, left=left, right=self.visit(ctx.implication()), line=line, column=column)
-        return left
-
-    def visitIffExpr(self, ctx: MDLParser.IffExprContext) -> A.Expr:
-        return self.left_assoc(ctx, ctx.orExpr())
+        return self.visit(ctx.orExpr())
 
     def visitOrExpr(self, ctx: MDLParser.OrExprContext) -> A.Expr:
         return self.left_assoc(ctx, ctx.andExpr())
@@ -404,7 +396,7 @@ class AstBuilder(MDLVisitor):
         return expr
 
     def visitUnary(self, ctx: MDLParser.UnaryContext) -> A.Expr:
-        if ctx.ifExpr() or ctx.letExpr() or ctx.matchExpr() or ctx.quantifierExpr() or ctx.postfix():
+        if ctx.ifExpr() or ctx.letExpr() or ctx.matchExpr() or ctx.postfix():
             return self.visit(ctx.getChild(0))
         token = ctx.getChild(0).symbol
         line, column = self.token_location(token)
@@ -454,18 +446,6 @@ class AstBuilder(MDLVisitor):
             column=column,
         )
 
-    def visitQuantifierExpr(self, ctx: MDLParser.QuantifierExprContext) -> A.QuantifierExpr:
-        line, column = self.location(ctx)
-        exprs = ctx.expr()
-        return A.QuantifierExpr(
-            quantifier=ctx.getChild(0).getText(),
-            pattern=self.visit(ctx.pattern()),
-            domain=self.visit(exprs[0]),
-            body=self.visit(exprs[1]),
-            line=line,
-            column=column,
-        )
-
     def visitPostfix(self, ctx: MDLParser.PostfixContext) -> A.Expr:
         expr = self.visit(ctx.primary())
         for suffix in ctx.postfixSuffix():
@@ -484,8 +464,6 @@ class AstBuilder(MDLVisitor):
                 expr = A.Call(func=expr, args=args, line=line, column=column)
             elif suffix.DOT():
                 expr = A.FieldAccess(target=expr, field=self.visit(suffix.nameToken()), line=line, column=column)
-            elif suffix.LBRACK():
-                expr = A.IndexAccess(target=expr, index=self.visit(suffix.expr()), line=line, column=column)
         return expr
 
     def visitRecordConstructorFields(self, ctx: MDLParser.RecordConstructorFieldsContext) -> list[tuple[str, A.Expr]]:

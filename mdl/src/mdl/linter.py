@@ -416,8 +416,8 @@ class SemanticChecker:
             self.check_type_expr(decl.type_annotation)
             self.terms[decl.name] = Symbol(decl.name, "entity", decl.type_annotation, decl)
             env: dict[str, A.TypeExpr | None] = {}
-            for kind, expr in decl.clauses:
-                self.check_expr(expr, env, expected=A.TypeRef(name="bool") if kind == "where" else None)
+            for expr in decl.where:
+                self.check_expr(expr, env, expected=A.TypeRef(name="bool"))
             return
         if isinstance(decl, A.EventDecl):
             for _, typ in decl.fields:
@@ -709,7 +709,7 @@ class SemanticChecker:
         type_params: set[str],
     ) -> A.TypeExpr:
         bool_type = A.TypeRef(name="bool")
-        if expr.op in {"and", "or", "implies", "->", "iff", "<->"}:
+        if expr.op in {"and", "or"}:
             self.check_expr(expr.left, env, expected=bool_type, type_params=type_params)
             self.check_expr(expr.right, env, expected=bool_type, type_params=type_params)
             return bool_type
@@ -797,14 +797,6 @@ class SemanticChecker:
         if name in self.constructors:
             return A.TypeRef(name=self.constructors[name][0])
         return None
-
-    def index_result_type(self, target_type: A.TypeExpr | None, index: A.Expr | None) -> A.TypeExpr | None:
-        if isinstance(target_type, A.TupleType) and isinstance(index, A.Literal) and index.kind == "int":
-            idx = int(index.value)
-            if 0 <= idx < len(target_type.items):
-                return target_type.items[idx]
-        item_type = self.collection_item_type(target_type)
-        return item_type
 
     def is_assignable(self, actual: A.TypeExpr, expected: A.TypeExpr) -> bool:
         actual_name = self.type_name(actual)
@@ -962,7 +954,7 @@ class SemanticChecker:
             if name and (name == "to_list" or name.endswith("strings.to_list")) and expr.args:
                 return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
         if isinstance(expr, A.BinaryOp):
-            if expr.op in {"and", "or", "implies", "->", "iff", "<->", "=", "!=", "<", "<=", ">", ">="}:
+            if expr.op in {"and", "or", "=", "!=", "<", "<=", ">", ">="}:
                 return A.TypeRef(name="bool")
             return self.infer_expr_type(expr.left, env)
         if isinstance(expr, A.UnaryOp):
@@ -977,7 +969,7 @@ class SemanticChecker:
             return A.TypeRef(name=expr.type_name)
         if isinstance(expr, A.TupleLiteral):
             return A.TupleType(items=[self.infer_expr_type(item, env) or A.TypeRef(name="unit") for item in expr.items])
-        if isinstance(expr, (A.TemporalUnary, A.TemporalBinary, A.QuantifierExpr)):
+        if isinstance(expr, (A.TemporalUnary, A.TemporalBinary)):
             return A.TypeRef(name="bool")
         return None
 
@@ -1261,8 +1253,6 @@ class Linter:
             return self.has_temporal_operator(expr.func) or any(self.has_temporal_operator(a) for a in expr.args)
         if isinstance(expr, A.FieldAccess):
             return self.has_temporal_operator(expr.target)
-        if isinstance(expr, A.IndexAccess):
-            return self.has_temporal_operator(expr.target) or self.has_temporal_operator(expr.index)
         if isinstance(expr, A.MatchExpr):
             return self.has_temporal_operator(expr.subject) or any(
                 self.has_temporal_operator(arm.guard) or self.has_temporal_operator_in_block(arm.body)
@@ -1270,8 +1260,6 @@ class Linter:
             )
         if isinstance(expr, A.LetExpr):
             return self.has_temporal_operator(expr.value) or self.has_temporal_operator(expr.body)
-        if isinstance(expr, A.QuantifierExpr):
-            return self.has_temporal_operator(expr.domain) or self.has_temporal_operator(expr.body)
         if isinstance(expr, A.TupleLiteral):
             return any(self.has_temporal_operator(i) for i in expr.items)
         if isinstance(expr, A.RecordConstructor):

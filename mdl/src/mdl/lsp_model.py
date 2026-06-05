@@ -169,14 +169,6 @@ class EditorSnapshot:
                 self.collect_expr_locals(arm.guard, local, symbols)
                 self.collect_block_locals(arm.body, local, symbols)
             return
-        if isinstance(expr, A.QuantifierExpr):
-            self.collect_expr_locals(expr.domain, env, symbols)
-            item_type = self.checker.collection_item_type(self.checker.infer_expr_type(expr.domain, env)) if self.checker else None
-            local = dict(env)
-            self.bind_pattern_symbols(expr.pattern, item_type, "parameter", symbols, expr)
-            self.bind_pattern_types(expr.pattern, item_type, local)
-            self.collect_expr_locals(expr.body, local, symbols)
-            return
         for child in self.child_exprs(expr):
             self.collect_expr_locals(child, env, symbols)
 
@@ -185,8 +177,6 @@ class EditorSnapshot:
             return [expr.func, *expr.args]
         if isinstance(expr, A.FieldAccess):
             return [expr.target]
-        if isinstance(expr, A.IndexAccess):
-            return [expr.target, expr.index]
         if isinstance(expr, A.BinaryOp):
             return [expr.left, expr.right]
         if isinstance(expr, A.UnaryOp):

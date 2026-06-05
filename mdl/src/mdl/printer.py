@@ -11,8 +11,6 @@ class PrettyPrinter:
 
     PREC_LOWEST = 0
     PREC_BINARY = {
-        "implies": (1, "right"), "->": (1, "right"),
-        "iff": (2, "left"), "<->": (2, "left"),
         "or": (3, "left"),
         "and": (4, "left"),
         "until": (5, "left"), "release": (5, "left"), "weak_until": (5, "left"),
@@ -147,11 +145,8 @@ class PrettyPrinter:
 
     def entity_decl(self, decl: A.EntityDecl) -> str:
         text = f"entity {decl.name}: {self.type_expr(decl.type_annotation)}"
-        for kind, expr in decl.clauses:
-            if kind == "key":
-                text += f" key ({self.expr(expr)})"
-            else:
-                text += f" where {self.expr(expr)}"
+        for expr in decl.where:
+            text += f" where {self.expr(expr)}"
         return text
 
     def event_decl(self, decl: A.EventDecl) -> str:
@@ -217,9 +212,6 @@ class PrettyPrinter:
         elif isinstance(expr, A.FieldAccess):
             text = f"{self.expr(expr.target, self.PREC_POSTFIX)}.{expr.field}"
             prec = self.PREC_POSTFIX
-        elif isinstance(expr, A.IndexAccess):
-            text = f"{self.expr(expr.target, self.PREC_POSTFIX)}[{self.expr(expr.index)}]"
-            prec = self.PREC_POSTFIX
         elif isinstance(expr, A.BinaryOp):
             prec, assoc = self.PREC_BINARY[expr.op]
             left_parent = prec + 1 if assoc == "right" else prec
@@ -260,7 +252,7 @@ class PrettyPrinter:
             if expr.position == "postfix":
                 operand_prec = self.PREC_POSTFIX_TEMPORAL if isinstance(
                     expr.operand,
-                    (A.IfExpr, A.LetExpr, A.MatchExpr, A.QuantifierExpr),
+                    (A.IfExpr, A.LetExpr, A.MatchExpr),
                 ) else self.PREC_LOWEST
                 text = f"{self.expr(expr.operand, operand_prec)} {expr.op}"
                 prec = self.PREC_POSTFIX_TEMPORAL
@@ -272,9 +264,6 @@ class PrettyPrinter:
             left_parent = prec if assoc == "left" else prec + 1
             right_parent = prec + 1 if assoc == "left" else prec
             text = f"{self.expr(expr.left, left_parent, 'left')} {expr.op} {self.expr(expr.right, right_parent, 'right')}"
-        elif isinstance(expr, A.QuantifierExpr):
-            text = f"{expr.quantifier} {self.pattern(expr.pattern)} in {self.expr(expr.domain)}: {self.expr(expr.body)}"
-            prec = self.PREC_LOWEST
         else:
             text = repr(expr)
             prec = self.PREC_ATOM

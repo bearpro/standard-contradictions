@@ -321,10 +321,6 @@ class LSPServer:
             local = dict(env)
             checker.bind_pattern(expr.pattern, local, checker.infer_expr_type(expr.value, env))
             return self.local_reference_type_in_expr(checker, expr.body, name, line, local) or checker.infer_name_type(name, local)
-        if isinstance(expr, A.QuantifierExpr) and expr.line <= line:
-            local = dict(env)
-            checker.bind_pattern(expr.pattern, local, checker.collection_item_type(checker.infer_expr_type(expr.domain, env)))
-            return self.local_reference_type_in_expr(checker, expr.body, name, line, local) or checker.infer_name_type(name, local)
         return checker.infer_name_type(name, env)
 
     def record_constructor_completion_target(self, prefix: str) -> str | None:

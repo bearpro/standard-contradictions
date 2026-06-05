@@ -71,8 +71,6 @@ class Runtime:
             if isinstance(target, dict):
                 return target[expr.field]
             return getattr(target, expr.field)
-        if isinstance(expr, A.IndexAccess):
-            return self.eval_expr(expr.target, env)[self.eval_expr(expr.index, env)]
         if isinstance(expr, A.UnaryOp):
             value = self.eval_expr(expr.operand, env)
             if expr.op == "not":
@@ -99,17 +97,7 @@ class Runtime:
             return self.eval_expr(expr.operand, env)
         if isinstance(expr, A.TemporalBinary):
             raise RuntimeError("temporal binary operators cannot be evaluated by the point-wise runtime")
-        if isinstance(expr, A.QuantifierExpr):
-            domain = self.eval_expr(expr.domain, env)
-            if expr.quantifier == "forall":
-                return all(self.eval_quantified_body(expr, item, env) for item in domain)
-            return any(self.eval_quantified_body(expr, item, env) for item in domain)
         raise RuntimeError(f"unsupported expression {expr!r}")
-
-    def eval_quantified_body(self, expr: A.QuantifierExpr, item: Any, env: dict[str, Any]) -> Any:
-        local = dict(env)
-        self.bind_pattern(expr.pattern, item, local)
-        return self.eval_expr(expr.body, local)
 
     def eval_binary(self, expr: A.BinaryOp, env: dict[str, Any]) -> Any:
         if expr.op == "and":
@@ -140,10 +128,6 @@ class Runtime:
             return left / right
         if expr.op == "%":
             return left % right
-        if expr.op in {"implies", "->"}:
-            return (not bool(left)) or bool(right)
-        if expr.op in {"iff", "<->"}:
-            return bool(left) == bool(right)
         raise RuntimeError(f"unsupported binary operator {expr.op!r}")
 
     def call(self, func_name: str, args: list[Any], env: dict[str, Any]) -> Any:

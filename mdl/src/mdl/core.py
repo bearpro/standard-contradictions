@@ -20,10 +20,6 @@ TEMPORAL_OPS = {
 BOOL_OPS = {
     "and": "and",
     "or": "or",
-    "implies": "implies",
-    "->": "implies",
-    "iff": "iff",
-    "<->": "iff",
 }
 
 
@@ -85,7 +81,7 @@ class CoreTranslator:
                 core["entities"].append({
                     "name": decl.name,
                     "type": self.type_expr(decl.type_annotation),
-                    "clauses": [(kind, self.term(expr)) for kind, expr in decl.clauses],
+                    "where": [self.term(expr) for expr in decl.where],
                     "annotations": decl.annotations,
                 })
             elif isinstance(decl, A.EventDecl):
@@ -147,13 +143,6 @@ class CoreTranslator:
             return {"op": "not", "arg": self.temporal(expr.operand)}
         if isinstance(expr, A.BinaryOp) and expr.op in BOOL_OPS:
             return {"op": BOOL_OPS[expr.op], "left": self.temporal(expr.left), "right": self.temporal(expr.right)}
-        if isinstance(expr, A.QuantifierExpr):
-            return {
-                "op": expr.quantifier,
-                "pattern": self.printer.pattern(expr.pattern),
-                "domain": self.term(expr.domain),
-                "body": self.temporal(expr.body),
-            }
         if isinstance(expr, A.Literal) and expr.kind == "bool":
             return {"op": "true" if expr.value else "false"}
         if isinstance(expr, A.Name) and expr.name == "last":
@@ -200,8 +189,6 @@ class CoreTranslator:
             return {"kind": "call", "func": self.term(expr.func), "args": [self.term(a) for a in expr.args]}
         if isinstance(expr, A.FieldAccess):
             return {"kind": "field", "target": self.term(expr.target), "field": expr.field}
-        if isinstance(expr, A.IndexAccess):
-            return {"kind": "index", "target": self.term(expr.target), "index": self.term(expr.index)}
         if isinstance(expr, A.BinaryOp):
             return {"kind": "binary", "op": expr.op, "left": self.term(expr.left), "right": self.term(expr.right)}
         if isinstance(expr, A.UnaryOp):
