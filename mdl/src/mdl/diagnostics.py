@@ -12,6 +12,8 @@ class Diagnostic:
     severity: str = "error"  # error | warning | information
     code: str | None = None
     path: str | None = None
+    end_line: int | None = None
+    end_column: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = {
@@ -20,6 +22,10 @@ class Diagnostic:
             "column": self.column,
             "severity": self.severity,
         }
+        if self.end_line is not None:
+            data["end_line"] = self.end_line
+        if self.end_column is not None:
+            data["end_column"] = self.end_column
         if self.code:
             data["code"] = self.code
         if self.path:
@@ -30,10 +36,12 @@ class Diagnostic:
         severity_map = {"error": 1, "warning": 2, "information": 3, "hint": 4}
         line = max(0, self.line - 1)
         col = max(0, self.column - 1)
+        end_line = max(0, (self.end_line if self.end_line is not None else self.line) - 1)
+        end_col = max(0, (self.end_column if self.end_column is not None else self.column + 1) - 1)
         return {
             "range": {
                 "start": {"line": line, "character": col},
-                "end": {"line": line, "character": col + 1},
+                "end": {"line": end_line, "character": end_col},
             },
             "severity": severity_map.get(self.severity, 1),
             "source": "mdl",
@@ -58,6 +66,8 @@ class ParseError(MDLError):
             self.message,
             line=self.line,
             column=self.column,
+            end_line=self.line,
+            end_column=self.column + 1,
             severity="error",
             code="parse-error",
             path=path,

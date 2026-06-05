@@ -8,6 +8,7 @@ from typing import Any, BinaryIO
 from . import ast as A
 from .lexer import KEYWORDS
 from .linter import ImportResolver, SemanticChecker, lint_source
+from .lsp_model import EditorSnapshot, SEMANTIC_TOKEN_MODIFIERS, SEMANTIC_TOKEN_TYPES
 from .parser import ParseError, parse
 
 
@@ -80,6 +81,16 @@ class LSPServer:
                     "completionProvider": {
                         "triggerCharacters": [".", ":", " "],
                     },
+                    "documentSymbolProvider": True,
+                    "hoverProvider": True,
+                    "definitionProvider": True,
+                    "semanticTokensProvider": {
+                        "legend": {
+                            "tokenTypes": SEMANTIC_TOKEN_TYPES,
+                            "tokenModifiers": SEMANTIC_TOKEN_MODIFIERS,
+                        },
+                        "full": True,
+                    },
                 },
                 "serverInfo": {"name": "mdl", "version": "0.1.1"},
             })
@@ -117,8 +128,45 @@ class LSPServer:
                     uri=uri,
                 ),
             )
+        elif method == "textDocument/documentSymbol":
+            doc = params.get("textDocument", {})
+            uri = doc.get("uri", "")
+            self.response(id_, self.snapshot(uri).document_symbols())
+        elif method == "textDocument/hover":
+            doc = params.get("textDocument", {})
+            uri = doc.get("uri", "")
+            position = params.get("position", {})
+            self.response(
+                id_,
+                self.snapshot(uri).hover(
+                    int(position.get("line", 0)),
+                    int(position.get("character", 0)),
+                ),
+            )
+        elif method == "textDocument/definition":
+            doc = params.get("textDocument", {})
+            uri = doc.get("uri", "")
+            position = params.get("position", {})
+            self.response(
+                id_,
+                self.snapshot(uri).definition(
+                    int(position.get("line", 0)),
+                    int(position.get("character", 0)),
+                ),
+            )
+        elif method == "textDocument/semanticTokens/full":
+            doc = params.get("textDocument", {})
+            uri = doc.get("uri", "")
+            self.response(id_, self.snapshot(uri).semantic_tokens())
+        elif method == "mdl/modelSummary":
+            doc = params.get("textDocument", {})
+            uri = doc.get("uri", "")
+            self.response(id_, self.snapshot(uri).model_summary())
         elif id_ is not None:
             self.response(id_, error={"code": -32601, "message": f"unsupported method {method}"})
+
+    def snapshot(self, uri: str) -> EditorSnapshot:
+        return EditorSnapshot(self.documents.get(uri, ""), uri, self.documents)
 
     def publish_diagnostics(self, uri: str, text: str) -> None:
         diagnostics = [d.to_lsp() for d in lint_source(text, path=uri, documents=self.documents)]

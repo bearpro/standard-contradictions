@@ -13,9 +13,11 @@ class Token:
     value: str
     line: int
     column: int
+    end_line: int = 0
+    end_column: int = 0
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
-        return f"Token({self.type!r}, {self.value!r}, {self.line}:{self.column})"
+        return f"Token({self.type!r}, {self.value!r}, {self.line}:{self.column}-{self.end_line}:{self.end_column})"
 
 
 KEYWORDS = {
@@ -72,7 +74,9 @@ def _convert_token(token) -> Token:  # noqa: ANN001
         "BAR", "PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "EQ", "LT", "GT", "SEMI", "UNDERSCORE",
     }:
         typ = "SYMBOL"
-    return Token(typ, value, token.line, token.column + 1)
+    text = token.text or value or ""
+    end_column = token.column + max(1, len(text)) + 1
+    return Token(typ, value, token.line, token.column + 1, token.line, end_column)
 
 
 def _string_value(text: str) -> str:

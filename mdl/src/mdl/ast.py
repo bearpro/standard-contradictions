@@ -8,6 +8,8 @@ from typing import Any
 class Node:
     line: int = 0
     column: int = 0
+    end_line: int = 0
+    end_column: int = 0
 
 
 # ---------------------------

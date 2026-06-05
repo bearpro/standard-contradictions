@@ -159,10 +159,57 @@ def test_lsp_lineq_rat_diagnostics_and_pattern_field_completions():
     assert labels(completion_at(text, server, "((b).", uri)) >= {"coef", "var"}
 
 
+def test_lsp_document_symbols_hover_definition_semantic_tokens_and_summary():
+    source = """module pipe
+
+@domain pipe
+type Pipe = { length: rat, radius: rat }
+entity pipe: Pipe
+rule O positive: pipe.length > 0 always
+"""
+    uri = "file:///tmp/pipe.mdl"
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    symbols = snapshot.document_symbols()
+    assert symbols[0]["name"] == "pipe"
+    assert {child["name"] for child in symbols[0]["children"]} >= {"Pipe", "pipe", "positive"}
+    assert symbols[0]["children"][0]["selectionRange"]["start"]["character"] == len("type ")
+
+    hover_line, hover_col = position_of(source, "pipe.length")
+    hover = snapshot.hover(hover_line, hover_col)
+    assert hover is not None
+    assert "**entity** `pipe`" in hover["contents"]["value"]
+    assert "`Pipe`" in hover["contents"]["value"]
+
+    definition = snapshot.definition(hover_line, hover_col)
+    assert definition is not None
+    assert definition["range"]["start"]["line"] == 4
+    assert definition["range"]["start"]["character"] == 0
+
+    semantic = snapshot.semantic_tokens()
+    assert semantic["data"]
+
+    summary = snapshot.model_summary()
+    assert summary["module"] == "pipe"
+    assert summary["core"]["rules"][0]["name"] == "positive"
+    assert "atoms" in summary["core"]
+
+
 def completion_at(text: str, server: LSPServer, needle: str, uri: str):
     lines = text.splitlines()
     for line_no, line in enumerate(lines):
         column = line.find(needle)
         if column >= 0:
             return server.completion_items(text, line_no, column + len(needle), uri=uri)
+    raise AssertionError(f"needle not found: {needle!r}")
+
+
+def position_of(text: str, needle: str):
+    lines = text.splitlines()
+    for line_no, line in enumerate(lines):
+        column = line.find(needle)
+        if column >= 0:
+            return line_no, column
     raise AssertionError(f"needle not found: {needle!r}")

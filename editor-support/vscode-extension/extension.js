@@ -57,6 +57,47 @@ async function restartClient() {
   }
 }
 
+async function requestModelSummary() {
+  if (!client) {
+    vscode.window.showErrorMessage("MDL language server is not running.");
+    return undefined;
+  }
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.languageId !== "mdl") {
+    vscode.window.showErrorMessage("Open an MDL document first.");
+    return undefined;
+  }
+  return client.sendRequest("mdl/modelSummary", {
+    textDocument: { uri: editor.document.uri.toString() },
+  });
+}
+
+async function showJsonDocument(title, payload) {
+  if (payload === undefined) {
+    return;
+  }
+  const document = await vscode.workspace.openTextDocument({
+    language: "json",
+    content: JSON.stringify(payload, null, 2),
+  });
+  await vscode.window.showTextDocument(document, { preview: false });
+}
+
+async function showModelSummary() {
+  const summary = await requestModelSummary();
+  await showJsonDocument("MDL Model Summary", summary);
+}
+
+async function showCoreTraceability() {
+  const summary = await requestModelSummary();
+  await showJsonDocument("MDL Core Traceability", summary ? summary.core : undefined);
+}
+
+async function showAlignments() {
+  const summary = await requestModelSummary();
+  await showJsonDocument("MDL Alignments", summary && summary.core ? summary.core.alignments : undefined);
+}
+
 function startClient() {
   return restartClient().catch((error) => {
     const message = error && error.message ? error.message : String(error);
@@ -67,6 +108,9 @@ function startClient() {
 function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand("mdl.restartLanguageServer", startClient),
+    vscode.commands.registerCommand("mdl.showModelSummary", showModelSummary),
+    vscode.commands.registerCommand("mdl.showCoreTraceability", showCoreTraceability),
+    vscode.commands.registerCommand("mdl.showAlignments", showAlignments),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("mdl.lsp")) {
         startClient();

@@ -47,7 +47,7 @@ func add(a: Complex, b: Complex) -> Complex:
 
 def without_locations(value):
     if isinstance(value, dict):
-        return {k: without_locations(v) for k, v in value.items() if k not in {"line", "column"}}
+        return {k: without_locations(v) for k, v in value.items() if k not in {"line", "column", "end_line", "end_column"}}
     if isinstance(value, list):
         return [without_locations(item) for item in value]
     return value
@@ -206,6 +206,28 @@ open std.collections
 
     assert module.imports[0].path == "./pipe.mdl"
     assert module.opens[0].module == "std.collections"
+
+
+def test_parse_nodes_have_antlr_backed_end_spans():
+    module = parse("""module spans
+
+type Pipe = { length: rat, radius: rat }
+entity pipe: Pipe
+rule O ok: pipe.length > 0 always
+""")
+
+    assert module.line == 1
+    assert module.column == len("module ") + 1
+    assert module.end_line == 5
+    assert module.end_column == len("rule O ok: pipe.length > 0 always") + 1
+
+    type_decl = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
+    assert type_decl.end_line == 3
+    assert type_decl.end_column == len("type Pipe = { length: rat, radius: rat }") + 1
+
+    rule = next(decl for decl in module.declarations if isinstance(decl, A.RuleDecl))
+    assert rule.body is not None
+    assert rule.body.end_column == len("rule O ok: pipe.length > 0 always") + 1
 
 
 def test_hash_comments_are_supported():

@@ -7,6 +7,7 @@ from typing import Any
 from antlr4.tree.Tree import TerminalNode
 
 from . import ast as A
+from ._antlr.MDLLexer import MDLLexer
 from ._antlr.MDLParser import MDLParser
 from ._antlr.MDLVisitor import MDLVisitor
 from .diagnostics import ParseError
@@ -14,6 +15,7 @@ from .names import is_qualified, local_name
 
 
 TEMPORAL_BINARY = {"until", "release", "weak_until"}
+LAYOUT_TOKEN_TYPES = {MDLParser.INDENT, MDLParser.DEDENT, MDLLexer.NEWLINE, -1}
 
 
 class AstBuilder(MDLVisitor):
@@ -21,12 +23,54 @@ class AstBuilder(MDLVisitor):
         super().__init__()
         self._anonymous_rule_counter = 0
 
+    def visit(self, tree: Any) -> Any:
+        result = super().visit(tree)
+        if isinstance(result, A.Node):
+            self.apply_span(result, tree)
+        return result
+
     def location(self, ctx: Any) -> tuple[int, int]:
         token = ctx.start
         return int(token.line or 1), int(token.column or 0) + 1
 
     def token_location(self, token: Any) -> tuple[int, int]:
         return int(token.line or 1), int(token.column or 0) + 1
+
+    def apply_span(self, node: A.Node, ctx: Any, *, overwrite_end: bool = False) -> A.Node:
+        if not overwrite_end and node.end_line and node.end_column:
+            return node
+        token = self.last_source_token(ctx) or getattr(ctx, "stop", None) or getattr(ctx, "start", None)
+        if token is None:
+            return node
+        node.end_line, node.end_column = self.token_end_location(token)
+        return node
+
+    def token_end_location(self, token: Any) -> tuple[int, int]:
+        text = getattr(token, "text", None)
+        if text is None:
+            start = getattr(token, "start", -1)
+            stop = getattr(token, "stop", -1)
+            text_length = max(1, int(stop) - int(start) + 1) if start >= 0 and stop >= start else 1
+        else:
+            text_length = max(1, len(str(text)))
+        return int(token.line or 1), int(token.column or 0) + text_length + 1
+
+    def last_source_token(self, tree: Any) -> Any | None:
+        if isinstance(tree, TerminalNode):
+            token = tree.symbol
+            return token if self.is_source_token(token) else None
+        children = getattr(tree, "children", None) or []
+        for child in reversed(children):
+            token = self.last_source_token(child)
+            if token is not None:
+                return token
+        token = getattr(tree, "stop", None)
+        return token if self.is_source_token(token) else None
+
+    def is_source_token(self, token: Any | None) -> bool:
+        if token is None:
+            return False
+        return int(getattr(token, "type", -1)) not in LAYOUT_TOKEN_TYPES
 
     def visitProgram(self, ctx: MDLParser.ProgramContext) -> A.Module:
         module = self.visit(ctx.moduleDecl())
@@ -40,6 +84,7 @@ class AstBuilder(MDLVisitor):
                 module.opens.append(value)
             else:
                 module.declarations.append(value)
+        self.apply_span(module, ctx, overwrite_end=True)
         return module
 
     def visitTopItem(self, ctx: MDLParser.TopItemContext) -> tuple[list[str], Any]:
