@@ -261,8 +261,6 @@ class LSPServer:
                 typ = self.local_reference_type_in_expr(checker, decl.value, name, line, {})
             elif isinstance(decl, A.FactDecl):
                 typ = self.local_reference_type_in_expr(checker, decl.value, name, line, {})
-            elif isinstance(decl, A.AssertDecl):
-                typ = self.local_reference_type_in_expr(checker, decl.expr, name, line, {})
             elif isinstance(decl, A.RuleDecl):
                 typ = (
                     self.local_reference_type_in_expr(checker, decl.antecedent, name, line, {})

@@ -379,7 +379,7 @@ def test_solve_std_collections_as_ordinary_adts(tmp_path):
     assert entities["stdlib_adts.lookup"]["constructor"] == "Put"
 
 
-def test_solve_email_uses_recursive_runtime_and_ignores_assert_align(tmp_path):
+def test_solve_email_uses_recursive_runtime_and_ignores_declarative_align(tmp_path):
     email = write_module(tmp_path, "email.mdl", EMAIL_SOURCE)
     payload = solve_paths([email], SolveOptions(horizon=2))
 

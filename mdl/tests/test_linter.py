@@ -225,11 +225,10 @@ module bad
 entity x: int
 
 rule O bad_rule: x always
-assert x
 fact x
 ''')
 
-    assert sum(1 for d in diagnostics if d.code == "non-bool-expression") >= 3
+    assert sum(1 for d in diagnostics if d.code == "non-bool-expression") >= 2
 
 
 def test_linter_reports_if_type_errors():

@@ -38,4 +38,4 @@ The runtime is point-wise and deterministic. It evaluates ordinary pure function
 
 ## Solver scope
 
-The solver encodes a finite trace horizon into Z3. It accepts multiple modules, resolves imports among the input modules, ignores `assert` and declarative `align` entries, and treats alignment modules as ordinary rules. Use `--horizon K` for one bounded check or `--max-horizon N` to search `1..N`.
+The solver encodes a finite trace horizon into Z3. It accepts multiple modules, resolves imports among the input modules, ignores declarative `align` entries, and treats alignment modules as ordinary rules. Use `--horizon K` for one bounded check or `--max-horizon N` to search `1..N`.

@@ -24,7 +24,7 @@ KEYWORDS = {
     "module", "import", "open",
     "type", "val", "let", "func",
     "entity", "event", "rule", "strict", "defeasible", "defeater",
-    "priority", "override", "fact", "assert", "align", "to",
+    "priority", "override", "fact", "align", "to",
     "equivalent", "broader", "narrower", "related",
     "if", "then", "else", "case", "when", "in",
     "true", "false", "last",

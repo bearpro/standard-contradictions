@@ -437,10 +437,6 @@ class SemanticChecker:
                 expected = A.TypeRef(name="bool")
             self.check_expr(decl.value, {}, expected=expected)
             return
-        if isinstance(decl, A.AssertDecl):
-            self.check_expr(decl.expr, {}, expected=A.TypeRef(name="bool"))
-            return
-
     def add_constructors(self, decl: A.TypeDecl) -> None:
         if not isinstance(decl.definition, A.SumType):
             return
@@ -1224,7 +1220,7 @@ class Linter:
                     ))
                 if self.has_temporal_operator_in_block(decl.body):
                     diagnostics.append(Diagnostic(
-                        f"function {decl.name!r} contains temporal operators; temporal logic belongs in rules/asserts",
+                        f"function {decl.name!r} contains temporal operators; temporal logic belongs in rules",
                         decl.line or 1, decl.column or 1,
                         severity="error", code="temporal-in-function", path=path,
                     ))

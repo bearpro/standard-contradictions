@@ -189,11 +189,6 @@ class MDLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by MDLParser#assertDecl.
-    def visitAssertDecl(self, ctx:MDLParser.AssertDeclContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by MDLParser#alignDecl.
     def visitAlignDecl(self, ctx:MDLParser.AlignDeclContext):
         return self.visitChildren(ctx)

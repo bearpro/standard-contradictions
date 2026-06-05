@@ -50,7 +50,6 @@ module.exports = grammar({
       $.rule_decl,
       $.priority_decl,
       $.fact_decl,
-      $.assert_decl,
       $.align_decl,
     ),
 
@@ -117,7 +116,6 @@ module.exports = grammar({
 
     priority_decl: $ => seq(choice('priority', 'override'), $.qualified_name, repeat(seq('>', $.qualified_name))),
     fact_decl: $ => seq('fact', choice(seq(field('target', $.identifier), '=', $.expr), $.expr)),
-    assert_decl: $ => seq('assert', $.expr),
     align_decl: $ => seq(
       'align',
       field('subject', $.qualified_name),

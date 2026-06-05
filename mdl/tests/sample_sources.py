@@ -36,8 +36,6 @@ rule F malformed_email_received: (email_received(email) and not email_is_correct
 align email to <urn:ietf:rfc:2822:addr-spec> equivalent
 
 fact email = "ti@example.org"
-
-assert email_is_correct(email) eventually
 """
 
 PIPE_SOURCE = """

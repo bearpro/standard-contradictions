@@ -39,7 +39,7 @@
     "keywords": {
       "patterns": [
         {"name": "keyword.control.mdl", "match": "\\b(if|then|else|case|when|let|in)\\b"},
-        {"name": "keyword.declaration.mdl", "match": "\\b(module|import|open|type|val|func|entity|event|rule|strict|defeasible|defeater|priority|override|fact|assert|align|to)\\b"},
+        {"name": "keyword.declaration.mdl", "match": "\\b(module|import|open|type|val|func|entity|event|rule|strict|defeasible|defeater|priority|override|fact|align|to)\\b"},
         {"name": "keyword.operator.temporal.mdl", "match": "\\b(always|eventually|next|weak_next|never|until|release|weak_until|last)\\b"},
         {"name": "keyword.operator.deontic.mdl", "match": "\\b(O|P|F)\\b"},
         {"name": "constant.language.boolean.mdl", "match": "\\b(true|false)\\b"}

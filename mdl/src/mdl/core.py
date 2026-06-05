@@ -50,7 +50,6 @@ class CoreTranslator:
             "rules": [],
             "priorities": [],
             "facts": [],
-            "asserts": [],
             "alignments": [],
             "atoms": {},
         }
@@ -95,8 +94,6 @@ class CoreTranslator:
                 core["priorities"].append({"chain": decl.chain, "annotations": decl.annotations})
             elif isinstance(decl, A.FactDecl):
                 core["facts"].append({"target": decl.target, "value": self.term(decl.value), "annotations": decl.annotations})
-            elif isinstance(decl, A.AssertDecl):
-                core["asserts"].append({"formula": self.temporal(decl.expr), "annotations": decl.annotations})
             elif isinstance(decl, A.AlignDecl):
                 core["alignments"].append({
                     "subject": decl.subject,

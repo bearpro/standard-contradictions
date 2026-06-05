@@ -284,10 +284,6 @@ class AstBuilder(MDLVisitor):
             column=column,
         )
 
-    def visitAssertDecl(self, ctx: MDLParser.AssertDeclContext) -> A.AssertDecl:
-        line, column = self.location(ctx)
-        return A.AssertDecl(expr=self.visit(ctx.expr()), line=line, column=column)
-
     def visitAlignDecl(self, ctx: MDLParser.AlignDeclContext) -> A.AlignDecl:
         line, column = self.location(ctx)
         return A.AlignDecl(

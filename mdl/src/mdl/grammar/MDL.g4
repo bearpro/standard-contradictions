@@ -46,7 +46,6 @@ declaration
     | ruleDecl
     | priorityDecl
     | factDecl
-    | assertDecl
     | alignDecl
     ;
 
@@ -166,10 +165,6 @@ priorityDecl
 
 factDecl
     : FACT (nameToken EQ)? expr
-    ;
-
-assertDecl
-    : ASSERT expr
     ;
 
 alignDecl
@@ -384,7 +379,6 @@ DEFEATER: 'defeater';
 PRIORITY: 'priority';
 OVERRIDE: 'override';
 FACT: 'fact';
-ASSERT: 'assert';
 ALIGN: 'align';
 TO: 'to';
 EQUIVALENT: 'equivalent';

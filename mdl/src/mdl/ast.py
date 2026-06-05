@@ -289,11 +289,6 @@ class FactDecl(Declaration):
 
 
 @dataclass
-class AssertDecl(Declaration):
-    expr: Expr | None = None
-
-
-@dataclass
 class AlignDecl(Declaration):
     subject: str = ""
     target: str = ""

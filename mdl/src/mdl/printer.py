@@ -89,8 +89,6 @@ class PrettyPrinter:
             text = self.priority_decl(decl)
         elif isinstance(decl, A.FactDecl):
             text = self.fact_decl(decl)
-        elif isinstance(decl, A.AssertDecl):
-            text = self.assert_decl(decl)
         elif isinstance(decl, A.AlignDecl):
             text = self.align_decl(decl)
         else:  # pragma: no cover
@@ -172,9 +170,6 @@ class PrettyPrinter:
         if decl.target:
             return f"fact {decl.target} = {self.expr(decl.value)}"
         return f"fact {self.expr(decl.value)}"
-
-    def assert_decl(self, decl: A.AssertDecl) -> str:
-        return f"assert {self.expr(decl.expr)}"
 
     def align_decl(self, decl: A.AlignDecl) -> str:
         return f"align {decl.subject} to {decl.target} {decl.kind}"
