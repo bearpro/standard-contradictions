@@ -110,6 +110,27 @@ def test_solve_defeasible_priority_resolves_conflict(tmp_path):
     assert payload["model"]["defeated_rules"] == ["ok.must"]
 
 
+def test_solve_compiles_implies_as_formula(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "implication.mdl",
+        """
+        module implication
+
+        entity trigger: bool
+        entity x: bool
+        rule O guarded: trigger implies x always
+        fact trigger = false
+        fact x = false
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["implication.x"] is False
+
+
 def test_solve_strict_rule_is_not_defeated(tmp_path):
     spec = write_module(
         tmp_path,

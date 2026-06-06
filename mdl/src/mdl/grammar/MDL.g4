@@ -183,7 +183,7 @@ temporalPostfix
     ;
 
 implication
-    : orExpr
+    : orExpr (IMPLIES implication)?
     ;
 
 orExpr
@@ -361,6 +361,7 @@ FALSE: 'false';
 LAST: 'last';
 AND: 'and';
 OR: 'or';
+IMPLIES: 'implies';
 NOT: 'not';
 ALWAYS: 'always';
 EVENTUALLY: 'eventually';

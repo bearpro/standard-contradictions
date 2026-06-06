@@ -15,6 +15,7 @@ from .type_inference import TypeInference
 
 
 PRIMITIVE_TYPES = {"bool", "int", "rat", "decimal", "string", "unit"}
+BOOL_CHAIN_OPS = {"and", "or", "implies"}
 BUILTIN_ROOTS: set[str] = set()
 BUILTIN_TERMS = {"last"}
 STDLIB_ENV = "MDL_STDLIB_PATH"
@@ -686,7 +687,7 @@ class SemanticChecker:
         type_params: set[str],
     ) -> A.TypeExpr:
         bool_type = A.TypeRef(name="bool")
-        if expr.op in {"and", "or"}:
+        if expr.op in {"and", "or", "implies"}:
             self.check_expr(expr.left, env, expected=bool_type, type_params=type_params)
             self.check_expr(expr.right, env, expected=bool_type, type_params=type_params)
             return bool_type
@@ -931,7 +932,7 @@ class SemanticChecker:
             if name and (name == "to_list" or name.endswith("strings.to_list")) and expr.args:
                 return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
         if isinstance(expr, A.BinaryOp):
-            if expr.op in {"and", "or", "=", "!=", "<", "<=", ">", ">="}:
+            if expr.op in {"and", "or", "implies", "=", "!=", "<", "<=", ">", ">="}:
                 return A.TypeRef(name="bool")
             return self.infer_expr_type(expr.left, env)
         if isinstance(expr, A.UnaryOp):
@@ -1110,6 +1111,7 @@ class Linter:
         diagnostics: list[Diagnostic] = []
         diagnostics.extend(self.check_duplicates(module, path))
         diagnostics.extend(SemanticChecker(module, path, resolver=ImportResolver(path, documents, stdlib_path)).check())
+        diagnostics.extend(self.check_boolean_parentheses(module, path))
         diagnostics.extend(self.check_rules(module, path))
         diagnostics.extend(self.check_functions(module, path))
         return diagnostics
@@ -1194,6 +1196,97 @@ class Linter:
                         severity="error", code="temporal-in-function", path=path,
                     ))
         return diagnostics
+
+    def check_boolean_parentheses(self, module: A.Module, path: str | None) -> list[Diagnostic]:
+        diagnostics: list[Diagnostic] = []
+        for decl in module.declarations:
+            if isinstance(decl, A.ValueDecl):
+                self.collect_boolean_parentheses_warnings(decl.value, diagnostics, path)
+            elif isinstance(decl, A.FuncDecl):
+                self.collect_boolean_parentheses_warnings_in_block(decl.body, diagnostics, path)
+            elif isinstance(decl, A.RuleDecl):
+                self.collect_boolean_parentheses_warnings(decl.antecedent, diagnostics, path)
+                self.collect_boolean_parentheses_warnings(decl.body, diagnostics, path)
+                self.collect_boolean_parentheses_warnings(decl.otherwise, diagnostics, path)
+            elif isinstance(decl, A.FactDecl):
+                self.collect_boolean_parentheses_warnings(decl.value, diagnostics, path)
+        return diagnostics
+
+    def collect_boolean_parentheses_warnings_in_block(
+        self,
+        block: A.Block | None,
+        diagnostics: list[Diagnostic],
+        path: str | None,
+    ) -> None:
+        if block is None:
+            return
+        for stmt in block.statements:
+            self.collect_boolean_parentheses_warnings(stmt.value, diagnostics, path)
+        self.collect_boolean_parentheses_warnings(block.result, diagnostics, path)
+
+    def collect_boolean_parentheses_warnings(
+        self,
+        expr: A.Expr | None,
+        diagnostics: list[Diagnostic],
+        path: str | None,
+    ) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, A.BinaryOp):
+            if expr.op in BOOL_CHAIN_OPS:
+                for child in (expr.left, expr.right):
+                    if self.needs_boolean_parentheses_warning(expr, child):
+                        diagnostics.append(Diagnostic(
+                            "use explicit parentheses around chained boolean expression",
+                            child.line or expr.line or 1,
+                            child.column or expr.column or 1,
+                            severity="warning",
+                            code="ambiguous-boolean-chain",
+                            path=path,
+                            end_line=child.end_line or None,
+                            end_column=child.end_column or None,
+                        ))
+            self.collect_boolean_parentheses_warnings(expr.left, diagnostics, path)
+            self.collect_boolean_parentheses_warnings(expr.right, diagnostics, path)
+        elif isinstance(expr, A.UnaryOp):
+            self.collect_boolean_parentheses_warnings(expr.operand, diagnostics, path)
+        elif isinstance(expr, A.TemporalUnary):
+            self.collect_boolean_parentheses_warnings(expr.operand, diagnostics, path)
+        elif isinstance(expr, A.TemporalBinary):
+            self.collect_boolean_parentheses_warnings(expr.left, diagnostics, path)
+            self.collect_boolean_parentheses_warnings(expr.right, diagnostics, path)
+        elif isinstance(expr, A.IfExpr):
+            for child in (expr.condition, expr.then_branch, expr.else_branch):
+                self.collect_boolean_parentheses_warnings(child, diagnostics, path)
+        elif isinstance(expr, A.Call):
+            self.collect_boolean_parentheses_warnings(expr.func, diagnostics, path)
+            for arg in expr.args:
+                self.collect_boolean_parentheses_warnings(arg, diagnostics, path)
+        elif isinstance(expr, A.FieldAccess):
+            self.collect_boolean_parentheses_warnings(expr.target, diagnostics, path)
+        elif isinstance(expr, A.MatchExpr):
+            self.collect_boolean_parentheses_warnings(expr.subject, diagnostics, path)
+            for arm in expr.arms:
+                self.collect_boolean_parentheses_warnings(arm.guard, diagnostics, path)
+                self.collect_boolean_parentheses_warnings_in_block(arm.body, diagnostics, path)
+        elif isinstance(expr, A.LetExpr):
+            self.collect_boolean_parentheses_warnings(expr.value, diagnostics, path)
+            self.collect_boolean_parentheses_warnings(expr.body, diagnostics, path)
+        elif isinstance(expr, A.TupleLiteral):
+            for item in expr.items:
+                self.collect_boolean_parentheses_warnings(item, diagnostics, path)
+        elif isinstance(expr, A.RecordConstructor):
+            for _, value in expr.fields:
+                self.collect_boolean_parentheses_warnings(value, diagnostics, path)
+
+    def needs_boolean_parentheses_warning(self, parent: A.BinaryOp, child: A.Expr | None) -> bool:
+        if not isinstance(child, A.BinaryOp):
+            return False
+        if getattr(child, "_mdl_parenthesized", False):
+            return False
+        if child.op not in BOOL_CHAIN_OPS:
+            return False
+        return parent.op == "implies" and child.op == "implies" or parent.op != child.op
 
     def has_temporal_operator_in_block(self, block: A.Block | None) -> bool:
         if block is None:

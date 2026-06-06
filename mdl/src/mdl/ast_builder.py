@@ -317,7 +317,12 @@ class AstBuilder(MDLVisitor):
         return expr
 
     def visitImplication(self, ctx: MDLParser.ImplicationContext) -> A.Expr:
-        return self.visit(ctx.orExpr())
+        expr = self.visit(ctx.orExpr())
+        if ctx.IMPLIES():
+            token = ctx.IMPLIES().symbol
+            line, column = self.token_location(token)
+            return A.BinaryOp(op="implies", left=expr, right=self.visit(ctx.implication()), line=line, column=column)
+        return expr
 
     def visitOrExpr(self, ctx: MDLParser.OrExprContext) -> A.Expr:
         return self.left_assoc(ctx, ctx.andExpr())
@@ -456,7 +461,9 @@ class AstBuilder(MDLVisitor):
             return A.Literal(value=None, kind="unit", line=line, column=column)
         if ctx.COMMA():
             return A.TupleLiteral(items=[self.visit(expr) for expr in exprs], line=line, column=column)
-        return self.visit(exprs[0])
+        expr = self.visit(exprs[0])
+        setattr(expr, "_mdl_parenthesized", True)
+        return expr
 
     def visitExprList(self, ctx: MDLParser.ExprListContext) -> list[A.Expr]:
         return [self.visit(expr) for expr in ctx.expr()]

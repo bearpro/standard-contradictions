@@ -21,5 +21,5 @@
   "always" "eventually" "next" "weak_next" "never" "until" "release" "weak_until"
 ] @keyword.operator
 [
-  "and" "or" "not"
+  "and" "or" "implies" "not"
 ] @operator

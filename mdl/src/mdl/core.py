@@ -20,6 +20,7 @@ TEMPORAL_OPS = {
 BOOL_OPS = {
     "and": "and",
     "or": "or",
+    "implies": "implies",
 }
 
 

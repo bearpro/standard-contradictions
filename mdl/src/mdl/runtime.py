@@ -104,6 +104,8 @@ class Runtime:
             return bool(self.eval_expr(expr.left, env)) and bool(self.eval_expr(expr.right, env))
         if expr.op == "or":
             return bool(self.eval_expr(expr.left, env)) or bool(self.eval_expr(expr.right, env))
+        if expr.op == "implies":
+            return (not bool(self.eval_expr(expr.left, env))) or bool(self.eval_expr(expr.right, env))
         left = self.eval_expr(expr.left, env)
         right = self.eval_expr(expr.right, env)
         if expr.op == "=":

@@ -237,6 +237,39 @@ fact x
     assert sum(1 for d in diagnostics if d.code == "non-bool-expression") >= 2
 
 
+def test_linter_checks_implies_operands_are_bool():
+    diagnostics = lint_source('''
+module bad
+
+entity x: int
+entity y: bool
+
+rule O bad_rule: x implies y always
+''')
+
+    assert any(d.code == "non-bool-expression" and "expected bool, got int" in d.message for d in diagnostics)
+
+
+def test_linter_warns_for_unparenthesized_boolean_chains():
+    diagnostics = lint_source('''
+module chains
+
+entity a: bool
+entity b: bool
+entity c: bool
+entity d: bool
+
+rule O implies_chain: a implies b implies c always
+rule O mixed_chain: a and b or c always
+rule O parenthesized: a and (b or c) always
+rule O same_op: a and b and c always
+''')
+
+    warnings = [d for d in diagnostics if d.code == "ambiguous-boolean-chain"]
+    assert len(warnings) == 2
+    assert all(d.severity == "warning" for d in warnings)
+
+
 def test_linter_reports_if_type_errors():
     diagnostics = lint_source('''
 module bad

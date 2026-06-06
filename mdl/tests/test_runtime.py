@@ -17,3 +17,11 @@ def test_runtime_record_fact_and_field_access():
     module = parse(PIPE_SOURCE)
     runtime = Runtime(module)
     assert runtime.eval_source_expr("pipe.length > 0") is True
+
+
+def test_runtime_evaluates_implies_with_short_circuit():
+    runtime = Runtime(parse("module truth\n"))
+
+    assert runtime.eval_source_expr("false implies missing") is True
+    assert runtime.eval_source_expr("true implies false") is False
+    assert runtime.eval_source_expr("true implies true") is True

@@ -798,12 +798,14 @@ class BoundedEncoder:
                 return z3.Not(self.until(A.UnaryOp(op="not", operand=expr.left), A.UnaryOp(op="not", operand=expr.right), scope, t, env))
         if isinstance(expr, A.UnaryOp) and expr.op == "not":
             return z3.Not(self.compile_formula(expr.operand, scope, t, env=env))
-        if isinstance(expr, A.BinaryOp) and expr.op in {"and", "or"}:
+        if isinstance(expr, A.BinaryOp) and expr.op in {"and", "or", "implies"}:
             left = self.compile_formula(expr.left, scope, t, env=env)
             right = self.compile_formula(expr.right, scope, t, env=env)
             if expr.op == "and":
                 return z3.And(left, right)
-            return z3.Or(left, right)
+            if expr.op == "or":
+                return z3.Or(left, right)
+            return z3.Implies(left, right)
         return self.as_bool(self.compile_expr(expr, scope, t, expected=BOOL, env=env))
 
     def until(self, left: A.Expr | None, right: A.Expr | None, scope: ModuleScope, t: int, env: dict[str, ZValue]) -> Any:
@@ -896,7 +898,7 @@ class BoundedEncoder:
         raise UnsupportedExpression(f"unsupported expression: {format_expr(expr)}")
 
     def binary_value(self, expr: A.BinaryOp, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
-        if expr.op in {"and", "or"}:
+        if expr.op in {"and", "or", "implies"}:
             return ZValue(BOOL, expr=self.compile_formula(expr, scope, t, env=env))
         left = self.compile_expr(expr.left, scope, t, env=env)
         right = self.compile_expr(expr.right, scope, t, expected=left.typ, env=env)

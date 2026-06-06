@@ -2,6 +2,7 @@
 // The authoritative parser for the toolkit lives in mdl/src/mdl/parser.py.
 
 const PREC = {
+  implies: 2,
   or: 3,
   and: 4,
   temporal: 5,
@@ -139,6 +140,7 @@ module.exports = grammar({
     temporal_postfix_expr: $ => prec.left(PREC.postfix_temporal, seq($.expr, choice('always', 'eventually', 'next', 'weak_next', 'never'))),
     unary_expr: $ => prec(PREC.prefix, seq(choice('not', '-'), $.expr)),
     binary_expr: $ => choice(
+      prec.right(PREC.implies, seq($.expr, 'implies', $.expr)),
       prec.left(PREC.or, seq($.expr, 'or', $.expr)),
       prec.left(PREC.and, seq($.expr, 'and', $.expr)),
       prec.left(PREC.temporal, seq($.expr, choice('until', 'release', 'weak_until'), $.expr)),

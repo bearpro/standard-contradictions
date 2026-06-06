@@ -19,3 +19,18 @@ def test_translate_email_rule_only_uses_entities_and_functions():
     core = translate(module)
     assert "events" not in core
     assert [rule["name"] for rule in core["rules"]] == ["email_addr_spec_correct"]
+
+
+def test_translate_implies_to_core_boolean_operator():
+    module = parse("""
+module implication
+
+entity a: bool
+entity b: bool
+rule O guarded: a implies b always
+""")
+    core = translate(module)
+    body = core["rules"][0]["body"]
+
+    assert body["op"] == "G"
+    assert body["arg"]["op"] == "implies"

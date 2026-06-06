@@ -47,6 +47,16 @@ def test_parse_temporal_postfix_grouped_atom():
     assert isinstance(expr.operand, A.BinaryOp)
 
 
+def test_parse_implies_is_right_associative_below_or():
+    expr = parse_expr("a or b implies c implies d")
+    assert isinstance(expr, A.BinaryOp)
+    assert expr.op == "implies"
+    assert isinstance(expr.left, A.BinaryOp)
+    assert expr.left.op == "or"
+    assert isinstance(expr.right, A.BinaryOp)
+    assert expr.right.op == "implies"
+
+
 def test_parse_record_constructor_syntax():
     module = parse("""
 module record
@@ -78,6 +88,8 @@ def test_format_expr_preserves_precedence_round_trip():
         "a * (b + c)",
         "(a or b) and c",
         "not (a and b)",
+        "a implies (b implies c)",
+        "(a and b) or c",
         "(a + b).field",
         "(a and b) eventually",
         "(if a then b else c) always",

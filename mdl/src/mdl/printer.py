@@ -10,7 +10,9 @@ class PrettyPrinter:
         self.indent = indent
 
     PREC_LOWEST = 0
+    BOOL_CHAIN_OPS = {"and", "or", "implies"}
     PREC_BINARY = {
+        "implies": (2, "right"),
         "or": (3, "left"),
         "and": (4, "left"),
         "until": (5, "left"), "release": (5, "left"), "weak_until": (5, "left"),
@@ -197,6 +199,8 @@ class PrettyPrinter:
             prec, assoc = self.PREC_BINARY[expr.op]
             left_parent = prec + 1 if assoc == "right" else prec
             right_parent = prec if assoc == "right" else prec + 1
+            left_parent = self.boolean_child_parent_prec(expr, expr.left, left_parent)
+            right_parent = self.boolean_child_parent_prec(expr, expr.right, right_parent)
             text = f"{self.expr(expr.left, left_parent, 'left')} {expr.op} {self.expr(expr.right, right_parent, 'right')}"
         elif isinstance(expr, A.UnaryOp):
             text = f"{expr.op} {self.expr(expr.operand, self.PREC_PREFIX)}"
@@ -251,6 +255,16 @@ class PrettyPrinter:
         if prec < parent_prec:
             return f"({text})"
         return text
+
+    def boolean_child_parent_prec(self, parent: A.BinaryOp, child: A.Expr | None, default: int) -> int:
+        if not isinstance(child, A.BinaryOp):
+            return default
+        if parent.op not in self.BOOL_CHAIN_OPS or child.op not in self.BOOL_CHAIN_OPS:
+            return default
+        if parent.op == "implies" and child.op == "implies" or parent.op != child.op:
+            child_prec, _ = self.PREC_BINARY[child.op]
+            return max(default, child_prec + 1)
+        return default
 
     def pattern(self, pattern: A.Pattern | None) -> str:
         if pattern is None:

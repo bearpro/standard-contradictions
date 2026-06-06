@@ -93,7 +93,7 @@ def test_lsp_completes_language_keywords():
     items = LSPServer().completion_items(source, 2, 0)
     by_label = {item["label"]: item for item in items}
 
-    assert labels(items) >= {"entity", "rule", "when", "always"}
+    assert labels(items) >= {"entity", "rule", "when", "always", "implies"}
     assert by_label["rule"]["kind"] == 14
 
 

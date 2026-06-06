@@ -27,7 +27,7 @@ KEYWORDS = {
     "priority", "override", "fact",
     "if", "then", "else", "case", "when", "in",
     "true", "false", "last",
-    "and", "or", "not",
+    "and", "or", "implies", "not",
     "always", "eventually", "next", "weak_next", "never", "until", "release", "weak_until",
     "otherwise", "O", "P", "F",
 }

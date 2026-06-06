@@ -253,7 +253,7 @@ class TypeInference:
         return expected or typ.ret
 
     def infer_binary(self, expr: A.BinaryOp, env: dict[str, Scheme]) -> Type:
-        if expr.op in {"and", "or"}:
+        if expr.op in {"and", "or", "implies"}:
             self.expect(self.infer_expr(expr.left, env), TyCon("bool"), expr.left or expr)
             self.expect(self.infer_expr(expr.right, env), TyCon("bool"), expr.right or expr)
             return TyCon("bool")
