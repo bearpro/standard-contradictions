@@ -1162,12 +1162,19 @@ class Linter:
                     decl.line or 1, decl.column or 1,
                     severity="warning", code="anonymous-rule", path=path,
                 ))
-            if decl.body is not None and not self.has_temporal_operator(decl.body):
-                diagnostics.append(Diagnostic(
-                    f"rule {decl.name!r} has no explicit temporal operator; consider `initially`, `always`, or `eventually`",
-                    decl.line or 1, decl.column or 1,
-                    severity="warning", code="rule-without-temporal", path=path,
-                ))
+            if decl.body is not None:
+                for expr in self.expressions_without_explicit_temporal(decl.body):
+                    line, column = self.expr_start_position(expr)
+                    diagnostics.append(Diagnostic(
+                        f"expression in rule {decl.name!r} has no explicit temporal operator; assuming `initially`",
+                        line or decl.line or 1,
+                        column or decl.column or 1,
+                        severity="warning",
+                        code="rule-without-temporal",
+                        path=path,
+                        end_line=expr.end_line or None,
+                        end_column=expr.end_column or None,
+                    ))
         for decl in module.declarations:
             if isinstance(decl, A.PriorityDecl):
                 for name in decl.chain:
@@ -1292,6 +1299,68 @@ class Linter:
         if block is None:
             return False
         return any(self.has_temporal_operator(stmt.value) for stmt in block.statements) or self.has_temporal_operator(block.result)
+
+    def expr_start_position(self, expr: A.Expr) -> tuple[int, int]:
+        if isinstance(expr, (A.BinaryOp, A.TemporalBinary)) and expr.left is not None:
+            return self.expr_start_position(expr.left)
+        if isinstance(expr, A.TemporalUnary) and expr.operand is not None:
+            return self.expr_start_position(expr.operand)
+        if isinstance(expr, A.Call) and expr.func is not None:
+            return self.expr_start_position(expr.func)
+        if isinstance(expr, A.FieldAccess) and expr.target is not None:
+            return self.expr_start_position(expr.target)
+        return expr.line or 1, expr.column or 1
+
+    def expressions_without_explicit_temporal(self, expr: A.Expr | None) -> list[A.Expr]:
+        if expr is None or isinstance(expr, (A.TemporalUnary, A.TemporalBinary)):
+            return []
+        if not self.has_temporal_operator(expr):
+            return [expr]
+        if isinstance(expr, A.BinaryOp):
+            return [
+                *self.expressions_without_explicit_temporal(expr.left),
+                *self.expressions_without_explicit_temporal(expr.right),
+            ]
+        if isinstance(expr, A.UnaryOp):
+            return self.expressions_without_explicit_temporal(expr.operand)
+        if isinstance(expr, A.IfExpr):
+            return [
+                *self.expressions_without_explicit_temporal(expr.condition),
+                *self.expressions_without_explicit_temporal(expr.then_branch),
+                *self.expressions_without_explicit_temporal(expr.else_branch),
+            ]
+        if isinstance(expr, A.Call):
+            uncovered = self.expressions_without_explicit_temporal(expr.func)
+            for arg in expr.args:
+                uncovered.extend(self.expressions_without_explicit_temporal(arg))
+            return uncovered
+        if isinstance(expr, A.FieldAccess):
+            return self.expressions_without_explicit_temporal(expr.target)
+        if isinstance(expr, A.MatchExpr):
+            uncovered = self.expressions_without_explicit_temporal(expr.subject)
+            for arm in expr.arms:
+                uncovered.extend(self.expressions_without_explicit_temporal(arm.guard))
+                if arm.body is not None:
+                    for stmt in arm.body.statements:
+                        uncovered.extend(self.expressions_without_explicit_temporal(stmt.value))
+                    uncovered.extend(self.expressions_without_explicit_temporal(arm.body.result))
+            return uncovered
+        if isinstance(expr, A.LetExpr):
+            return [
+                *self.expressions_without_explicit_temporal(expr.value),
+                *self.expressions_without_explicit_temporal(expr.body),
+            ]
+        if isinstance(expr, A.TupleLiteral):
+            uncovered = []
+            for item in expr.items:
+                uncovered.extend(self.expressions_without_explicit_temporal(item))
+            return uncovered
+        if isinstance(expr, A.RecordConstructor):
+            uncovered = []
+            for _, value in expr.fields:
+                uncovered.extend(self.expressions_without_explicit_temporal(value))
+            return uncovered
+        return []
 
     def has_temporal_operator(self, expr: A.Expr | None) -> bool:
         if expr is None:

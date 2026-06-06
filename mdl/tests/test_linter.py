@@ -19,6 +19,29 @@ rule O r: email = "b" always
     codes = {d.code for d in diagnostics}
     assert "duplicate-name" in codes or "duplicate-rule" in codes
     assert "rule-without-temporal" in codes
+    diagnostic = next(d for d in diagnostics if d.code == "rule-without-temporal")
+    assert diagnostic.message == "expression in rule 'r' has no explicit temporal operator; assuming `initially`"
+    assert diagnostic.line == 6
+    assert diagnostic.column == 11
+    assert diagnostic.end_line == 6
+    assert diagnostic.end_column == 22
+
+
+def test_linter_reports_rule_subexpression_without_temporal_operator():
+    diagnostics = lint_source('''
+module bad
+
+entity x: bool
+rule O r1: (not x always) and x = true
+''')
+    matching = [d for d in diagnostics if d.code == "rule-without-temporal"]
+    assert len(matching) == 1
+    diagnostic = matching[0]
+    assert diagnostic.message == "expression in rule 'r1' has no explicit temporal operator; assuming `initially`"
+    assert diagnostic.line == 5
+    assert diagnostic.column == 31
+    assert diagnostic.end_line == 5
+    assert diagnostic.end_column == 39
 
 
 def test_linter_accepts_initially_as_explicit_temporal_operator():
