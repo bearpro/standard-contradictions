@@ -12,6 +12,7 @@ from .lexer import Token, tokenize
 from .linter import ImportResolver, SemanticChecker, Symbol, lint_source, path_to_file
 from .names import local_name, split_qualified
 from .parser import ParseError, parse
+from .printer import PrettyPrinter
 
 
 SEMANTIC_TOKEN_TYPES = [
@@ -271,12 +272,45 @@ class EditorSnapshot:
             kind, label = 13, decl.target or "fact"
         else:
             return None
-        return {
+        symbol = {
             "name": label,
             "kind": kind,
             "range": self.node_range(decl),
             "selectionRange": self.name_selection_range(decl, name or label),
         }
+        detail = self.declaration_symbol_detail(decl)
+        if detail:
+            symbol["detail"] = detail
+        return symbol
+
+    def declaration_symbol_detail(self, decl: A.Declaration) -> str | None:
+        printer = PrettyPrinter()
+        if isinstance(decl, A.TypeDecl):
+            return f"= {printer.type_definition(decl.definition)}"
+        if isinstance(decl, A.FuncDecl):
+            tparams = f"<{', '.join(decl.type_params)}>" if decl.type_params else ""
+            params = ", ".join(
+                f"{printer.pattern(param.pattern)}: {self.format_symbol_type(param.type_annotation)}"
+                for param in decl.params
+            )
+            return f"{tparams}({params}) -> {self.format_symbol_type(decl.return_type)}"
+        if isinstance(decl, A.ValueDecl):
+            typ = decl.type_annotation
+            if typ is None and self.checker is not None:
+                symbol = self.checker.terms.get(decl.name)
+                typ = symbol.type_expr if symbol else None
+            return f": {self.format_symbol_type(typ)}" if typ is not None else None
+        if isinstance(decl, A.EntityDecl):
+            return f": {self.format_symbol_type(decl.type_annotation)}"
+        if isinstance(decl, A.FactDecl) and decl.target and self.checker is not None:
+            typ = self.checker.infer_name_type(decl.target, {})
+            return f": {self.format_symbol_type(typ)}" if typ is not None else None
+        return None
+
+    def format_symbol_type(self, typ: A.TypeExpr | None) -> str:
+        if self.checker is not None:
+            return self.checker.format_type(typ)
+        return PrettyPrinter().type_expr(typ)
 
     def hover(self, line: int, character: int) -> dict[str, Any] | None:
         resolved = self.resolve_at(line, character)

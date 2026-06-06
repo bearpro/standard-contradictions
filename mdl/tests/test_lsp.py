@@ -170,7 +170,9 @@ def test_lsp_document_symbols_hover_definition_semantic_tokens_and_summary():
 
 @domain pipe
 type Pipe = { length: rat, radius: rat }
+let threshold = 1
 entity pipe: Pipe
+func positive_pipe(p: Pipe) -> bool: p.length > threshold
 rule O positive: pipe.length > 0 always
 """
     uri = "file:///tmp/pipe.mdl"
@@ -180,8 +182,13 @@ rule O positive: pipe.length > 0 always
 
     symbols = snapshot.document_symbols()
     assert symbols[0]["name"] == "pipe"
-    assert {child["name"] for child in symbols[0]["children"]} >= {"Pipe", "pipe", "positive"}
+    children = {child["name"]: child for child in symbols[0]["children"]}
+    assert set(children) >= {"Pipe", "threshold", "pipe", "positive_pipe", "positive"}
     assert symbols[0]["children"][0]["selectionRange"]["start"]["character"] == len("type ")
+    assert children["Pipe"]["detail"] == "= { length: rat, radius: rat }"
+    assert children["threshold"]["detail"] == ": int"
+    assert children["pipe"]["detail"] == ": Pipe"
+    assert children["positive_pipe"]["detail"] == "(p: Pipe) -> bool"
 
     hover_line, hover_col = position_of(source, "pipe.length")
     hover = snapshot.hover(hover_line, hover_col)
@@ -191,7 +198,7 @@ rule O positive: pipe.length > 0 always
 
     definition = snapshot.definition(hover_line, hover_col)
     assert definition is not None
-    assert definition["range"]["start"]["line"] == 4
+    assert definition["range"]["start"]["line"] == 5
     assert definition["range"]["start"]["character"] == len("entity ")
 
     semantic = snapshot.semantic_tokens()
