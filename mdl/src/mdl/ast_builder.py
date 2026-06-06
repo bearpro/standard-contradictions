@@ -357,7 +357,7 @@ class AstBuilder(MDLVisitor):
                 if op in TEMPORAL_BINARY:
                     expr = A.TemporalBinary(op=op, left=expr, right=right, line=line, column=column)
                 else:
-                    expr = A.BinaryOp(op="=" if op == "==" else op, left=expr, right=right, line=line, column=column)
+                    expr = A.BinaryOp(op=op, left=expr, right=right, line=line, column=column)
         return expr
 
     def visitUnary(self, ctx: MDLParser.UnaryContext) -> A.Expr:
@@ -367,8 +367,6 @@ class AstBuilder(MDLVisitor):
         line, column = self.token_location(token)
         op = token.text
         operand = self.visit(ctx.unary())
-        if op in {"always", "eventually", "next", "weak_next", "never"}:
-            return A.TemporalUnary(op=op, operand=operand, position="prefix", line=line, column=column)
         return A.UnaryOp(op=op, operand=operand, line=line, column=column)
 
     def visitIfExpr(self, ctx: MDLParser.IfExprContext) -> A.IfExpr:

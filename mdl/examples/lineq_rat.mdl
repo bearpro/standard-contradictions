@@ -17,7 +17,7 @@ func value(equation: List<Term>) -> rat:
         | List.Empty(): 0
         | List.Cons(head, e):
             let pow = 1 + len(equation)
-            let termValue = (head).coef * pwr((head).var, pow)
+            let termValue = head.coef * pwr(head.var, pow)
             termValue + value(e)
 
 # Helps solver to not iterate over int32^pow
@@ -25,7 +25,7 @@ func values_lt_3(equation: List<Term>) -> bool:
     case equation:
         | List.Empty(): true
         | List.Cons(head, tail):
-            (head).coef < 3 and (head).var < 3 and values_lt_3(tail)
+            head.coef < 3 and head.var < 3 and values_lt_3(tail)
 
 entity equation: List<Term>
 

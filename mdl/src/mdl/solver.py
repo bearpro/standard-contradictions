@@ -734,7 +734,7 @@ class BoundedEncoder:
                     info = by_name.get(name) or by_name.get(f"{scope.module.name}.{name}")
                     if info is None:
                         self.diagnostics.append(Diagnostic(
-                            f"priority references unknown rule {name!r}",
+                            f"override references unknown rule {name!r}",
                             line=priority.line or 1,
                             column=priority.column or 1,
                             severity="error",

@@ -111,7 +111,7 @@ module.exports = grammar({
     rule_strength: $ => choice('strict', 'defeasible', 'defeater'),
     deontic_mod: $ => choice('O', 'P', 'F'),
 
-    priority_decl: $ => seq(choice('priority', 'override'), $.qualified_name, repeat(seq('>', $.qualified_name))),
+    priority_decl: $ => seq('override', $.qualified_name, repeat(seq('>', $.qualified_name))),
     fact_decl: $ => seq('fact', choice(seq(field('target', $.identifier), '=', $.expr), $.expr)),
 
     block: $ => repeat1(choice($.let_stmt, $.expr)),
@@ -121,7 +121,6 @@ module.exports = grammar({
       $.if_expr,
       $.let_expr,
       $.case_expr,
-      $.temporal_prefix_expr,
       $.temporal_postfix_expr,
       $.unary_expr,
       $.binary_expr,
@@ -136,7 +135,6 @@ module.exports = grammar({
     case_expr: $ => prec.right(seq('case', $.expr, ':', repeat1($.case_arm))),
     case_arm: $ => seq('|', $.pattern, optional(seq('when', $.expr)), ':', $.block),
 
-    temporal_prefix_expr: $ => prec(PREC.prefix, seq(choice('always', 'eventually', 'next', 'weak_next', 'never'), $.expr)),
     temporal_postfix_expr: $ => prec.left(PREC.postfix_temporal, seq($.expr, choice('always', 'eventually', 'next', 'weak_next', 'never'))),
     unary_expr: $ => prec(PREC.prefix, seq(choice('not', '-'), $.expr)),
     binary_expr: $ => choice(
@@ -144,7 +142,7 @@ module.exports = grammar({
       prec.left(PREC.or, seq($.expr, 'or', $.expr)),
       prec.left(PREC.and, seq($.expr, 'and', $.expr)),
       prec.left(PREC.temporal, seq($.expr, choice('until', 'release', 'weak_until'), $.expr)),
-      prec.left(PREC.compare, seq($.expr, choice('=', '==', '!=', '<', '<=', '>', '>='), $.expr)),
+      prec.left(PREC.compare, seq($.expr, choice('=', '!=', '<', '<=', '>', '>='), $.expr)),
       prec.left(PREC.add, seq($.expr, choice('+', '-'), $.expr)),
       prec.left(PREC.multiply, seq($.expr, choice('*', '/', '%'), $.expr)),
     ),
@@ -162,7 +160,7 @@ module.exports = grammar({
     parenthesized_expr: $ => seq('(', $.expr, ')'),
     tuple_literal: $ => choice(
       seq('(', ')'),
-      seq('(', $.expr, ',', optional(commaSep($.expr)), ')'),
+      seq('(', $.expr, ',', commaSep($.expr), ')'),
     ),
 
     pattern: $ => choice(
@@ -195,5 +193,5 @@ module.exports = grammar({
 });
 
 function commaSep(rule) {
-  return seq(rule, repeat(seq(',', rule)), optional(','));
+  return seq(rule, repeat(seq(',', rule)));
 }

@@ -16,7 +16,7 @@ class PrettyPrinter:
         "or": (3, "left"),
         "and": (4, "left"),
         "until": (5, "left"), "release": (5, "left"), "weak_until": (5, "left"),
-        "=": (6, "left"), "==": (6, "left"), "!=": (6, "left"),
+        "=": (6, "left"), "!=": (6, "left"),
         "<": (6, "left"), "<=": (6, "left"), ">": (6, "left"), ">=": (6, "left"),
         "+": (7, "left"), "-": (7, "left"),
         "*": (8, "left"), "/": (8, "left"), "%": (8, "left"),
@@ -234,16 +234,12 @@ class PrettyPrinter:
             text = "(" + ", ".join(self.expr(i) for i in expr.items) + ")"
             prec = self.PREC_ATOM
         elif isinstance(expr, A.TemporalUnary):
-            if expr.position == "postfix":
-                operand_prec = self.PREC_POSTFIX_TEMPORAL if isinstance(
-                    expr.operand,
-                    (A.IfExpr, A.LetExpr, A.MatchExpr),
-                ) else self.PREC_LOWEST
-                text = f"{self.expr(expr.operand, operand_prec)} {expr.op}"
-                prec = self.PREC_POSTFIX_TEMPORAL
-            else:
-                text = f"{expr.op} {self.expr(expr.operand, self.PREC_PREFIX)}"
-                prec = self.PREC_PREFIX
+            operand_prec = self.PREC_POSTFIX_TEMPORAL if isinstance(
+                expr.operand,
+                (A.IfExpr, A.LetExpr, A.MatchExpr),
+            ) else self.PREC_LOWEST
+            text = f"{self.expr(expr.operand, operand_prec)} {expr.op}"
+            prec = self.PREC_POSTFIX_TEMPORAL
         elif isinstance(expr, A.TemporalBinary):
             prec, assoc = self.PREC_BINARY[expr.op]
             left_parent = prec if assoc == "left" else prec + 1

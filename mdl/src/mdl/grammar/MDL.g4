@@ -61,7 +61,7 @@ typeParams
     ;
 
 nameList
-    : nameToken (COMMA nameToken)* COMMA?
+    : nameToken (COMMA nameToken)*
     ;
 
 variant
@@ -69,7 +69,7 @@ variant
     ;
 
 variantFieldList
-    : variantField (COMMA variantField)* COMMA?
+    : variantField (COMMA variantField)*
     ;
 
 variantField
@@ -88,7 +88,7 @@ recordType
     ;
 
 typeFieldList
-    : typeField (COMMA typeField)* COMMA?
+    : typeField (COMMA typeField)*
     ;
 
 typeField
@@ -121,7 +121,7 @@ funcDecl
     ;
 
 paramList
-    : param (COMMA param)* COMMA?
+    : param (COMMA param)*
     ;
 
 param
@@ -154,7 +154,7 @@ deonticMod
     ;
 
 priorityDecl
-    : (PRIORITY | OVERRIDE) qualifiedName (GT qualifiedName)*
+    : OVERRIDE qualifiedName (GT qualifiedName)*
     ;
 
 factDecl
@@ -199,7 +199,7 @@ temporalBinary
     ;
 
 comparison
-    : additive ((EQ | EQEQ | NE | LT | LE | GT | GE) additive)*
+    : additive ((EQ | NE | LT | LE | GT | GE) additive)*
     ;
 
 additive
@@ -214,7 +214,7 @@ unary
     : ifExpr
     | letExpr
     | matchExpr
-    | (NOT | MINUS | temporalUnaryOp) unary
+    | (NOT | MINUS) unary
     | postfix
     ;
 
@@ -254,7 +254,7 @@ recordConstructorFields
     ;
 
 recordConstructorFieldList
-    : recordConstructorField (COMMA recordConstructorField)* COMMA?
+    : recordConstructorField (COMMA recordConstructorField)*
     ;
 
 recordConstructorField
@@ -276,7 +276,7 @@ primary
     ;
 
 exprList
-    : expr (COMMA expr)* COMMA?
+    : expr (COMMA expr)*
     ;
 
 pattern
@@ -293,11 +293,11 @@ pattern
     ;
 
 patternList
-    : pattern (COMMA pattern)* COMMA?
+    : pattern (COMMA pattern)*
     ;
 
 recordPatternFieldList
-    : recordPatternField (COMMA recordPatternField)* COMMA?
+    : recordPatternField (COMMA recordPatternField)*
     ;
 
 recordPatternField
@@ -334,7 +334,6 @@ ARROW: '->';
 LE: '<=';
 GE: '>=';
 NE: '!=';
-EQEQ: '==';
 
 MODULE: 'module';
 IMPORT: 'import';
@@ -347,7 +346,6 @@ RULE: 'rule';
 STRICT: 'strict';
 DEFEASIBLE: 'defeasible';
 DEFEATER: 'defeater';
-PRIORITY: 'priority';
 OVERRIDE: 'override';
 FACT: 'fact';
 IF: 'if';

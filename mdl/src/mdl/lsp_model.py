@@ -266,7 +266,7 @@ class EditorSnapshot:
         elif isinstance(decl, A.RuleDecl):
             kind, label = 6, decl.name
         elif isinstance(decl, A.PriorityDecl):
-            kind, label = 6, "priority"
+            kind, label = 6, "override"
         elif isinstance(decl, A.FactDecl):
             kind, label = 13, decl.target or "fact"
         else:

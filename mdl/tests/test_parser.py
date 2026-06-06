@@ -83,6 +83,73 @@ def without_locations(value):
     return value
 
 
+def assert_parse_error(source, parser=parse):
+    try:
+        parser(source)
+    except ParseError:
+        pass
+    else:  # pragma: no cover - defensive
+        raise AssertionError(f"source unexpectedly parsed: {source!r}")
+
+
+def test_priority_is_an_identifier_and_override_declares_rule_priority():
+    module = parse("""
+module names
+
+entity priority: bool
+rule O must: priority always
+rule F forbid: priority always
+override forbid > must
+""")
+
+    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+    priority = next(decl for decl in module.declarations if isinstance(decl, A.PriorityDecl))
+    assert entity.name == "priority"
+    assert priority.chain == ["forbid", "must"]
+
+
+def test_defeasible_rule_strength_remains_optional():
+    explicit = parse("""
+module rules
+
+defeasible rule O r: x always
+""")
+    implicit = parse("""
+module rules
+
+rule O r: x always
+""")
+
+    assert without_locations(A.node_to_dict(explicit)) == without_locations(A.node_to_dict(implicit))
+
+
+def test_forbidden_syntax_aliases_are_rejected():
+    for source, parser in [
+        ("module bad\n\npriority high > low\n", parse),
+        ("a == b", parse_expr),
+        ("always x", parse_expr),
+        ("eventually x", parse_expr),
+        ("next x", parse_expr),
+        ("weak_next x", parse_expr),
+        ("never x", parse_expr),
+    ]:
+        assert_parse_error(source, parser)
+
+
+def test_trailing_commas_are_rejected():
+    for source, parser in [
+        ("module bad\n\ntype Box<T,> = { value: T }\n", parse),
+        ("module bad\n\ntype State = Local(unit,)\n", parse),
+        ("module bad\n\ntype Pipe = { length: rat, }\n", parse),
+        ("module bad\n\nfunc f(x: int,) -> int: x\n", parse),
+        ("Pipe { length = 1, }", parse_expr),
+        ("f(1,)", parse_expr),
+        ("case x:\n    | Box(value,): value", parse_expr),
+        ("case x:\n    | { value, }: value", parse_expr),
+    ]:
+        assert_parse_error(source, parser)
+
+
 def test_format_expr_preserves_precedence_round_trip():
     for source in [
         "a * (b + c)",
@@ -98,6 +165,11 @@ def test_format_expr_preserves_precedence_round_trip():
         expr = parse_expr(source)
         reparsed = parse_expr(format_expr(expr))
         assert without_locations(A.node_to_dict(reparsed)) == without_locations(A.node_to_dict(expr))
+
+
+def test_format_expr_prints_temporal_unary_as_postfix():
+    expr = A.TemporalUnary(op="always", operand=A.Name(name="x"), position="prefix")
+    assert format_expr(expr) == "x always"
 
 
 def test_unit_literal_and_final_let_expr_in_function_block():

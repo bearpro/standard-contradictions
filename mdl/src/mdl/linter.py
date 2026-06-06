@@ -1173,7 +1173,7 @@ class Linter:
                 for name in decl.chain:
                     if name not in rule_names:
                         diagnostics.append(Diagnostic(
-                            f"priority references unknown rule {name!r}",
+                            f"override references unknown rule {name!r}",
                             decl.line or 1, decl.column or 1,
                             severity="warning", code="unknown-priority-rule", path=path,
                         ))

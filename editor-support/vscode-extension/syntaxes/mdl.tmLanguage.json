@@ -39,7 +39,7 @@
     "keywords": {
       "patterns": [
         {"name": "keyword.control.mdl", "match": "\\b(if|then|else|case|when|let|in)\\b"},
-        {"name": "keyword.declaration.mdl", "match": "\\b(module|import|open|type|func|entity|rule|strict|defeasible|defeater|priority|override|fact)\\b"},
+        {"name": "keyword.declaration.mdl", "match": "\\b(module|import|open|type|func|entity|rule|strict|defeasible|defeater|override|fact)\\b"},
         {"name": "keyword.operator.temporal.mdl", "match": "\\b(always|eventually|next|weak_next|never|until|release|weak_until|last)\\b"},
         {"name": "keyword.operator.deontic.mdl", "match": "\\b(O|P|F)\\b"},
         {"name": "constant.language.boolean.mdl", "match": "\\b(true|false)\\b"}
@@ -48,7 +48,7 @@
     "operators": {
       "patterns": [
         {"name": "keyword.operator.logical.mdl", "match": "\\b(and|or|implies|not)\\b"},
-        {"name": "keyword.operator.symbolic.mdl", "match": "(->|<=|>=|!=|==|=|<|>|\\+|-|\\*|/|%)"}
+        {"name": "keyword.operator.symbolic.mdl", "match": "(->|<=|>=|!=|=|<|>|\\+|-|\\*|/|%)"}
       ]
     },
     "types": {
