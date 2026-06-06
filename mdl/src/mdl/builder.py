@@ -141,11 +141,6 @@ class ModelBuilder:
         self.module.declarations.append(decl)
         return decl
 
-    def event(self, name: str, fields: list[tuple[str, str | A.TypeExpr]] | None = None) -> A.EventDecl:
-        decl = A.EventDecl(name=name, fields=[(n, coerce_type(t)) for n, t in (fields or [])])
-        self.module.declarations.append(decl)
-        return decl
-
     def func(self, name: str, params: list[tuple[str, str | A.TypeExpr]], return_type: str | A.TypeExpr, body: A.Block | A.Expr) -> A.FuncDecl:
         ps = [A.Param(pattern=A.VarPattern(name=p), type_annotation=coerce_type(t)) for p, t in params]
         block = body if isinstance(body, A.Block) else A.Block(result=body)
@@ -191,6 +186,8 @@ def from_python(value: Any) -> A.Module:
     if isinstance(value, ModelBuilder):
         return value.to_ast()
     if isinstance(value, dict):
+        if "events" in value:
+            raise ValueError("events are no longer supported; use entity declarations for temporal state")
         name = str(value.get("module") or value.get("name") or "model")
         builder = ModelBuilder(name, annotations=list(value.get("annotations", [])))
         for imp in value.get("imports", []):
@@ -207,8 +204,6 @@ def from_python(value: Any) -> A.Module:
                 builder.type_decl(type_name, typ)
         for ent, typ in value.get("entities", {}).items():
             builder.entity(ent, typ)
-        for event_name, fields in value.get("events", {}).items():
-            builder.event(event_name, list(fields))
         for rule in value.get("rules", []):
             builder.rule(
                 name=rule["name"],

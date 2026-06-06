@@ -46,7 +46,6 @@ module.exports = grammar({
       $.value_decl,
       $.func_decl,
       $.entity_decl,
-      $.event_decl,
       $.rule_decl,
       $.priority_decl,
       $.fact_decl,
@@ -98,8 +97,6 @@ module.exports = grammar({
     param: $ => seq($.pattern, ':', $.type_expr),
 
     entity_decl: $ => seq('entity', field('name', $.identifier), ':', $.type_expr),
-
-    event_decl: $ => seq('event', field('name', $.identifier), '(', optional(commaSep($.field_decl)), ')'),
 
     rule_decl: $ => seq(
       optional($.rule_strength),

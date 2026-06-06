@@ -196,8 +196,6 @@ def extract_symbols(module: A.Module) -> list[Symbol]:
             symbols.append(Symbol(module.name, decl.name, "func", decl.line, decl.column))
         elif isinstance(decl, A.EntityDecl):
             symbols.append(Symbol(module.name, decl.name, "entity", decl.line, decl.column))
-        elif isinstance(decl, A.EventDecl):
-            symbols.append(Symbol(module.name, decl.name, "event", decl.line, decl.column))
         elif isinstance(decl, A.RuleDecl):
             symbols.append(Symbol(module.name, decl.name, "rule", decl.line, decl.column))
     return symbols

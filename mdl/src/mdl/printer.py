@@ -81,8 +81,6 @@ class PrettyPrinter:
             text = self.func_decl(decl)
         elif isinstance(decl, A.EntityDecl):
             text = self.entity_decl(decl)
-        elif isinstance(decl, A.EventDecl):
-            text = self.event_decl(decl)
         elif isinstance(decl, A.RuleDecl):
             text = self.rule_decl(decl)
         elif isinstance(decl, A.PriorityDecl):
@@ -141,10 +139,6 @@ class PrettyPrinter:
 
     def entity_decl(self, decl: A.EntityDecl) -> str:
         return f"entity {decl.name}: {self.type_expr(decl.type_annotation)}"
-
-    def event_decl(self, decl: A.EventDecl) -> str:
-        fields = ", ".join(f"{n}: {self.type_expr(t)}" for n, t in decl.fields)
-        return f"event {decl.name}({fields})"
 
     def rule_decl(self, decl: A.RuleDecl) -> str:
         strength = "" if decl.strength == "defeasible" else decl.strength + " "

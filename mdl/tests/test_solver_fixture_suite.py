@@ -30,8 +30,8 @@ def test_fixture_modules_parse_and_cover_core_language_features():
     assert any(isinstance(d, A.TypeDecl) and isinstance(d.definition, A.SumType) for d in pipeline.declarations)
     assert any(isinstance(d, A.FuncDecl) and d.name == "positive_tags" for d in pipeline.declarations)
     assert any(isinstance(d, A.FuncDecl) and d.name == "pipe_ok" for d in pipeline.declarations)
-    assert any(isinstance(d, A.EventDecl) and d.name == "pressure_changed" for d in pipeline.declarations)
-    assert any(isinstance(d, A.RuleDecl) and d.modality == "F" for d in pipeline.declarations)
+    assert any(isinstance(d, A.EntityDecl) and d.name == "pipe" for d in pipeline.declarations)
+    assert any(isinstance(d, A.RuleDecl) and d.name == "pipe_quality" for d in pipeline.declarations)
     assert any(isinstance(d, A.PriorityDecl) for d in policy.declarations)
     assert any(isinstance(d, A.RuleDecl) and d.strength == "defeater" for d in policy.declarations)
 

@@ -14,9 +14,8 @@ def test_translate_rule_to_core():
     assert core["atoms"]
 
 
-def test_translate_forbidden_event_rule():
+def test_translate_email_rule_only_uses_entities_and_functions():
     module = parse(EMAIL_SOURCE)
     core = translate(module)
-    rule = next(r for r in core["rules"] if r["name"] == "malformed_email_received")
-    assert rule["modality"] == "F"
-    assert rule["body"]["op"] == "F"
+    assert "events" not in core
+    assert [rule["name"] for rule in core["rules"]] == ["email_addr_spec_correct"]

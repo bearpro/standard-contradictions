@@ -46,7 +46,6 @@ class CoreTranslator:
             "types": [],
             "values": [],
             "entities": [],
-            "events": [],
             "rules": [],
             "priorities": [],
             "facts": [],
@@ -79,12 +78,6 @@ class CoreTranslator:
                 core["entities"].append({
                     "name": decl.name,
                     "type": self.type_expr(decl.type_annotation),
-                    "annotations": decl.annotations,
-                })
-            elif isinstance(decl, A.EventDecl):
-                core["events"].append({
-                    "name": decl.name,
-                    "fields": [(name, self.type_expr(typ)) for name, typ in decl.fields],
                     "annotations": decl.annotations,
                 })
             elif isinstance(decl, A.RuleDecl):

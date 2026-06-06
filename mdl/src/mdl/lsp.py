@@ -367,8 +367,6 @@ class LSPServer:
             return 3
         if kind == "entity":
             return 6
-        if kind == "event":
-            return 3
         if kind == "constructor":
             return 4
         return 6

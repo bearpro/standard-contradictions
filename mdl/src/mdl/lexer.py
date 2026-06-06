@@ -23,7 +23,7 @@ class Token:
 KEYWORDS = {
     "module", "import", "open",
     "type", "let", "func",
-    "entity", "event", "rule", "strict", "defeasible", "defeater",
+    "entity", "rule", "strict", "defeasible", "defeater",
     "priority", "override", "fact",
     "if", "then", "else", "case", "when", "in",
     "true", "false", "last",

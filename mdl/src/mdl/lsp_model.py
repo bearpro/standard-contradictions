@@ -263,8 +263,6 @@ class EditorSnapshot:
             kind, label = 13, decl.name
         elif isinstance(decl, A.EntityDecl):
             kind, label = 23, decl.name
-        elif isinstance(decl, A.EventDecl):
-            kind, label = 12, decl.name
         elif isinstance(decl, A.RuleDecl):
             kind, label = 6, decl.name
         elif isinstance(decl, A.PriorityDecl):
@@ -426,8 +424,6 @@ class EditorSnapshot:
             if symbol.kind == "module":
                 return "namespace"
             if symbol.kind == "function":
-                return "function"
-            if symbol.kind == "event":
                 return "function"
             if symbol.kind == "rule":
                 return "label"

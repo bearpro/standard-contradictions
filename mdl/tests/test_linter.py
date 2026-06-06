@@ -27,8 +27,8 @@ def test_linter_parse_error():
     assert diagnostics[0].code == "parse-error"
 
 
-def test_linter_reports_event_declaration_without_parentheses_as_parse_error():
-    diagnostics = lint_source('module bad\n\nevent started\n')
+def test_linter_reports_event_declaration_as_parse_error():
+    diagnostics = lint_source('module bad\n\nevent started()\n')
     assert diagnostics
     assert diagnostics[0].code == "parse-error"
 
@@ -260,17 +260,13 @@ module bad
 func f(x: int) -> int:
     x
 
-event changed(x: int)
-
 entity y: int
 rule O missing_arg: y = f() always
 rule O extra_arg: y = f(1, 2) always
 rule O wrong_arg: y = f(true) always
-rule O event_missing: changed() always
-rule O event_wrong: changed(true) always
 ''')
 
-    assert sum(1 for d in diagnostics if d.code == "arity-mismatch") >= 3
+    assert sum(1 for d in diagnostics if d.code == "arity-mismatch") >= 2
     assert any(d.code == "type-mismatch" and "expected int, got bool" in d.message for d in diagnostics)
 
 

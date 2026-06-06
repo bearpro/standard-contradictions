@@ -42,7 +42,6 @@ declaration
     | valueDecl
     | funcDecl
     | entityDecl
-    | eventDecl
     | ruleDecl
     | priorityDecl
     | factDecl
@@ -131,10 +130,6 @@ param
 
 entityDecl
     : ENTITY nameToken COLON typeExpr
-    ;
-
-eventDecl
-    : EVENT nameToken LPAREN typeFieldList? RPAREN
     ;
 
 ruleDecl
@@ -348,7 +343,6 @@ TYPE: 'type';
 LET: 'let';
 FUNC: 'func';
 ENTITY: 'entity';
-EVENT: 'event';
 RULE: 'rule';
 STRICT: 'strict';
 DEFEASIBLE: 'defeasible';

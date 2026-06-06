@@ -125,13 +125,6 @@ class EntityInfo:
 
 
 @dataclass
-class EventInfo:
-    module: str
-    decl: A.EventDecl
-    fields: list[tuple[str, TypeSpec]]
-
-
-@dataclass
 class ModuleScope:
     module: A.Module
     path: Path | None = None
@@ -141,7 +134,6 @@ class ModuleScope:
     values: dict[str, A.ValueDecl] = field(default_factory=dict)
     funcs: dict[str, FunctionInfo] = field(default_factory=dict)
     entities: dict[str, EntityInfo] = field(default_factory=dict)
-    events: dict[str, EventInfo] = field(default_factory=dict)
     priorities: list[A.PriorityDecl] = field(default_factory=list)
     facts: list[A.FactDecl] = field(default_factory=list)
     rules: list[A.RuleDecl] = field(default_factory=list)
@@ -384,8 +376,6 @@ class SolverProblem:
                 self.resolve_type(scope.module.name, A.TypeRef(name=name))
             for name, entity in list(scope.entities.items()):
                 entity.typ = self.resolve_type(scope.module.name, entity.decl.type_annotation)
-            for name, event in list(scope.events.items()):
-                event.fields = [(field_name, self.resolve_type(scope.module.name, field_type)) for field_name, field_type in event.decl.fields]
             for name, decl in list(scope.funcs.items()):
                 params = [self.resolve_type(scope.module.name, p.type_annotation) for p in decl.decl.params]
                 ret = self.resolve_type(scope.module.name, decl.decl.return_type)
@@ -420,9 +410,6 @@ class SolverProblem:
             elif isinstance(decl, A.EntityDecl):
                 key = ("entity", decl.name)
                 scope.entities[decl.name] = EntityInfo(scope.module.name, decl, UNIT)
-            elif isinstance(decl, A.EventDecl):
-                key = ("event", decl.name)
-                scope.events[decl.name] = EventInfo(scope.module.name, decl, [])
             elif isinstance(decl, A.PriorityDecl):
                 scope.priorities.append(decl)
             elif isinstance(decl, A.FactDecl):
@@ -574,8 +561,6 @@ class SolverProblem:
             candidates.append("value")
         if name in scope.funcs and (expected is None or "func" in expected):
             candidates.append("func")
-        if name in scope.events and (expected is None or "event" in expected):
-            candidates.append("event")
         if name in scope.types and (expected is None or "type" in expected):
             candidates.append("type")
         if not candidates:
@@ -602,7 +587,6 @@ class BoundedEncoder:
         self.track_counter = 0
         self.entity_values: dict[tuple[str, str, int], ZValue] = {}
         self.value_cache: dict[tuple[str, str], ZValue] = {}
-        self.event_symbols: dict[tuple[str, str, int], Any] = {}
         self.rule_infos = self.problem.all_rules()
         self.rule_labels: dict[str, Any] = {}
         self.rule_applications: dict[str, Any] = {}
@@ -954,13 +938,6 @@ class BoundedEncoder:
                     return_type = self.std_list_type(STRING)
                 return self.adt_list_value(list(arg.concrete), return_type)
             raise UnsupportedExpression("strings.to_list requires a concrete string in solve")
-        event = self.resolve_event(name, scope)
-        if event is not None:
-            args = [self.compile_expr(arg, scope, t, expected=typ, env=env) for arg, (_, typ) in zip(expr.args, event.fields)]
-            symbol = self.event_symbol(event, t)
-            if event.fields:
-                return ZValue(BOOL, expr=symbol(*[self.primitive_expr(a) for a in args]))
-            return ZValue(BOOL, expr=symbol)
         constructor = self.find_constructor(name, expected, scope)
         if constructor is not None:
             zero_unit = len(expr.args) == 0 and len(constructor.variant.fields) == 1 and constructor.variant.fields[0][1] == UNIT
@@ -1025,7 +1002,7 @@ class BoundedEncoder:
         return ZValue(typ, expr=z3.Const(safe, sort))
 
     def resolve_value(self, name: str, scope: ModuleScope, t: int, expected: TypeSpec | None = None) -> ZValue:
-        module_name, local = self.problem.resolve_decl(scope, name, expected={"entity", "value", "func", "event"})
+        module_name, local = self.problem.resolve_decl(scope, name, expected={"entity", "value", "func"})
         if module_name is None or local is None:
             self.unresolved(scope, name)
             return self.opaque_atom(name, t)
@@ -1042,8 +1019,6 @@ class BoundedEncoder:
             value = self.entity_value(target_scope.entities[local], t)
         elif local in target_scope.values:
             value = self.value_decl(module_name, local)
-        elif local in target_scope.events:
-            value = ZValue(BOOL, expr=self.event_symbol(target_scope.events[local], t))
         else:
             return self.opaque_atom(name, t)
         for field_name in field_parts:
@@ -1072,12 +1047,6 @@ class BoundedEncoder:
                 accessor = encoding.accessors[self.product_constructor_name()][idx]
                 return ZValue(typ.items[idx], expr=accessor(self.primitive_expr(value)))
         raise UnsupportedExpression(f"field {field!r} is not available on value")
-
-    def resolve_event(self, name: str, scope: ModuleScope) -> EventInfo | None:
-        module_name, local = self.problem.resolve_decl(scope, name, expected={"event"})
-        if module_name and local and module_name in self.problem.scopes:
-            return self.problem.scopes[module_name].events.get(local)
-        return None
 
     def resolve_func(self, name: str, scope: ModuleScope) -> FunctionInfo | None:
         module_name, local = self.problem.resolve_decl(scope, name, expected={"func"})
@@ -1137,18 +1106,6 @@ class BoundedEncoder:
                 for variant in resolved.variants
             ))
         return typ
-
-    def event_symbol(self, event: EventInfo, t: int) -> Any:
-        key = (event.module, event.decl.name, t)
-        if key in self.event_symbols:
-            return self.event_symbols[key]
-        name = self.safe(f"event.{event.module}.{event.decl.name}@{t}")
-        if event.fields:
-            symbol = z3.Function(name, *[self.sort_for(typ) for _, typ in event.fields], z3.BoolSort())
-        else:
-            symbol = z3.Bool(name)
-        self.event_symbols[key] = symbol
-        return symbol
 
     def function_key(self, func: FunctionInfo) -> str:
         key = f"func.{func.module}.{func.decl.name}"
@@ -1822,7 +1779,7 @@ class BoundedEncoder:
             parts = split_qualified(expr.name)
             if len(parts) >= 2 and parts[-2] in {"List", "Set", "Map", "Option"}:
                 return True
-            if root in scope.entities or root in scope.values or root in scope.funcs or root in scope.events or root in scope.types:
+            if root in scope.entities or root in scope.values or root in scope.funcs or root in scope.types:
                 return True
             if root in scope.imports:
                 return True
@@ -2005,15 +1962,11 @@ class BoundedEncoder:
         trace = []
         for t in range(self.horizon):
             entities: dict[str, Any] = {}
-            events: dict[str, Any] = {}
             for scope in self.problem.scopes.values():
                 for entity in scope.entities.values():
                     value = self.entity_value(entity, t)
                     entities[f"{entity.module}.{entity.decl.name}"] = self.model_value(model, value)
-                for event in scope.events.values():
-                    if not event.fields:
-                        events[f"{event.module}.{event.decl.name}"] = self.model_eval(model, self.event_symbol(event, t))
-            trace.append({"time": t, "entities": entities, "events": events})
+            trace.append({"time": t, "entities": entities})
         winning = []
         defeated = []
         for info in self.rule_infos:

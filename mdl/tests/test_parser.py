@@ -15,37 +15,33 @@ def test_parse_email_module_constructs():
     assert any(isinstance(d, A.TypeDecl) and d.name == "ProcessingState" for d in module.declarations)
     assert any(isinstance(d, A.FuncDecl) and d.name == "process_email" for d in module.declarations)
     assert any(isinstance(d, A.EntityDecl) and d.name == "email" for d in module.declarations)
-    assert any(isinstance(d, A.EventDecl) and d.name == "email_received" for d in module.declarations)
     assert any(isinstance(d, A.RuleDecl) and d.name == "email_addr_spec_correct" for d in module.declarations)
 
 
-def test_event_declarations_require_parentheses():
+def test_event_is_not_a_declaration_keyword():
     module = parse("""
-module events
+module names
 
-event started()
-event changed(x: int)
+entity event: bool
 """)
 
-    events = [decl for decl in module.declarations if isinstance(decl, A.EventDecl)]
-    assert [event.name for event in events] == ["started", "changed"]
-    assert events[0].fields == []
-    assert [name for name, _ in events[1].fields] == ["x"]
+    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+    assert entity.name == "event"
 
     try:
         parse("""
 module bad
 
-event started
+event started()
 """)
     except ParseError:
         pass
     else:  # pragma: no cover - defensive
-        raise AssertionError("event declaration without parentheses unexpectedly parsed")
+        raise AssertionError("event declaration unexpectedly parsed")
 
 
 def test_parse_temporal_postfix_grouped_atom():
-    expr = parse_expr('(email_received(email) and not email_is_correct(email)) eventually')
+    expr = parse_expr('(email_received and not email_is_correct(email)) eventually')
     assert isinstance(expr, A.TemporalUnary)
     assert expr.op == "eventually"
     assert isinstance(expr.operand, A.BinaryOp)

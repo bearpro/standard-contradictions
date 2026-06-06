@@ -22,3 +22,18 @@ def test_builder_from_dict():
     })
     assert module.name == "pipe"
     assert len(module.declarations) == 2
+
+
+def test_builder_from_dict_rejects_events():
+    from mdl.builder import from_python
+
+    try:
+        from_python({"module": "bad", "events": {"started": []}})
+    except ValueError as exc:
+        assert "events are no longer supported" in str(exc)
+    else:  # pragma: no cover - defensive
+        raise AssertionError("events dictionary unexpectedly accepted")
+
+
+def test_builder_has_no_event_api():
+    assert not hasattr(ModelBuilder("bad"), "event")

@@ -9,10 +9,9 @@
 (type_decl name: (identifier) @type)
 (func_decl name: (identifier) @function)
 (entity_decl name: (identifier) @variable)
-(event_decl name: (identifier) @function)
 (rule_decl (deontic_mod) @keyword.operator)
 [
-  "module" "import" "type" "let" "func" "entity" "event" "rule"
+  "module" "import" "type" "let" "func" "entity" "rule"
   "strict" "defeasible" "defeater" "priority" "override" "fact"
 ] @keyword
 [

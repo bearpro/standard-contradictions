@@ -242,7 +242,7 @@ class SemanticChecker:
         declared_types = {decl.name for decl in module.declarations if isinstance(decl, A.TypeDecl)}
         module_fields: list[tuple[str, A.TypeExpr]] = []
         for decl in module.declarations:
-            if not isinstance(decl, (A.TypeDecl, A.ValueDecl, A.FuncDecl, A.EntityDecl, A.EventDecl)):
+            if not isinstance(decl, (A.TypeDecl, A.ValueDecl, A.FuncDecl, A.EntityDecl)):
                 continue
             if isinstance(decl, A.TypeDecl):
                 qualified_name = f"{module.name}.{decl.name}"
@@ -271,7 +271,7 @@ class SemanticChecker:
         declared_types = {decl.name for decl in module.declarations if isinstance(decl, A.TypeDecl)}
         for decl in module.declarations:
             name = A.declaration_name(decl)
-            if not name or not isinstance(decl, (A.TypeDecl, A.ValueDecl, A.FuncDecl, A.EntityDecl, A.EventDecl)):
+            if not name or not isinstance(decl, (A.TypeDecl, A.ValueDecl, A.FuncDecl, A.EntityDecl)):
                 continue
             if name in local_names or name in self.imported_names or name in self.terms or name in self.types:
                 self.error(f"open {opened.module!r} introduces conflicting name {name!r}", opened, "ambiguous-open")
@@ -297,8 +297,6 @@ class SemanticChecker:
             return decl.return_type
         if isinstance(decl, A.EntityDecl):
             return decl.type_annotation
-        if isinstance(decl, A.EventDecl):
-            return A.TypeRef(name="bool")
         return None
 
     def declaration_kind(self, decl: A.Declaration) -> str:
@@ -308,8 +306,6 @@ class SemanticChecker:
             return "function"
         if isinstance(decl, A.EntityDecl):
             return "entity"
-        if isinstance(decl, A.EventDecl):
-            return "event"
         return "symbol"
 
     def qualify_type_definition(
@@ -415,11 +411,6 @@ class SemanticChecker:
         if isinstance(decl, A.EntityDecl):
             self.check_type_expr(decl.type_annotation)
             self.terms[decl.name] = Symbol(decl.name, "entity", decl.type_annotation, decl)
-            return
-        if isinstance(decl, A.EventDecl):
-            for _, typ in decl.fields:
-                self.check_type_expr(typ)
-            self.terms[decl.name] = Symbol(decl.name, "event", A.TypeRef(name="bool"), decl)
             return
         if isinstance(decl, A.RuleDecl):
             self.rules[decl.name] = Symbol(decl.name, "rule", node=decl)
@@ -657,14 +648,6 @@ class SemanticChecker:
                 self.check_expr(expr.args[0], env, expected=A.TypeRef(name="string"), type_params=type_params)
             return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
 
-        symbol = self.symbol_for_name(name)
-        if symbol is not None and isinstance(symbol.node, A.EventDecl):
-            event = symbol.node
-            self.check_arity(name, len(expr.args), len(event.fields), expr)
-            for arg, (_, typ) in zip(expr.args, event.fields):
-                self.check_expr(arg, env, expected=typ, type_params=type_params)
-            return A.TypeRef(name="bool")
-
         constructor_type = self.constructor_result_type(name, expected)
         if constructor_type is not None:
             field_types = self.constructor_field_types(name, constructor_type)
@@ -673,6 +656,7 @@ class SemanticChecker:
                 self.check_expr(arg, env, expected=typ, type_params=type_params)
             return constructor_type
 
+        symbol = self.symbol_for_name(name)
         if symbol is not None and isinstance(symbol.node, A.FuncDecl):
             func = symbol.node
             self.check_arity(name, len(expr.args), len(func.params), expr)

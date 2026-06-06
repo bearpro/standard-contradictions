@@ -222,15 +222,6 @@ class AstBuilder(MDLVisitor):
             column=column,
         )
 
-    def visitEventDecl(self, ctx: MDLParser.EventDeclContext) -> A.EventDecl:
-        line, column = self.location(ctx)
-        return A.EventDecl(
-            name=self.visit(ctx.nameToken()),
-            fields=self.visit(ctx.typeFieldList()) if ctx.typeFieldList() else [],
-            line=line,
-            column=column,
-        )
-
     def visitRuleDecl(self, ctx: MDLParser.RuleDeclContext) -> A.RuleDecl:
         line, column = self.location(ctx)
         strength = self.visit(ctx.ruleStrength()) if ctx.ruleStrength() else "defeasible"

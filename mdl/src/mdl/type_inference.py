@@ -216,8 +216,6 @@ class TypeInference:
             if constructor is not None:
                 return self.call_scheme(name, constructor, expr.args, env, expected, expr, allow_unit_payload=True)
             symbol = self.host.symbol_for_name(name)
-            if symbol is not None and isinstance(symbol.node, A.EventDecl):
-                return self.call_scheme(name, self.event_scheme(symbol.node), expr.args, env, expected, expr)
             if symbol is not None and isinstance(symbol.node, A.FuncDecl):
                 return self.call_scheme(name, self.function_scheme(symbol.node), expr.args, env, expected, expr)
 
@@ -391,8 +389,6 @@ class TypeInference:
                 return self.instantiate(scheme)
             if isinstance(symbol.node, A.FuncDecl):
                 return self.instantiate(self.function_scheme(symbol.node))
-            if isinstance(symbol.node, A.EventDecl):
-                return self.instantiate(self.event_scheme(symbol.node))
             if symbol.type_expr is not None:
                 return self.from_ast(symbol.type_expr)
         inferred = self.host.infer_name_type(name, {key: self.to_ast(self.instantiate(value)) for key, value in env.items()})
@@ -405,10 +401,6 @@ class TypeInference:
         args = tuple(self.from_ast(param.type_annotation, mapping) for param in func.params)
         ret = self.from_ast(func.return_type, mapping)
         return Scheme(frozenset(var.id for var in mapping.values()), TyFun(args, ret))
-
-    def event_scheme(self, event: A.EventDecl) -> Scheme:
-        args = tuple(self.from_ast(typ) for _, typ in event.fields)
-        return Scheme(frozenset(), TyFun(args, TyCon("bool")))
 
     def constructor_scheme(self, name: str) -> Scheme | None:
         if name not in self.host.constructors:

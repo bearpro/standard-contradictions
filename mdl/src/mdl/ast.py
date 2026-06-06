@@ -261,12 +261,6 @@ class EntityDecl(Declaration):
 
 
 @dataclass
-class EventDecl(Declaration):
-    name: str = ""
-    fields: list[tuple[str, TypeExpr]] = field(default_factory=list)
-
-
-@dataclass
 class RuleDecl(Declaration):
     name: str = ""
     modality: str | None = None
@@ -314,6 +308,6 @@ def node_to_dict(value: Any) -> Any:
 
 
 def declaration_name(decl: Declaration) -> str | None:
-    if isinstance(decl, (TypeDecl, ValueDecl, FuncDecl, EntityDecl, EventDecl, RuleDecl)):
+    if isinstance(decl, (TypeDecl, ValueDecl, FuncDecl, EntityDecl, RuleDecl)):
         return decl.name
     return None

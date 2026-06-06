@@ -26,12 +26,8 @@ func email_is_correct(email: string) -> bool:
 
 entity email: string
 
-event email_received(email: string)
-
 @ 3.4.1. Addr-spec specification
 rule O email_addr_spec_correct: email_is_correct(email) always
-
-rule F malformed_email_received: (email_received(email) and not email_is_correct(email)) eventually
 
 fact email = "ti@example.org"
 """
