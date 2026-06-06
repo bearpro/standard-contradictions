@@ -1164,7 +1164,7 @@ class Linter:
                 ))
             if decl.body is not None and not self.has_temporal_operator(decl.body):
                 diagnostics.append(Diagnostic(
-                    f"rule {decl.name!r} has no explicit temporal operator; consider `always` or `eventually`",
+                    f"rule {decl.name!r} has no explicit temporal operator; consider `initially`, `always`, or `eventually`",
                     decl.line or 1, decl.column or 1,
                     severity="warning", code="rule-without-temporal", path=path,
                 ))

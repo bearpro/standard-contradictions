@@ -21,6 +21,17 @@ rule O r: email = "b" always
     assert "rule-without-temporal" in codes
 
 
+def test_linter_accepts_initially_as_explicit_temporal_operator():
+    diagnostics = lint_source('''
+module ok
+
+entity x: bool
+rule O r: x initially
+''')
+    codes = {d.code for d in diagnostics}
+    assert "rule-without-temporal" not in codes
+
+
 def test_linter_parse_error():
     diagnostics = lint_source('module broken\nfunc x( -> bool: true\n')
     assert diagnostics

@@ -1,4 +1,4 @@
-from mdl.builder import ModelBuilder, always, call, ref
+from mdl.builder import ModelBuilder, always, call, initially, ref, temporal_binary
 from mdl.parser import parse
 
 
@@ -22,6 +22,17 @@ def test_builder_from_dict():
     })
     assert module.name == "pipe"
     assert len(module.declarations) == 2
+
+
+def test_builder_supports_initially_and_only_until_temporal_binary():
+    assert initially(ref("x")).op == "initially"
+    assert temporal_binary("until", ref("x"), ref("y")).op == "until"
+    try:
+        temporal_binary("release", ref("x"), ref("y"))
+    except ValueError as exc:
+        assert "until" in str(exc)
+    else:  # pragma: no cover - defensive
+        raise AssertionError("release temporal binary unexpectedly accepted")
 
 
 def test_builder_from_dict_rejects_events():

@@ -47,6 +47,13 @@ def test_parse_temporal_postfix_grouped_atom():
     assert isinstance(expr.operand, A.BinaryOp)
 
 
+def test_parse_initially_as_temporal_postfix():
+    expr = parse_expr("email_received initially")
+    assert isinstance(expr, A.TemporalUnary)
+    assert expr.op == "initially"
+    assert isinstance(expr.operand, A.Name)
+
+
 def test_parse_implies_is_right_associative_below_or():
     expr = parse_expr("a or b implies c implies d")
     assert isinstance(expr, A.BinaryOp)
@@ -130,8 +137,11 @@ def test_forbidden_syntax_aliases_are_rejected():
         ("always x", parse_expr),
         ("eventually x", parse_expr),
         ("next x", parse_expr),
-        ("weak_next x", parse_expr),
-        ("never x", parse_expr),
+        ("initially x", parse_expr),
+        ("x weak_next", parse_expr),
+        ("x never", parse_expr),
+        ("a release b", parse_expr),
+        ("a weak_until b", parse_expr),
     ]:
         assert_parse_error(source, parser)
 
@@ -159,6 +169,7 @@ def test_format_expr_preserves_precedence_round_trip():
         "(a and b) or c",
         "(a + b).field",
         "(a and b) eventually",
+        "(a and b) initially",
         "(if a then b else c) always",
         "(let x = true in x) always",
     ]:

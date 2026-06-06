@@ -131,6 +131,27 @@ def test_solve_compiles_implies_as_formula(tmp_path):
     assert payload["model"]["trace"][0]["entities"]["implication.x"] is False
 
 
+def test_solve_initially_reads_initial_time_even_when_nested(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "initial.mdl",
+        """
+        module initial
+
+        entity x: bool
+        rule O starts_true: (x initially) always
+        rule F later_forbid: x next
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=2))
+
+    assert payload["status"] == "sat"
+    trace = payload["model"]["trace"]
+    assert trace[0]["entities"]["initial.x"] is True
+    assert trace[1]["entities"]["initial.x"] is False
+
+
 def test_solve_strict_rule_is_not_defeated(tmp_path):
     spec = write_module(
         tmp_path,

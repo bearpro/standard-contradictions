@@ -59,6 +59,8 @@ def binary(op: str, left: A.Expr | str | int | bool | float | None, right: A.Exp
 
 
 def temporal_binary(op: str, left: A.Expr | str, right: A.Expr | str) -> A.TemporalBinary:
+    if op != "until":
+        raise ValueError("only temporal binary operator 'until' is supported")
     return A.TemporalBinary(op=op, left=coerce_expr(left), right=coerce_expr(right))
 
 
@@ -72,6 +74,10 @@ def eventually(expr: A.Expr | str) -> A.TemporalUnary:
 
 def next_(expr: A.Expr | str) -> A.TemporalUnary:
     return A.TemporalUnary(op="next", operand=coerce_expr(expr), position="postfix")
+
+
+def initially(expr: A.Expr | str) -> A.TemporalUnary:
+    return A.TemporalUnary(op="initially", operand=coerce_expr(expr), position="postfix")
 
 
 def braced(expr: A.Expr | str) -> A.Expr:

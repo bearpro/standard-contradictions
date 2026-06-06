@@ -195,7 +195,7 @@ andExpr
     ;
 
 temporalBinary
-    : comparison ((UNTIL | RELEASE | WEAK_UNTIL) comparison)*
+    : comparison (UNTIL comparison)*
     ;
 
 comparison
@@ -322,8 +322,7 @@ temporalUnaryOp
     : ALWAYS
     | EVENTUALLY
     | NEXT
-    | WEAK_NEXT
-    | NEVER
+    | INITIALLY
     ;
 
 newlines
@@ -364,11 +363,8 @@ NOT: 'not';
 ALWAYS: 'always';
 EVENTUALLY: 'eventually';
 NEXT: 'next';
-WEAK_NEXT: 'weak_next';
-NEVER: 'never';
+INITIALLY: 'initially';
 UNTIL: 'until';
-RELEASE: 'release';
-WEAK_UNTIL: 'weak_until';
 OTHERWISE: 'otherwise';
 O: 'O';
 P: 'P';

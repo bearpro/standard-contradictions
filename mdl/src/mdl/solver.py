@@ -778,24 +778,15 @@ class BoundedEncoder:
             operand = expr.operand
             if expr.op == "next":
                 return self.compile_formula(operand, scope, t + 1, env=env) if t < self.horizon - 1 else z3.BoolVal(False)
-            if expr.op == "weak_next":
-                return self.compile_formula(operand, scope, t + 1, env=env) if t < self.horizon - 1 else z3.BoolVal(True)
+            if expr.op == "initially":
+                return self.compile_formula(operand, scope, 0, env=env)
             if expr.op == "eventually":
                 return z3.Or([self.compile_formula(operand, scope, u, env=env) for u in range(t, self.horizon)])
             if expr.op == "always":
                 return z3.And([self.compile_formula(operand, scope, u, env=env) for u in range(t, self.horizon)])
-            if expr.op == "never":
-                return z3.Not(z3.Or([self.compile_formula(operand, scope, u, env=env) for u in range(t, self.horizon)]))
         if isinstance(expr, A.TemporalBinary):
             if expr.op == "until":
                 return self.until(expr.left, expr.right, scope, t, env)
-            if expr.op == "weak_until":
-                return z3.Or(
-                    self.until(expr.left, expr.right, scope, t, env),
-                    z3.And([self.compile_formula(expr.left, scope, u, env=env) for u in range(t, self.horizon)]),
-                )
-            if expr.op == "release":
-                return z3.Not(self.until(A.UnaryOp(op="not", operand=expr.left), A.UnaryOp(op="not", operand=expr.right), scope, t, env))
         if isinstance(expr, A.UnaryOp) and expr.op == "not":
             return z3.Not(self.compile_formula(expr.operand, scope, t, env=env))
         if isinstance(expr, A.BinaryOp) and expr.op in {"and", "or", "implies"}:

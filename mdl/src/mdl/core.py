@@ -11,10 +11,7 @@ TEMPORAL_OPS = {
     "always": "G",
     "eventually": "F",
     "next": "X",
-    "weak_next": "WX",
     "until": "U",
-    "release": "R",
-    "weak_until": "W",
 }
 
 BOOL_OPS = {
@@ -116,8 +113,8 @@ class CoreTranslator:
         if expr is None:
             return {"op": "true"}
         if isinstance(expr, A.TemporalUnary):
-            if expr.op == "never":
-                return {"op": "not", "arg": {"op": "F", "arg": self.temporal(expr.operand)}}
+            if expr.op == "initially":
+                return {"op": "initially", "arg": self.temporal(expr.operand)}
             return {"op": TEMPORAL_OPS.get(expr.op, expr.op), "arg": self.temporal(expr.operand)}
         if isinstance(expr, A.TemporalBinary):
             return {"op": TEMPORAL_OPS.get(expr.op, expr.op), "left": self.temporal(expr.left), "right": self.temporal(expr.right)}

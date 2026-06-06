@@ -34,3 +34,17 @@ rule O guarded: a implies b always
 
     assert body["op"] == "G"
     assert body["arg"]["op"] == "implies"
+
+
+def test_translate_initially_to_core_operator():
+    module = parse("""
+module initial
+
+entity x: bool
+rule O starts_true: x initially
+""")
+    core = translate(module)
+    body = core["rules"][0]["body"]
+
+    assert body["op"] == "initially"
+    assert body["arg"]["op"] == "atom"

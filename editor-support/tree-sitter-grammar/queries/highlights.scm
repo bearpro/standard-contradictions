@@ -18,7 +18,7 @@
   "if" "then" "else" "case" "when" "in"
 ] @keyword.control
 [
-  "always" "eventually" "next" "weak_next" "never" "until" "release" "weak_until"
+  "always" "eventually" "next" "initially" "until"
 ] @keyword.operator
 [
   "and" "or" "implies" "not"

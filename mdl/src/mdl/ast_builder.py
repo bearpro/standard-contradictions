@@ -14,7 +14,7 @@ from .diagnostics import ParseError
 from .names import is_qualified, local_name
 
 
-TEMPORAL_BINARY = {"until", "release", "weak_until"}
+TEMPORAL_BINARY = {"until"}
 LAYOUT_TOKEN_TYPES = {MDLParser.INDENT, MDLParser.DEDENT, MDLLexer.NEWLINE, -1}
 
 

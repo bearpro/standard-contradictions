@@ -15,7 +15,7 @@ class PrettyPrinter:
         "implies": (2, "right"),
         "or": (3, "left"),
         "and": (4, "left"),
-        "until": (5, "left"), "release": (5, "left"), "weak_until": (5, "left"),
+        "until": (5, "left"),
         "=": (6, "left"), "!=": (6, "left"),
         "<": (6, "left"), "<=": (6, "left"), ">": (6, "left"), ">=": (6, "left"),
         "+": (7, "left"), "-": (7, "left"),

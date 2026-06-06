@@ -28,7 +28,7 @@ KEYWORDS = {
     "if", "then", "else", "case", "when", "in",
     "true", "false", "last",
     "and", "or", "implies", "not",
-    "always", "eventually", "next", "weak_next", "never", "until", "release", "weak_until",
+    "always", "eventually", "next", "initially", "until",
     "otherwise", "O", "P", "F",
 }
 

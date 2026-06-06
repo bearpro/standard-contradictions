@@ -135,13 +135,13 @@ module.exports = grammar({
     case_expr: $ => prec.right(seq('case', $.expr, ':', repeat1($.case_arm))),
     case_arm: $ => seq('|', $.pattern, optional(seq('when', $.expr)), ':', $.block),
 
-    temporal_postfix_expr: $ => prec.left(PREC.postfix_temporal, seq($.expr, choice('always', 'eventually', 'next', 'weak_next', 'never'))),
+    temporal_postfix_expr: $ => prec.left(PREC.postfix_temporal, seq($.expr, choice('always', 'eventually', 'next', 'initially'))),
     unary_expr: $ => prec(PREC.prefix, seq(choice('not', '-'), $.expr)),
     binary_expr: $ => choice(
       prec.right(PREC.implies, seq($.expr, 'implies', $.expr)),
       prec.left(PREC.or, seq($.expr, 'or', $.expr)),
       prec.left(PREC.and, seq($.expr, 'and', $.expr)),
-      prec.left(PREC.temporal, seq($.expr, choice('until', 'release', 'weak_until'), $.expr)),
+      prec.left(PREC.temporal, seq($.expr, 'until', $.expr)),
       prec.left(PREC.compare, seq($.expr, choice('=', '!=', '<', '<=', '>', '>='), $.expr)),
       prec.left(PREC.add, seq($.expr, choice('+', '-'), $.expr)),
       prec.left(PREC.multiply, seq($.expr, choice('*', '/', '%'), $.expr)),
