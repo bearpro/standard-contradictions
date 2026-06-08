@@ -1,6 +1,9 @@
 # MDL / DDL-LTLf Toolkit
 
-`mdl` is a Python implementation scaffold for an ML-inspired language used as an intermediate representation for normative provisions. The language separates ordinary pure computations, LTLf temporal formulas, and defeasible deontic rules.
+`mdl` is a Python implementation scaffold for an ML-inspired language used as an
+intermediate representation for normative provisions. The language separates
+ordinary pure computations, LTLf temporal formulas, and defeasible deontic
+rules.
 
 The repository contains:
 
@@ -52,23 +55,58 @@ mdl lsp
 
 ## Python-side model construction
 
-The internal AST is intentionally public. A model can be built directly in Python and then printed back to MDL syntax.
+The recommended Python front-end is a static Python-syntax DSL. It lets
+LLM-assisted and external inference pipelines emit ordinary-looking Python with
+decorators while still lowering to the canonical MDL AST before formatting,
+linting, translating, running or solving.
 
 ```python
-from mdl.builder import ModelBuilder, ref, call, always
+from mdl.dsl import *
 
-m = ModelBuilder("email")
-m.entity("email", "string")
-m.rule(
-    name="email_addr_spec_correct",
-    modality="O",
-    body=always(call("email_is_correct", ref("email"))),
-)
+module("pipe_spec")
 
-print(m.to_source())
+@record
+class Pipe:
+    length: Rat
+    radius: Rat
+
+
+pipe = entity(Pipe)
+
+
+@rule(O)
+def pipe_length_positive():
+    return always(pipe.length > 0)
+
+fact(pipe == Pipe(length=10, radius=2))
 ```
 
-This path is meant for LLM-assisted or external inference pipelines where the model is first represented as Python objects and only then converted to the canonical textual syntax.
+Compile this source without executing arbitrary Python:
+
+```python
+from mdl.dsl import compile_file
+from mdl.printer import format_module
+
+model = compile_file("examples/pipe.py")
+print(format_module(model))
+```
+
+The generated MDL is still the canonical syntax:
+
+```plain
+module pipe_spec
+
+type Pipe = { length: rat, radius: rat }
+
+entity pipe: Pipe
+
+rule O pipe_length_positive: pipe.length > 0 always
+
+fact pipe = Pipe { length = 10, radius = 2 }
+```
+
+The lower-level `mdl.builder` API remains available for callers that already
+construct `mdl.ast` objects directly.
 
 ## Editor Integrations
 
@@ -77,8 +115,16 @@ Editor integration assets are kept outside the Python package:
 - VS Code extension: `../editor-support/vscode-extension/`
 - Tree-sitter grammar scaffold: `../editor-support/tree-sitter-grammar/`
 
-The Tree-sitter grammar is a scaffold suitable for editor integration and incremental parsing. The authoritative parser in this repository is the Python parser under `src/mdl/parser.py`.
+The Tree-sitter grammar is a scaffold suitable for editor integration and
+incremental parsing. The authoritative parser in this repository is the Python
+parser under `src/mdl/parser.py`.
 
 ## Current status
 
-This is a deliberately compact but working project skeleton. It is suitable for evolving the language design, writing tests, and wiring external DDL-LTLf backends. The parser supports the main constructs used in the draft examples: modules, imports, annotations, ADTs, record types, functions, `let`, `if`, `case`, entities, `rule O name: ...` declarations, priorities, facts, temporal operators and deontic modalities. Names are checked in declaration order, with self-recursive function bodies supported.
+This is a deliberately compact but working project skeleton. It is suitable for
+evolving the language design, writing tests, and wiring external DDL-LTLf
+backends. The parser supports the main constructs used in the draft examples:
+modules, imports, annotations, ADTs, record types, functions, `let`, `if`,
+`case`, entities, `rule O name: ...` declarations, priorities, facts, temporal
+operators and deontic modalities. Names are checked in declaration order, with
+self-recursive function bodies supported.
