@@ -25,8 +25,17 @@ SEMANTIC_TOKEN_TYPES = [
     "property",
     "enumMember",
     "label",
+    "operator",
 ]
 SEMANTIC_TOKEN_MODIFIERS = ["declaration", "defaultLibrary"]
+
+STANDARD_OPERATOR_VALUES = {
+    "O", "P", "F",
+    "and", "or", "implies", "not",
+    "always", "eventually", "next", "initially", "until", "last",
+    "->", "<=", ">=", "!=", "==", "=", "<", ">",
+    "+", "-", "*", "/", "%",
+}
 
 
 @dataclass(frozen=True)
@@ -436,15 +445,15 @@ class EditorSnapshot:
 
     def semantic_type_for_token(self, index: int) -> str | None:
         token = self.tokens[index]
+        value = token.value
+        if value in STANDARD_OPERATOR_VALUES:
+            return "operator"
         if token.type not in {"IDENT", "KEYWORD"}:
             return None
         if self.checker is None:
             return None
-        value = token.value
         qualified = self.qualified_name_at(index)
         through = self.qualified_name_through(index)
-        if value in {"O", "P", "F"}:
-            return "label"
         if self.resolve_local(value, token.line, token.column):
             return "parameter"
         if through in self.checker.types or value in self.checker.types:

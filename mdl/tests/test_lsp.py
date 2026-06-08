@@ -333,6 +333,34 @@ func x() -> MyUnion: MyUnion.CaseA()
     assert case_definition["range"]["start"] == {"line": 2, "character": len("type MyUnion = ")}
 
 
+def test_lsp_standard_operators_have_semantic_operator_tokens():
+    source = """module tmp
+
+entity x: int
+entity y: int
+func f(a: int, b: int) -> bool: a + b - 1 * 2 / 3 % 4 != 0
+rule O r: not (x > 0 and x <= 10 or x >= 3) implies x = 1 always
+rule F s: x < 5 until y != 2 eventually
+rule P t: x = last initially
+"""
+    uri = "file:///tmp/operators.mdl"
+    server = LSPServer()
+    server.documents[uri] = source
+    snapshot = server.snapshot(uri)
+
+    def token_type(needle: str, *, occurrence: int = 0) -> str | None:
+        line, col = position_of(source, needle, occurrence=occurrence)
+        index = snapshot.token_index_at(line, col)
+        assert index is not None
+        return snapshot.semantic_type_for_token(index)
+
+    for needle in [
+        "->", "+", "-", "*", "/", "%", "!=", "O r", "not", ">", "and", "<=", "or", ">=",
+        "implies", "= 1", "always", "F s", "< 5", "until", "eventually", "P t", "last", "initially",
+    ]:
+        assert token_type(needle) == "operator"
+
+
 def test_lsp_go_to_definition_for_record_field():
     source = """module pipe
 
