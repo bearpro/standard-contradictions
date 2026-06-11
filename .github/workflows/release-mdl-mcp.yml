@@ -2,8 +2,10 @@ name: MDL MCP Container
 
 on:
   push:
+    branches:
+      - master
     tags:
-      - "release/v*.*.*"
+      - "release/**"
 
 permissions:
   contents: read
@@ -23,16 +25,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set image metadata
         id: image
         shell: bash
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^release/v[0-9]+\.[0-9]+\.[0-9]+(-pre)?$ ]]; then
-            echo "Expected release tag in format release/vX.X.X or release/vX.X.X-pre, got: $GITHUB_REF_NAME" >&2
-            exit 1
+          short_sha="${GITHUB_SHA::7}"
+          release_tag=""
+
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" && "$GITHUB_REF_NAME" == release/* ]]; then
+            release_tag="$GITHUB_REF_NAME"
+          else
+            release_tag="$(git tag --points-at "$GITHUB_SHA" --list "release/*" | sort | head -n 1 || true)"
           fi
-          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+          if [[ -n "$release_tag" ]]; then
+            version_label="${release_tag#release/}"
+          else
+            version_label="$short_sha"
+          fi
+
+          {
+            echo "short_sha=${short_sha}"
+            echo "version_label=${version_label}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -52,6 +70,6 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.short_sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version_label }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -2,8 +2,10 @@ name: VS Code VSIX
 
 on:
   push:
+    branches:
+      - master
     tags:
-      - "release/v*.*.*"
+      - "release/**"
 
 permissions:
   contents: read
@@ -19,14 +21,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Validate release tag
+      - name: Resolve release metadata
+        id: metadata
         shell: bash
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^release/v[0-9]+\.[0-9]+\.[0-9]+(-pre)?$ ]]; then
-            echo "Expected release tag in format release/vX.X.X or release/vX.X.X-pre, got: $GITHUB_REF_NAME" >&2
-            exit 1
+          short_sha="${GITHUB_SHA::7}"
+          release_tag=""
+
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" && "$GITHUB_REF_NAME" == release/* ]]; then
+            release_tag="$GITHUB_REF_NAME"
+          else
+            release_tag="$(git tag --points-at "$GITHUB_SHA" --list "release/*" | sort | head -n 1 || true)"
           fi
+
+          if [[ -n "$release_tag" ]]; then
+            version_label="${release_tag#release/}"
+          else
+            version_label="$short_sha"
+          fi
+
+          {
+            echo "short_sha=${short_sha}"
+            echo "version_label=${version_label}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -39,22 +59,21 @@ jobs:
         run: npm ci
 
       - name: Prepare artifact metadata
-        id: metadata
+        id: artifact
         run: |
           version="$(node -p "require('./package.json').version")"
-          short_sha="${GITHUB_SHA::7}"
-          vsix_name="mdl-language-support-${version}-${short_sha}.vsix"
+          version_label="${{ steps.metadata.outputs.version_label }}"
+          vsix_name="mdl-language-support-${version}-${version_label}.vsix"
           mkdir -p dist
-          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
           echo "vsix_path=dist/${vsix_name}" >> "$GITHUB_OUTPUT"
 
       - name: Build VSIX
-        run: npm run package -- --out "${{ steps.metadata.outputs.vsix_path }}"
+        run: npm run package -- --out "${{ steps.artifact.outputs.vsix_path }}"
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v7
         with:
-          name: mdl-language-support-vsix-${{ steps.metadata.outputs.short_sha }}
-          path: editor-support/vscode-extension/${{ steps.metadata.outputs.vsix_path }}
+          name: mdl-language-support-vsix-${{ steps.metadata.outputs.version_label }}
+          path: editor-support/vscode-extension/${{ steps.artifact.outputs.vsix_path }}
           if-no-files-found: error
           retention-days: 30
