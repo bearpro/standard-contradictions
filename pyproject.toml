@@ -26,13 +26,15 @@ members = [
 mprokazin-mdl = { workspace = true }
 mprokazin-mdl-mcp = { workspace = true }
 
+[tool.ruff]
+extend-exclude = ["mdl/examples", "**/*.mdl.py"]
+
 [tool.basedpyright]
 typeCheckingMode = "basic"
 include = [
   "mdl/src",
   "mdl/tests",
-  "mdl/examples/pipe.mdl.py",
   "mdl-mcp/src",
   "mdl-mcp/tests",
 ]
-exclude = ["mdl/src/mdl/_antlr"]
+exclude = ["mdl/src/mdl/_antlr", "mdl/examples", "**/*.mdl.py"]

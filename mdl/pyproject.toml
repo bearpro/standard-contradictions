@@ -54,7 +54,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.ruff]
-extend-exclude = ["src/mdl/_antlr"]
+extend-exclude = ["src/mdl/_antlr", "examples", "**/*.mdl.py"]
 
 [tool.basedpyright]
 exclude = ["src/mdl/_antlr"]
