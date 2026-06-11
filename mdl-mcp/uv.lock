@@ -276,7 +276,7 @@ wheels = [
 
 [[package]]
 name = "mprokazin-mdl"
-version = "0.1.1"
+version = "0.0.0"
 source = { editable = "../mdl" }
 dependencies = [
     { name = "antlr4-python3-runtime" },
@@ -305,7 +305,7 @@ provides-extras = ["solver", "align", "full", "dev"]
 
 [[package]]
 name = "mprokazin-mdl-mcp"
-version = "0.1.1"
+version = "0.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },

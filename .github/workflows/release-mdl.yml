@@ -82,6 +82,7 @@ jobs:
 
           pyproject = Path("pyproject.toml")
           init_file = Path("src/mdl/__init__.py")
+          lsp_file = Path("src/mdl/lsp.py")
           metadata = tomllib.loads(pyproject.read_text(encoding="utf-8"))
           current_version = metadata["project"]["version"]
 
@@ -112,6 +113,10 @@ jobs:
               init_file: (
                   f'__version__ = "{current_version}"',
                   f'__version__ = "{package_version}"',
+              ),
+              lsp_file: (
+                  f'"serverInfo": {{"name": "mdl", "version": "{current_version}"}}',
+                  f'"serverInfo": {{"name": "mdl", "version": "{package_version}"}}',
               ),
           }
 

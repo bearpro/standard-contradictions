@@ -93,7 +93,7 @@ class LSPServer:
                         "full": True,
                     },
                 },
-                "serverInfo": {"name": "mdl", "version": "0.1.1"},
+                "serverInfo": {"name": "mdl", "version": "0.0.0"},
             })
         elif method == "initialized":
             return

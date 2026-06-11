@@ -46,7 +46,7 @@ the `VS Code VSIX` workflow. Download the `mdl-language-support-vsix-*` artifact
 from the workflow run, unzip it, and install the contained `.vsix` file:
 
 ```bash
-code --install-extension mdl-language-support-0.1.1-<commit>.vsix
+code --install-extension mdl-language-support-0.0.0-<version-label>.vsix
 ```
 
 The extension starts `mdl lsp` by default, so install the Python package first
