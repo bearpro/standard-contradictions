@@ -64,3 +64,69 @@ jobs:
 
       - name: Run tests
         run: python -m pytest
+
+  mdl-mcp-container-build:
+    name: MDL MCP container build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: mdl-mcp/Dockerfile
+          push: false
+
+  vsix-build:
+    name: VSIX build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editor-support/vscode-extension
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: editor-support/vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build VSIX
+        run: |
+          mkdir -p dist
+          npm run package -- --out dist/mdl-language-support-ci.vsix
+
+  tree-sitter-grammar-build:
+    name: Tree-sitter grammar build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editor-support/tree-sitter-grammar
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate grammar
+        run: npx tree-sitter generate
