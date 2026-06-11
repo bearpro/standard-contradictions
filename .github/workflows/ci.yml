@@ -1,4 +1,4 @@
-name: MDL Tests
+name: CI
 
 on:
   push:
@@ -10,19 +10,19 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: pytest
+  mdl-tests:
+    name: MDL tests
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: mdl
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
