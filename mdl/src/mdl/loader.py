@@ -29,6 +29,8 @@ def default_module_name_for_path(path: str | Path | None) -> str:
 
 def parse_document(source: str, path: str | Path | None = None) -> A.Module:
     if is_python_dsl_path(path):
+        if path is None:
+            raise ValueError("Python DSL documents require a path")
         filename = _path_text(path)
         return compile_source(source, filename=filename, default_module_name=default_module_name_for_path(path))
     return parse(source)

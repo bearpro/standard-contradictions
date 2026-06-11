@@ -25,3 +25,14 @@ members = [
 [tool.uv.sources]
 mprokazin-mdl = { workspace = true }
 mprokazin-mdl-mcp = { workspace = true }
+
+[tool.basedpyright]
+typeCheckingMode = "basic"
+include = [
+  "mdl/src",
+  "mdl/tests",
+  "mdl/examples/pipe.mdl.py",
+  "mdl-mcp/src",
+  "mdl-mcp/tests",
+]
+exclude = ["mdl/src/mdl/_antlr"]

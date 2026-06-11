@@ -235,6 +235,8 @@ def valid_score(score: Rat):
     rendered = format_module(module)
     predicate = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
 
+    assert predicate.body is not None
+    assert predicate.body.result is not None
     assert isinstance(predicate.body.result, A.BinaryOp)
     assert predicate.body.result.op == "and"
     assert "0 <= score and score <= 1" in rendered

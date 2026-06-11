@@ -1222,25 +1222,25 @@ class BoundedEncoder:
             return self.equal_values(value, lit), {}
         if isinstance(pattern, A.RecordPattern):
             conds = []
-            bindings: dict[str, ZValue] = {}
+            record_bindings: dict[str, ZValue] = {}
             for field, nested in pattern.fields:
                 field_value = self.field_value(value, field)
                 if nested is None:
-                    bindings[field] = field_value
+                    record_bindings[field] = field_value
                 else:
                     cond, nested_bindings = self.pattern_condition(nested, field_value)
                     conds.append(cond)
-                    bindings.update(nested_bindings)
-            return z3.And(conds) if conds else z3.BoolVal(True), bindings
+                    record_bindings.update(nested_bindings)
+            return z3.And(conds) if conds else z3.BoolVal(True), record_bindings
         if isinstance(pattern, A.TuplePattern):
             conds = []
-            bindings: dict[str, ZValue] = {}
+            tuple_bindings: dict[str, ZValue] = {}
             for idx, nested in enumerate(pattern.items):
                 item_value = self.field_value(value, f"_{idx}")
                 cond, nested_bindings = self.pattern_condition(nested, item_value)
                 conds.append(cond)
-                bindings.update(nested_bindings)
-            return z3.And(conds) if conds else z3.BoolVal(True), bindings
+                tuple_bindings.update(nested_bindings)
+            return z3.And(conds) if conds else z3.BoolVal(True), tuple_bindings
         if isinstance(pattern, A.ConstructorPattern):
             sum_type = self.resolve_named_type(value.typ)
             if not isinstance(sum_type, SumSpec):
@@ -1254,16 +1254,16 @@ class BoundedEncoder:
                 return z3.BoolVal(False), {}
             encoding = self.datatype_encoding(value.typ)
             conds = [encoding.recognizers[variant_name](self.primitive_expr(value))]
-            bindings: dict[str, ZValue] = {}
+            constructor_bindings: dict[str, ZValue] = {}
             if zero_unit:
-                return z3.And(conds), bindings
+                return z3.And(conds), constructor_bindings
             accessors = encoding.accessors[variant_name]
             for idx, (nested, (_, field_type)) in enumerate(zip(pattern.args, variant.fields)):
                 payload = ZValue(field_type, expr=accessors[idx](self.primitive_expr(value)))
                 cond, nested_bindings = self.pattern_condition(nested, payload)
                 conds.append(cond)
-                bindings.update(nested_bindings)
-            return z3.And(conds), bindings
+                constructor_bindings.update(nested_bindings)
+            return z3.And(conds), constructor_bindings
         if isinstance(pattern, A.ListPattern) and value.has_concrete and isinstance(value.concrete, list):
             if len(pattern.items) != len(value.concrete):
                 return z3.BoolVal(False), {}
@@ -1875,7 +1875,8 @@ class BoundedEncoder:
             return self.references_external_module(expr.value, scope) or self.references_external_module(expr.body, scope)
         if isinstance(expr, A.MatchExpr):
             return self.references_external_module(expr.subject, scope) or any(
-                self.references_external_module(arm.guard, scope) or self.references_external_module(arm.body.result if arm.body else None)
+                self.references_external_module(arm.guard, scope)
+                or self.references_external_module(arm.body.result if arm.body else None, scope)
                 for arm in expr.arms
             )
         if isinstance(expr, A.TupleLiteral):

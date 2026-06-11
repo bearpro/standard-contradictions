@@ -351,7 +351,8 @@ class TypeInference:
                     self.bind_pattern(nested, field_type, env, generalize=False)
             return
         if isinstance(pattern, A.TuplePattern):
-            item_types = list(self.prune(typ).items) if isinstance(self.prune(typ), TyTuple) else [self.fresh() for _ in pattern.items]
+            pruned = self.prune(typ)
+            item_types = list(pruned.items) if isinstance(pruned, TyTuple) else [self.fresh() for _ in pattern.items]
             for nested, item_type in zip(pattern.items, item_types):
                 self.bind_pattern(nested, item_type, env, generalize=False)
             return

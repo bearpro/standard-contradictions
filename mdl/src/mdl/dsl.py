@@ -133,10 +133,10 @@ class _RuntimeExpr:
     def __or__(self, other: object) -> _RuntimeExpr:  # pragma: no cover
         return self._binary(other, "or")
 
-    def __eq__(self, other: object) -> _RuntimeExpr:  # type: ignore[override]
+    def __eq__(self, other: object) -> _RuntimeExpr:  # pyright: ignore[reportIncompatibleMethodOverride]
         return self._binary(other, "=")
 
-    def __ne__(self, other: object) -> _RuntimeExpr:  # type: ignore[override]
+    def __ne__(self, other: object) -> _RuntimeExpr:  # pyright: ignore[reportIncompatibleMethodOverride]
         return self._binary(other, "!=")
 
     def __lt__(self, other: object) -> _RuntimeExpr:  # pragma: no cover
@@ -303,7 +303,7 @@ class _Compiler:
         self.module = A.Module(name=default_module_name)
         self.record_types: set[str] = set()
 
-    def _mark(self, value: _NodeT, node: py_ast.AST | None) -> _NodeT:
+    def _mark(self, value: _NodeT, node: py_ast.AST | A.Node | None) -> _NodeT:
         if node is None:
             return value
         value.line = getattr(node, "lineno", 0) or 0

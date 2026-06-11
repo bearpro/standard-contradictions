@@ -4,6 +4,7 @@ import json
 import asyncio
 
 from mcp.shared.memory import create_connected_server_and_client_session
+from pydantic import AnyUrl
 
 from mdl_mcp.server import create_mcp_server, verify_mdl_source, verify_python_dsl_source
 
@@ -196,11 +197,12 @@ def test_mcp_server_lists_and_calls_tools():
                 "mdl://grammar/antlr",
             }
 
-            language_reference = await client.read_resource("mdl://docs/language-reference")
-            quickstart = await client.read_resource("mdl://docs/quickstart")
-            antlr_grammar = await client.read_resource("mdl://grammar/antlr")
+            language_reference = await client.read_resource(AnyUrl("mdl://docs/language-reference"))
+            quickstart = await client.read_resource(AnyUrl("mdl://docs/quickstart"))
+            antlr_grammar = await client.read_resource(AnyUrl("mdl://grammar/antlr"))
 
             assert resource_text(language_reference).startswith("# MDL Language Reference")
+            assert resource_text(quickstart).startswith("# A little guide about what is MDL")
             grammar = resource_text(antlr_grammar)
             assert grammar.startswith("grammar MDL;")
             assert "```" not in grammar
@@ -253,7 +255,7 @@ def resource_text(result: object) -> str:
     return text
 
 
-def tool_payload(result: object) -> dict:
+def tool_payload(result: object) -> dict[str, object]:
     structured = getattr(result, "structuredContent", None) or getattr(result, "structured_content", None)
     if structured is not None:
         return structured

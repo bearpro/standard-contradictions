@@ -1288,7 +1288,7 @@ class Linter:
         if isinstance(expr, A.BinaryOp):
             if expr.op in BOOL_CHAIN_OPS:
                 for child in (expr.left, expr.right):
-                    if self.needs_boolean_parentheses_warning(expr, child):
+                    if child is not None and self.needs_boolean_parentheses_warning(expr, child):
                         diagnostics.append(Diagnostic(
                             "use explicit parentheses around chained boolean expression",
                             child.line or expr.line or 1,

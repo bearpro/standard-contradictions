@@ -9,7 +9,7 @@ import tempfile
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal, cast
 
 from mcp.server.fastmcp import FastMCP
 
@@ -23,6 +23,7 @@ from mdl.solver import SolveOptions, solve_paths
 
 DEFAULT_ROOT_PATH = "main.mdl"
 DEFAULT_PYTHON_TIMEOUT = 3.0
+McpTransport = Literal["stdio", "sse", "streamable-http"]
 ALLOWED_PYTHON_IMPORTS = {"mdl.builder", "mdl.ast"}
 BANNED_PYTHON_NAMES = {
     "__import__",
@@ -545,9 +546,9 @@ def read_resource_text(name: str) -> str:
     return files("mdl_mcp").joinpath("resources", name).read_text(encoding="utf-8")
 
 
-def run_mcp_server(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8000) -> int:
+def run_mcp_server(transport: McpTransport = "stdio", host: str = "127.0.0.1", port: int = 8000) -> int:
     server = create_mcp_server(host=host, port=port)
-    server.run(transport=transport)  # type: ignore[arg-type]
+    server.run(transport=transport)
     return 0
 
 
@@ -562,7 +563,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return run_mcp_server(args.transport, args.host, args.port)
+    return run_mcp_server(cast(McpTransport, args.transport), args.host, args.port)
 
 
 if __name__ == "__main__":  # pragma: no cover
