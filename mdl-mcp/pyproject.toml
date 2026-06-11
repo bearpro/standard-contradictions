@@ -45,7 +45,7 @@ mdl_mcp = [
 ]
 
 [tool.uv.sources]
-mprokazin-mdl = { path = "../mdl", editable = true }
+mprokazin-mdl = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

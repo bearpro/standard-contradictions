@@ -1,0 +1,27 @@
+[project]
+name = "standard-contradictions"
+version = "0.1.0"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "mprokazin-mdl",
+  "mprokazin-mdl-mcp",
+]
+
+[dependency-groups]
+dev = [
+  "mprokazin-mdl[dev]",
+  "mprokazin-mdl-mcp[dev]",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+  "mdl",
+  "mdl-mcp",
+]
+
+[tool.uv.sources]
+mprokazin-mdl = { workspace = true }
+mprokazin-mdl-mcp = { workspace = true }
