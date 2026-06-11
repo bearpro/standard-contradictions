@@ -1,0 +1,4 @@
+include README.md
+include src/mdl_mcp/resources/MDL.g4
+include src/mdl_mcp/resources/language-reference.md
+include src/mdl_mcp/resources/quickstart.md

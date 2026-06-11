@@ -37,6 +37,13 @@ mdl-mcp = "mdl_mcp.server:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+mdl_mcp = [
+  "resources/MDL.g4",
+  "resources/language-reference.md",
+  "resources/quickstart.md",
+]
+
 [tool.uv.sources]
 mprokazin-mdl = { path = "../mdl", editable = true }
 

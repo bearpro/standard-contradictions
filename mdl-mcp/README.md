@@ -21,8 +21,13 @@ mdl-mcp --transport streamable-http --host 127.0.0.1 --port 8000
 - `mdl_verify`: verify MDL source with optional virtual import documents;
 - `mdl_verify_python_dsl`: execute restricted `mdl.builder` code with a timeout
   and verify the generated MDL;
-- `mdl_format`: return canonical MDL source;
-- `mdl_translate_core`: return DDL-LTLf core JSON.
+- `mdl_format`: return canonical MDL source.
+
+## MCP resources
+
+- `mdl://docs/language-reference`: MDL language reference;
+- `mdl://docs/quickstart`: placeholder for the MDL quickstart guide;
+- `mdl://grammar/antlr`: raw ANTLR grammar for MDL.
 
 The Python DSL verifier is intentionally limited. It allows imports from
 `mdl.builder` and `mdl.ast`, executes in a subprocess with a timeout, and should

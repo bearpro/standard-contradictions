@@ -46,6 +46,7 @@ rule O must_hold: x always
     assert payload["phase"] == "complete"
     assert payload["solver"]["status"] == "sat"
     assert "rule O must_hold:" in payload["formatted_source"]
+    assert "core" not in payload
 
 
 def test_mdl_verify_returns_unsat_conflict():
@@ -122,6 +123,7 @@ def build():
     assert payload["input_kind"] == "python-dsl"
     assert payload["solver"]["status"] == "sat"
     assert "module email" in payload["generated_source"]
+    assert "core" not in payload
 
 
 def test_python_dsl_verifies_dict_result():
@@ -182,9 +184,27 @@ def test_mcp_server_lists_and_calls_tools():
             prompts = await client.list_prompts()
             resources = await client.list_resources()
 
-            assert {tool.name for tool in tools.tools} >= {"mdl_verify", "mdl_verify_python_dsl"}
-            assert {prompt.name for prompt in prompts.prompts} >= {"draft_mdl_from_text"}
-            assert {str(resource.uri) for resource in resources.resources} >= {"mdl://docs/grammar"}
+            assert {tool.name for tool in tools.tools} == {
+                "mdl_format",
+                "mdl_verify",
+                "mdl_verify_python_dsl",
+            }
+            assert prompts.prompts == []
+            assert {str(resource.uri) for resource in resources.resources} == {
+                "mdl://docs/language-reference",
+                "mdl://docs/quickstart",
+                "mdl://grammar/antlr",
+            }
+
+            language_reference = await client.read_resource("mdl://docs/language-reference")
+            quickstart = await client.read_resource("mdl://docs/quickstart")
+            antlr_grammar = await client.read_resource("mdl://grammar/antlr")
+
+            assert resource_text(language_reference).startswith("# MDL Language Reference")
+            assert resource_text(quickstart) == ""
+            grammar = resource_text(antlr_grammar)
+            assert grammar.startswith("grammar MDL;")
+            assert "```" not in grammar
 
             result = await client.call_tool(
                 "mdl_verify",
@@ -203,6 +223,35 @@ rule O r: x always
             assert payload["module"] == "ok"
 
     asyncio.run(scenario())
+
+
+def test_mcp_server_rejects_removed_translation_tool():
+    async def scenario() -> None:
+        async with create_connected_server_and_client_session(
+            create_mcp_server(),
+            raise_exceptions=False,
+        ) as client:
+            await client.initialize()
+
+            result = await client.call_tool(
+                "mdl_translate_core",
+                {
+                    "source": """
+module ok
+""",
+                },
+            )
+            assert result.isError is True
+
+    asyncio.run(scenario())
+
+
+def resource_text(result: object) -> str:
+    contents = getattr(result, "contents", [])
+    assert len(contents) == 1
+    text = getattr(contents[0], "text", None)
+    assert text is not None
+    return text
 
 
 def tool_payload(result: object) -> dict:

@@ -3,18 +3,17 @@ from __future__ import annotations
 import argparse
 import ast
 import json
-import re
 import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
+from importlib.resources import files
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from . import __version__
-from mdl.core import translate
 from mdl.diagnostics import Diagnostic, ParseError
 from mdl.linter import lint_source
 from mdl.parser import parse
@@ -64,7 +63,7 @@ def create_mcp_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
         "mdl-verifier",
         instructions=(
             "Verify LLM-generated MDL source or restricted Python builder DSL by "
-            "parsing, linting, formatting, translating and optionally solving it."
+            "parsing, linting, formatting and optionally solving it."
         ),
         host=host,
         port=port,
@@ -81,9 +80,8 @@ def create_mcp_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
         horizon: int | None = None,
         max_horizon: int = 3,
         permission: str = "strong",
-        include_core: bool = False,
     ) -> dict[str, Any]:
-        """Verify MDL source text and return diagnostics plus optional solver/core output."""
+        """Verify MDL source text and return diagnostics plus optional solver output."""
 
         return verify_mdl_source(
             source,
@@ -93,7 +91,6 @@ def create_mcp_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
             horizon=horizon,
             max_horizon=max_horizon,
             permission=permission,
-            include_core=include_core,
         )
 
     @server.tool()
@@ -105,7 +102,6 @@ def create_mcp_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
         horizon: int | None = None,
         max_horizon: int = 3,
         permission: str = "strong",
-        include_core: bool = False,
         timeout_seconds: float = DEFAULT_PYTHON_TIMEOUT,
     ) -> dict[str, Any]:
         """Execute a restricted mdl.builder script, then verify its canonical MDL output."""
@@ -118,7 +114,6 @@ def create_mcp_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
             horizon=horizon,
             max_horizon=max_horizon,
             permission=permission,
-            include_core=include_core,
             timeout_seconds=timeout_seconds,
         )
 
@@ -145,75 +140,17 @@ def create_mcp_server(host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
             "summary": summarize([], None),
         }
 
-    @server.tool()
-    def mdl_translate_core(source: str, path: str = DEFAULT_ROOT_PATH) -> dict[str, Any]:
-        """Translate MDL source into backend-agnostic DDL-LTLf core JSON."""
+    @server.resource("mdl://docs/language-reference", mime_type="text/markdown")
+    def language_reference_doc() -> str:
+        return read_resource_text("language-reference.md")
 
-        try:
-            module = parse(source)
-        except ParseError as exc:
-            diagnostic = exc.to_diagnostic(path).to_dict()
-            return {
-                "ok": False,
-                "phase": "parse",
-                "diagnostics": [diagnostic],
-                "core": None,
-                "summary": summarize([diagnostic], None),
-            }
-        return {
-            "ok": True,
-            "phase": "complete",
-            "module": module.name,
-            "diagnostics": [],
-            "core": translate(module),
-            "summary": summarize([], None),
-        }
+    @server.resource("mdl://docs/quickstart", mime_type="text/markdown")
+    def quickstart_doc() -> str:
+        return read_resource_text("quickstart.md")
 
-    @server.resource("mdl://docs/grammar", mime_type="text/markdown")
-    def grammar_doc() -> str:
-        return read_project_text("docs/GRAMMAR.md") or "MDL grammar documentation is unavailable."
-
-    @server.resource("mdl://docs/architecture", mime_type="text/markdown")
-    def architecture_doc() -> str:
-        return read_project_text("docs/ARCHITECTURE.md") or "MDL architecture documentation is unavailable."
-
-    @server.resource("mdl://examples/{name}", mime_type="text/plain")
-    def example_source(name: str) -> str:
-        if not re.fullmatch(r"[A-Za-z0-9_-]+(?:\.mdl)?", name):
-            raise ValueError("example name must be a simple .mdl filename")
-        filename = name if name.endswith(".mdl") else f"{name}.mdl"
-        text = read_project_text(f"examples/{filename}")
-        if text is None:
-            raise ValueError(f"unknown MDL example {filename!r}")
-        return text
-
-    @server.prompt()
-    def draft_mdl_from_text(natural_text: str) -> str:
-        return (
-            "Generate canonical MDL source for the following natural-language requirements. "
-            "After drafting, call the mdl_verify tool and repair all parse, lint and solver errors.\n\n"
-            f"{natural_text}"
-        )
-
-    @server.prompt()
-    def draft_python_dsl_from_text(natural_text: str) -> str:
-        return (
-            "Generate restricted Python DSL code using only mdl.builder and mdl.ast. "
-            "Return a build() function, a ModelBuilder, an mdl.ast.Module, or a dict accepted by "
-            "mdl.builder.from_python. After drafting, call mdl_verify_python_dsl and repair all errors.\n\n"
-            f"{natural_text}"
-        )
-
-    @server.prompt()
-    def repair_mdl_from_diagnostics(source: str, diagnostics: str) -> str:
-        return (
-            "Repair the MDL or restricted Python DSL source below using the diagnostics. "
-            "Keep the intended model unchanged and verify the result again.\n\n"
-            "Source:\n"
-            f"{source}\n\n"
-            "Diagnostics:\n"
-            f"{diagnostics}"
-        )
+    @server.resource("mdl://grammar/antlr", mime_type="text/plain")
+    def antlr_grammar() -> str:
+        return read_resource_text("MDL.g4")
 
     return server
 
@@ -227,7 +164,6 @@ def verify_mdl_source(
     horizon: int | None = None,
     max_horizon: int = 3,
     permission: str = "strong",
-    include_core: bool = False,
 ) -> dict[str, Any]:
     try:
         root_logical = validate_logical_path(path)
@@ -257,12 +193,10 @@ def verify_mdl_source(
                 "diagnostics": diagnostics,
                 "formatted_source": format_module(module),
                 "generated_source": None,
-                "core": translate(module) if include_core else None,
                 "solver": None,
                 "summary": summarize(diagnostics, None),
             }
 
-        core = translate(module) if include_core else None
         solver_payload: dict[str, Any] | None = None
         phase = "complete"
         ok = True
@@ -293,7 +227,6 @@ def verify_mdl_source(
             "diagnostics": diagnostics,
             "formatted_source": format_module(module),
             "generated_source": None,
-            "core": core,
             "solver": solver_payload,
             "summary": summarize(diagnostics, solver_payload),
         }
@@ -308,7 +241,6 @@ def verify_python_dsl_source(
     horizon: int | None = None,
     max_horizon: int = 3,
     permission: str = "strong",
-    include_core: bool = False,
     timeout_seconds: float = DEFAULT_PYTHON_TIMEOUT,
 ) -> dict[str, Any]:
     diagnostics = validate_python_dsl(source)
@@ -327,7 +259,6 @@ def verify_python_dsl_source(
         horizon=horizon,
         max_horizon=max_horizon,
         permission=permission,
-        include_core=include_core,
     )
     result["input_kind"] = "python-dsl"
     result["generated_source"] = generated["source"]
@@ -605,26 +536,13 @@ def error_result(phase: str, diagnostics: list[dict[str, Any]], *, input_kind: s
         "diagnostics": diagnostics,
         "formatted_source": None,
         "generated_source": None,
-        "core": None,
         "solver": None,
         "summary": summarize(diagnostics, None),
     }
 
 
-def read_project_text(relative_path: str) -> str | None:
-    project_root = Path(__file__).resolve().parents[2]
-    candidates = [
-        project_root.parent / "mdl" / relative_path,
-        project_root / relative_path,
-        Path(sys.prefix) / "share" / "mdl-mcp" / relative_path,
-    ]
-    for candidate in candidates:
-        try:
-            if candidate.is_file():
-                return candidate.read_text(encoding="utf-8")
-        except OSError:
-            continue
-    return None
+def read_resource_text(name: str) -> str:
+    return files("mdl_mcp").joinpath("resources", name).read_text(encoding="utf-8")
 
 
 def run_mcp_server(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8000) -> int:
