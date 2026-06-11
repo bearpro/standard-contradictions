@@ -480,7 +480,10 @@ class _Compiler:
             raise self._error("fact() requires a value expression", call)
         target = self._keyword(call, "target")
         if target is None:
-            return A.FactDecl(value=self._expr(value_node))
+            value = self._expr(value_node)
+            if isinstance(value, A.BinaryOp) and value.op == "=" and isinstance(value.left, A.Name):
+                return A.FactDecl(target=value.left.name, value=value.right)
+            return A.FactDecl(value=value)
         return A.FactDecl(target=self._string_or_name(target), value=self._expr(value_node))
 
     def _block_from_body(self, body: list[py_ast.stmt]) -> A.Block:

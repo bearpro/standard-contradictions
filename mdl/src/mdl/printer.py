@@ -244,6 +244,10 @@ class PrettyPrinter:
             prec, assoc = self.PREC_BINARY[expr.op]
             left_parent = prec if assoc == "left" else prec + 1
             right_parent = prec + 1 if assoc == "left" else prec
+            if isinstance(expr.left, A.TemporalUnary):
+                left_parent = max(left_parent, self.PREC_POSTFIX_TEMPORAL + 1)
+            if isinstance(expr.right, A.TemporalUnary):
+                right_parent = max(right_parent, self.PREC_POSTFIX_TEMPORAL + 1)
             text = f"{self.expr(expr.left, left_parent, 'left')} {expr.op} {self.expr(expr.right, right_parent, 'right')}"
         else:
             text = repr(expr)
