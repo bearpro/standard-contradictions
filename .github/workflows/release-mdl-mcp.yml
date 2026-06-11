@@ -1,4 +1,4 @@
-name: MDL MCP Container
+name: release-mdl-mcp
 
 on:
   push:

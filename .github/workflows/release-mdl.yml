@@ -1,4 +1,4 @@
-name: MDL TestPyPI Publish
+name: release-mdl
 
 on:
   push:

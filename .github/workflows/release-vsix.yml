@@ -1,4 +1,4 @@
-name: VS Code VSIX
+name: release-vsix
 
 on:
   push:
