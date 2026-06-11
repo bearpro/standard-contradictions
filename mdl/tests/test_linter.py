@@ -136,6 +136,33 @@ rule O bad: pipe_spec.pipe.radius > 0 always
     assert any(d.code == "unknown-field" and "radius" in d.message for d in diagnostics)
 
 
+def test_linter_resolves_physical_mdl_py_import(tmp_path):
+    imported = tmp_path / "pipe.mdl.py"
+    imported.write_text('''
+from mdl.dsl import *
+
+module("pipe_spec")
+
+@record
+class Pipe:
+    length: Rat
+
+pipe = entity(Pipe)
+''', encoding="utf-8")
+    current = tmp_path / "alignment.mdl"
+    source = '''
+module alignment
+
+import "pipe.mdl.py"
+
+rule O aligned: pipe_spec.pipe = pipe_spec.pipe always
+'''
+
+    diagnostics = lint_source(source, path=str(current))
+
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
 def test_linter_checks_record_constructor_fields():
     diagnostics = lint_source('''
 module records

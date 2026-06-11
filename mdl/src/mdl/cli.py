@@ -10,7 +10,9 @@ from typing import Any
 from . import __version__, ast as A
 from .aligner import AlignmentOptions, align_modules, render_alignment_module
 from .diagnostics import MDLError, ParseError
+from .dsl import PythonDslError
 from .linter import STDLIB_ENV, lint_source
+from .loader import load_module
 from .lsp import run_stdio
 from .parser import parse
 from .printer import format_module
@@ -30,7 +32,7 @@ def write_or_print(text: str, output: str | None) -> None:
 
 
 def cmd_parse(args: argparse.Namespace) -> int:
-    module = parse(read_file(args.file))
+    module = load_module(args.file)
     print(json.dumps(A.node_to_dict(module), ensure_ascii=False, indent=2, default=str))
     return 0
 
@@ -62,7 +64,7 @@ def json_default(value: Any) -> Any:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    module = parse(read_file(args.file))
+    module = load_module(args.file)
     runtime = Runtime(module)
     if args.expr:
         value = runtime.eval_source_expr(args.expr)
@@ -73,7 +75,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_align(args: argparse.Namespace) -> int:
-    left, right = [parse(read_file(path)) for path in args.files]
+    left, right = [load_module(path) for path in args.files]
     accept_threshold = args.threshold if args.threshold is not None else args.accept_threshold
     candidate_threshold = min(args.candidate_threshold, accept_threshold)
     options = AlignmentOptions(
@@ -182,6 +184,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.func(args)
     except ParseError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    except PythonDslError as exc:
         print(str(exc), file=sys.stderr)
         return 2
     except MDLError as exc:

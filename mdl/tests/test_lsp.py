@@ -86,6 +86,54 @@ func wrong() -> int:
     assert any(item["code"] == "type-mismatch" and "expected int, got bool" in item["message"] for item in diagnostics)
 
 
+def test_lsp_reports_mdl_diagnostics_for_mdl_py():
+    source = """from mdl.dsl import *
+
+module("bad")
+
+@function
+def wrong() -> Int:
+    return True
+"""
+    out = io.BytesIO()
+    server = LSPServer(stdout=out)
+
+    server.publish_diagnostics("file:///bad.mdl.py", source)
+
+    payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
+    message = json.loads(payload.decode("utf-8"))
+    diagnostics = message["params"]["diagnostics"]
+    assert any(item["code"] == "type-mismatch" and "expected int, got bool" in item["message"] for item in diagnostics)
+
+
+def test_lsp_reports_python_dsl_errors_for_mdl_py():
+    source = """from mdl.dsl import *
+
+for item in []:
+    pass
+"""
+    out = io.BytesIO()
+    server = LSPServer(stdout=out)
+
+    server.publish_diagnostics("file:///bad.mdl.py", source)
+
+    payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
+    message = json.loads(payload.decode("utf-8"))
+    diagnostics = message["params"]["diagnostics"]
+    assert diagnostics[0]["code"] == "python-dsl-error"
+
+
+def test_lsp_mdl_py_completion_is_diagnostics_only():
+    source = """from mdl.dsl import *
+
+module("pipe")
+"""
+
+    items = LSPServer().completion_items(source, 2, len('module("pipe")'), uri="file:///tmp/pipe.mdl.py")
+
+    assert items == []
+
+
 def test_lsp_completes_language_keywords():
     source = """module keywords
 

@@ -6,6 +6,22 @@ from mdl.linter import lint_source
 from mdl.parser import parse
 from mdl.printer import format_module
 
+from .sample_sources import TUBE_SOURCE
+
+
+PIPE_DSL = """
+from mdl.dsl import *
+
+module("pipe_spec")
+
+@record
+class Pipe:
+    length: Rat
+    radius: Rat
+
+pipe = entity(Pipe)
+"""
+
 
 def test_aligner_suggests_same_entity_name():
     a = 'module a\nentity email: string\n'
@@ -111,3 +127,21 @@ def test_cli_align_writes_module_and_report(tmp_path):
     assert "module alignment_left_pipe_right_pipe" in out.read_text(encoding="utf-8")
     payload = json.loads(report_path.read_text(encoding="utf-8"))
     assert payload["accepted"]
+
+
+def test_cli_align_accepts_mdl_py(tmp_path, capsys):
+    left = tmp_path / "pipe.mdl.py"
+    right = tmp_path / "tube.mdl"
+    left.write_text(PIPE_DSL.strip() + "\n", encoding="utf-8")
+    right.write_text(TUBE_SOURCE.strip() + "\n", encoding="utf-8")
+
+    code = main([
+        "align",
+        str(left),
+        str(right),
+        "--matcher",
+        "builtin",
+    ])
+
+    assert code == 0
+    assert "module alignment_pipe_spec_tube" in capsys.readouterr().out

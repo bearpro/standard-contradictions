@@ -9,8 +9,9 @@ from urllib.request import url2pathname
 
 from . import ast as A
 from .diagnostics import Diagnostic, ParseError
+from .dsl import PythonDslError
+from .loader import load_module, parse_document
 from .names import local_name, root_name, split_qualified
-from .parser import parse
 from .type_inference import TypeInference
 
 
@@ -56,7 +57,7 @@ def stdlib_root(stdlib_path: str | Path | None = None) -> Path | None:
 
 def is_file_import(path: str) -> bool:
     normalized = path.replace("\\", "/")
-    return normalized.endswith(".mdl") or "/" in normalized
+    return normalized.endswith(".mdl") or normalized.endswith(".mdl.py") or "/" in normalized
 
 
 class ImportResolver:
@@ -91,8 +92,8 @@ class ImportResolver:
         for uri, text in self.documents.items():
             document_path = path_to_file(uri)
             try:
-                module = parse(text)
-            except ParseError:
+                module = parse_document(text, uri)
+            except (ParseError, PythonDslError):
                 continue
             if document_path is not None and candidates:
                 try:
@@ -163,8 +164,8 @@ class ImportResolver:
         if not path.exists() or not path.is_file():
             return None
         try:
-            module = parse(path.read_text(encoding="utf-8"))
-        except (OSError, ParseError):
+            module = load_module(path)
+        except (OSError, ParseError, PythonDslError):
             return None
         return ResolvedModule(module, str(path))
 
@@ -172,8 +173,8 @@ class ImportResolver:
         if not path.exists() or not path.is_file():
             return None
         try:
-            module = parse(path.read_text(encoding="utf-8"))
-        except (OSError, ParseError):
+            module = load_module(path)
+        except (OSError, ParseError, PythonDslError):
             return None
         if module.name == import_path:
             return ResolvedModule(module, str(path))
@@ -1398,7 +1399,9 @@ def lint_source(
     stdlib_path: str | Path | None = None,
 ) -> list[Diagnostic]:
     try:
-        module = parse(source)
+        module = parse_document(source, path)
     except ParseError as exc:
+        return [exc.to_diagnostic(path)]
+    except PythonDslError as exc:
         return [exc.to_diagnostic(path)]
     return Linter().lint_module(module, path=path, documents=documents, stdlib_path=stdlib_path)

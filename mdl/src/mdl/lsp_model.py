@@ -6,11 +6,13 @@ from typing import Any
 from urllib.parse import urlparse
 
 from . import ast as A
+from .dsl import PythonDslError
 from .diagnostics import Diagnostic
 from .lexer import Token, tokenize
 from .linter import ImportResolver, SemanticChecker, Symbol, lint_source, path_to_file
+from .loader import parse_document
 from .names import local_name, split_qualified
-from .parser import ParseError, parse
+from .parser import ParseError
 from .printer import PrettyPrinter
 
 
@@ -85,8 +87,11 @@ class EditorSnapshot:
         except ParseError:
             self.tokens = []
         try:
-            self.module = parse(self.text)
+            self.module = parse_document(self.text, self.uri)
         except ParseError as exc:
+            self.diagnostics = [exc.to_diagnostic(self.uri)]
+            return
+        except PythonDslError as exc:
             self.diagnostics = [exc.to_diagnostic(self.uri)]
             return
         resolver = ImportResolver(self.uri, self.documents)
@@ -107,8 +112,8 @@ class EditorSnapshot:
                 paths[resolved.module.name] = resolved.path
         for uri, text in self.documents.items():
             try:
-                module = parse(text)
-            except ParseError:
+                module = parse_document(text, uri)
+            except (ParseError, PythonDslError):
                 continue
             paths.setdefault(module.name, uri)
         return paths

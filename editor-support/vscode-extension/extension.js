@@ -31,9 +31,14 @@ function createClient() {
     documentSelector: [
       { scheme: "file", language: "mdl" },
       { scheme: "untitled", language: "mdl" },
+      { scheme: "file", language: "python", pattern: "**/*.mdl.py" },
+      { scheme: "untitled", language: "python", pattern: "**/*.mdl.py" },
     ],
     synchronize: {
-      fileEvents: vscode.workspace.createFileSystemWatcher("**/*.mdl"),
+      fileEvents: [
+        vscode.workspace.createFileSystemWatcher("**/*.mdl"),
+        vscode.workspace.createFileSystemWatcher("**/*.mdl.py"),
+      ],
     },
   };
 

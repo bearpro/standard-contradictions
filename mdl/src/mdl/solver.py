@@ -19,9 +19,10 @@ else:
 
 from . import ast as A
 from .diagnostics import Diagnostic, MDLError, ParseError
+from .dsl import PythonDslError
 from .linter import ImportResolver
+from .loader import load_module
 from .names import split_qualified
-from .parser import parse
 from .printer import format_expr
 from .runtime import Runtime
 
@@ -180,7 +181,7 @@ class SolveOptions:
 
 
 def read_module(path: Path) -> A.Module:
-    return parse(path.read_text(encoding="utf-8"))
+    return load_module(path)
 
 
 def solve_paths(paths: Iterable[str | Path], options: SolveOptions | None = None) -> dict[str, Any]:
@@ -192,6 +193,8 @@ def solve_paths(paths: Iterable[str | Path], options: SolveOptions | None = None
         try:
             modules.append((read_module(path), path))
         except ParseError as exc:
+            diagnostics.append(exc.to_diagnostic(str(path)))
+        except PythonDslError as exc:
             diagnostics.append(exc.to_diagnostic(str(path)))
         except OSError as exc:
             diagnostics.append(Diagnostic(str(exc), severity="error", code="io-error", path=str(path)))

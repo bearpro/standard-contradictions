@@ -73,11 +73,12 @@ Useful CLI examples:
 ```bash
 cd mdl
 mdl parse examples/email.mdl
+mdl parse examples/pipe.mdl.py
 mdl format examples/email.mdl
-mdl lint examples/email.mdl
+mdl lint examples/pipe.mdl.py
 mdl translate examples/email.mdl
-mdl run examples/email.mdl --expr 'email_is_correct(email)'
-mdl align examples/email.mdl examples/pipe.mdl
+mdl run examples/pipe.mdl.py --expr 'pipe.length > 0'
+mdl align examples/pipe.mdl.py examples/tube.mdl
 mdl solve examples/pipe.mdl examples/tube.mdl examples/alignment.mdl --horizon 1
 mdl lsp
 ```

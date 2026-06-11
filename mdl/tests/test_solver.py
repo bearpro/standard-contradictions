@@ -16,6 +16,25 @@ from .sample_sources import ALIGNMENT_SOURCE, EMAIL_SOURCE, FIB_SOURCE, PIPE_SOU
 
 STDLIB = Path(__file__).resolve().parents[1] / "src" / "mdl" / "stdlib"
 
+PIPE_DSL = """
+from mdl.dsl import *
+
+module("pipe_spec")
+
+@record
+class Pipe:
+    length: Rat
+    radius: Rat
+
+pipe = entity(Pipe)
+
+@rule(O)
+def pipe_length_positive():
+    return always(pipe.length > 0)
+
+fact(pipe == Pipe(length=10, radius=2))
+"""
+
 
 def write_module(tmp_path: Path, name: str, source: str) -> Path:
     path = tmp_path / name
@@ -30,6 +49,14 @@ def test_solve_pipe_example_is_sat(tmp_path):
     assert payload["status"] == "sat"
     assert payload["model"]["trace"][0]["entities"]["pipe_spec.pipe"]["length"] == "10"
     assert "pipe_spec.pipe_length_positive" in payload["model"]["winning_rules"]
+
+
+def test_solve_mdl_py_example_is_sat(tmp_path):
+    pipe = write_module(tmp_path, "pipe.mdl.py", PIPE_DSL)
+    payload = solve_paths([pipe], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["pipe_spec.pipe"]["length"] == "10"
 
 
 def test_solve_pipe_tube_alignment_modules_are_sat(tmp_path):
