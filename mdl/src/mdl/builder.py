@@ -1,26 +1,50 @@
 from __future__ import annotations
 
-from typing import Any
+from fractions import Fraction
+from types import NoneType, UnionType
+from typing import Any, TypeAlias, get_args
 
 from . import ast as A
 from .printer import format_module
 
+TypeInput: TypeAlias = A.TypeExpr | str | type[object] | UnionType | None
 
-def type_ref(name: str, *args: A.TypeExpr | str) -> A.TypeRef:
+_PYTHON_TYPE_ALIASES: dict[type[object], str] = {
+    bool: "bool",
+    int: "int",
+    Fraction: "rat",
+    float: "decimal",
+    str: "string",
+    NoneType: "unit",
+}
+
+
+def type_ref(name: str, *args: TypeInput) -> A.TypeRef:
     return A.TypeRef(name=name, args=[coerce_type(a) for a in args])
 
 
-def coerce_type(value: A.TypeExpr | str | None) -> A.TypeExpr:
+def coerce_type(value: TypeInput) -> A.TypeExpr:
     if value is None:
         return A.TypeRef(name="unit")
     if isinstance(value, A.TypeExpr):
         return value
+    python_type_name = _python_type_name(value)
+    if python_type_name is not None:
+        return A.TypeRef(name=python_type_name)
     text = str(value)
     if any(ch in text for ch in "<>{}(),:"):
         # Keep the builder useful for inferred Python models that store type syntax as strings.
         from .parser import parse_type_expr_source
         return parse_type_expr_source(text)
     return A.TypeRef(name=text)
+
+
+def _python_type_name(value: object) -> str | None:
+    if isinstance(value, type):
+        return _PYTHON_TYPE_ALIASES.get(value)
+    if isinstance(value, UnionType) and set(get_args(value)) == {int, Fraction}:
+        return "rat"
+    return None
 
 
 def ref(name: str) -> A.Name:
@@ -118,7 +142,7 @@ class ModelBuilder:
         self.module.opens.append(A.OpenDecl(module=module))
         return self
 
-    def type_decl(self, name: str, typ: str | A.TypeExpr) -> A.TypeDecl:
+    def type_decl(self, name: str, typ: TypeInput) -> A.TypeDecl:
         decl = A.TypeDecl(name=name, definition=coerce_type(typ))
         if not isinstance(decl.definition, A.RecordType):
             raise ValueError("type declarations must define a record or use sum_type()")
@@ -137,17 +161,17 @@ class ModelBuilder:
         self.module.declarations.append(decl)
         return decl
 
-    def value(self, name: str, value: A.Expr | str | int | bool | float | None, typ: str | A.TypeExpr | None = None) -> A.ValueDecl:
+    def value(self, name: str, value: A.Expr | str | int | bool | float | None, typ: TypeInput = None) -> A.ValueDecl:
         decl = A.ValueDecl(name=name, value=coerce_expr(value), type_annotation=coerce_type(typ) if typ else None)
         self.module.declarations.append(decl)
         return decl
 
-    def entity(self, name: str, typ: str | A.TypeExpr) -> A.EntityDecl:
+    def entity(self, name: str, typ: TypeInput) -> A.EntityDecl:
         decl = A.EntityDecl(name=name, type_annotation=coerce_type(typ))
         self.module.declarations.append(decl)
         return decl
 
-    def func(self, name: str, params: list[tuple[str, str | A.TypeExpr]], return_type: str | A.TypeExpr, body: A.Block | A.Expr) -> A.FuncDecl:
+    def func(self, name: str, params: list[tuple[str, TypeInput]], return_type: TypeInput, body: A.Block | A.Expr) -> A.FuncDecl:
         ps = [A.Param(pattern=A.VarPattern(name=p), type_annotation=coerce_type(t)) for p, t in params]
         block = body if isinstance(body, A.Block) else A.Block(result=body)
         decl = A.FuncDecl(name=name, params=ps, return_type=coerce_type(return_type), body=block)

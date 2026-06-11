@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import ast as py_ast
-from dataclasses import dataclass
+from dataclasses import dataclass as py_dataclass
+from fractions import Fraction
 from pathlib import Path
-from typing import Any
+from types import NoneType
+from typing import Callable, TypeAlias, TypeVar, dataclass_transform, overload
 
 from . import ast as A
 from .builder import coerce_type
@@ -55,14 +57,6 @@ class PythonDslError(ValueError):
         else:
             column = 1 if self.column is None else self.column + 1
             super().__init__(f"{filename}:{self.line}:{column}: {message}")
-
-
-@dataclass(frozen=True)
-class _TypeSymbol:
-    name: str
-
-    def __repr__(self) -> str:  # pragma: no cover - runtime convenience only
-        return self.name
 
 
 class _RuntimeExpr:
@@ -129,16 +123,18 @@ class _RuntimeExpr:
         return self._binary(other, ">=")
 
 
-Bool = _TypeSymbol("bool")
-Int = _TypeSymbol("int")
-Rat = _TypeSymbol("rat")
-Decimal = _TypeSymbol("decimal")
-String = _TypeSymbol("string")
-Unit = _TypeSymbol("unit")
+Bool: TypeAlias = bool
+Int: TypeAlias = int
+Rat: TypeAlias = int | Fraction
+Decimal: TypeAlias = float
+String: TypeAlias = str
+Unit: TypeAlias = NoneType
 
-O = "O"
+O = "O"  # noqa: E741 - public DSL modality symbol
 F = "F"
 P = "P"
+
+_T = TypeVar("_T", bound=type[object])
 
 
 # Runtime/editor-facing no-op surface. Static compilation below is authoritative.
@@ -154,11 +150,18 @@ def open_(name: str) -> None:  # pragma: no cover
     return None
 
 
-def record(cls: type[Any] | None = None, **_: object):  # pragma: no cover
-    def decorate(inner: type[Any]) -> type[Any]:
-        try:
-            from dataclasses import dataclass as py_dataclass
+@overload
+def record(cls: _T, **_: object) -> _T: ...
 
+
+@overload
+def record(cls: str | None = None, **_: object) -> Callable[[_T], _T]: ...
+
+
+@dataclass_transform()
+def record(cls: object | None = None, **_: object) -> object:  # pragma: no cover
+    def decorate(inner: _T) -> _T:
+        try:
             return py_dataclass(inner)
         except Exception:
             return inner

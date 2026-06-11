@@ -57,6 +57,49 @@ def test_python_dsl_compiles_pipe_model_to_canonical_mdl():
     assert parse(source).name == "pipe_spec"
 
 
+def test_python_dsl_stdlib_types_are_valid_python_annotations():
+    from fractions import Fraction
+    from types import NoneType
+    from typing import get_args
+
+    from mdl.dsl import Bool, Decimal, Int, Rat, String, Unit, record
+
+    @record
+    class RuntimePipe:
+        enabled: Bool
+        length: Rat
+        count: Int
+        score: Decimal
+        label: String
+        marker: Unit
+
+    assert Bool is bool
+    assert Int is int
+    assert set(get_args(Rat)) == {int, Fraction}
+    assert Decimal is float
+    assert String is str
+    assert Unit is NoneType
+    assert RuntimePipe.__annotations__ == {
+        "enabled": bool,
+        "length": Rat,
+        "count": int,
+        "score": float,
+        "label": str,
+        "marker": NoneType,
+    }
+
+    pipe = RuntimePipe(
+        enabled=True,
+        length=Fraction(1, 2),
+        count=1,
+        score=0.5,
+        label="pipe",
+        marker=None,
+    )
+
+    assert pipe.length == Fraction(1, 2)
+
+
 def test_python_dsl_pipe_model_matches_textual_mdl_ast():
     dsl_module = compile_source(PIPE_DSL, filename="pipe.py")
     dsl_reparsed = parse(format_module(dsl_module))

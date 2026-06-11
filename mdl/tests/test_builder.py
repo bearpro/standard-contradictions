@@ -12,6 +12,28 @@ def test_builder_prints_parseable_source():
     assert "rule O email_addr_spec_correct:" in source
 
 
+def test_builder_accepts_python_dsl_stdlib_types():
+    from mdl.dsl import Bool, Decimal, Int, Rat, String, Unit
+
+    m = ModelBuilder("typed")
+    m.entity("flag", Bool)
+    m.entity("count", Int)
+    m.entity("ratio", Rat)
+    m.entity("score", Decimal)
+    m.entity("label", String)
+    m.entity("marker", Unit)
+
+    source = m.to_source()
+
+    assert "entity flag: bool" in source
+    assert "entity count: int" in source
+    assert "entity ratio: rat" in source
+    assert "entity score: decimal" in source
+    assert "entity label: string" in source
+    assert "entity marker: unit" in source
+    assert parse(source).name == "typed"
+
+
 def test_builder_from_dict():
     from mdl.builder import from_python
 
