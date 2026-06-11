@@ -34,6 +34,11 @@
             pkgs.z3
             pkgs.stdenv.cc.cc.lib
           ];
+
+          # Support for UV installed tools
+          shellHook = ''
+            export PATH="$PATH:$HOME/.local/bin"
+          '';
         };
       });
   };
