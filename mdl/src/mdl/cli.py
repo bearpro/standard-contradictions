@@ -9,7 +9,6 @@ from typing import Any
 
 from . import __version__, ast as A
 from .aligner import AlignmentOptions, align_modules, render_alignment_module
-from .core import to_json
 from .diagnostics import MDLError, ParseError
 from .linter import STDLIB_ENV, lint_source
 from .lsp import run_stdio
@@ -53,13 +52,6 @@ def cmd_lint(args: argparse.Namespace) -> int:
             code = f" [{d.code}]" if d.code else ""
             print(f"{location}: {d.severity}{code}: {d.message}")
     return 1 if any(d.severity == "error" for d in diagnostics) else 0
-
-
-def cmd_translate(args: argparse.Namespace) -> int:
-    module = parse(read_file(args.file))
-    text = to_json(module, indent=2)
-    write_or_print(text + "\n", args.output)
-    return 0
 
 
 def json_default(value: Any) -> Any:
@@ -153,11 +145,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("file")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_lint)
-
-    p = sub.add_parser("translate", help="translate a file to JSON-like DDL-LTLf core")
-    p.add_argument("file")
-    p.add_argument("-o", "--output")
-    p.set_defaults(func=cmd_translate)
 
     p = sub.add_parser("run", help="evaluate facts or a point-wise expression")
     p.add_argument("file")

@@ -90,10 +90,6 @@
       {
         "command": "mdl.showModelSummary",
         "title": "MDL: Show Model Summary"
-      },
-      {
-        "command": "mdl.showCoreTraceability",
-        "title": "MDL: Show Core Traceability"
       }
     ]
   }

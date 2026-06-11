@@ -88,11 +88,6 @@ async function showModelSummary() {
   await showJsonDocument("MDL Model Summary", summary);
 }
 
-async function showCoreTraceability() {
-  const summary = await requestModelSummary();
-  await showJsonDocument("MDL Core Traceability", summary ? summary.core : undefined);
-}
-
 function startClient() {
   return restartClient().catch((error) => {
     const message = error && error.message ? error.message : String(error);
@@ -104,7 +99,6 @@ function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand("mdl.restartLanguageServer", startClient),
     vscode.commands.registerCommand("mdl.showModelSummary", showModelSummary),
-    vscode.commands.registerCommand("mdl.showCoreTraceability", showCoreTraceability),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("mdl.lsp")) {
         startClient();

@@ -10,14 +10,13 @@ The repository contains:
 - one command-line utility: `mdl`;
 - a parser and typed AST dataclasses;
 - a pretty-printer / formatter;
-- a translator to a JSON-like DDL-LTLf core;
 - a bounded Z3 solver for DDL-LTLf consistency checks;
 - a small deterministic runtime for evaluating pure functions and facts;
 - a linter;
 - a minimal stdio LSP server with diagnostics and completions for keywords,
   visible names, type names and record fields;
 - a semantic aligner;
-- tests for the core language constructs.
+- tests for the language constructs.
 
 ## Install locally
 
@@ -46,7 +45,6 @@ make install UV_PYTHON=3.11
 mdl parse examples/email.mdl
 mdl format examples/email.mdl
 mdl lint examples/email.mdl
-mdl translate examples/email.mdl
 mdl run examples/email.mdl --expr 'email_is_correct(email)'
 mdl align examples/email.mdl examples/pipe.mdl
 mdl solve examples/pipe.mdl examples/tube.mdl examples/alignment.mdl --horizon 1
@@ -58,7 +56,7 @@ mdl lsp
 The recommended Python front-end is a static Python-syntax DSL. It lets
 LLM-assisted and external inference pipelines emit ordinary-looking Python with
 decorators while still lowering to the canonical MDL AST before formatting,
-linting, translating, running or solving.
+linting, running or solving.
 
 ```python
 from mdl.dsl import *

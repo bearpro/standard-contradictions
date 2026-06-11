@@ -206,8 +206,8 @@ rule O positive: pipe.length > 0 always
 
     summary = snapshot.model_summary()
     assert summary["module"] == "pipe"
-    assert summary["core"]["rules"][0]["name"] == "positive"
-    assert "atoms" in summary["core"]
+    assert summary["rules"][0]["name"] == "positive"
+    assert "core" not in summary
 
 
 def test_lsp_definition_for_opened_type_keeps_correct_line(monkeypatch):

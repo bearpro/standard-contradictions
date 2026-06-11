@@ -6,7 +6,6 @@ from typing import Any
 from urllib.parse import urlparse
 
 from . import ast as A
-from .core import CoreTranslator
 from .diagnostics import Diagnostic
 from .lexer import Token, tokenize
 from .linter import ImportResolver, SemanticChecker, Symbol, lint_source, path_to_file
@@ -478,11 +477,6 @@ class EditorSnapshot:
     def model_summary(self) -> dict[str, Any]:
         if self.module is None:
             return {"module": None, "diagnostics": [d.to_dict() for d in self.diagnostics]}
-        core: dict[str, Any] | None = None
-        try:
-            core = CoreTranslator().translate(self.module)
-        except Exception:  # pragma: no cover - defensive summary fallback
-            core = None
         return {
             "module": self.module.name,
             "imports": [imp.path for imp in self.module.imports],
@@ -492,10 +486,6 @@ class EditorSnapshot:
             "types": self.type_summary(),
             "rules": [self.rule_summary(decl) for decl in self.module.declarations if isinstance(decl, A.RuleDecl)],
             "diagnostics": [d.to_dict() for d in self.diagnostics],
-            "core": {
-                "rules": core.get("rules", []) if core else [],
-                "atoms": core.get("atoms", {}) if core else {},
-            },
         }
 
     def declaration_summary(self, decl: A.Declaration) -> dict[str, Any]:

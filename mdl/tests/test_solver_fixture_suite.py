@@ -23,7 +23,7 @@ ALIGNMENT = FIXTURES / "pipeline_tube_alignment.mdl"
 ALIGNMENT_REPORT = FIXTURES / "pipeline_tube_alignment.json"
 
 
-def test_fixture_modules_parse_and_cover_core_language_features():
+def test_fixture_modules_parse_and_cover_language_features():
     pipeline = parse(PIPELINE.read_text(encoding="utf-8"))
     policy = parse(POLICY.read_text(encoding="utf-8"))
 

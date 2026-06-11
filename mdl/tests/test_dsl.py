@@ -5,6 +5,8 @@ from mdl.dsl import PythonDslError, compile_source, to_source
 from mdl.parser import parse
 from mdl.printer import format_module
 
+from .sample_sources import PIPE_SOURCE
+
 
 PIPE_DSL = '''
 from mdl.dsl import *
@@ -26,6 +28,18 @@ fact(pipe == Pipe(length=10, radius=2))
 '''
 
 
+def without_locations(value):
+    if isinstance(value, dict):
+        return {
+            k: without_locations(v)
+            for k, v in value.items()
+            if k not in {"line", "column", "end_line", "end_column", "source_span"}
+        }
+    if isinstance(value, list):
+        return [without_locations(item) for item in value]
+    return value
+
+
 def test_python_dsl_compiles_pipe_model_to_canonical_mdl():
     module = compile_source(PIPE_DSL, filename="pipe.py")
 
@@ -41,6 +55,53 @@ def test_python_dsl_compiles_pipe_model_to_canonical_mdl():
     assert "rule O pipe_length_positive:" in source
     assert "fact pipe = Pipe { length = 10, radius = 2 }" in source
     assert parse(source).name == "pipe_spec"
+
+
+def test_python_dsl_pipe_model_matches_textual_mdl_ast():
+    dsl_module = compile_source(PIPE_DSL, filename="pipe.py")
+    dsl_reparsed = parse(format_module(dsl_module))
+    textual_module = parse(PIPE_SOURCE)
+
+    assert without_locations(A.node_to_dict(dsl_reparsed)) == without_locations(A.node_to_dict(textual_module))
+
+
+def test_python_dsl_supports_module_metadata_imports_opens_types_values_and_targeted_facts():
+    source = '''
+from mdl.dsl import *
+
+module("typed_model", annotations=["source generated", "# raw annotation"])
+import_("./pipe.mdl")
+open_(std.collections)
+
+@record("Envelope")
+class EnvelopeDraft:
+    labels: std.collections.List[String]
+    coordinates: (Int, Rat)
+    payload: "std.collections.List<string>"
+
+message_count: Int = value(3)
+envelope = entity(Envelope)
+
+fact(target="message_count", value=3)
+'''
+
+    module = compile_source(source, filename="typed_model.py")
+    rendered = format_module(module)
+    reparsed = parse(rendered)
+
+    assert module.annotations == ["source generated", "# raw annotation"]
+    assert module.imports[0].path == "./pipe.mdl"
+    assert module.opens[0].module == "std.collections"
+    assert "type Envelope = {" in rendered
+    assert "labels: std.collections.List<string>" in rendered
+    assert "coordinates: (int, rat)" in rendered
+    assert "payload: std.collections.List<string>" in rendered
+    assert "let message_count: int = 3" in rendered
+    assert "entity envelope: Envelope" in rendered
+    assert "fact message_count = 3" in rendered
+    assert reparsed.name == "typed_model"
+    assert reparsed.imports[0].path == "./pipe.mdl"
+    assert reparsed.opens[0].module == "std.collections"
 
 
 def test_python_dsl_supports_predicates_boolops_temporal_rules_and_if_statements():
@@ -77,6 +138,64 @@ def malformed_email_received():
     assert "func normalize_score(score: rat) -> rat:" in rendered
     assert "rule F malformed_email_received:" in rendered
     assert parse(rendered).name == "email"
+
+
+def test_python_dsl_supports_temporal_binary_implies_and_rule_metadata():
+    source = '''
+from mdl.dsl import *
+
+module("temporal")
+
+started = entity(Bool)
+running = entity(Bool)
+done = entity(Bool)
+fallback = entity(Bool)
+
+@rule(F, name="eventual_completion", strength="strict", when=started, otherwise=fallback)
+def completion():
+    return implies(started, until(next_(running), eventually(done)))
+'''
+
+    module = compile_source(source, filename="temporal.py")
+    rendered = format_module(module)
+    reparsed = parse(rendered)
+    rule = next(decl for decl in module.declarations if isinstance(decl, A.RuleDecl))
+
+    assert rule.name == "eventual_completion"
+    assert rule.modality == "F"
+    assert rule.strength == "strict"
+    assert isinstance(rule.antecedent, A.Name)
+    assert isinstance(rule.otherwise, A.Name)
+    assert "strict rule F eventual_completion when started:" in rendered
+    assert "started implies (running next) until (done eventually)" in rendered
+    assert reparsed.name == "temporal"
+    assert isinstance(rule.body, A.BinaryOp)
+    assert rule.body.op == "implies"
+    assert isinstance(rule.body.right, A.TemporalBinary)
+    assert rule.body.right.op == "until"
+
+
+def test_python_dsl_supports_chained_comparisons_as_boolean_conjunctions():
+    source = '''
+from mdl.dsl import *
+
+module("ranges")
+
+score = entity(Rat)
+
+@predicate
+def valid_score(score: Rat):
+    return 0 <= score <= 1
+'''
+
+    module = compile_source(source, filename="ranges.py")
+    rendered = format_module(module)
+    predicate = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
+
+    assert isinstance(predicate.body.result, A.BinaryOp)
+    assert predicate.body.result.op == "and"
+    assert "0 <= score and score <= 1" in rendered
+    assert parse(rendered).name == "ranges"
 
 
 def test_python_dsl_supports_decorator_entity_form():
