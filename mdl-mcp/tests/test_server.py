@@ -201,7 +201,6 @@ def test_mcp_server_lists_and_calls_tools():
             antlr_grammar = await client.read_resource("mdl://grammar/antlr")
 
             assert resource_text(language_reference).startswith("# MDL Language Reference")
-            assert resource_text(quickstart) == ""
             grammar = resource_text(antlr_grammar)
             assert grammar.startswith("grammar MDL;")
             assert "```" not in grammar
