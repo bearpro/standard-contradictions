@@ -57,7 +57,7 @@ and make sure the `mdl` command is available in the VS Code environment.
 ```bash
 nix develop
 cd mdl
-python -m pip install -e .
+python -m pip install -e '.[dev]'
 pytest
 ```
 

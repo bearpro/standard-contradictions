@@ -267,7 +267,7 @@ def test_solve_uses_explicit_stdlib_path_without_env(tmp_path, monkeypatch):
     assert payload["status"] == "sat"
 
 
-def test_solve_has_no_embedded_stdlib_fallback(tmp_path, monkeypatch):
+def test_solve_uses_embedded_stdlib_fallback(tmp_path, monkeypatch):
     monkeypatch.delenv("MDL_STDLIB_PATH", raising=False)
     spec = write_module(
         tmp_path,
@@ -283,8 +283,7 @@ def test_solve_has_no_embedded_stdlib_fallback(tmp_path, monkeypatch):
 
     payload = solve_paths([spec], SolveOptions(horizon=1))
 
-    assert payload["status"] == "error"
-    assert any(d["code"] == "unresolved-open" for d in payload["diagnostics"])
+    assert payload["status"] == "sat"
 
 
 def test_solve_case_pattern_bindings_survive_boolean_operators(tmp_path):

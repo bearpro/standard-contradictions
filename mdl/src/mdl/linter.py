@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+from importlib import resources
+from importlib.resources.abc import Traversable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -55,6 +57,32 @@ def stdlib_root(stdlib_path: str | Path | None = None) -> Path | None:
     return Path(configured)
 
 
+def bundled_stdlib_root() -> Traversable | None:
+    root = resources.files("mdl") / "stdlib"
+    return root if root.is_dir() else None
+
+
+def stdlib_relative_path(import_path: str) -> str | None:
+    normalized = import_path.replace("\\", "/")
+    if not normalized.endswith(".mdl"):
+        normalized = normalized.replace(".", "/") + ".mdl"
+    if not normalized.startswith("std/"):
+        return None
+    if ".." in Path(normalized).parts:
+        return None
+    return normalized
+
+
+def stdlib_resource_files(root: Traversable) -> list[Traversable]:
+    files: list[Traversable] = []
+    for child in sorted(root.iterdir(), key=lambda item: item.name):
+        if child.is_dir():
+            files.extend(stdlib_resource_files(child))
+        elif child.is_file() and child.name.endswith(".mdl"):
+            files.append(child)
+    return files
+
+
 def is_file_import(path: str) -> bool:
     normalized = path.replace("\\", "/")
     return normalized.endswith(".mdl") or normalized.endswith(".mdl.py") or "/" in normalized
@@ -106,15 +134,15 @@ class ImportResolver:
         return None
 
     def resolve_from_stdlib(self, import_path: str) -> ResolvedModule | None:
-        if self.stdlib_path is None:
+        relative_path = stdlib_relative_path(import_path)
+        if relative_path is None:
             return None
-        normalized = import_path.replace("\\", "/")
-        if not normalized.startswith("std/"):
+        if self.stdlib_path is not None:
+            return self.load_file(self.stdlib_path / relative_path)
+        root = bundled_stdlib_root()
+        if root is None:
             return None
-        if ".." in Path(normalized).parts:
-            return None
-        candidate = self.stdlib_path / normalized
-        return self.load_file(candidate)
+        return self.load_resource(root.joinpath(*Path(relative_path).parts))
 
     def stdlib_modules(self) -> dict[str, ResolvedModule]:
         if self.stdlib_cache is not None:
@@ -125,6 +153,13 @@ class ImportResolver:
                 resolved = self.load_file(path)
                 if resolved is not None:
                     modules[resolved.module.name] = resolved
+        else:
+            root = bundled_stdlib_root()
+            if root is not None:
+                for resource in stdlib_resource_files(root):
+                    resolved = self.load_resource(resource)
+                    if resolved is not None:
+                        modules[resolved.module.name] = resolved
         self.stdlib_cache = modules
         return modules
 
@@ -179,6 +214,16 @@ class ImportResolver:
         if module.name == import_path:
             return ResolvedModule(module, str(path))
         return None
+
+    def load_resource(self, resource: Traversable) -> ResolvedModule | None:
+        if not resource.is_file():
+            return None
+        path = str(resource)
+        try:
+            module = parse_document(resource.read_text(encoding="utf-8"), path)
+        except (OSError, ParseError, PythonDslError):
+            return None
+        return ResolvedModule(module, path)
 
 
 class SemanticChecker:

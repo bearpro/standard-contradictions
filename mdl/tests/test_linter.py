@@ -226,7 +226,7 @@ rule O ok: List.Empty() = List.Empty() always
     assert not any(d.severity == "error" for d in diagnostics)
 
 
-def test_linter_has_no_embedded_stdlib_fallback(monkeypatch):
+def test_linter_uses_embedded_stdlib_fallback(monkeypatch):
     monkeypatch.delenv("MDL_STDLIB_PATH", raising=False)
     diagnostics = lint_source('''
 module collections
@@ -234,13 +234,10 @@ module collections
 open std.collections
 
 entity xs: List<int>
-rule O bad: List.Empty() = List.Empty() always
+rule O ok: List.Empty() = List.Empty() always
 ''')
 
-    codes = {d.code for d in diagnostics}
-    assert "unresolved-open" in codes
-    assert "undefined-type" in codes
-    assert any(d.code == "undefined-name" and "List.Empty" in d.message for d in diagnostics)
+    assert not any(d.severity == "error" for d in diagnostics)
 
 
 def test_linter_resolves_std_collection_open():
