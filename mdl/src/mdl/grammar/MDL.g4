@@ -143,8 +143,8 @@ ruleStrength
     ;
 
 ruleBody
-    : deonticMod COLON expr
-    | deonticMod? qualifiedName (WHEN expr)? COLON expr
+    : deonticMod COLON block
+    | deonticMod? qualifiedName (WHEN expr)? COLON block
     ;
 
 deonticMod
@@ -223,7 +223,7 @@ ifExpr
     ;
 
 letExpr
-    : LET pattern typeAnnotation? EQ expr newlines? IN expr
+    : LET pattern typeAnnotation? EQ expr newlines? IN newlines? expr
     ;
 
 matchExpr

@@ -246,14 +246,27 @@ class AstBuilder(MDLVisitor):
         modality = self.visit(ctx.deonticMod()) if ctx.deonticMod() else None
         if ctx.qualifiedName() is None:
             line = ctx.start.line
-            return modality, self.next_anonymous_rule_name(line), True, None, self.visit(ctx.expr(0))
-        exprs = ctx.expr()
+            return modality, self.next_anonymous_rule_name(line), True, None, self.block_as_expr(self.visit(ctx.block()))
         antecedent = None
-        body_index = 0
         if ctx.WHEN():
-            antecedent = self.visit(exprs[0])
-            body_index = 1
-        return modality, self.visit(ctx.qualifiedName()), False, antecedent, self.visit(exprs[body_index])
+            antecedent = self.visit(ctx.expr())
+        return modality, self.visit(ctx.qualifiedName()), False, antecedent, self.block_as_expr(self.visit(ctx.block()))
+
+    def block_as_expr(self, block: A.Block) -> A.Expr:
+        if block.result is None:
+            return A.Literal(value=None, kind="unit", line=block.line, column=block.column)
+        result = block.result
+        for stmt in reversed(block.statements):
+            result = A.LetExpr(
+                pattern=stmt.pattern,
+                value=stmt.value,
+                body=result,
+                line=stmt.line,
+                column=stmt.column,
+                end_line=result.end_line,
+                end_column=result.end_column,
+            )
+        return result
 
     def visitDeonticMod(self, ctx: MDLParser.DeonticModContext) -> str:
         return ctx.getText()

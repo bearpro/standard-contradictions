@@ -301,6 +301,28 @@ rule O applies when enabled: x always
     assert isinstance(rule.body, A.TemporalUnary)
 
 
+def test_parse_rule_body_after_newline():
+    module = parse("""
+module tmp
+
+entity x1: bool
+entity x2: bool
+
+rule O r1:
+    x1
+
+rule O r2:
+    let nx1 = not x1 in
+    x2
+""")
+
+    rules = [decl for decl in module.declarations if isinstance(decl, A.RuleDecl)]
+    assert [rule.name for rule in rules] == ["r1", "r2"]
+    assert isinstance(rules[0].body, A.Name)
+    assert isinstance(rules[1].body, A.LetExpr)
+    assert isinstance(rules[1].body.body, A.Name)
+
+
 def test_parse_file_import_path():
     module = parse('''
 module imports
