@@ -232,6 +232,83 @@ def test_parse_and_format_let_expr_type_annotation():
     assert without_locations(A.node_to_dict(reparsed)) == without_locations(A.node_to_dict(expr))
 
 
+def test_parse_block_let_with_indented_rhs():
+    module = parse("""
+module lets
+
+func f() -> bool:
+    let x =
+        1
+    true
+""")
+
+    func = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
+    assert func.body is not None
+    stmt = func.body.statements[0]
+    assert isinstance(stmt.value, A.Literal)
+    assert stmt.value.value == 1
+    assert isinstance(func.body.result, A.Literal)
+    assert func.body.result.value is True
+
+
+def test_parse_parenthesized_multiline_case_in_block_let_rhs():
+    module = parse("""
+module lets
+
+func f(x: int) -> bool:
+    let result = (
+        case x:
+            | 1: true
+            | _: false
+    )
+    result
+""")
+
+    func = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
+    assert func.body is not None
+    stmt = func.body.statements[0]
+    assert isinstance(stmt.value, A.MatchExpr)
+    assert len(stmt.value.arms) == 2
+    assert isinstance(func.body.result, A.Name)
+    assert func.body.result.name == "result"
+
+
+def test_parse_multiline_case_as_block_let_rhs():
+    module = parse("""
+module lets
+
+func f(x: int) -> bool:
+    let result =
+        case x:
+            | 1: true
+            | _: false
+    result
+""")
+
+    func = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
+    assert func.body is not None
+    stmt = func.body.statements[0]
+    assert isinstance(stmt.value, A.MatchExpr)
+    assert len(stmt.value.arms) == 2
+    assert isinstance(func.body.result, A.Name)
+    assert func.body.result.name == "result"
+
+
+def test_parse_inline_let_with_indented_value_and_body():
+    expr = parse_expr("""
+let x =
+    1
+in
+    x
+""")
+
+    assert isinstance(expr, A.LetExpr)
+    assert isinstance(expr.value, A.Literal)
+    assert expr.value.value == 1
+    assert isinstance(expr.body, A.Name)
+    assert expr.body.name == "x"
+
+
 def test_payload_sum_variants_accept_unit_payload_patterns():
     module = parse("""
 module states

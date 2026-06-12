@@ -520,11 +520,13 @@ in body
 
 A `let` expression evaluates `value`, binds it to `pattern`, and evaluates
 `body` in the extended environment. Type annotations are optional. `let`
-bindings are non-recursive: the binding is not visible inside its own right-hand
-side. `let` patterns must be irrefutable: variables, `_`, tuple patterns, and
-record patterns composed recursively from those forms. Refutable literal,
-constructor, and list-shape patterns belong in `case` arms. Pattern bindings in
-`let` expressions are polymorphically generalised by the type inferencer.
+values may be placed on an indented continuation line after `=`, and bodies may
+appear either after `in` or on the following line. `let` bindings are
+non-recursive: the binding is not visible inside its own right-hand side. `let`
+patterns must be irrefutable: variables, `_`, tuple patterns, and record
+patterns composed recursively from those forms. Refutable literal, constructor,
+and list-shape patterns belong in `case` arms. Pattern bindings in `let`
+expressions are polymorphically generalised by the type inferencer.
 
 ### 6.11 Blocks
 
@@ -793,7 +795,9 @@ modality       ::= "O" | "P" | "F"
 
 block          ::= NEWLINE INDENT blockLetStmt* expr? newlines? DEDENT | expr
 blockLetStmt   ::= "let" pattern typeAnnotation? "=" expr newlines
+                 | "let" pattern typeAnnotation? "=" NEWLINE INDENT expr newlines? DEDENT newlines?
 typeAnnotation ::= ":" typeExpr
+continuedExpr  ::= expr | NEWLINE INDENT expr newlines? DEDENT
 
 expr           ::= implication temporalUnaryOp*
 implication    ::= orExpr ("implies" implication)?
@@ -805,8 +809,12 @@ additive       ::= multiplicative (("+" | "-") multiplicative)*
 multiplicative ::= unary (("*" | "/" | "%") unary)*
 unary          ::= ifExpr | letExpr | matchExpr | ("not" | "-") unary | postfix
 ifExpr         ::= "if" expr newlines? "then" expr newlines? "else" expr
-letExpr        ::= "let" pattern typeAnnotation? "=" expr newlines? "in" newlines? expr
+letExpr        ::= "let" pattern typeAnnotation? "=" continuedExpr newlines? "in" letBodyExpr
+letBodyExpr    ::= NEWLINE INDENT expr newlines? DEDENT | newlines expr | expr
 matchExpr      ::= "case" expr ":" caseBody
+caseBody       ::= NEWLINE INDENT newlines? caseArm (newlines? caseArm)* newlines? DEDENT
+                 | NEWLINE newlines? caseArm (newlines? caseArm)* newlines?
+                 | caseArm (newlines? caseArm)* newlines?
 caseArm        ::= "|" pattern ("when" expr)? ":" block
 postfix        ::= primary postfixSuffix*
 postfixSuffix  ::= "{" recordFields? "}" | "(" exprList? ")" | "." name

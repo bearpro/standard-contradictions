@@ -113,7 +113,7 @@ typeExprList
     ;
 
 valueDecl
-    : LET nameToken typeAnnotation? EQ expr
+    : LET nameToken typeAnnotation? EQ continuedExpr
     ;
 
 funcDecl
@@ -168,10 +168,16 @@ block
 
 blockLetStmt
     : LET pattern typeAnnotation? EQ expr newlines
+    | LET pattern typeAnnotation? EQ NEWLINE INDENT expr newlines? DEDENT newlines?
     ;
 
 typeAnnotation
     : COLON typeExpr
+    ;
+
+continuedExpr
+    : expr
+    | NEWLINE INDENT expr newlines? DEDENT
     ;
 
 expr
@@ -223,7 +229,13 @@ ifExpr
     ;
 
 letExpr
-    : LET pattern typeAnnotation? EQ expr newlines? IN newlines? expr
+    : LET pattern typeAnnotation? EQ continuedExpr newlines? IN letBodyExpr
+    ;
+
+letBodyExpr
+    : NEWLINE INDENT expr newlines? DEDENT
+    | newlines expr
+    | expr
     ;
 
 matchExpr
@@ -233,6 +245,7 @@ matchExpr
 caseBody
     : NEWLINE INDENT newlines? caseArm (newlines? caseArm)* newlines? DEDENT
     | NEWLINE newlines? caseArm (newlines? caseArm)* newlines?
+    | caseArm (newlines? caseArm)* newlines?
     ;
 
 caseArm

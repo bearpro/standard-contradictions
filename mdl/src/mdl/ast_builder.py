@@ -189,7 +189,7 @@ class AstBuilder(MDLVisitor):
         return A.ValueDecl(
             name=self.visit(ctx.nameToken()),
             type_annotation=self.visit(ctx.typeAnnotation()) if ctx.typeAnnotation() else None,
-            value=self.visit(ctx.expr()),
+            value=self.visit(ctx.continuedExpr()),
             line=line,
             column=column,
         )
@@ -314,6 +314,12 @@ class AstBuilder(MDLVisitor):
     def visitTypeAnnotation(self, ctx: MDLParser.TypeAnnotationContext) -> A.TypeExpr:
         return self.visit(ctx.typeExpr())
 
+    def visitContinuedExpr(self, ctx: MDLParser.ContinuedExprContext) -> A.Expr:
+        return self.visit(ctx.expr())
+
+    def visitLetBodyExpr(self, ctx: MDLParser.LetBodyExprContext) -> A.Expr:
+        return self.visit(ctx.expr())
+
     def visitExprOnly(self, ctx: MDLParser.ExprOnlyContext) -> A.Expr:
         return self.visit(ctx.expr())
 
@@ -396,11 +402,11 @@ class AstBuilder(MDLVisitor):
 
     def visitLetExpr(self, ctx: MDLParser.LetExprContext) -> A.LetExpr:
         line, column = self.location(ctx)
-        exprs = ctx.expr()
+        exprs = ctx.continuedExpr()
         return A.LetExpr(
             pattern=self.visit(ctx.pattern()),
-            value=self.visit(exprs[0]),
-            body=self.visit(exprs[1]),
+            value=self.visit(exprs),
+            body=self.visit(ctx.letBodyExpr()),
             type_annotation=self.visit(ctx.typeAnnotation()) if ctx.typeAnnotation() else None,
             line=line,
             column=column,

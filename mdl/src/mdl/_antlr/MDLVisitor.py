@@ -199,6 +199,11 @@ class MDLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by MDLParser#continuedExpr.
+    def visitContinuedExpr(self, ctx:MDLParser.ContinuedExprContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by MDLParser#expr.
     def visitExpr(self, ctx:MDLParser.ExprContext):
         return self.visitChildren(ctx)
@@ -256,6 +261,11 @@ class MDLVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by MDLParser#letExpr.
     def visitLetExpr(self, ctx:MDLParser.LetExprContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MDLParser#letBodyExpr.
+    def visitLetBodyExpr(self, ctx:MDLParser.LetBodyExprContext):
         return self.visitChildren(ctx)
 
 
