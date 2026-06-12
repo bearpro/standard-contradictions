@@ -794,8 +794,8 @@ class BoundedEncoder:
             operand = expr.operand
             if expr.op == "next":
                 return self.compile_formula(operand, scope, t + 1, env=env) if t < self.horizon - 1 else z3.BoolVal(False)
-            if expr.op == "initially":
-                return self.compile_formula(operand, scope, 0, env=env)
+            if expr.op == "now":
+                return self.compile_formula(operand, scope, t, env=env)
             if expr.op == "eventually":
                 return z3.Or([self.compile_formula(operand, scope, u, env=env) for u in range(t, self.horizon)])
             if expr.op == "always":

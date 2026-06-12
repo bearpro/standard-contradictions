@@ -196,7 +196,7 @@ fallback = entity(Bool)
 
 @rule(F, name="eventual_completion", strength="strict", when=started, otherwise=fallback)
 def completion():
-    return implies(started, until(next_(running), eventually(done)))
+    return implies(started, until(next_(running), now(done)))
 '''
 
     module = compile_source(source, filename="temporal.py")
@@ -210,7 +210,7 @@ def completion():
     assert isinstance(rule.antecedent, A.Name)
     assert isinstance(rule.otherwise, A.Name)
     assert "strict rule F eventual_completion when started:" in rendered
-    assert "started implies (running next) until (done eventually)" in rendered
+    assert "started implies (running next) until (done now)" in rendered
     assert reparsed.name == "temporal"
     assert isinstance(rule.body, A.BinaryOp)
     assert rule.body.op == "implies"

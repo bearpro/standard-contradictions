@@ -141,8 +141,8 @@ def test_lsp_completes_language_keywords():
     items = LSPServer().completion_items(source, 2, 0)
     by_label = {item["label"]: item for item in items}
 
-    assert labels(items) >= {"entity", "rule", "when", "always", "initially", "implies"}
-    assert not (labels(items) & {"weak_next", "never", "release", "weak_until"})
+    assert labels(items) >= {"entity", "rule", "when", "always", "now", "implies"}
+    assert not (labels(items) & {"initially", "weak_next", "never", "release", "weak_until"})
     assert by_label["rule"]["kind"] == 14
 
 
@@ -389,7 +389,7 @@ entity y: int
 func f(a: int, b: int) -> bool: a + b - 1 * 2 / 3 % 4 != 0
 rule O r: not (x > 0 and x <= 10 or x >= 3) implies x = 1 always
 rule F s: x < 5 until y != 2 eventually
-rule P t: x = last initially
+rule P t: x = last now
 """
     uri = "file:///tmp/operators.mdl"
     server = LSPServer()
@@ -404,7 +404,7 @@ rule P t: x = last initially
 
     for needle in [
         "->", "+", "-", "*", "/", "%", "!=", "O r", "not", ">", "and", "<=", "or", ">=",
-        "implies", "= 1", "always", "F s", "< 5", "until", "eventually", "P t", "last", "initially",
+        "implies", "= 1", "always", "F s", "< 5", "until", "eventually", "P t", "last", "now",
     ]:
         assert token_type(needle) == "operator"
 

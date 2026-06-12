@@ -33,7 +33,7 @@ null
 'always'
 'eventually'
 'next'
-'initially'
+'now'
 'until'
 'otherwise'
 'O'
@@ -103,7 +103,7 @@ NOT
 ALWAYS
 EVENTUALLY
 NEXT
-INITIALLY
+NOW
 UNTIL
 OTHERWISE
 O

@@ -33,7 +33,7 @@ SEMANTIC_TOKEN_MODIFIERS = ["declaration", "defaultLibrary"]
 STANDARD_OPERATOR_VALUES = {
     "O", "P", "F",
     "and", "or", "implies", "not",
-    "always", "eventually", "next", "initially", "until", "last",
+    "always", "eventually", "next", "now", "until", "last",
     "->", "<=", ">=", "!=", "==", "=", "<", ">",
     "+", "-", "*", "/", "%",
 }

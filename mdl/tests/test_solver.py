@@ -161,16 +161,15 @@ def test_solve_compiles_implies_as_formula(tmp_path):
     assert payload["model"]["trace"][0]["entities"]["implication.x"] is False
 
 
-def test_solve_initially_reads_initial_time_even_when_nested(tmp_path):
+def test_solve_now_tracks_current_time_when_nested(tmp_path):
     spec = write_module(
         tmp_path,
-        "initial.mdl",
+        "current.mdl",
         """
-        module initial
+        module current
 
         entity x: bool
-        rule O starts_true: (x initially) always
-        rule F later_forbid: x next
+        rule O current_true: (x now) always
         """,
     )
 
@@ -178,8 +177,26 @@ def test_solve_initially_reads_initial_time_even_when_nested(tmp_path):
 
     assert payload["status"] == "sat"
     trace = payload["model"]["trace"]
-    assert trace[0]["entities"]["initial.x"] is True
-    assert trace[1]["entities"]["initial.x"] is False
+    assert trace[0]["entities"]["current.x"] is True
+    assert trace[1]["entities"]["current.x"] is True
+
+
+def test_solve_now_does_not_reset_to_initial_time_under_always(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "current_conflict.mdl",
+        """
+        module current_conflict
+
+        entity x: bool
+        rule O current_true: (x now) always
+        rule F later_forbid: x next
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=2))
+
+    assert payload["status"] == "unsat"
 
 
 def test_solve_inlines_let_binding_at_temporal_use_site(tmp_path):
@@ -194,7 +211,7 @@ def test_solve_inlines_let_binding_at_temporal_use_site(tmp_path):
             let p = x in
             p always
 
-        fact x initially
+        fact x now
         fact (not x) next
         """,
     )
@@ -223,7 +240,7 @@ def test_solve_compiles_irrefutable_let_destructuring_in_rule_body(tmp_path):
             let {a, b} = flags in
             a always
 
-        fact flags.a initially
+        fact flags.a now
         fact (not flags.a) next
         """,
     )
@@ -248,8 +265,8 @@ def test_solve_reports_rule_temporal_type_errors_before_encoding(tmp_path):
             p and y
 
         rule O temporal_rhs:
-            let p = x initially in
-            p initially
+            let p = x now in
+            p now
         """,
     )
 
@@ -273,7 +290,7 @@ def test_solve_rejects_refutable_let_pattern_before_encoding(tmp_path):
 
         rule O r:
             let Some(p) = maybe in
-            p initially
+            p now
         """,
     )
 
@@ -295,7 +312,7 @@ def test_solve_rejects_mixed_bool_temporal_rule_formula(tmp_path):
 
         rule O r:
             let nx1 = not x1 in
-            nx1 and (x2 initially)
+            nx1 and (x2 now)
         """,
     )
 

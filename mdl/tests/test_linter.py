@@ -43,17 +43,17 @@ module ok
 
 entity x: bool
 entity y: bool
-rule O r1: (x initially) and (y initially)
+rule O r1: (x now) and (y now)
 ''')
     assert not any(d.severity == "error" for d in diagnostics)
 
 
-def test_linter_accepts_initially_as_explicit_temporal_operator():
+def test_linter_accepts_now_as_explicit_temporal_operator():
     diagnostics = lint_source('''
 module ok
 
 entity x: bool
-rule O r: x initially
+rule O r: x now
 ''')
     codes = {d.code for d in diagnostics}
     assert "rule-requires-temporal" not in codes
@@ -66,7 +66,7 @@ module ok
 entity x: bool
 rule O r:
     let p = not x in
-    p initially
+    p now
 ''')
     assert not any(d.severity == "error" for d in ok)
 
@@ -75,8 +75,8 @@ module bad
 
 entity x: bool
 rule O r:
-    let p = x initially in
-    p initially
+    let p = x now in
+    p now
 ''')
     assert any(d.code == "temporal-in-let" for d in temporal_rhs)
 
@@ -86,7 +86,7 @@ module ok
 entity pair: (bool, bool)
 rule O r:
     let (p, q) = pair in
-    (p initially) and (q initially)
+    (p now) and (q now)
 ''')
     assert not any(d.severity == "error" for d in tuple_destructuring)
 
@@ -97,7 +97,7 @@ type Flags = { a: bool, b: bool }
 entity flags: Flags
 rule O r:
     let {a, b} = flags in
-    (a initially) and (b initially)
+    (a now) and (b now)
 ''')
     assert not any(d.severity == "error" for d in record_destructuring)
 
@@ -107,7 +107,7 @@ module bad
 entity n: int
 rule O r:
     let 1 = n in
-    n = 1 initially
+    n = 1 now
 ''')
     assert any(d.code == "unsupported-let-pattern" for d in literal_pattern)
 
@@ -118,7 +118,7 @@ type Maybe = Some(bool) | None(unit)
 entity maybe: Maybe
 rule O r:
     let Some(p) = maybe in
-    p initially
+    p now
 ''')
     assert any(d.code == "unsupported-let-pattern" for d in constructor_pattern)
 

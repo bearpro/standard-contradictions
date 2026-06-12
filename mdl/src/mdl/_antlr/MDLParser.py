@@ -299,23 +299,23 @@ class MDLParser ( Parser ):
                      "'override'", "'fact'", "'if'", "'then'", "'else'", 
                      "'case'", "'when'", "'in'", "'true'", "'false'", "'last'", 
                      "'and'", "'or'", "'implies'", "'not'", "'always'", 
-                     "'eventually'", "'next'", "'initially'", "'until'", 
-                     "'otherwise'", "'O'", "'P'", "'F'", "<INVALID>", "<INVALID>", 
-                     "<INVALID>", "<INVALID>", "<INVALID>", "'_'", "<INVALID>", 
-                     "'('", "')'", "'{'", "'}'", "','", "':'", "'.'", "'|'", 
-                     "'+'", "'-'", "'*'", "'/'", "'%'", "'='", "'<'", "'>'" ]
+                     "'eventually'", "'next'", "'now'", "'until'", "'otherwise'", 
+                     "'O'", "'P'", "'F'", "<INVALID>", "<INVALID>", "<INVALID>", 
+                     "<INVALID>", "<INVALID>", "'_'", "<INVALID>", "'('", 
+                     "')'", "'{'", "'}'", "','", "':'", "'.'", "'|'", "'+'", 
+                     "'-'", "'*'", "'/'", "'%'", "'='", "'<'", "'>'" ]
 
     symbolicNames = [ "<INVALID>", "ARROW", "LE", "GE", "NE", "MODULE", 
                       "IMPORT", "OPEN", "TYPE", "LET", "FUNC", "ENTITY", 
                       "RULE", "STRICT", "DEFEASIBLE", "DEFEATER", "OVERRIDE", 
                       "FACT", "IF", "THEN", "ELSE", "CASE", "WHEN", "IN", 
                       "TRUE", "FALSE", "LAST", "AND", "OR", "IMPLIES", "NOT", 
-                      "ALWAYS", "EVENTUALLY", "NEXT", "INITIALLY", "UNTIL", 
-                      "OTHERWISE", "O", "P", "F", "ANNOT", "STRING", "RAT", 
-                      "DECIMAL", "INT", "UNDERSCORE", "IDENT", "LPAREN", 
-                      "RPAREN", "LBRACE", "RBRACE", "COMMA", "COLON", "DOT", 
-                      "BAR", "PLUS", "MINUS", "STAR", "SLASH", "PERCENT", 
-                      "EQ", "LT", "GT", "NEWLINE", "COMMENT", "WS", "INDENT", 
+                      "ALWAYS", "EVENTUALLY", "NEXT", "NOW", "UNTIL", "OTHERWISE", 
+                      "O", "P", "F", "ANNOT", "STRING", "RAT", "DECIMAL", 
+                      "INT", "UNDERSCORE", "IDENT", "LPAREN", "RPAREN", 
+                      "LBRACE", "RBRACE", "COMMA", "COLON", "DOT", "BAR", 
+                      "PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "EQ", 
+                      "LT", "GT", "NEWLINE", "COMMENT", "WS", "INDENT", 
                       "DEDENT" ]
 
     RULE_program = 0
@@ -439,7 +439,7 @@ class MDLParser ( Parser ):
     ALWAYS=31
     EVENTUALLY=32
     NEXT=33
-    INITIALLY=34
+    NOW=34
     UNTIL=35
     OTHERWISE=36
     O=37
@@ -5242,8 +5242,8 @@ class MDLParser ( Parser ):
         def NEXT(self):
             return self.getToken(MDLParser.NEXT, 0)
 
-        def INITIALLY(self):
-            return self.getToken(MDLParser.INITIALLY, 0)
+        def NOW(self):
+            return self.getToken(MDLParser.NOW, 0)
 
         def getRuleIndex(self):
             return MDLParser.RULE_temporalUnaryOp

@@ -135,7 +135,7 @@ module.exports = grammar({
     case_expr: $ => prec.right(seq('case', $.expr, ':', repeat1($.case_arm))),
     case_arm: $ => seq('|', $.pattern, optional(seq('when', $.expr)), ':', $.block),
 
-    temporal_postfix_expr: $ => prec.left(PREC.postfix_temporal, seq($.expr, choice('always', 'eventually', 'next', 'initially'))),
+    temporal_postfix_expr: $ => prec.left(PREC.postfix_temporal, seq($.expr, choice('always', 'eventually', 'next', 'now'))),
     unary_expr: $ => prec(PREC.prefix, seq(choice('not', '-'), $.expr)),
     binary_expr: $ => choice(
       prec.right(PREC.implies, seq($.expr, 'implies', $.expr)),

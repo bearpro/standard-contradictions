@@ -22,7 +22,7 @@ The implementation deliberately separates three layers:
 1. **Pure expression layer**: literals, arithmetic, booleans, records, tuples,
    functions, `let`, `if`, and `case`. This layer can be evaluated by `mdl run`.
 2. **Temporal layer**: LTLf-style operators over boolean expressions and atoms:
-   `always`, `eventually`, `next`, `initially`, `until`, and `last`.
+   `always`, `eventually`, `next`, `now`, `until`, and `last`.
 3. **Deontic/rule layer**: defeasible DDL-LTLf rules with modalities `O`, `P`,
    and `F`, optional antecedents, priorities, strengths, and contrary-to-duty
    `otherwise` expressions.
@@ -73,7 +73,7 @@ The following words are reserved by the grammar:
 ```text
 module import open type let func entity rule strict defeasible defeater
 override fact if then else case when in true false last and or implies not
-always eventually next initially until otherwise O P F
+always eventually next now until otherwise O P F
 ```
 
 ### 2.5 Operators and punctuation
@@ -333,7 +333,7 @@ Grammar:
 - `modality` is optional in the named form and is one of `O`, `P`, `F`.
 - `when` introduces an antecedent. If omitted, the rule is unconditional.
 - `body` must infer to the internal temporal boolean formula type. There is no
-  surface type annotation for temporal formulas; use `initially`, `always`,
+  surface type annotation for temporal formulas; use `now`, `always`,
   `eventually`, `next`, or `until` to construct one.
 - `otherwise` encodes a contrary-to-duty or fallback expression and must also be
   temporal when present.
@@ -400,7 +400,7 @@ From tightest to loosest:
 | 8     | conjunction         | `and` left-associative                                               |
 | 9     | disjunction         | `or` left-associative                                                |
 | 10    | implication         | `implies` right-associative                                          |
-| 11    | temporal postfix    | repeated `always`, `eventually`, `next`, `initially` suffixes        |
+| 11    | temporal postfix    | repeated `always`, `eventually`, `next`, `now` suffixes              |
 
 Temporal unary operators are postfix in the grammar:
 
@@ -650,7 +650,7 @@ the translator and solver.
 | `p always`     | `p` holds at all future positions            |
 | `p eventually` | `p` holds at some current-or-future position |
 | `p next`       | `p` holds at the next position               |
-| `p initially`  | `p` is evaluated at the initial position     |
+| `p now`        | `p` is evaluated at the current position     |
 | `p until q`    | `p` holds until `q` holds                    |
 | `last`         | current position is the final trace position |
 

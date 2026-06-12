@@ -25,3 +25,9 @@ def test_runtime_evaluates_implies_with_short_circuit():
     assert runtime.eval_source_expr("false implies missing") is True
     assert runtime.eval_source_expr("true implies false") is False
     assert runtime.eval_source_expr("true implies true") is True
+
+
+def test_runtime_evaluates_now_pointwise():
+    runtime = Runtime(parse("module truth\nentity x: bool\nfact x = true\n"))
+
+    assert runtime.eval_source_expr("x now") is True

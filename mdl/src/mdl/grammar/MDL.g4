@@ -322,7 +322,7 @@ temporalUnaryOp
     : ALWAYS
     | EVENTUALLY
     | NEXT
-    | INITIALLY
+    | NOW
     ;
 
 newlines
@@ -363,7 +363,7 @@ NOT: 'not';
 ALWAYS: 'always';
 EVENTUALLY: 'eventually';
 NEXT: 'next';
-INITIALLY: 'initially';
+NOW: 'now';
 UNTIL: 'until';
 OTHERWISE: 'otherwise';
 O: 'O';

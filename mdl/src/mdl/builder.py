@@ -100,8 +100,8 @@ def next_(expr: A.Expr | str) -> A.TemporalUnary:
     return A.TemporalUnary(op="next", operand=coerce_expr(expr), position="postfix")
 
 
-def initially(expr: A.Expr | str) -> A.TemporalUnary:
-    return A.TemporalUnary(op="initially", operand=coerce_expr(expr), position="postfix")
+def now(expr: A.Expr | str) -> A.TemporalUnary:
+    return A.TemporalUnary(op="now", operand=coerce_expr(expr), position="postfix")
 
 
 def braced(expr: A.Expr | str) -> A.Expr:

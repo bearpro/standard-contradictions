@@ -18,7 +18,7 @@
   "if" "then" "else" "case" "when" "in"
 ] @keyword.control
 [
-  "always" "eventually" "next" "initially" "until"
+  "always" "eventually" "next" "now" "until"
 ] @keyword.operator
 [
   "and" "or" "implies" "not"

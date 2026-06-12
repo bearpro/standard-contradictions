@@ -32,9 +32,9 @@ __all__ = [
     "function",
     "import_",
     "implies",
-    "initially",
     "module",
     "next_",
+    "now",
     "open_",
     "predicate",
     "record",
@@ -240,12 +240,12 @@ def eventually(expr: object) -> _RuntimeExpr:  # pragma: no cover
     return _RuntimeExpr("eventually")
 
 
-def initially(expr: object) -> _RuntimeExpr:  # pragma: no cover
-    return _RuntimeExpr("initially")
-
-
 def next_(expr: object) -> _RuntimeExpr:  # pragma: no cover
     return _RuntimeExpr("next")
+
+
+def now(expr: object) -> _RuntimeExpr:  # pragma: no cover
+    return _RuntimeExpr("now")
 
 
 def until(left: object, right: object) -> _RuntimeExpr:  # pragma: no cover
@@ -274,9 +274,9 @@ _TYPE_ALIASES = {
 _TEMPORAL_UNARY = {
     "always": "always",
     "eventually": "eventually",
-    "initially": "initially",
     "next": "next",
     "next_": "next",
+    "now": "now",
 }
 
 _BINARY_OPS: dict[type[py_ast.AST], str] = {
