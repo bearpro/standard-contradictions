@@ -183,6 +183,25 @@ def malformed_email_received():
     assert parse(rendered).name == "email"
 
 
+def test_python_dsl_preserves_local_annotations_in_rule_let_expressions():
+    source = '''
+from mdl.dsl import *
+
+module("typed_rule")
+
+@rule(O)
+def checked():
+    x: Bool = 5
+    return now(True)
+'''
+
+    module = compile_source(source, filename="typed_rule.py")
+    rendered = format_module(module)
+
+    assert "let x: bool = 5 in true now" in rendered
+    assert parse(rendered).name == "typed_rule"
+
+
 def test_python_dsl_supports_temporal_binary_implies_and_rule_metadata():
     source = '''
 from mdl.dsl import *

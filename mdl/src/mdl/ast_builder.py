@@ -261,6 +261,7 @@ class AstBuilder(MDLVisitor):
                 pattern=stmt.pattern,
                 value=stmt.value,
                 body=result,
+                type_annotation=stmt.type_annotation,
                 line=stmt.line,
                 column=stmt.column,
                 end_line=result.end_line,
@@ -396,7 +397,14 @@ class AstBuilder(MDLVisitor):
     def visitLetExpr(self, ctx: MDLParser.LetExprContext) -> A.LetExpr:
         line, column = self.location(ctx)
         exprs = ctx.expr()
-        return A.LetExpr(pattern=self.visit(ctx.pattern()), value=self.visit(exprs[0]), body=self.visit(exprs[1]), line=line, column=column)
+        return A.LetExpr(
+            pattern=self.visit(ctx.pattern()),
+            value=self.visit(exprs[0]),
+            body=self.visit(exprs[1]),
+            type_annotation=self.visit(ctx.typeAnnotation()) if ctx.typeAnnotation() else None,
+            line=line,
+            column=column,
+        )
 
     def visitMatchExpr(self, ctx: MDLParser.MatchExprContext) -> A.MatchExpr:
         line, column = self.location(ctx)

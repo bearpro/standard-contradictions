@@ -184,7 +184,11 @@ class TypeInference:
                 self.expect(typ, expected, expr)
             return typ
         if isinstance(expr, A.LetExpr):
-            value_type = self.infer_expr(expr.value, env)
+            self.host.check_type_expr(expr.type_annotation, self.type_params)
+            expected_value = self.from_ast(expr.type_annotation) if expr.type_annotation is not None else None
+            value_type = self.infer_expr(expr.value, env, expected_value)
+            if expected_value is not None:
+                value_type = expected_value
             if self.is_temporal(value_type):
                 self.host.error("let bindings cannot bind temporal formulas", expr.value or expr, "temporal-in-let")
                 value_type = TyCon("bool")

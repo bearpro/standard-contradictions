@@ -140,6 +140,43 @@ rule O r:
     assert any(d.code == "unsupported-let-pattern" for d in constructor_pattern)
 
 
+def test_linter_checks_inline_let_type_annotation_even_when_unused():
+    diagnostics = lint_source('''
+module bad
+
+func f() -> bool:
+    let x: bool = 5 in true
+''')
+
+    assert any(d.code == "non-bool-expression" and "expected bool, got int" in d.message for d in diagnostics)
+
+
+def test_linter_uses_inline_let_type_annotation_for_inference():
+    diagnostics = lint_source('''
+module bad
+
+func id<T>(x: T) -> T:
+    x
+
+func f() -> bool:
+    let x: string = id(1) in true
+''')
+
+    assert any(d.code == "type-mismatch" and "expected string, got int" in d.message for d in diagnostics)
+
+
+def test_linter_preserves_rule_block_let_type_annotations():
+    diagnostics = lint_source('''
+module bad
+
+rule O r:
+    let x: bool = 5
+    true now
+''')
+
+    assert any(d.code == "non-bool-expression" and "expected bool, got int" in d.message for d in diagnostics)
+
+
 def test_linter_parse_error():
     diagnostics = lint_source('module broken\nfunc x( -> bool: true\n')
     assert diagnostics

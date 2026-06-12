@@ -165,7 +165,7 @@ class EditorSnapshot:
             return
         if isinstance(expr, A.LetExpr):
             self.collect_expr_locals(expr.value, env, symbols)
-            typ = self.checker.infer_expr_type(expr.value, env) if self.checker else None
+            typ = expr.type_annotation or (self.checker.infer_expr_type(expr.value, env) if self.checker else None)
             local = dict(env)
             self.bind_pattern_symbols(expr.pattern, typ, "variable", symbols, expr.body or expr)
             self.bind_pattern_types(expr.pattern, typ, local)

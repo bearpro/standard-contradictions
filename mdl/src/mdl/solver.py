@@ -1055,6 +1055,12 @@ class BoundedEncoder:
                 for name, value_expr in expr.fields
             }
             return self.product_value(typ, fields)
+        if isinstance(expr, A.LetExpr):
+            value_expected = self.problem.resolve_type(scope.module.name, expr.type_annotation) if expr.type_annotation else None
+            value = self.compile_expr(expr.value, scope, t, expected=value_expected, env=env)
+            local = dict(env)
+            self.bind_let_pattern(expr.pattern, value, local)
+            return self.compile_expr(expr.body, scope, t, expected=expected, env=local)
         concrete = self.try_runtime_eval(expr, scope)
         if concrete is not _NO_CONCRETE:
             return self.python_value(concrete, expected)
@@ -1076,11 +1082,6 @@ class BoundedEncoder:
             then_v = self.compile_expr(expr.then_branch, scope, t, expected=expected, env=env)
             else_v = self.compile_expr(expr.else_branch, scope, t, expected=then_v.typ, env=env)
             return self.if_value(cond, then_v, else_v)
-        if isinstance(expr, A.LetExpr):
-            value = self.compile_expr(expr.value, scope, t, env=env)
-            local = dict(env)
-            self.bind_let_pattern(expr.pattern, value, local)
-            return self.compile_expr(expr.body, scope, t, expected=expected, env=local)
         if isinstance(expr, A.MatchExpr):
             return self.match_value(expr, scope, t, expected, env)
         if isinstance(expr, A.TupleLiteral):

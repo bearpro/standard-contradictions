@@ -220,6 +220,18 @@ func f() -> int:
     assert isinstance(func.body.result, A.LetExpr)
 
 
+def test_parse_and_format_let_expr_type_annotation():
+    expr = parse_expr("let x: bool = 5 in true")
+
+    assert isinstance(expr, A.LetExpr)
+    assert isinstance(expr.type_annotation, A.TypeRef)
+    assert expr.type_annotation.name == "bool"
+    assert format_expr(expr) == "let x: bool = 5 in true"
+
+    reparsed = parse_expr(format_expr(expr))
+    assert without_locations(A.node_to_dict(reparsed)) == without_locations(A.node_to_dict(expr))
+
+
 def test_payload_sum_variants_accept_unit_payload_patterns():
     module = parse("""
 module states

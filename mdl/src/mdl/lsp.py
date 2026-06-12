@@ -326,7 +326,7 @@ class LSPServer:
             return None
         if isinstance(expr, A.LetExpr) and expr.line <= line:
             local = dict(env)
-            checker.bind_pattern(expr.pattern, local, checker.infer_expr_type(expr.value, env))
+            checker.bind_pattern(expr.pattern, local, expr.type_annotation or checker.infer_expr_type(expr.value, env))
             return self.local_reference_type_in_expr(checker, expr.body, name, line, local) or checker.infer_name_type(name, local)
         return checker.infer_name_type(name, env)
 

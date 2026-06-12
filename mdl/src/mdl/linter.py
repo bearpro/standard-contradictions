@@ -1003,7 +1003,8 @@ class SemanticChecker:
             return self.infer_expr_type(expr.then_branch, env)
         if isinstance(expr, A.LetExpr):
             local = dict(env)
-            self.bind_pattern(expr.pattern, local, self.infer_expr_type(expr.value, env))
+            typ = expr.type_annotation or self.infer_expr_type(expr.value, env)
+            self.bind_pattern(expr.pattern, local, typ)
             return self.infer_expr_type(expr.body, local)
         if isinstance(expr, A.RecordConstructor):
             return A.TypeRef(name=expr.type_name)

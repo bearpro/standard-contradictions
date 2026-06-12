@@ -600,7 +600,15 @@ class _Compiler:
             return A.Literal(value=None, kind="unit")
         result = block.result
         for stmt in reversed(block.statements):
-            result = self._mark(A.LetExpr(pattern=stmt.pattern, value=stmt.value, body=result), stmt)
+            result = self._mark(
+                A.LetExpr(
+                    pattern=stmt.pattern,
+                    value=stmt.value,
+                    body=result,
+                    type_annotation=stmt.type_annotation,
+                ),
+                stmt,
+            )
         return result
 
     def _expr(self, node: py_ast.expr | None) -> A.Expr:

@@ -209,7 +209,8 @@ class PrettyPrinter:
             text = f"if {self.expr(expr.condition)} then {self.expr(expr.then_branch)} else {self.expr(expr.else_branch)}"
             prec = self.PREC_LOWEST
         elif isinstance(expr, A.LetExpr):
-            text = f"let {self.pattern(expr.pattern)} = {self.expr(expr.value)} in {self.expr(expr.body)}"
+            ann = f": {self.type_expr(expr.type_annotation)}" if expr.type_annotation else ""
+            text = f"let {self.pattern(expr.pattern)}{ann} = {self.expr(expr.value)} in {self.expr(expr.body)}"
             prec = self.PREC_LOWEST
         elif isinstance(expr, A.MatchExpr):
             lines = [f"case {self.expr(expr.subject)}:"]

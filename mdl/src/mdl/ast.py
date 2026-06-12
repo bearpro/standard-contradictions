@@ -151,6 +151,7 @@ class LetExpr(Expr):
     pattern: Pattern | None = None
     value: Expr | None = None
     body: Expr | None = None
+    type_annotation: TypeExpr | None = None
 
 
 @dataclass
