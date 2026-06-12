@@ -237,7 +237,7 @@ def completion():
     assert rule.body.right.op == "until"
 
 
-def test_python_dsl_rejects_top_level_value_assignments():
+def test_python_dsl_reports_clear_error_for_non_entity_assignment():
     source = '''
 from mdl.dsl import *
 

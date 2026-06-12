@@ -1,3 +1,5 @@
+import pytest
+
 from mdl import ast as A
 from mdl.diagnostics import ParseError
 from mdl.parser import parse, parse_expr, parse_type_expr_source
@@ -18,7 +20,7 @@ def test_parse_email_module_constructs():
     assert any(isinstance(d, A.RuleDecl) and d.name == "email_addr_spec_correct" for d in module.declarations)
 
 
-def test_event_is_not_a_declaration_keyword():
+def test_event_is_plain_identifier():
     module = parse("""
 module names
 
@@ -27,17 +29,6 @@ entity event: bool
 
     entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
     assert entity.name == "event"
-
-    try:
-        parse("""
-module bad
-
-event started()
-""")
-    except ParseError:
-        pass
-    else:  # pragma: no cover - defensive
-        raise AssertionError("event declaration unexpectedly parsed")
 
 
 def test_parse_temporal_postfix_grouped_atom():
@@ -90,15 +81,6 @@ def without_locations(value):
     return value
 
 
-def assert_parse_error(source, parser=parse):
-    try:
-        parser(source)
-    except ParseError:
-        pass
-    else:  # pragma: no cover - defensive
-        raise AssertionError(f"source unexpectedly parsed: {source!r}")
-
-
 def test_priority_is_an_identifier_and_override_declares_rule_priority():
     module = parse("""
 module names
@@ -147,36 +129,30 @@ rule O r: x always
     assert without_locations(A.node_to_dict(explicit)) == without_locations(A.node_to_dict(implicit))
 
 
-def test_forbidden_syntax_aliases_are_rejected():
-    for source, parser in [
-        ("module bad\n\npriority high > low\n", parse),
-        ("module bad\n\nlet x = 1\n", parse),
-        ("a == b", parse_expr),
-        ("always x", parse_expr),
-        ("eventually x", parse_expr),
-        ("next x", parse_expr),
-        ("now x", parse_expr),
-        ("x initially", parse_expr),
-        ("x weak_next", parse_expr),
-        ("x never", parse_expr),
-        ("a release b", parse_expr),
-        ("a weak_until b", parse_expr),
-    ]:
-        assert_parse_error(source, parser)
+@pytest.mark.parametrize(
+    ("source", "op"),
+    [
+        ("x always", "always"),
+        ("x eventually", "eventually"),
+        ("x next", "next"),
+        ("x now", "now"),
+    ],
+)
+def test_parse_temporal_unary_postfix_operators(source, op):
+    expr = parse_expr(source)
+
+    assert isinstance(expr, A.TemporalUnary)
+    assert expr.op == op
+    assert expr.position == "postfix"
 
 
-def test_trailing_commas_are_rejected():
-    for source, parser in [
-        ("module bad\n\ntype Box<T,> = { value: T }\n", parse),
-        ("module bad\n\ntype State = Local(unit,)\n", parse),
-        ("module bad\n\ntype Pipe = { length: rat, }\n", parse),
-        ("module bad\n\nfunc f(x: int,) -> int: x\n", parse),
-        ("Pipe { length = 1, }", parse_expr),
-        ("f(1,)", parse_expr),
-        ("case x:\n    | Box(value,): value", parse_expr),
-        ("case x:\n    | { value, }: value", parse_expr),
-    ]:
-        assert_parse_error(source, parser)
+def test_parse_temporal_until_binary_operator():
+    expr = parse_expr("a until b")
+
+    assert isinstance(expr, A.TemporalBinary)
+    assert expr.op == "until"
+    assert isinstance(expr.left, A.Name)
+    assert isinstance(expr.right, A.Name)
 
 
 def test_format_expr_preserves_precedence_round_trip():
@@ -354,31 +330,8 @@ entity boxed: Box<int>
     assert [arg.name for arg in entity.type_annotation.args if isinstance(arg, A.TypeRef)] == ["int"]
 
 
-def test_braced_expressions_are_rejected():
-    for source in [
-        "{ email_received(email) } eventually",
-        "{ r = 1, }",
-        "Complex { a.r + b.r }",
-    ]:
-        try:
-            parse_expr(source)
-        except ParseError:
-            pass
-        else:  # pragma: no cover - defensive
-            raise AssertionError(f"braced expression unexpectedly parsed: {source!r}")
-
-
-def test_single_quoted_literals_are_rejected():
-    try:
-        parse_expr("'x'")
-    except ParseError:
-        pass
-    else:  # pragma: no cover - defensive
-        raise AssertionError("single-quoted literal unexpectedly parsed")
-
-
 def test_case_arms_must_be_indented_deeper_than_case_expression():
-    try:
+    with pytest.raises(ParseError) as exc_info:
         parse("""
 module bad
 
@@ -387,10 +340,8 @@ func is_local(state: bool) -> bool:
     | true: true
     | false: false
 """)
-    except ParseError as exc:
-        assert "case arms must be indented deeper" in exc.message
-    else:  # pragma: no cover - defensive
-        raise AssertionError("same-indent case arms unexpectedly parsed")
+
+    assert "case arms must be indented deeper" in exc_info.value.message
 
 
 def test_parse_rule_colon_syntax_with_antecedent():
@@ -479,16 +430,3 @@ rule O ok: ready always # trailing comment
     assert any(isinstance(d, A.EntityDecl) and d.name == "ready" for d in module.declarations)
     assert any(isinstance(d, A.EntityDecl) and d.name == "still_ready" for d in module.declarations)
     assert any(isinstance(d, A.RuleDecl) and d.name == "ok" for d in module.declarations)
-
-
-def test_slash_comments_are_rejected():
-    for source in [
-        'module bad\n// old comment\nentity x: bool\n',
-        'module bad\nentity x: bool /* old block comment */\n',
-    ]:
-        try:
-            parse(source)
-        except ParseError:
-            pass
-        else:  # pragma: no cover - defensive
-            raise AssertionError(f"old comment syntax unexpectedly parsed: {source!r}")

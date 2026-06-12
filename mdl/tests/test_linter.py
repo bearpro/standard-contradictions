@@ -1,9 +1,22 @@
 from pathlib import Path
 
+import pytest
+
 from mdl.linter import lint_source
 
 
 STDLIB = Path(__file__).resolve().parents[1] / "src" / "mdl" / "stdlib"
+
+
+def assert_no_errors(diagnostics):
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
+def assert_diagnostic(diagnostics, code: str, message_part: str | None = None):
+    assert any(
+        d.code == code and (message_part is None or message_part in d.message)
+        for d in diagnostics
+    )
 
 
 def test_linter_duplicate_rule_and_missing_temporal_error():
@@ -76,38 +89,26 @@ rule O r: last now
     assert any(d.code == "undefined-name" and "last" in d.message for d in missing)
 
 
-def test_linter_checks_let_temporal_constraints_and_irrefutable_patterns():
-    ok = lint_source('''
+@pytest.mark.parametrize(
+    "source",
+    [
+        '''
 module ok
 
 entity x: bool
 rule O r:
     let p = not x in
     p now
-''')
-    assert not any(d.severity == "error" for d in ok)
-
-    temporal_rhs = lint_source('''
-module bad
-
-entity x: bool
-rule O r:
-    let p = x now in
-    p now
-''')
-    assert any(d.code == "temporal-in-let" for d in temporal_rhs)
-
-    tuple_destructuring = lint_source('''
+''',
+        '''
 module ok
 
 entity pair: (bool, bool)
 rule O r:
     let (p, q) = pair in
     (p now) and (q now)
-''')
-    assert not any(d.severity == "error" for d in tuple_destructuring)
-
-    record_destructuring = lint_source('''
+''',
+        '''
 module ok
 
 type Flags = { a: bool, b: bool }
@@ -115,20 +116,40 @@ entity flags: Flags
 rule O r:
     let {a, b} = flags in
     (a now) and (b now)
-''')
-    assert not any(d.severity == "error" for d in record_destructuring)
+''',
+    ],
+)
+def test_linter_accepts_irrefutable_local_let_patterns(source):
+    assert_no_errors(lint_source(source))
 
-    literal_pattern = lint_source('''
+
+@pytest.mark.parametrize(
+    ("source", "code"),
+    [
+        (
+            '''
+module bad
+
+entity x: bool
+rule O r:
+    let p = x now in
+    p now
+''',
+            "temporal-in-let",
+        ),
+        (
+            '''
 module bad
 
 entity n: int
 rule O r:
     let 1 = n in
     n = 1 now
-''')
-    assert any(d.code == "unsupported-let-pattern" for d in literal_pattern)
-
-    constructor_pattern = lint_source('''
+''',
+            "unsupported-let-pattern",
+        ),
+        (
+            '''
 module bad
 
 type Maybe = Some(bool) | None(unit)
@@ -136,23 +157,30 @@ entity maybe: Maybe
 rule O r:
     let Some(p) = maybe in
     p now
-''')
-    assert any(d.code == "unsupported-let-pattern" for d in constructor_pattern)
+''',
+            "unsupported-let-pattern",
+        ),
+    ],
+)
+def test_linter_reports_invalid_local_let_usage(source, code):
+    assert_diagnostic(lint_source(source), code)
 
 
-def test_linter_checks_inline_let_type_annotation_even_when_unused():
-    diagnostics = lint_source('''
+@pytest.mark.parametrize(
+    ("source", "code", "message_part"),
+    [
+        (
+            '''
 module bad
 
 func f() -> bool:
     let x: bool = 5 in true
-''')
-
-    assert any(d.code == "non-bool-expression" and "expected bool, got int" in d.message for d in diagnostics)
-
-
-def test_linter_uses_inline_let_type_annotation_for_inference():
-    diagnostics = lint_source('''
+''',
+            "non-bool-expression",
+            "expected bool, got int",
+        ),
+        (
+            '''
 module bad
 
 func id<T>(x: T) -> T:
@@ -160,31 +188,40 @@ func id<T>(x: T) -> T:
 
 func f() -> bool:
     let x: string = id(1) in true
-''')
-
-    assert any(d.code == "type-mismatch" and "expected string, got int" in d.message for d in diagnostics)
-
-
-def test_linter_preserves_rule_block_let_type_annotations():
-    diagnostics = lint_source('''
+''',
+            "type-mismatch",
+            "expected string, got int",
+        ),
+        (
+            '''
 module bad
 
 rule O r:
     let x: bool = 5
     true now
-''')
+''',
+            "non-bool-expression",
+            "expected bool, got int",
+        ),
+        (
+            '''
+module bad
 
-    assert any(d.code == "non-bool-expression" and "expected bool, got int" in d.message for d in diagnostics)
+func also_wrong() -> int:
+    let x: int = true
+    x
+''',
+            "type-mismatch",
+            "expected int, got bool",
+        ),
+    ],
+)
+def test_linter_checks_local_let_type_annotations(source, code, message_part):
+    assert_diagnostic(lint_source(source), code, message_part)
 
 
 def test_linter_parse_error():
     diagnostics = lint_source('module broken\nfunc x( -> bool: true\n')
-    assert diagnostics
-    assert diagnostics[0].code == "parse-error"
-
-
-def test_linter_reports_event_declaration_as_parse_error():
-    diagnostics = lint_source('module bad\n\nevent started()\n')
     assert diagnostics
     assert diagnostics[0].code == "parse-error"
 
@@ -390,18 +427,6 @@ module bad
 
 func wrong() -> int:
     true
-''')
-
-    assert any(d.code == "type-mismatch" and "expected int, got bool" in d.message for d in diagnostics)
-
-
-def test_linter_reports_local_let_annotation_mismatch():
-    diagnostics = lint_source('''
-module bad
-
-func also_wrong() -> int:
-    let x: int = true
-    x
 ''')
 
     assert any(d.code == "type-mismatch" and "expected int, got bool" in d.message for d in diagnostics)

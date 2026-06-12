@@ -7,12 +7,15 @@ from mdl.lsp import LSPServer
 from .sample_sources import LINEQ_RAT_SOURCE
 
 
-EXAMPLES = Path(__file__).parents[1] / "examples"
 STDLIB = Path(__file__).parents[1] / "src" / "mdl" / "stdlib"
 
 
 def labels(items):
     return {item["label"] for item in items}
+
+
+def lsp_uri(name: str) -> str:
+    return f"file:///tmp/{name}"
 
 
 def test_lsp_completes_visible_type_names():
@@ -267,7 +270,7 @@ open std.collections
 
 func foo() -> List<int>: List.Empty()
 """
-    uri = (EXAMPLES / "1. tmp-wrong-line-open.mdl").as_uri()
+    uri = lsp_uri("definition-opened-type.mdl")
     server = LSPServer()
     server.documents[uri] = source
     snapshot = server.snapshot(uri)
@@ -289,7 +292,7 @@ entity name: string
 
 fact foo(name)
 """
-    uri = (EXAMPLES / "2. tmp-wrong-definition.mdl").as_uri()
+    uri = lsp_uri("function-argument-definition.mdl")
     server = LSPServer()
     server.documents[uri] = source
     snapshot = server.snapshot(uri)
@@ -335,7 +338,7 @@ entity t: int
 
 fact time > 0
 """
-    uri = (EXAMPLES / "3. tmp-no-span-for-missing-symbol.mdl").as_uri()
+    uri = lsp_uri("missing-symbol-span.mdl")
     out = io.BytesIO()
     server = LSPServer(stdout=out)
 
@@ -357,7 +360,7 @@ type MyUnion = CaseA(unit) | CaseB(unit)
 
 func x() -> MyUnion: MyUnion.CaseA()
 """
-    uri = (EXAMPLES / "4. tmp-union-costructor-missed-with-type.mdl").as_uri()
+    uri = lsp_uri("union-constructor-definition.mdl")
     server = LSPServer()
     server.documents[uri] = source
     snapshot = server.snapshot(uri)
