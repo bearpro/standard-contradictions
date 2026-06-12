@@ -73,6 +73,48 @@ func add(a: Complex, b: Complex) -> Complex:
     assert [name for name, _ in expr.fields] == ["r", "i"]
 
 
+def test_parse_block_sum_type_variants():
+    module = parse("""
+module variants
+
+type UnionBlock =
+    | A(int)
+    | B(string)
+
+entity value: UnionBlock
+""")
+
+    type_decl = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
+    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+
+    assert isinstance(type_decl.definition, A.SumType)
+    assert [variant.name for variant in type_decl.definition.variants] == ["A", "B"]
+    assert type_decl.definition.variants[0].fields[0][0] is None
+    assert isinstance(type_decl.definition.variants[0].fields[0][1], A.TypeRef)
+    assert type_decl.definition.variants[0].fields[0][1].name == "int"
+    assert entity.name == "value"
+
+
+def test_block_sum_type_matches_inline_sum_type_ast():
+    inline = parse("""
+module variants
+
+type Result<T> = Ok(value: T) | Error(message: string)
+""")
+    block = parse("""
+module variants
+
+type Result<T> =
+    | Ok(value: T)
+    | Error(message: string)
+""")
+
+    inline_decl = next(decl for decl in inline.declarations if isinstance(decl, A.TypeDecl))
+    block_decl = next(decl for decl in block.declarations if isinstance(decl, A.TypeDecl))
+
+    assert without_locations(A.node_to_dict(block_decl)) == without_locations(A.node_to_dict(inline_decl))
+
+
 def without_locations(value):
     if isinstance(value, dict):
         return {k: without_locations(v) for k, v in value.items() if k not in {"line", "column", "end_line", "end_column"}}

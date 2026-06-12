@@ -61,6 +61,7 @@ module.exports = grammar({
     type_params: $ => seq('<', optional(commaSep($.identifier)), '>'),
     sum_type: $ => choice(
       seq($.variant, repeat1(seq('|', $.variant))),
+      seq('|', $.variant, repeat(seq('|', $.variant))),
       $.variant_with_fields,
     ),
     variant: $ => seq($.identifier, optional(seq('(', optional(commaSep($.variant_field)), ')'))),

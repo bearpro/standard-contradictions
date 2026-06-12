@@ -53,6 +53,7 @@ typeDecl
 typeDefinition
     : recordType
     | variant (BAR variant)*
+    | NEWLINE INDENT BAR variant (newlines BAR variant)* newlines? DEDENT
     ;
 
 typeParams

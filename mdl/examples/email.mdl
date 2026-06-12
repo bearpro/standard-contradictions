@@ -4,7 +4,9 @@ module email
 open std.collections
 open std.system.strings
 
-type ProcessingState = LocalPart(unit) | Domain(unit)
+type ProcessingState = 
+    | LocalPart(unit) 
+    | Domain(unit)
 
 func process_email(
     email: List<string>,

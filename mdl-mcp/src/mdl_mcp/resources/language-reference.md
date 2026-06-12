@@ -215,12 +215,17 @@ Record field names must be unique within the record.
 
 ### 4.5 Algebraic data types
 
-ADTs are declared with one or more variants separated by `|`:
+ADTs are declared with one or more variants separated by `|`. Variants may be
+written inline or as an indented block with a leading `|` on each line:
 
 ```mdl
 type Color = Red(unit) | Green(unit) | Blue(unit)
 type Result<T> = Ok(value: T) | Error(message: string)
 type Pair<T, U> = Pair(left: T, right: U)
+
+type ResultBlock<T> =
+    | Ok(value: T)
+    | Error(message: string)
 ```
 
 Each variant has a constructor name and a parenthesised list of fields. Fields
@@ -758,7 +763,9 @@ declaration    ::= typeDecl | funcDecl | entityDecl
                  | ruleDecl | priorityDecl | factDecl
 
 typeDecl       ::= "type" name typeParams? "=" typeDefinition
-typeDefinition ::= recordType | variant ("|" variant)*
+typeDefinition ::= recordType
+                 | variant ("|" variant)*
+                 | NEWLINE INDENT "|" variant (newlines "|" variant)* newlines? DEDENT
 typeParams     ::= "<" name ("," name)* ">"
 variant        ::= name "(" variantField ("," variantField)* ")"
 variantField   ::= name ":" typeExpr | typeExpr
