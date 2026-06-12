@@ -386,10 +386,11 @@ def test_lsp_standard_operators_have_semantic_operator_tokens():
 
 entity x: int
 entity y: int
+entity last: bool
 func f(a: int, b: int) -> bool: a + b - 1 * 2 / 3 % 4 != 0
 rule O r: not (x > 0 and x <= 10 or x >= 3) implies x = 1 always
 rule F s: x < 5 until y != 2 eventually
-rule P t: x = last now
+rule P t: last now
 """
     uri = "file:///tmp/operators.mdl"
     server = LSPServer()
@@ -404,9 +405,10 @@ rule P t: x = last now
 
     for needle in [
         "->", "+", "-", "*", "/", "%", "!=", "O r", "not", ">", "and", "<=", "or", ">=",
-        "implies", "= 1", "always", "F s", "< 5", "until", "eventually", "P t", "last", "now",
+        "implies", "= 1", "always", "F s", "< 5", "until", "eventually", "P t", "now",
     ]:
         assert token_type(needle) == "operator"
+    assert token_type("last now") == "variable"
 
 
 def test_lsp_go_to_definition_for_record_field():

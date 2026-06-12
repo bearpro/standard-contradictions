@@ -115,6 +115,23 @@ override forbid > must
     assert priority.chain == ["forbid", "must"]
 
 
+def test_last_is_an_identifier():
+    module = parse("""
+module names
+
+entity last: bool
+rule O must: last now
+""")
+
+    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+    rule = next(decl for decl in module.declarations if isinstance(decl, A.RuleDecl))
+
+    assert entity.name == "last"
+    assert isinstance(rule.body, A.TemporalUnary)
+    assert isinstance(rule.body.operand, A.Name)
+    assert rule.body.operand.name == "last"
+
+
 def test_defeasible_rule_strength_remains_optional():
     explicit = parse("""
 module rules

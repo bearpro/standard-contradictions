@@ -59,6 +59,23 @@ rule O r: x now
     assert "rule-requires-temporal" not in codes
 
 
+def test_linter_treats_last_as_normal_identifier():
+    ok = lint_source('''
+module ok
+
+entity last: bool
+rule O r: last now
+''')
+    assert not any(d.severity == "error" for d in ok)
+
+    missing = lint_source('''
+module bad
+
+rule O r: last now
+''')
+    assert any(d.code == "undefined-name" and "last" in d.message for d in missing)
+
+
 def test_linter_checks_let_temporal_constraints_and_irrefutable_patterns():
     ok = lint_source('''
 module ok

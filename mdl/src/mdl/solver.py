@@ -788,8 +788,6 @@ class BoundedEncoder:
             return z3.BoolVal(True)
         if isinstance(expr, A.Literal) and expr.kind == "bool":
             return z3.BoolVal(bool(expr.value))
-        if isinstance(expr, A.Name) and expr.name == "last":
-            return z3.BoolVal(t == self.horizon - 1)
         if isinstance(expr, A.TemporalUnary):
             operand = expr.operand
             if expr.op == "next":
@@ -1989,8 +1987,6 @@ class BoundedEncoder:
             return True
         if isinstance(expr, A.Name):
             root = expr.name.split(".")[0]
-            if expr.name == "last":
-                return True
             parts = split_qualified(expr.name)
             if len(parts) >= 2 and parts[-2] in {"List", "Set", "Map", "Option"}:
                 return True

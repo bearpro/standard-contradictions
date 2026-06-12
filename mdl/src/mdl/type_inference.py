@@ -386,8 +386,7 @@ class TypeInference:
         if isinstance(pattern, A.ConstructorPattern):
             scheme = self.constructor_scheme(pattern.name)
             if scheme is None:
-                if pattern.name not in {"last"}:
-                    self.host.error(f"undefined constructor {pattern.name!r}", pattern, "undefined-name")
+                self.host.error(f"undefined constructor {pattern.name!r}", pattern, "undefined-name")
                 return
             ctor = self.instantiate(scheme)
             if not isinstance(ctor, TyFun):
@@ -447,8 +446,6 @@ class TypeInference:
         return result
 
     def lookup_name(self, name: str, node: A.Node, env: dict[str, Scheme]) -> Type:
-        if name == "last":
-            return TyCon("bool")
         if name in env:
             return self.instantiate(env[name])
         parts = split_qualified(name)

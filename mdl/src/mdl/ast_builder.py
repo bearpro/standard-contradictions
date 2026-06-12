@@ -463,8 +463,6 @@ class AstBuilder(MDLVisitor):
             return A.Literal(value=Fraction(ctx.RAT().getText()), kind="rat", line=line, column=column)
         if ctx.TRUE() or ctx.FALSE():
             return A.Literal(value=ctx.getText() == "true", kind="bool", line=line, column=column)
-        if ctx.LAST():
-            return A.Name(name="last", line=line, column=column)
         if ctx.qualifiedName():
             return A.Name(name=self.visit(ctx.qualifiedName()), line=line, column=column)
         exprs = ctx.expr()

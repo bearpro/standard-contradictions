@@ -268,7 +268,6 @@ primary
     | RAT
     | TRUE
     | FALSE
-    | LAST
     | qualifiedName
     | LPAREN RPAREN
     | LPAREN expr RPAREN
@@ -312,7 +311,6 @@ nameToken
     : IDENT
     | TRUE
     | FALSE
-    | LAST
     | O
     | P
     | F
@@ -355,7 +353,6 @@ WHEN: 'when';
 IN: 'in';
 TRUE: 'true';
 FALSE: 'false';
-LAST: 'last';
 AND: 'and';
 OR: 'or';
 IMPLIES: 'implies';

@@ -26,7 +26,7 @@ KEYWORDS = {
     "entity", "rule", "strict", "defeasible", "defeater",
     "priority", "override", "fact",
     "if", "then", "else", "case", "when", "in",
-    "true", "false", "last",
+    "true", "false",
     "and", "or", "implies", "not",
     "always", "eventually", "next", "now", "until",
     "otherwise", "O", "P", "F",

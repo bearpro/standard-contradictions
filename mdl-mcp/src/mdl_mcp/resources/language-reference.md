@@ -22,7 +22,7 @@ The implementation deliberately separates three layers:
 1. **Pure expression layer**: literals, arithmetic, booleans, records, tuples,
    functions, `let`, `if`, and `case`. This layer can be evaluated by `mdl run`.
 2. **Temporal layer**: LTLf-style operators over boolean expressions and atoms:
-   `always`, `eventually`, `next`, `now`, `until`, and `last`.
+   `always`, `eventually`, `next`, `now`, and `until`.
 3. **Deontic/rule layer**: defeasible DDL-LTLf rules with modalities `O`, `P`,
    and `F`, optional antecedents, priorities, strengths, and contrary-to-duty
    `otherwise` expressions.
@@ -61,7 +61,7 @@ A qualified name is one or more name tokens separated by dots:
 std.collections.List.Cons
 ```
 
-The grammar also permits the tokens `true`, `false`, `last`, `O`, `P`, and `F`
+The grammar also permits the tokens `true`, `false`, `O`, `P`, and `F`
 where a name token is expected. They keep their literal/modal meaning in
 expression or rule positions, but can still appear inside qualified names where
 the grammar needs a name component.
@@ -72,7 +72,7 @@ The following words are reserved by the grammar:
 
 ```text
 module import open type let func entity rule strict defeasible defeater
-override fact if then else case when in true false last and or implies not
+override fact if then else case when in true false and or implies not
 always eventually next now until otherwise O P F
 ```
 
@@ -95,7 +95,6 @@ depending on syntactic context.
 | Rational | `3/7`           | `rat`       | `fractions.Fraction`                                |
 | Boolean  | `true`, `false` | `bool`      | Python `bool`                                       |
 | Unit     | `()`            | `unit`      | `None` in the point-wise runtime                    |
-| Last     | `last`          | `bool`      | temporal proposition for the final trace position   |
 
 String escapes use the implementation's normal escape decoder. Common escapes
 such as `\n`, `\t`, `\r`, `\"`, and `\\` are supported.
@@ -421,7 +420,6 @@ accepted concrete syntax is postfix.
 1/3
 true
 false
-last
 name
 qualified.name
 ()
@@ -652,7 +650,6 @@ the translator and solver.
 | `p next`       | `p` holds at the next position               |
 | `p now`        | `p` is evaluated at the current position     |
 | `p until q`    | `p` holds until `q` holds                    |
-| `last`         | current position is the final trace position |
 
 The point-wise runtime does not model traces. It evaluates temporal unary nodes
 by evaluating their operand at the current point and rejects temporal binary
@@ -814,7 +811,7 @@ caseArm        ::= "|" pattern ("when" expr)? ":" block
 postfix        ::= primary postfixSuffix*
 postfixSuffix  ::= "{" recordFields? "}" | "(" exprList? ")" | "." name
 recordField    ::= name "=" expr
-primary        ::= STRING | INT | DECIMAL | RAT | "true" | "false" | "last"
+primary        ::= STRING | INT | DECIMAL | RAT | "true" | "false"
                  | qualifiedName | "(" ")" | "(" expr ")"
                  | "(" expr "," expr ("," expr)* ")"
 

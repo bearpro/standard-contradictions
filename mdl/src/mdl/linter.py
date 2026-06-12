@@ -20,7 +20,7 @@ from .type_inference import TypeInference
 PRIMITIVE_TYPES = {"bool", "int", "rat", "decimal", "string", "unit"}
 BOOL_CHAIN_OPS = {"and", "or", "implies"}
 BUILTIN_ROOTS: set[str] = set()
-BUILTIN_TERMS = {"last"}
+BUILTIN_TERMS: set[str] = set()
 STDLIB_ENV = "MDL_STDLIB_PATH"
 
 
@@ -249,9 +249,7 @@ class SemanticChecker:
             name: Symbol(name, "type", A.TypeRef(name=name)) for name in sorted(PRIMITIVE_TYPES)
         }
         self.type_params: dict[str, list[str]] = {}
-        self.terms: dict[str, Symbol] = {
-            "last": Symbol("last", "builtin", A.TypeRef(name="bool")),
-        }
+        self.terms: dict[str, Symbol] = {}
         self.rules: dict[str, Symbol] = {}
         self.type_definitions: dict[str, A.TypeExpr | A.SumType | None] = {}
         self.constructors: dict[str, tuple[str, A.Variant]] = {}
