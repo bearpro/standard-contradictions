@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable
@@ -20,7 +20,7 @@ else:
 from . import ast as A
 from .diagnostics import Diagnostic, MDLError, ParseError
 from .dsl import PythonDslError
-from .linter import ImportResolver
+from .linter import ImportResolver, Linter
 from .loader import load_module
 from .names import split_qualified
 from .printer import format_expr
@@ -243,6 +243,16 @@ def solve_modules(modules: list[A.Module], options: SolveOptions | None = None, 
         return error_payload([Diagnostic("--horizon must be >= 1", severity="error", code="invalid-horizon")])
     if opts.horizon is None and opts.max_horizon < 1:
         return error_payload([Diagnostic("--max-horizon must be >= 1", severity="error", code="invalid-horizon")])
+    semantic_diagnostics: list[Diagnostic] = []
+    for idx, module in enumerate(modules):
+        path = str(paths[idx]) if paths is not None and idx < len(paths) and paths[idx] is not None else None
+        semantic_diagnostics.extend(
+            diagnostic
+            for diagnostic in Linter().lint_module(module, path=path, stdlib_path=opts.stdlib_path)
+            if diagnostic.severity == "error"
+        )
+    if semantic_diagnostics:
+        return error_payload(semantic_diagnostics)
     problem = SolverProblem(modules, opts, paths=paths)
     if problem.diagnostics:
         return error_payload(problem.diagnostics)
@@ -760,6 +770,9 @@ class BoundedEncoder:
 
     def modality_formula(self, info: RuleInfo, expr: A.Expr | None) -> Any:
         scope = self.problem.scopes[info.module]
+        expr = self.inline_lets(expr)
+        if not self.has_temporal_operator(expr):
+            raise UnsupportedExpression("rule body must be a temporal formula")
         body = self.compile_formula(expr, scope, 0)
         if info.decl.modality == "F":
             return z3.Not(body)
@@ -790,6 +803,13 @@ class BoundedEncoder:
         if isinstance(expr, A.TemporalBinary):
             if expr.op == "until":
                 return self.until(expr.left, expr.right, scope, t, env)
+        if isinstance(expr, A.LetExpr):
+            return self.compile_formula(self.inline_lets(expr), scope, t, env=env)
+        if isinstance(expr, A.IfExpr):
+            cond = self.compile_formula(expr.condition, scope, t, env=env)
+            then_formula = self.compile_formula(expr.then_branch, scope, t, env=env)
+            else_formula = self.compile_formula(expr.else_branch, scope, t, env=env)
+            return z3.If(cond, then_formula, else_formula)
         if isinstance(expr, A.UnaryOp) and expr.op == "not":
             return z3.Not(self.compile_formula(expr.operand, scope, t, env=env))
         if isinstance(expr, A.BinaryOp) and expr.op in {"and", "or", "implies"}:
@@ -801,6 +821,191 @@ class BoundedEncoder:
                 return z3.Or(left, right)
             return z3.Implies(left, right)
         return self.as_bool(self.compile_expr(expr, scope, t, expected=BOOL, env=env))
+
+    def inline_lets(self, expr: A.Expr | None) -> A.Expr | None:
+        return self.substitute_let_bindings(expr, {})
+
+    def substitute_let_bindings(self, expr: A.Expr | None, aliases: dict[str, A.Expr]) -> A.Expr | None:
+        if expr is None:
+            return None
+        if isinstance(expr, A.Name):
+            return self.alias_replacement(expr, aliases) or expr
+        if isinstance(expr, A.LetExpr):
+            value = self.substitute_let_bindings(expr.value, aliases)
+            if value is None:
+                return self.substitute_let_bindings(expr.body, aliases)
+            local = dict(aliases)
+            local.update(self.irrefutable_pattern_aliases(expr.pattern, value))
+            return self.substitute_let_bindings(expr.body, local)
+        if isinstance(expr, A.UnaryOp):
+            return replace(expr, operand=self.substitute_let_bindings(expr.operand, aliases))
+        if isinstance(expr, A.BinaryOp):
+            return replace(
+                expr,
+                left=self.substitute_let_bindings(expr.left, aliases),
+                right=self.substitute_let_bindings(expr.right, aliases),
+            )
+        if isinstance(expr, A.TemporalUnary):
+            return replace(expr, operand=self.substitute_let_bindings(expr.operand, aliases))
+        if isinstance(expr, A.TemporalBinary):
+            return replace(
+                expr,
+                left=self.substitute_let_bindings(expr.left, aliases),
+                right=self.substitute_let_bindings(expr.right, aliases),
+            )
+        if isinstance(expr, A.IfExpr):
+            return replace(
+                expr,
+                condition=self.substitute_let_bindings(expr.condition, aliases),
+                then_branch=self.substitute_let_bindings(expr.then_branch, aliases),
+                else_branch=self.substitute_let_bindings(expr.else_branch, aliases),
+            )
+        if isinstance(expr, A.Call):
+            return replace(
+                expr,
+                func=self.substitute_let_bindings(expr.func, aliases),
+                args=[self.substitute_let_binding_expr(arg, aliases) for arg in expr.args],
+            )
+        if isinstance(expr, A.FieldAccess):
+            return replace(expr, target=self.substitute_let_bindings(expr.target, aliases))
+        if isinstance(expr, A.TupleLiteral):
+            return replace(expr, items=[self.substitute_let_binding_expr(item, aliases) for item in expr.items])
+        if isinstance(expr, A.RecordConstructor):
+            return replace(
+                expr,
+                fields=[(name, self.substitute_let_binding_expr(value, aliases)) for name, value in expr.fields],
+            )
+        if isinstance(expr, A.MatchExpr):
+            return replace(
+                expr,
+                subject=self.substitute_let_bindings(expr.subject, aliases),
+                arms=[
+                    replace(
+                        arm,
+                        guard=self.substitute_let_bindings(arm.guard, self.aliases_without_pattern_bindings(aliases, arm.pattern)),
+                        body=self.substitute_let_bindings_in_block(
+                            arm.body,
+                            self.aliases_without_pattern_bindings(aliases, arm.pattern),
+                        ),
+                    )
+                    for arm in expr.arms
+                ],
+            )
+        return expr
+
+    def substitute_let_binding_expr(self, expr: A.Expr, aliases: dict[str, A.Expr]) -> A.Expr:
+        return self.substitute_let_bindings(expr, aliases) or expr
+
+    def substitute_let_bindings_in_block(self, block: A.Block | None, aliases: dict[str, A.Expr]) -> A.Block | None:
+        if block is None:
+            return None
+        local = dict(aliases)
+        statements = []
+        for stmt in block.statements:
+            value = self.substitute_let_bindings(stmt.value, local)
+            statements.append(replace(stmt, value=value))
+            if value is not None:
+                local.update(self.irrefutable_pattern_aliases(stmt.pattern, value))
+        return replace(block, statements=statements, result=self.substitute_let_bindings(block.result, local))
+
+    def alias_replacement(self, expr: A.Name, aliases: dict[str, A.Expr]) -> A.Expr | None:
+        parts = split_qualified(expr.name)
+        if not parts:
+            return None
+        replacement = aliases.get(parts[0])
+        if replacement is None:
+            return None
+        for field_name in parts[1:]:
+            replacement = A.FieldAccess(target=replacement, field=field_name, line=expr.line, column=expr.column)
+        return replacement
+
+    def irrefutable_pattern_aliases(self, pattern: A.Pattern | None, value: A.Expr) -> dict[str, A.Expr]:
+        if pattern is None or isinstance(pattern, A.WildcardPattern):
+            return {}
+        if isinstance(pattern, A.VarPattern):
+            return {pattern.name: value}
+        if isinstance(pattern, A.TuplePattern):
+            aliases: dict[str, A.Expr] = {}
+            for idx, nested in enumerate(pattern.items):
+                item = A.FieldAccess(target=value, field=f"_{idx}", line=pattern.line, column=pattern.column)
+                aliases.update(self.irrefutable_pattern_aliases(nested, item))
+            return aliases
+        if isinstance(pattern, A.RecordPattern):
+            aliases = {}
+            for field, nested in pattern.fields:
+                item = A.FieldAccess(target=value, field=field, line=pattern.line, column=pattern.column)
+                if nested is None:
+                    aliases[field] = item
+                else:
+                    aliases.update(self.irrefutable_pattern_aliases(nested, item))
+            return aliases
+        raise UnsupportedExpression("let bindings only support irrefutable patterns")
+
+    def aliases_without_pattern_bindings(self, aliases: dict[str, A.Expr], pattern: A.Pattern | None) -> dict[str, A.Expr]:
+        result = dict(aliases)
+        for name in self.pattern_binding_names(pattern):
+            result.pop(name, None)
+        return result
+
+    def pattern_binding_names(self, pattern: A.Pattern | None) -> set[str]:
+        if pattern is None or isinstance(pattern, A.WildcardPattern):
+            return set()
+        if isinstance(pattern, A.VarPattern):
+            return {pattern.name}
+        if isinstance(pattern, A.RecordPattern):
+            names = {field for field, nested in pattern.fields if nested is None}
+            for _, nested in pattern.fields:
+                names.update(self.pattern_binding_names(nested))
+            return names
+        if isinstance(pattern, A.TuplePattern):
+            names: set[str] = set()
+            for item in pattern.items:
+                names.update(self.pattern_binding_names(item))
+            return names
+        if isinstance(pattern, A.ConstructorPattern):
+            names = set()
+            for item in pattern.args:
+                names.update(self.pattern_binding_names(item))
+            return names
+        if isinstance(pattern, A.ListPattern):
+            names = set()
+            for item in pattern.items:
+                names.update(self.pattern_binding_names(item))
+            return names
+        return set()
+
+    def has_temporal_operator(self, expr: A.Expr | None) -> bool:
+        if expr is None:
+            return False
+        if isinstance(expr, (A.TemporalUnary, A.TemporalBinary)):
+            return True
+        if isinstance(expr, A.UnaryOp):
+            return self.has_temporal_operator(expr.operand)
+        if isinstance(expr, A.BinaryOp):
+            return self.has_temporal_operator(expr.left) or self.has_temporal_operator(expr.right)
+        if isinstance(expr, A.IfExpr):
+            return any(self.has_temporal_operator(item) for item in [expr.condition, expr.then_branch, expr.else_branch])
+        if isinstance(expr, A.Call):
+            return self.has_temporal_operator(expr.func) or any(self.has_temporal_operator(arg) for arg in expr.args)
+        if isinstance(expr, A.FieldAccess):
+            return self.has_temporal_operator(expr.target)
+        if isinstance(expr, A.LetExpr):
+            return self.has_temporal_operator(expr.value) or self.has_temporal_operator(expr.body)
+        if isinstance(expr, A.MatchExpr):
+            return self.has_temporal_operator(expr.subject) or any(
+                self.has_temporal_operator(arm.guard) or self.has_temporal_operator_in_block(arm.body)
+                for arm in expr.arms
+            )
+        if isinstance(expr, A.TupleLiteral):
+            return any(self.has_temporal_operator(item) for item in expr.items)
+        if isinstance(expr, A.RecordConstructor):
+            return any(self.has_temporal_operator(value) for _, value in expr.fields)
+        return False
+
+    def has_temporal_operator_in_block(self, block: A.Block | None) -> bool:
+        if block is None:
+            return False
+        return any(self.has_temporal_operator(stmt.value) for stmt in block.statements) or self.has_temporal_operator(block.result)
 
     def until(self, left: A.Expr | None, right: A.Expr | None, scope: ModuleScope, t: int, env: dict[str, ZValue]) -> Any:
         disjuncts = []
@@ -876,7 +1081,7 @@ class BoundedEncoder:
         if isinstance(expr, A.LetExpr):
             value = self.compile_expr(expr.value, scope, t, env=env)
             local = dict(env)
-            self.bind_pattern(expr.pattern, value, local, assumptions=[])
+            self.bind_let_pattern(expr.pattern, value, local)
             return self.compile_expr(expr.body, scope, t, expected=expected, env=local)
         if isinstance(expr, A.MatchExpr):
             return self.match_value(expr, scope, t, expected, env)
@@ -1185,6 +1390,20 @@ class BoundedEncoder:
         assumptions.append(cond)
         env.update(bindings)
 
+    def bind_let_pattern(self, pattern: A.Pattern | None, value: ZValue, env: dict[str, ZValue]) -> None:
+        if not self.is_irrefutable_let_pattern(pattern):
+            raise UnsupportedExpression("let bindings only support irrefutable patterns")
+        self.bind_pattern(pattern, value, env, assumptions=[])
+
+    def is_irrefutable_let_pattern(self, pattern: A.Pattern | None) -> bool:
+        if pattern is None or isinstance(pattern, (A.VarPattern, A.WildcardPattern)):
+            return True
+        if isinstance(pattern, A.TuplePattern):
+            return all(self.is_irrefutable_let_pattern(item) for item in pattern.items)
+        if isinstance(pattern, A.RecordPattern):
+            return all(nested is None or self.is_irrefutable_let_pattern(nested) for _, nested in pattern.fields)
+        return False
+
     def match_value(self, expr: A.MatchExpr, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
         subject = self.compile_expr(expr.subject, scope, t, env=env)
         branches: list[tuple[Any, ZValue]] = []
@@ -1209,7 +1428,7 @@ class BoundedEncoder:
             return self.python_value(None, expected)
         for stmt in block.statements:
             value = self.compile_expr(stmt.value, scope, t, expected=self.problem.resolve_type(scope.module.name, stmt.type_annotation) if stmt.type_annotation else None, env=local)
-            self.bind_pattern(stmt.pattern, value, local, assumptions=[])
+            self.bind_let_pattern(stmt.pattern, value, local)
         return self.compile_expr(block.result, scope, t, expected=expected, env=local)
 
     def pattern_condition(self, pattern: A.Pattern | None, value: ZValue) -> tuple[Any, dict[str, ZValue]]:

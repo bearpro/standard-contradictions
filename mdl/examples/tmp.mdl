@@ -1,0 +1,12 @@
+module tmp
+
+entity x1: bool
+entity x2: bool
+
+rule O r0: # no error
+    let nx1 = not x1 in
+    nx1 and x2 initially
+
+rule O r1: # no error
+    let nx1 = not x1 in
+    nx1 and (x2 initially)

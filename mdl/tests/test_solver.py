@@ -91,7 +91,10 @@ def test_solve_reports_unresolved_unqualified_cross_module_reference(tmp_path):
     payload = solve_paths([bad], SolveOptions(horizon=1))
 
     assert payload["status"] == "error"
-    assert any(d["code"] == "unresolved-name" and "pipe.length" in d["message"] for d in payload["diagnostics"])
+    assert any(
+        d["code"] in {"undefined-name", "unresolved-name"} and "pipe.length" in d["message"]
+        for d in payload["diagnostics"]
+    )
 
 
 def test_solve_conflicting_obligation_and_forbidden_rule_returns_unsat_core(tmp_path):
@@ -177,6 +180,129 @@ def test_solve_initially_reads_initial_time_even_when_nested(tmp_path):
     trace = payload["model"]["trace"]
     assert trace[0]["entities"]["initial.x"] is True
     assert trace[1]["entities"]["initial.x"] is False
+
+
+def test_solve_inlines_let_binding_at_temporal_use_site(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "let_binding.mdl",
+        """
+        module let_binding
+
+        entity x: bool
+        rule O holds:
+            let p = x in
+            p always
+
+        fact x initially
+        fact (not x) next
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=2))
+
+    assert payload["status"] == "unsat"
+
+
+def test_solve_compiles_irrefutable_let_destructuring_in_rule_body(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "let_destructuring.mdl",
+        """
+        module let_destructuring
+
+        type Flags = { a: bool, b: bool }
+        let pair: (bool, bool) = (true, false)
+        entity flags: Flags
+
+        rule O tuple_destructuring:
+            let (p, q) = pair in
+            (p and not q) always
+
+        rule O record_destructuring:
+            let {a, b} = flags in
+            a always
+
+        fact flags.a initially
+        fact (not flags.a) next
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=2))
+
+    assert payload["status"] == "unsat"
+
+
+def test_solve_reports_rule_temporal_type_errors_before_encoding(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "bad_let.mdl",
+        """
+        module bad_let
+
+        entity x: bool
+        entity y: bool
+
+        rule O no_temporal:
+            let p = not x in
+            p and y
+
+        rule O temporal_rhs:
+            let p = x initially in
+            p initially
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=2))
+    codes = {diagnostic["code"] for diagnostic in payload["diagnostics"]}
+
+    assert payload["status"] == "error"
+    assert "rule-requires-temporal" in codes
+    assert "temporal-in-let" in codes
+
+
+def test_solve_rejects_refutable_let_pattern_before_encoding(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "bad_let_pattern.mdl",
+        """
+        module bad_let_pattern
+
+        type Maybe = Some(bool) | None(unit)
+        entity maybe: Maybe
+
+        rule O r:
+            let Some(p) = maybe in
+            p initially
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "error"
+    assert any(diagnostic["code"] == "unsupported-let-pattern" for diagnostic in payload["diagnostics"])
+
+
+def test_solve_rejects_mixed_bool_temporal_rule_formula(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "mixed_temporal.mdl",
+        """
+        module mixed_temporal
+
+        entity x1: bool
+        entity x2: bool
+
+        rule O r:
+            let nx1 = not x1 in
+            nx1 and (x2 initially)
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "error"
+    assert any(d["code"] == "temporal-type-mismatch" for d in payload["diagnostics"])
 
 
 def test_solve_strict_rule_is_not_defeated(tmp_path):

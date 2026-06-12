@@ -6,7 +6,7 @@ from mdl.linter import lint_source
 STDLIB = Path(__file__).resolve().parents[1] / "src" / "mdl" / "stdlib"
 
 
-def test_linter_duplicate_rule_and_missing_temporal_warning():
+def test_linter_duplicate_rule_and_missing_temporal_error():
     source = '''
 module bad
 
@@ -18,30 +18,34 @@ rule O r: email = "b" always
     diagnostics = lint_source(source)
     codes = {d.code for d in diagnostics}
     assert "duplicate-name" in codes or "duplicate-rule" in codes
-    assert "rule-without-temporal" in codes
-    diagnostic = next(d for d in diagnostics if d.code == "rule-without-temporal")
-    assert diagnostic.message == "expression in rule 'r' has no explicit temporal operator; assuming `initially`"
+    assert "rule-requires-temporal" in codes
+    diagnostic = next(d for d in diagnostics if d.code == "rule-requires-temporal")
+    assert diagnostic.message == "rule body must be a temporal formula"
     assert diagnostic.line == 6
-    assert diagnostic.column == 11
+    assert diagnostic.column == 17
     assert diagnostic.end_line == 6
     assert diagnostic.end_column == 22
 
 
-def test_linter_reports_rule_subexpression_without_temporal_operator():
+def test_linter_rejects_mixed_bool_temporal_logical_combinations():
     diagnostics = lint_source('''
 module bad
 
 entity x: bool
 rule O r1: (not x always) and x = true
 ''')
-    matching = [d for d in diagnostics if d.code == "rule-without-temporal"]
-    assert len(matching) == 1
-    diagnostic = matching[0]
-    assert diagnostic.message == "expression in rule 'r1' has no explicit temporal operator; assuming `initially`"
-    assert diagnostic.line == 5
-    assert diagnostic.column == 31
-    assert diagnostic.end_line == 5
-    assert diagnostic.end_column == 39
+    assert any(d.code == "temporal-type-mismatch" for d in diagnostics)
+
+
+def test_linter_allows_temporal_logical_combinations():
+    diagnostics = lint_source('''
+module ok
+
+entity x: bool
+entity y: bool
+rule O r1: (x initially) and (y initially)
+''')
+    assert not any(d.severity == "error" for d in diagnostics)
 
 
 def test_linter_accepts_initially_as_explicit_temporal_operator():
@@ -52,7 +56,71 @@ entity x: bool
 rule O r: x initially
 ''')
     codes = {d.code for d in diagnostics}
-    assert "rule-without-temporal" not in codes
+    assert "rule-requires-temporal" not in codes
+
+
+def test_linter_checks_let_temporal_constraints_and_irrefutable_patterns():
+    ok = lint_source('''
+module ok
+
+entity x: bool
+rule O r:
+    let p = not x in
+    p initially
+''')
+    assert not any(d.severity == "error" for d in ok)
+
+    temporal_rhs = lint_source('''
+module bad
+
+entity x: bool
+rule O r:
+    let p = x initially in
+    p initially
+''')
+    assert any(d.code == "temporal-in-let" for d in temporal_rhs)
+
+    tuple_destructuring = lint_source('''
+module ok
+
+entity pair: (bool, bool)
+rule O r:
+    let (p, q) = pair in
+    (p initially) and (q initially)
+''')
+    assert not any(d.severity == "error" for d in tuple_destructuring)
+
+    record_destructuring = lint_source('''
+module ok
+
+type Flags = { a: bool, b: bool }
+entity flags: Flags
+rule O r:
+    let {a, b} = flags in
+    (a initially) and (b initially)
+''')
+    assert not any(d.severity == "error" for d in record_destructuring)
+
+    literal_pattern = lint_source('''
+module bad
+
+entity n: int
+rule O r:
+    let 1 = n in
+    n = 1 initially
+''')
+    assert any(d.code == "unsupported-let-pattern" for d in literal_pattern)
+
+    constructor_pattern = lint_source('''
+module bad
+
+type Maybe = Some(bool) | None(unit)
+entity maybe: Maybe
+rule O r:
+    let Some(p) = maybe in
+    p initially
+''')
+    assert any(d.code == "unsupported-let-pattern" for d in constructor_pattern)
 
 
 def test_linter_parse_error():

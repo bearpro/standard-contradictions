@@ -45,7 +45,12 @@ class TyFun:
     ret: "Type"
 
 
-Type = TyVar | TyCon | TyRecord | TyTuple | TyFun
+@dataclass(frozen=True)
+class TyTemporal:
+    pass
+
+
+Type = TyVar | TyCon | TyRecord | TyTuple | TyFun | TyTemporal
 
 
 @dataclass(frozen=True)
@@ -86,7 +91,37 @@ class TypeInference:
         if expected_type is not None:
             self.expect(actual, expected_type, expr or A.Node())
             actual = expected_type
+        elif self.is_temporal(actual):
+            self.host.error("temporal formulas cannot be used as values", expr, "temporal-as-value")
+            actual = TyCon("bool")
         return self.to_ast(actual)
+
+    def check_temporal_expr(
+        self,
+        expr: A.Expr | None,
+        env: dict[str, A.TypeExpr | None] | None = None,
+    ) -> None:
+        if expr is None:
+            self.host.error("rule body must be a temporal formula", A.Node(), "rule-requires-temporal")
+            return
+        local = self.initial_env(env or {})
+        actual = self.infer_expr(expr, local)
+        if self.is_temporal(actual):
+            return
+        if self.is_bool(actual):
+            self.host.error("rule body must be a temporal formula", expr, "rule-requires-temporal")
+            return
+        self.expect(actual, TyCon("bool"), expr)
+
+    def check_formula_expr(
+        self,
+        expr: A.Expr | None,
+        env: dict[str, A.TypeExpr | None] | None = None,
+    ) -> None:
+        if expr is None:
+            return
+        local = self.initial_env(env or {})
+        self.expect_formula_operand(self.infer_expr(expr, local), expr)
 
     def check_block(
         self,
@@ -101,6 +136,9 @@ class TypeInference:
         if expected_type is not None:
             self.expect(actual, expected_type, block or A.Node())
             actual = expected_type
+        elif self.is_temporal(actual):
+            self.host.error("temporal formulas cannot be used as values", block or A.Node(), "temporal-as-value")
+            actual = TyCon("bool")
         return self.to_ast(actual)
 
     def infer_expr(self, expr: A.Expr | None, env: dict[str, Scheme], expected: Type | None = None) -> Type:
@@ -147,14 +185,18 @@ class TypeInference:
             return typ
         if isinstance(expr, A.LetExpr):
             value_type = self.infer_expr(expr.value, env)
+            if self.is_temporal(value_type):
+                self.host.error("let bindings cannot bind temporal formulas", expr.value or expr, "temporal-in-let")
+                value_type = TyCon("bool")
             local = dict(env)
-            self.bind_pattern(expr.pattern, value_type, local, generalize=True)
+            self.bind_let_pattern(expr.pattern, value_type, local, generalize=True)
             typ = self.infer_expr(expr.body, local, expected)
             if expected is not None:
                 self.expect(typ, expected, expr)
             return typ
         if isinstance(expr, A.MatchExpr):
             subject_type = self.infer_expr(expr.subject, env)
+            self.reject_temporal_value(subject_type, expr.subject or expr)
             result_type: Type | None = None
             for arm in expr.arms:
                 local = dict(env)
@@ -162,6 +204,9 @@ class TypeInference:
                 if arm.guard is not None:
                     self.expect(self.infer_expr(arm.guard, local), TyCon("bool"), arm.guard)
                 body_type = self.infer_block(arm.body, local, expected)
+                if self.is_temporal(body_type):
+                    self.host.error("temporal formulas cannot be used as values", arm.body or arm, "temporal-as-value")
+                    body_type = TyCon("bool")
                 if result_type is None:
                     result_type = body_type
                 else:
@@ -176,17 +221,20 @@ class TypeInference:
                 self.expect(typ, expected, expr)
             return typ
         if isinstance(expr, A.TupleLiteral):
-            typ = TyTuple(tuple(self.infer_expr(item, env) for item in expr.items))
+            item_types = tuple(self.infer_expr(item, env) for item in expr.items)
+            for item, item_type in zip(expr.items, item_types):
+                self.reject_temporal_value(item_type, item)
+            typ = TyTuple(item_types)
             if expected is not None:
                 self.expect(typ, expected, expr)
             return typ
         if isinstance(expr, A.TemporalUnary):
-            self.expect(self.infer_expr(expr.operand, env), TyCon("bool"), expr.operand or expr)
-            return TyCon("bool")
+            self.expect_formula_operand(self.infer_expr(expr.operand, env), expr.operand or expr)
+            return TyTemporal()
         if isinstance(expr, A.TemporalBinary):
-            self.expect(self.infer_expr(expr.left, env), TyCon("bool"), expr.left or expr)
-            self.expect(self.infer_expr(expr.right, env), TyCon("bool"), expr.right or expr)
-            return TyCon("bool")
+            self.expect_formula_operand(self.infer_expr(expr.left, env), expr.left or expr)
+            self.expect_formula_operand(self.infer_expr(expr.right, env), expr.right or expr)
+            return TyTemporal()
         return self.fresh("unknown")
 
     def infer_block(self, block: A.Block | None, env: dict[str, Scheme], expected: Type | None = None) -> Type:
@@ -200,7 +248,7 @@ class TypeInference:
             if expected_stmt is not None:
                 self.expect(value_type, expected_stmt, stmt)
                 value_type = expected_stmt
-            self.bind_pattern(stmt.pattern, value_type, local, generalize=True)
+            self.bind_let_pattern(stmt.pattern, value_type, local, generalize=True)
         return self.infer_expr(block.result, local, expected)
 
     def infer_call(self, expr: A.Call, env: dict[str, Scheme], expected: Type | None) -> Type:
@@ -254,11 +302,22 @@ class TypeInference:
 
     def infer_binary(self, expr: A.BinaryOp, env: dict[str, Scheme]) -> Type:
         if expr.op in {"and", "or", "implies"}:
-            self.expect(self.infer_expr(expr.left, env), TyCon("bool"), expr.left or expr)
-            self.expect(self.infer_expr(expr.right, env), TyCon("bool"), expr.right or expr)
+            left = self.expect_formula_operand(self.infer_expr(expr.left, env), expr.left or expr)
+            right = self.expect_formula_operand(self.infer_expr(expr.right, env), expr.right or expr)
+            if self.is_temporal(left) and self.is_temporal(right):
+                return TyTemporal()
+            if self.is_temporal(left) != self.is_temporal(right):
+                self.host.error(
+                    "cannot mix temporal and non-temporal boolean expressions",
+                    expr,
+                    "temporal-type-mismatch",
+                )
+                return TyTemporal()
             return TyCon("bool")
         left = self.infer_expr(expr.left, env)
         right = self.infer_expr(expr.right, env)
+        self.reject_temporal_value(left, expr.left or expr)
+        self.reject_temporal_value(right, expr.right or expr)
         if expr.op in {"=", "!="}:
             try:
                 self.unify(left, right, expr)
@@ -284,8 +343,8 @@ class TypeInference:
 
     def infer_unary(self, expr: A.UnaryOp, env: dict[str, Scheme]) -> Type:
         if expr.op == "not":
-            self.expect(self.infer_expr(expr.operand, env), TyCon("bool"), expr.operand or expr)
-            return TyCon("bool")
+            operand = self.expect_formula_operand(self.infer_expr(expr.operand, env), expr.operand or expr)
+            return TyTemporal() if self.is_temporal(operand) else TyCon("bool")
         typ = self.infer_expr(expr.operand, env)
         if expr.op == "-":
             self.check_numeric(typ, expr)
@@ -307,7 +366,8 @@ class TypeInference:
             expected = self.from_ast(fields[name]) if fields is not None and name in fields else None
             if fields is not None and name not in fields:
                 self.host.error(f"unknown field {name!r}", expr, "unknown-field")
-            self.infer_expr(value, env, expected)
+            value_type = self.infer_expr(value, env, expected)
+            self.reject_temporal_value(value_type, value)
         if fields is not None:
             for missing in sorted(set(fields) - seen):
                 self.host.error(f"missing record field {missing!r}", expr, "missing-record-field")
@@ -360,6 +420,21 @@ class TypeInference:
             item_type = self.collection_item_type(typ) or self.fresh("item")
             for nested in pattern.items:
                 self.bind_pattern(nested, item_type, env, generalize=False)
+
+    def bind_let_pattern(self, pattern: A.Pattern | None, typ: Type, env: dict[str, Scheme], *, generalize: bool) -> None:
+        if not self.is_irrefutable_let_pattern(pattern):
+            self.host.error("let bindings only support irrefutable patterns", pattern or A.Node(), "unsupported-let-pattern")
+            return
+        self.bind_pattern(pattern, typ, env, generalize=generalize)
+
+    def is_irrefutable_let_pattern(self, pattern: A.Pattern | None) -> bool:
+        if pattern is None or isinstance(pattern, (A.VarPattern, A.WildcardPattern)):
+            return True
+        if isinstance(pattern, A.TuplePattern):
+            return all(self.is_irrefutable_let_pattern(item) for item in pattern.items)
+        if isinstance(pattern, A.RecordPattern):
+            return all(nested is None or self.is_irrefutable_let_pattern(nested) for _, nested in pattern.fields)
+        return False
 
     # ------------------------------------------------------------------
     # Schemes and environments
@@ -425,6 +500,8 @@ class TypeInference:
 
         def replace(typ: Type) -> Type:
             typ = self.prune(typ)
+            if isinstance(typ, TyTemporal):
+                return typ
             if isinstance(typ, TyVar):
                 return replacements.get(typ.id, typ)
             if isinstance(typ, TyCon):
@@ -489,6 +566,8 @@ class TypeInference:
                 self.unify(l_arg, r_arg, node)
             self.unify(left.ret, right.ret, node)
             return right
+        if isinstance(left, TyTemporal) and isinstance(right, TyTemporal):
+            return left
         raise InferenceError("type mismatch")
 
     def bind_var(self, var: TyVar, typ: Type, node: A.Node) -> Type:
@@ -524,6 +603,8 @@ class TypeInference:
         typ = self.prune(typ)
         if isinstance(typ, TyVar):
             return {typ.id}
+        if isinstance(typ, TyTemporal):
+            return set()
         if isinstance(typ, TyCon):
             return set().union(*(self.free_vars(arg) for arg in typ.args), set())
         if isinstance(typ, TyRecord):
@@ -539,6 +620,9 @@ class TypeInference:
     # ------------------------------------------------------------------
 
     def field_type(self, typ: Type, field: str, node: A.Node) -> Type:
+        self.reject_temporal_value(typ, node)
+        if self.is_temporal(typ):
+            return self.fresh(field)
         ast_type = self.to_ast(typ)
         self.host.check_field(ast_type, field, node)
         field_type = self.host.type_after_fields(ast_type, [field])
@@ -561,6 +645,16 @@ class TypeInference:
             return
         self.host.error(f"expected numeric expression, got {self.format_type(typ)}", node, "non-numeric-expression")
 
+    def expect_formula_operand(self, typ: Type, node: A.Node) -> Type:
+        typ = self.prune(typ)
+        if self.is_temporal(typ):
+            return typ
+        return self.expect(typ, TyCon("bool"), node)
+
+    def reject_temporal_value(self, typ: Type, node: A.Node) -> None:
+        if self.is_temporal(typ):
+            self.host.error("temporal formulas cannot be used as values", node, "temporal-as-value")
+
     def warn_numeric_mix(self, left: Type, right: Type, node: A.Node) -> None:
         left_name = self.type_name(left)
         right_name = self.type_name(right)
@@ -573,11 +667,22 @@ class TypeInference:
 
     def type_name(self, typ: Type) -> str | None:
         typ = self.prune(typ)
+        if isinstance(typ, TyTemporal):
+            return "temporal"
         return typ.name if isinstance(typ, TyCon) else None
+
+    def is_bool(self, typ: Type) -> bool:
+        typ = self.prune(typ)
+        return isinstance(typ, TyCon) and self.same_type_name(typ.name, "bool") and not typ.args
+
+    def is_temporal(self, typ: Type) -> bool:
+        return isinstance(self.prune(typ), TyTemporal)
 
     def same_type(self, left: Type, right: Type) -> bool:
         left = self.prune(left)
         right = self.prune(right)
+        if isinstance(left, TyTemporal) or isinstance(right, TyTemporal):
+            return isinstance(left, TyTemporal) and isinstance(right, TyTemporal)
         return isinstance(left, TyCon) and isinstance(right, TyCon) and self.same_type_name(left.name, right.name) and len(left.args) == len(right.args)
 
     def same_type_name(self, left: str | None, right: str | None) -> bool:
@@ -622,7 +727,11 @@ class TypeInference:
             return A.TupleType(items=[self.to_ast(item) or A.TypeRef(name="unit") for item in typ.items])
         if isinstance(typ, TyFun):
             return A.TypeRef(name="<function>")
+        if isinstance(typ, TyTemporal):
+            return A.TypeRef(name="temporal")
         return None
 
     def format_type(self, typ: Type | None) -> str:
+        if typ is not None and self.is_temporal(typ):
+            return "temporal"
         return self.host.format_type(self.to_ast(typ)) if typ is not None else "unknown"

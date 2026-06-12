@@ -463,8 +463,9 @@ class SemanticChecker:
             self.rules[decl.name] = Symbol(decl.name, "rule", node=decl)
             bool_type = A.TypeRef(name="bool")
             self.check_expr(decl.antecedent, {}, expected=bool_type)
-            self.check_expr(decl.body, {}, expected=bool_type)
-            self.check_expr(decl.otherwise, {}, expected=bool_type)
+            self.check_temporal_expr(decl.body)
+            if decl.otherwise is not None:
+                self.check_temporal_expr(decl.otherwise)
             return
         if isinstance(decl, A.FactDecl):
             expected = None
@@ -472,7 +473,8 @@ class SemanticChecker:
                 self.check_name(decl.target, decl, {})
                 expected = self.infer_name_type(decl.target, {})
             else:
-                expected = A.TypeRef(name="bool")
+                self.check_formula_expr(decl.value)
+                return
             self.check_expr(decl.value, {}, expected=expected)
             return
     def add_constructors(self, decl: A.TypeDecl) -> None:
@@ -534,6 +536,22 @@ class SemanticChecker:
         type_params: set[str] | None = None,
     ) -> A.TypeExpr | None:
         return TypeInference(self, type_params or set()).check_expr(expr, env, expected=expected)
+
+    def check_temporal_expr(
+        self,
+        expr: A.Expr | None,
+        env: dict[str, A.TypeExpr | None] | None = None,
+        type_params: set[str] | None = None,
+    ) -> None:
+        TypeInference(self, type_params or set()).check_temporal_expr(expr, env)
+
+    def check_formula_expr(
+        self,
+        expr: A.Expr | None,
+        env: dict[str, A.TypeExpr | None] | None = None,
+        type_params: set[str] | None = None,
+    ) -> None:
+        TypeInference(self, type_params or set()).check_formula_expr(expr, env)
 
     def check_pattern(
         self,
@@ -1144,7 +1162,6 @@ class SemanticChecker:
             end_column=node.end_column or None,
         ))
 
-
 class Linter:
     def lint_module(
         self,
@@ -1208,19 +1225,6 @@ class Linter:
                     decl.line or 1, decl.column or 1,
                     severity="warning", code="anonymous-rule", path=path,
                 ))
-            if decl.body is not None:
-                for expr in self.expressions_without_explicit_temporal(decl.body):
-                    line, column = self.expr_start_position(expr)
-                    diagnostics.append(Diagnostic(
-                        f"expression in rule {decl.name!r} has no explicit temporal operator; assuming `initially`",
-                        line or decl.line or 1,
-                        column or decl.column or 1,
-                        severity="warning",
-                        code="rule-without-temporal",
-                        path=path,
-                        end_line=expr.end_line or None,
-                        end_column=expr.end_column or None,
-                    ))
         for decl in module.declarations:
             if isinstance(decl, A.PriorityDecl):
                 for name in decl.chain:

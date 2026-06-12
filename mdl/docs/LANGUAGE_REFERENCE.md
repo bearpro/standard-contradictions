@@ -332,8 +332,11 @@ Grammar:
 - `rule_name` is a qualified name.
 - `modality` is optional in the named form and is one of `O`, `P`, `F`.
 - `when` introduces an antecedent. If omitted, the rule is unconditional.
-- `body` is usually a boolean/temporal expression.
-- `otherwise` encodes a contrary-to-duty or fallback expression.
+- `body` must infer to the internal temporal boolean formula type. There is no
+  surface type annotation for temporal formulas; use `initially`, `always`,
+  `eventually`, `next`, or `until` to construct one.
+- `otherwise` encodes a contrary-to-duty or fallback expression and must also be
+  temporal when present.
 
 #### Anonymous modality form
 
@@ -518,9 +521,12 @@ in body
 ```
 
 A `let` expression evaluates `value`, binds it to `pattern`, and evaluates
-`body` in the extended environment. Type annotations are optional. Pattern
-bindings in `let` expressions are polymorphically generalised by the type
-inferencer.
+`body` in the extended environment. Type annotations are optional. `let`
+bindings are non-recursive: the binding is not visible inside its own right-hand
+side. `let` patterns must be irrefutable: variables, `_`, tuple patterns, and
+record patterns composed recursively from those forms. Refutable literal,
+constructor, and list-shape patterns belong in `case` arms. Pattern bindings in
+`let` expressions are polymorphically generalised by the type inferencer.
 
 ### 6.11 Blocks
 
@@ -570,6 +576,8 @@ case xs:
 ## 7. Patterns
 
 Patterns are used in function parameters, local `let` bindings, and `case` arms.
+`let` bindings accept only irrefutable patterns; `case` arms are the construct
+for refutable patterns.
 
 ### 7.1 Wildcard
 
@@ -782,8 +790,8 @@ priorityDecl   ::= "override" qualifiedName (">" qualifiedName)*
 
 ruleDecl       ::= ("strict" | "defeasible" | "defeater")? "rule" ruleBody
                    ("otherwise" expr)?
-ruleBody       ::= modality ":" expr
-                 | modality? qualifiedName ("when" expr)? ":" expr
+ruleBody       ::= modality ":" block
+                 | modality? qualifiedName ("when" expr)? ":" block
 modality       ::= "O" | "P" | "F"
 
 block          ::= NEWLINE INDENT blockLetStmt* expr? newlines? DEDENT | expr
@@ -800,7 +808,7 @@ additive       ::= multiplicative (("+" | "-") multiplicative)*
 multiplicative ::= unary (("*" | "/" | "%") unary)*
 unary          ::= ifExpr | letExpr | matchExpr | ("not" | "-") unary | postfix
 ifExpr         ::= "if" expr newlines? "then" expr newlines? "else" expr
-letExpr        ::= "let" pattern typeAnnotation? "=" expr newlines? "in" expr
+letExpr        ::= "let" pattern typeAnnotation? "=" expr newlines? "in" newlines? expr
 matchExpr      ::= "case" expr ":" caseBody
 caseArm        ::= "|" pattern ("when" expr)? ":" block
 postfix        ::= primary postfixSuffix*
