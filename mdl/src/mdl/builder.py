@@ -161,11 +161,6 @@ class ModelBuilder:
         self.module.declarations.append(decl)
         return decl
 
-    def value(self, name: str, value: A.Expr | str | int | bool | float | None, typ: TypeInput = None) -> A.ValueDecl:
-        decl = A.ValueDecl(name=name, value=coerce_expr(value), type_annotation=coerce_type(typ) if typ else None)
-        self.module.declarations.append(decl)
-        return decl
-
     def entity(self, name: str, typ: TypeInput) -> A.EntityDecl:
         decl = A.EntityDecl(name=name, type_annotation=coerce_type(typ))
         self.module.declarations.append(decl)

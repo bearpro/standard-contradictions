@@ -129,11 +129,6 @@ class MDLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by MDLParser#valueDecl.
-    def visitValueDecl(self, ctx:MDLParser.ValueDeclContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by MDLParser#funcDecl.
     def visitFuncDecl(self, ctx:MDLParser.FuncDeclContext):
         return self.visitChildren(ctx)

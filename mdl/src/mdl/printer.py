@@ -77,8 +77,6 @@ class PrettyPrinter:
         prefix = "\n".join(self.annotations(decl.annotations))
         if isinstance(decl, A.TypeDecl):
             text = self.type_decl(decl)
-        elif isinstance(decl, A.ValueDecl):
-            text = self.value_decl(decl)
         elif isinstance(decl, A.FuncDecl):
             text = self.func_decl(decl)
         elif isinstance(decl, A.EntityDecl):
@@ -125,10 +123,6 @@ class PrettyPrinter:
         if isinstance(typ, A.TupleType):
             return "(" + ", ".join(self.type_expr(t) for t in typ.items) + ")"
         return "unit"
-
-    def value_decl(self, decl: A.ValueDecl) -> str:
-        ann = f": {self.type_expr(decl.type_annotation)}" if decl.type_annotation else ""
-        return f"let {decl.name}{ann} = {self.expr(decl.value)}"
 
     def func_decl(self, decl: A.FuncDecl) -> str:
         params = ", ".join(self.param(p) for p in decl.params)

@@ -41,7 +41,6 @@ __all__ = [
     "rule",
     "to_source",
     "until",
-    "value",
 ]
 
 
@@ -201,10 +200,6 @@ def record(cls: object | None = None, **_: object) -> object:  # pragma: no cove
 
 def entity(type_annotation: object | None = None) -> _RuntimeExpr:  # pragma: no cover
     return _RuntimeExpr("entity")
-
-
-def value(expr: object | None = None) -> object | None:  # pragma: no cover
-    return expr
 
 
 def fact(expr: object | None = None, **_: object) -> None:  # pragma: no cover
@@ -506,25 +501,7 @@ class _Compiler:
             type_annotation = self._entity_type_from_call(value, annotation)
             self.module.declarations.append(self._mark(A.EntityDecl(name=target_name, type_annotation=type_annotation), stmt))
             return
-        if isinstance(value, py_ast.Call) and self._call_name(value) == "value":
-            actual = value.args[0] if value.args else py_ast.Constant(value=None)
-            self.module.declarations.append(self._mark(
-                A.ValueDecl(
-                    name=target_name,
-                    type_annotation=self._type_expr(annotation) if annotation is not None else None,
-                    value=self._expr(actual),
-                ),
-                stmt,
-            ))
-            return
-        self.module.declarations.append(self._mark(
-            A.ValueDecl(
-                name=target_name,
-                type_annotation=self._type_expr(annotation) if annotation is not None else None,
-                value=self._expr(value),
-            ),
-            stmt,
-        ))
+        raise self._error("top-level assignments only support entity(...) declarations", stmt)
 
     def _fact_decl(self, call: py_ast.Call) -> A.FactDecl:
         self._expect_known_keywords(call, {"target", "value"})

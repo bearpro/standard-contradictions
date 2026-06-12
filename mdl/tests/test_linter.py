@@ -291,9 +291,14 @@ module records
 
 type Pipe = { length: rat, radius: rat }
 
-let ok: Pipe = Pipe { length = 1, radius = 2 }
-let missing: Pipe = Pipe { length = 1 }
-let extra: Pipe = Pipe { length = 1, radius = 2, diameter = 3 }
+func ok() -> Pipe:
+    Pipe { length = 1, radius = 2 }
+
+func missing() -> Pipe:
+    Pipe { length = 1 }
+
+func extra() -> Pipe:
+    Pipe { length = 1, radius = 2, diameter = 3 }
 ''')
 
     assert any(d.code == "missing-record-field" and "radius" in d.message for d in diagnostics)
@@ -390,18 +395,16 @@ func wrong() -> int:
     assert any(d.code == "type-mismatch" and "expected int, got bool" in d.message for d in diagnostics)
 
 
-def test_linter_reports_value_and_let_annotation_mismatches():
+def test_linter_reports_local_let_annotation_mismatch():
     diagnostics = lint_source('''
 module bad
-
-let wrong: int = "x"
 
 func also_wrong() -> int:
     let x: int = true
     x
 ''')
 
-    assert sum(1 for d in diagnostics if d.code == "type-mismatch") >= 2
+    assert any(d.code == "type-mismatch" and "expected int, got bool" in d.message for d in diagnostics)
 
 
 def test_linter_reports_non_bool_formula_positions():
@@ -489,7 +492,9 @@ module bad
 
 type Pipe = { length: int }
 
-let p: Pipe = Pipe { length = true }
+func p() -> Pipe:
+    Pipe { length = true }
+
 entity x: int
 rule O bad_numeric: x = (true + 1) always
 ''')
@@ -504,9 +509,10 @@ module hm
 
 open std.collections
 
-let xs = List.Cons(1, List.Empty())
+func xs() -> List<int>:
+    List.Cons(1, List.Empty())
 
-rule O ok: len(xs) = 1 always
+rule O ok: len(xs()) = 1 always
 ''')
 
     assert not any(d.severity == "error" for d in diagnostics)
@@ -530,7 +536,8 @@ def test_linter_warns_for_numeric_coercion_without_rejecting():
     diagnostics = lint_source('''
 module hm
 
-let x: rat = 1
+func x() -> rat:
+    1
 ''')
 
     assert not any(d.severity == "error" for d in diagnostics)
@@ -546,7 +553,6 @@ type Tube = { length: rat, r: rat }
 
 entity pipe: Pipe
 entity tube: Tube
-let length: rat = 1
 
 rule O aligned: (pipe = tube) always
 ''')

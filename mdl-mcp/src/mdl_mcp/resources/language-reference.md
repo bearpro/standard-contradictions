@@ -13,7 +13,7 @@ systems. A source file defines exactly one module and may contain:
 
 - imports and opened modules;
 - type declarations, including records and algebraic data types (ADTs);
-- immutable values and pure functions;
+- pure functions;
 - external entities, facts, temporal/deontic rules, and rule priorities;
 - annotations attached to modules and top-level items.
 
@@ -43,7 +43,7 @@ A `#` starts a line comment that continues to the end of the line:
 
 ```mdl
 # ignored by the parser
-let answer = 42  # also ignored
+func answer() -> int: 42  # also ignored
 ```
 
 ### 2.3 Identifiers and qualified names
@@ -251,18 +251,7 @@ instantiated at call sites by the type inferencer.
 
 ## 5. Declarations
 
-### 5.1 Value declarations
-
-```mdl
-let name = expr
-let name: Type = expr
-```
-
-A top-level value is immutable. In the runtime, top-level values are evaluated
-before facts are applied. Type annotations are optional; when present, the value
-must conform to the annotation.
-
-### 5.2 Function declarations
+### 5.1 Function declarations
 
 ```mdl
 func name<T>(param: Type, {field}: Rec) -> ReturnType:
@@ -288,7 +277,7 @@ The runtime checks arity, binds parameter patterns, evaluates local `let`
 statements in order, and returns the final expression. Function bodies may call
 the same function recursively.
 
-### 5.3 Entity declarations
+### 5.2 Entity declarations
 
 ```mdl
 entity email: string
@@ -299,7 +288,7 @@ An entity declares an externally supplied symbol used by facts, rules, solving,
 and runtime evaluation. The point-wise runtime initialises entity values to
 `None` until a fact assigns a value or the caller supplies a value.
 
-### 5.4 Fact declarations
+### 5.3 Fact declarations
 
 ```mdl
 fact condition
@@ -310,7 +299,7 @@ A fact with a target assigns the evaluated value to that target in the runtime.
 A fact without a target is evaluated and stored in the runtime's facts list. In
 translation/solving, facts are emitted as model facts.
 
-### 5.5 Rule declarations
+### 5.4 Rule declarations
 
 Rules describe temporal/deontic obligations, permissions, prohibitions, and
 supporting defeasible reasoning.
@@ -371,7 +360,7 @@ solver rather than by the point-wise runtime.
 | `P`      | Permission  | the body is permitted  |
 | `F`      | Prohibition | the body is forbidden  |
 
-### 5.6 Priority declarations
+### 5.5 Priority declarations
 
 ```mdl
 override specific_rule > general_rule
@@ -669,9 +658,8 @@ temporal/deontic fragment used by the test suite and examples.
 point-wise runtime:
 
 - top-level functions are callable by simple or qualified local names;
-- top-level `let` values are evaluated before facts;
 - entity declarations create mutable runtime slots initially set to `None`;
-- targeted facts assign runtime values to entities or other names;
+- targeted facts assign runtime values to entities;
 - untargeted facts are evaluated and stored;
 - records are dictionaries;
 - tuples are Python tuples;
@@ -766,7 +754,7 @@ moduleDecl     ::= "module" qualifiedName
 importDecl     ::= "import" STRING
 openDecl       ::= "open" qualifiedName
 
-declaration    ::= typeDecl | valueDecl | funcDecl | entityDecl
+declaration    ::= typeDecl | funcDecl | entityDecl
                  | ruleDecl | priorityDecl | factDecl
 
 typeDecl       ::= "type" name typeParams? "=" typeDefinition
@@ -780,7 +768,6 @@ recordType     ::= "{" (name ":" typeExpr ("," name ":" typeExpr)*)? "}"
 tupleType      ::= "(" typeExpr ")" | "(" typeExpr "," typeExpr ("," typeExpr)* ")"
 typeRef        ::= qualifiedName ("<" typeExpr ("," typeExpr)* ">")?
 
-valueDecl      ::= "let" name typeAnnotation? "=" expr
 funcDecl       ::= "func" name typeParams? "(" paramList? ")" "->" typeExpr ":" block
 param          ::= pattern ":" typeExpr
 entityDecl     ::= "entity" name ":" typeExpr

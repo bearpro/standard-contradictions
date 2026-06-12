@@ -266,8 +266,6 @@ class LSPServer:
                 for param in decl.params:
                     checker.bind_pattern(param.pattern, env, param.type_annotation)
                 typ = self.local_reference_type_in_block(checker, decl.body, name, line, env)
-            elif isinstance(decl, A.ValueDecl):
-                typ = self.local_reference_type_in_expr(checker, decl.value, name, line, {})
             elif isinstance(decl, A.FactDecl):
                 typ = self.local_reference_type_in_expr(checker, decl.value, name, line, {})
             elif isinstance(decl, A.RuleDecl):

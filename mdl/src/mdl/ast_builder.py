@@ -184,16 +184,6 @@ class AstBuilder(MDLVisitor):
     def visitTypeExprList(self, ctx: MDLParser.TypeExprListContext) -> list[A.TypeExpr]:
         return [self.visit(item) for item in ctx.typeExpr()]
 
-    def visitValueDecl(self, ctx: MDLParser.ValueDeclContext) -> A.ValueDecl:
-        line, column = self.location(ctx)
-        return A.ValueDecl(
-            name=self.visit(ctx.nameToken()),
-            type_annotation=self.visit(ctx.typeAnnotation()) if ctx.typeAnnotation() else None,
-            value=self.visit(ctx.continuedExpr()),
-            line=line,
-            column=column,
-        )
-
     def visitFuncDecl(self, ctx: MDLParser.FuncDeclContext) -> A.FuncDecl:
         line, column = self.location(ctx)
         return A.FuncDecl(

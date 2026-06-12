@@ -36,10 +36,6 @@ class Runtime:
             elif isinstance(decl, A.EntityDecl):
                 self.entities[decl.name] = decl
                 self.values.setdefault(decl.name, None)
-        # Evaluate top-level values before facts.
-        for decl in self.module.declarations:
-            if isinstance(decl, A.ValueDecl):
-                self.values[decl.name] = self.eval_expr(decl.value, dict(self.values))
         self.apply_facts()
 
     def apply_facts(self) -> None:
@@ -47,6 +43,8 @@ class Runtime:
             if isinstance(decl, A.FactDecl):
                 value = self.eval_expr(decl.value, dict(self.values))
                 if decl.target:
+                    if decl.target not in self.entities:
+                        raise RuntimeError(f"undefined entity {decl.target!r}")
                     self.values[decl.target] = value
                 else:
                     self.facts.append(value)

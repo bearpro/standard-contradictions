@@ -150,6 +150,7 @@ rule O r: x always
 def test_forbidden_syntax_aliases_are_rejected():
     for source, parser in [
         ("module bad\n\npriority high > low\n", parse),
+        ("module bad\n\nlet x = 1\n", parse),
         ("a == b", parse_expr),
         ("always x", parse_expr),
         ("eventually x", parse_expr),

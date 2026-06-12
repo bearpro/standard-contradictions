@@ -133,8 +133,6 @@ class EditorSnapshot:
                 self.collect_expr_locals(decl.antecedent, {}, symbols)
                 self.collect_expr_locals(decl.body, {}, symbols)
                 self.collect_expr_locals(decl.otherwise, {}, symbols)
-            elif isinstance(decl, A.ValueDecl):
-                self.collect_expr_locals(decl.value, {}, symbols)
             elif isinstance(decl, A.FactDecl):
                 self.collect_expr_locals(decl.value, {}, symbols)
         return symbols
@@ -273,8 +271,6 @@ class EditorSnapshot:
             kind, label = 5, decl.name
         elif isinstance(decl, A.FuncDecl):
             kind, label = 12, decl.name
-        elif isinstance(decl, A.ValueDecl):
-            kind, label = 13, decl.name
         elif isinstance(decl, A.EntityDecl):
             kind, label = 23, decl.name
         elif isinstance(decl, A.RuleDecl):
@@ -307,12 +303,6 @@ class EditorSnapshot:
                 for param in decl.params
             )
             return f"{tparams}({params}) -> {self.format_symbol_type(decl.return_type)}"
-        if isinstance(decl, A.ValueDecl):
-            typ = decl.type_annotation
-            if typ is None and self.checker is not None:
-                symbol = self.checker.terms.get(decl.name)
-                typ = symbol.type_expr if symbol else None
-            return f": {self.format_symbol_type(typ)}" if typ is not None else None
         if isinstance(decl, A.EntityDecl):
             return f": {self.format_symbol_type(decl.type_annotation)}"
         if isinstance(decl, A.FactDecl) and decl.target and self.checker is not None:

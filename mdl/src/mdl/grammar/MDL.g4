@@ -39,7 +39,6 @@ openDecl
 
 declaration
     : typeDecl
-    | valueDecl
     | funcDecl
     | entityDecl
     | ruleDecl
@@ -110,10 +109,6 @@ typeArgs
 
 typeExprList
     : typeExpr (COMMA typeExpr)*
-    ;
-
-valueDecl
-    : LET nameToken typeAnnotation? EQ continuedExpr
     ;
 
 funcDecl

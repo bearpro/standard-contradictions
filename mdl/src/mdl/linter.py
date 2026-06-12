@@ -287,7 +287,7 @@ class SemanticChecker:
         declared_types = {decl.name for decl in module.declarations if isinstance(decl, A.TypeDecl)}
         module_fields: list[tuple[str, A.TypeExpr]] = []
         for decl in module.declarations:
-            if not isinstance(decl, (A.TypeDecl, A.ValueDecl, A.FuncDecl, A.EntityDecl)):
+            if not isinstance(decl, (A.TypeDecl, A.FuncDecl, A.EntityDecl)):
                 continue
             if isinstance(decl, A.TypeDecl):
                 qualified_name = f"{module.name}.{decl.name}"
@@ -316,7 +316,7 @@ class SemanticChecker:
         declared_types = {decl.name for decl in module.declarations if isinstance(decl, A.TypeDecl)}
         for decl in module.declarations:
             name = A.declaration_name(decl)
-            if not name or not isinstance(decl, (A.TypeDecl, A.ValueDecl, A.FuncDecl, A.EntityDecl)):
+            if not name or not isinstance(decl, (A.TypeDecl, A.FuncDecl, A.EntityDecl)):
                 continue
             if name in local_names or name in self.imported_names or name in self.terms or name in self.types:
                 self.error(f"open {opened.module!r} introduces conflicting name {name!r}", opened, "ambiguous-open")
@@ -336,8 +336,6 @@ class SemanticChecker:
             self.terms[name] = Symbol(name, self.declaration_kind(decl), typ, decl)
 
     def declaration_type(self, decl: A.Declaration) -> A.TypeExpr | None:
-        if isinstance(decl, A.ValueDecl):
-            return decl.type_annotation
         if isinstance(decl, A.FuncDecl):
             return decl.return_type
         if isinstance(decl, A.EntityDecl):
@@ -345,8 +343,6 @@ class SemanticChecker:
         return None
 
     def declaration_kind(self, decl: A.Declaration) -> str:
-        if isinstance(decl, A.ValueDecl):
-            return "value"
         if isinstance(decl, A.FuncDecl):
             return "function"
         if isinstance(decl, A.EntityDecl):
@@ -425,14 +421,6 @@ class SemanticChecker:
             self.type_definitions[decl.name] = decl.definition
             self.check_type_definition(decl.definition, set(decl.params))
             self.add_constructors(decl)
-            return
-        if isinstance(decl, A.ValueDecl):
-            self.check_type_expr(decl.type_annotation)
-            inferer = TypeInference(self)
-            actual = inferer.check_expr(decl.value, {}, expected=decl.type_annotation)
-            typ = decl.type_annotation or actual
-            scheme = inferer.generalize(inferer.from_ast(typ), {}) if typ is not None else None
-            self.terms[decl.name] = Symbol(decl.name, "value", typ, decl, scheme)
             return
         if isinstance(decl, A.FuncDecl):
             type_params = set(decl.type_params)
@@ -1256,9 +1244,7 @@ class Linter:
     def check_boolean_parentheses(self, module: A.Module, path: str | None) -> list[Diagnostic]:
         diagnostics: list[Diagnostic] = []
         for decl in module.declarations:
-            if isinstance(decl, A.ValueDecl):
-                self.collect_boolean_parentheses_warnings(decl.value, diagnostics, path)
-            elif isinstance(decl, A.FuncDecl):
+            if isinstance(decl, A.FuncDecl):
                 self.collect_boolean_parentheses_warnings_in_block(decl.body, diagnostics, path)
             elif isinstance(decl, A.RuleDecl):
                 self.collect_boolean_parentheses_warnings(decl.antecedent, diagnostics, path)

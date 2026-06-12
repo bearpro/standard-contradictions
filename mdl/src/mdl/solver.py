@@ -132,7 +132,6 @@ class ModuleScope:
     imports: dict[str, str] = field(default_factory=dict)
     opens: set[str] = field(default_factory=set)
     types: dict[str, A.TypeDecl] = field(default_factory=dict)
-    values: dict[str, A.ValueDecl] = field(default_factory=dict)
     funcs: dict[str, FunctionInfo] = field(default_factory=dict)
     entities: dict[str, EntityInfo] = field(default_factory=dict)
     priorities: list[A.PriorityDecl] = field(default_factory=list)
@@ -414,9 +413,6 @@ class SolverProblem:
             if isinstance(decl, A.TypeDecl):
                 key = ("type", decl.name)
                 scope.types[decl.name] = decl
-            elif isinstance(decl, A.ValueDecl):
-                key = ("value", decl.name)
-                scope.values[decl.name] = decl
             elif isinstance(decl, A.FuncDecl):
                 key = ("func", decl.name)
                 scope.funcs[decl.name] = FunctionInfo(scope.module.name, decl, [], UNIT)
@@ -570,8 +566,6 @@ class SolverProblem:
         candidates: list[str] = []
         if name in scope.entities and (expected is None or "entity" in expected):
             candidates.append("entity")
-        if name in scope.values and (expected is None or "value" in expected):
-            candidates.append("value")
         if name in scope.funcs and (expected is None or "func" in expected):
             candidates.append("func")
         if name in scope.types and (expected is None or "type" in expected):
@@ -599,7 +593,6 @@ class BoundedEncoder:
         self.tracked: dict[str, TrackedConstraint] = {}
         self.track_counter = 0
         self.entity_values: dict[tuple[str, str, int], ZValue] = {}
-        self.value_cache: dict[tuple[str, str], ZValue] = {}
         self.rule_infos = self.problem.all_rules()
         self.rule_labels: dict[str, Any] = {}
         self.rule_applications: dict[str, Any] = {}
@@ -612,7 +605,6 @@ class BoundedEncoder:
     def encode(self) -> None:
         try:
             self.encode_entities()
-            self.encode_values()
             self.encode_facts()
             self.encode_rules()
         except SolveError as exc:
@@ -624,35 +616,18 @@ class BoundedEncoder:
                 for t in range(self.horizon):
                     self.entity_value(entity, t)
 
-    def encode_values(self) -> None:
-        for scope in self.problem.scopes.values():
-            for name in scope.values:
-                self.value_decl(scope.module.name, name)
-
     def encode_facts(self) -> None:
         for scope in self.problem.scopes.values():
             for index, fact in enumerate(scope.facts, start=1):
                 if fact.target:
-                    module_name, local = self.problem.resolve_decl(scope, fact.target, expected={"entity", "value"})
+                    module_name, local = self.problem.resolve_decl(scope, fact.target, expected={"entity"})
                     if module_name is None or local is None:
                         self.unresolved(scope, fact.target, fact)
                         continue
-                    if local in self.problem.scopes[module_name].entities:
-                        entity = self.problem.scopes[module_name].entities[local]
-                        for t in range(self.horizon):
-                            target = self.entity_value(entity, t)
-                            value = self.compile_expr(fact.value, scope, t, expected=target.typ)
-                            self.track(
-                                self.equal_values(target, value),
-                                kind="fact",
-                                module=scope.module.name,
-                                name=fact.target,
-                                line=fact.line or 1,
-                                column=fact.column or 1,
-                            )
-                    else:
-                        target = self.value_decl(module_name, local)
-                        value = self.compile_expr(fact.value, scope, 0, expected=target.typ)
+                    entity = self.problem.scopes[module_name].entities[local]
+                    for t in range(self.horizon):
+                        target = self.entity_value(entity, t)
+                        value = self.compile_expr(fact.value, scope, t, expected=target.typ)
                         self.track(
                             self.equal_values(target, value),
                             kind="fact",
@@ -1175,17 +1150,6 @@ class BoundedEncoder:
             self.entity_values[key] = self.fresh_value(f"{entity.module}.{entity.decl.name}@{t}", entity.typ)
         return self.entity_values[key]
 
-    def value_decl(self, module_name: str, name: str) -> ZValue:
-        key = (module_name, name)
-        if key in self.value_cache:
-            return self.value_cache[key]
-        scope = self.problem.scopes[module_name]
-        decl = scope.values[name]
-        expected = self.problem.resolve_type(module_name, decl.type_annotation) if decl.type_annotation else None
-        value = self.compile_expr(decl.value, scope, 0, expected=expected)
-        self.value_cache[key] = value
-        return value
-
     def fresh_value(self, prefix: str, typ: TypeSpec) -> ZValue:
         safe = self.safe(prefix)
         if isinstance(typ, PrimitiveType):
@@ -1202,7 +1166,7 @@ class BoundedEncoder:
         return ZValue(typ, expr=z3.Const(safe, sort))
 
     def resolve_value(self, name: str, scope: ModuleScope, t: int, expected: TypeSpec | None = None) -> ZValue:
-        module_name, local = self.problem.resolve_decl(scope, name, expected={"entity", "value", "func"})
+        module_name, local = self.problem.resolve_decl(scope, name, expected={"entity", "func"})
         if module_name is None or local is None:
             self.unresolved(scope, name)
             return self.opaque_atom(name, t)
@@ -1217,8 +1181,6 @@ class BoundedEncoder:
             field_parts = parts[1:]
         if local in target_scope.entities:
             value = self.entity_value(target_scope.entities[local], t)
-        elif local in target_scope.values:
-            value = self.value_decl(module_name, local)
         else:
             return self.opaque_atom(name, t)
         for field_name in field_parts:
@@ -1991,7 +1953,7 @@ class BoundedEncoder:
             parts = split_qualified(expr.name)
             if len(parts) >= 2 and parts[-2] in {"List", "Set", "Map", "Option"}:
                 return True
-            if root in scope.entities or root in scope.values or root in scope.funcs or root in scope.types:
+            if root in scope.entities or root in scope.funcs or root in scope.types:
                 return True
             if root in scope.imports:
                 return True
@@ -2030,7 +1992,7 @@ class BoundedEncoder:
             return True
         if isinstance(expr, A.Name):
             root = expr.name.split(".")[0]
-            if root in scope.entities or root in scope.values:
+            if root in scope.entities:
                 return scope.runtime.values.get(root) is not None
             return True
         if isinstance(expr, A.Call):

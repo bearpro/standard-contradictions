@@ -6,7 +6,8 @@ type InspectionState = Pending(unit) | Accepted(unit) | Rejected(unit)
 
 type Pipe = { length: rat, radius: rat, pressure: int, state: InspectionState }
 
-let inspection_tags = List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
+func inspection_tags() -> List<int>:
+    List.Cons(1, List.Cons(2, List.Cons(3, List.Empty())))
 
 func positive_tags(tags: List<int>) -> bool:
     case tags:
@@ -27,7 +28,7 @@ func is_accepted(state: InspectionState) -> bool:
 func pipe_ok(pipe: Pipe) -> bool:
     let geometry_ok = pipe.length > 0 and pipe.radius > 0
     let pressure_ok = if pipe.pressure > 0 then true else false
-    geometry_ok and pressure_ok and positive_tags(inspection_tags) and is_accepted(pipe.state)
+    geometry_ok and pressure_ok and positive_tags(inspection_tags()) and is_accepted(pipe.state)
 
 entity pipe: Pipe
 

@@ -234,13 +234,6 @@ class TypeDecl(Declaration):
 
 
 @dataclass
-class ValueDecl(Declaration):
-    name: str = ""
-    type_annotation: TypeExpr | None = None
-    value: Expr | None = None
-
-
-@dataclass
 class Param(Node):
     pattern: Pattern | None = None
     type_annotation: TypeExpr | None = None
@@ -309,6 +302,6 @@ def node_to_dict(value: Any) -> Any:
 
 
 def declaration_name(decl: Declaration) -> str | None:
-    if isinstance(decl, (TypeDecl, ValueDecl, FuncDecl, EntityDecl, RuleDecl)):
+    if isinstance(decl, (TypeDecl, FuncDecl, EntityDecl, RuleDecl)):
         return decl.name
     return None

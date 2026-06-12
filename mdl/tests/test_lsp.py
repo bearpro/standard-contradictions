@@ -218,9 +218,9 @@ def test_lsp_document_symbols_hover_definition_semantic_tokens_and_summary():
 
 @domain pipe
 type Pipe = { length: rat, radius: rat }
-let threshold = 1
+func threshold() -> int: 1
 entity pipe: Pipe
-func positive_pipe(p: Pipe) -> bool: p.length > threshold
+func positive_pipe(p: Pipe) -> bool: p.length > threshold()
 rule O positive: pipe.length > 0 always
 """
     uri = "file:///tmp/pipe.mdl"
@@ -234,7 +234,7 @@ rule O positive: pipe.length > 0 always
     assert set(children) >= {"Pipe", "threshold", "pipe", "positive_pipe", "positive"}
     assert symbols[0]["children"][0]["selectionRange"]["start"]["character"] == len("type ")
     assert children["Pipe"]["detail"] == "= { length: rat, radius: rat }"
-    assert children["threshold"]["detail"] == ": int"
+    assert children["threshold"]["detail"] == "() -> int"
     assert children["pipe"]["detail"] == ": Pipe"
     assert children["positive_pipe"]["detail"] == "(p: Pipe) -> bool"
 
