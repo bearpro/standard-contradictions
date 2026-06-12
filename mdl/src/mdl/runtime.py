@@ -106,6 +106,8 @@ class Runtime:
             return (not bool(self.eval_expr(expr.left, env))) or bool(self.eval_expr(expr.right, env))
         left = self.eval_expr(expr.left, env)
         right = self.eval_expr(expr.right, env)
+        if left is None or right is None:
+            raise RuntimeError(f"cannot evaluate operator {expr.op!r} with an undefined runtime value")
         if expr.op == "=":
             return left == right
         if expr.op == "!=":

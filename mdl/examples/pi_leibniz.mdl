@@ -1,0 +1,38 @@
+module pi.leibniz
+
+entity pi: rat
+entity leibniz_term_count: int
+entity pi_approximation: rat
+entity pi_error_bound: rat
+
+func abs_rat(x: rat) -> rat:
+    if x < 0/1 then -x else x
+
+func leibniz_term(k: int) -> rat:
+    if k % 2 = 0 then 1 / ((2 * k) + 1) else -1 / ((2 * k) + 1)
+
+func leibniz_sum_until(k: int) -> rat:
+    if k < 0 then 0/1 else leibniz_sum_until(k - 1) + leibniz_term(k)
+
+func leibniz_pi(term_count: int) -> rat:
+    4/1 * leibniz_sum_until(term_count - 1)
+
+func leibniz_next_error_bound(term_count: int) -> rat:
+    4 / ((2 * term_count) + 1)
+
+rule O r1: pi > 3/1 always
+rule O r2: pi < 4/1 always
+
+rule O leibniz_term_count_must_be_positive:
+    leibniz_term_count > 0 always
+
+rule O pi_approximation_uses_leibniz_series:
+    pi_approximation = leibniz_pi(leibniz_term_count) always
+
+rule O pi_error_bound_uses_next_leibniz_term:
+    pi_error_bound = leibniz_next_error_bound(leibniz_term_count) always
+
+rule O pi_must_be_inside_leibniz_error_bound:
+    abs_rat(pi - pi_approximation) < pi_error_bound always
+
+fact leibniz_term_count = 3

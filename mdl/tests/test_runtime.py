@@ -1,5 +1,7 @@
+import pytest
+
 from mdl.parser import parse
-from mdl.runtime import Runtime
+from mdl.runtime import Runtime, RuntimeError as MDLRuntimeError
 
 from .sample_sources import EMAIL_SOURCE, PIPE_SOURCE
 
@@ -31,3 +33,10 @@ def test_runtime_evaluates_now_pointwise():
     runtime = Runtime(parse("module truth\nentity x: bool\nfact x = true\n"))
 
     assert runtime.eval_source_expr("x now") is True
+
+
+def test_runtime_reports_bare_fact_with_undefined_entity_value():
+    module = parse("module facts\nentity x: int\nfact x < 100\n")
+
+    with pytest.raises(MDLRuntimeError, match="undefined runtime value"):
+        Runtime(module)

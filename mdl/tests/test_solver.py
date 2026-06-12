@@ -681,6 +681,55 @@ def test_solve_recursive_power_with_facts_uses_recursive_case(tmp_path):
     assert payload["model"]["trace"][0]["entities"]["pwr_pinned.result"] == 8
 
 
+def test_solve_rat_function_uses_real_division_for_int_operands(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "rat_division.mdl",
+        """
+        module rat_division
+
+        func term(k: int) -> rat:
+            1 / ((2 * k) + 1)
+
+        entity k: int
+        entity value: rat
+
+        fact k >= 1
+        fact k <= 1
+        rule O computes_term: value = term(k) always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["rat_division.value"] == "1/3"
+
+
+def test_solve_rat_function_widens_int_body_to_real_sort(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "rat_widening.mdl",
+        """
+        module rat_widening
+
+        func increment(k: int) -> rat:
+            k + 1
+
+        entity k: int
+        entity value: rat
+
+        fact k = 1
+        rule O computes_increment: value = increment(k) always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["rat_widening.value"] == "2"
+
+
 def test_solve_rule_antecedent_controls_applicability(tmp_path):
     spec = write_module(
         tmp_path,

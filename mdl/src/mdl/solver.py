@@ -995,7 +995,7 @@ class BoundedEncoder:
             return self.literal_value(expr.value, expr.kind, expected)
         if isinstance(expr, A.Name):
             if expr.name in env:
-                return env[expr.name]
+                return self.coerce_value(env[expr.name], expected)
             constructor = self.find_constructor(expr.name, expected, scope)
             if constructor is not None:
                 if constructor.variant.fields:
@@ -1005,7 +1005,7 @@ class BoundedEncoder:
                 concrete = self.try_runtime_eval(expr, scope)
                 if concrete is not _NO_CONCRETE:
                     return self.python_value(concrete, expected)
-            return self.resolve_value(expr.name, scope, t, expected)
+            return self.coerce_value(self.resolve_value(expr.name, scope, t, expected), expected)
         if isinstance(expr, A.RecordConstructor):
             typ = self.problem.resolve_type(
                 scope.module.name,
@@ -1035,30 +1035,30 @@ class BoundedEncoder:
             value = self.compile_expr(expr.value, scope, t, expected=value_expected, env=env)
             local = dict(env)
             self.bind_let_pattern(expr.pattern, value, local)
-            return self.compile_expr(expr.body, scope, t, expected=expected, env=local)
+            return self.coerce_value(self.compile_expr(expr.body, scope, t, expected=expected, env=local), expected)
         concrete = self.try_runtime_eval(expr, scope)
         if concrete is not _NO_CONCRETE:
             return self.python_value(concrete, expected)
         if isinstance(expr, A.FieldAccess):
             target = self.compile_expr(expr.target, scope, t, env=env)
-            return self.field_value(target, expr.field)
+            return self.coerce_value(self.field_value(target, expr.field), expected)
         if isinstance(expr, A.Call):
-            return self.call_value(expr, scope, t, expected, env)
+            return self.coerce_value(self.call_value(expr, scope, t, expected, env), expected)
         if isinstance(expr, A.UnaryOp):
             value = self.compile_expr(expr.operand, scope, t, env=env)
             if expr.op == "not":
-                return ZValue(BOOL, expr=z3.Not(self.as_bool(value)))
+                return self.coerce_value(ZValue(BOOL, expr=z3.Not(self.as_bool(value))), expected)
             if expr.op == "-":
-                return ZValue(value.typ, expr=-self.as_numeric(value))
+                return self.coerce_value(ZValue(value.typ, expr=-self.as_numeric(value)), expected)
         if isinstance(expr, A.BinaryOp):
-            return self.binary_value(expr, scope, t, expected, env)
+            return self.coerce_value(self.binary_value(expr, scope, t, expected, env), expected)
         if isinstance(expr, A.IfExpr):
             cond = self.compile_formula(expr.condition, scope, t, env=env)
             then_v = self.compile_expr(expr.then_branch, scope, t, expected=expected, env=env)
             else_v = self.compile_expr(expr.else_branch, scope, t, expected=then_v.typ, env=env)
-            return self.if_value(cond, then_v, else_v)
+            return self.coerce_value(self.if_value(cond, then_v, else_v), expected)
         if isinstance(expr, A.MatchExpr):
-            return self.match_value(expr, scope, t, expected, env)
+            return self.coerce_value(self.match_value(expr, scope, t, expected, env), expected)
         if isinstance(expr, A.TupleLiteral):
             expected_resolved = self.resolve_named_type(expected) if expected is not None else None
             expected_items = list(expected_resolved.items) if isinstance(expected_resolved, TupleSpec) else []
@@ -1090,7 +1090,12 @@ class BoundedEncoder:
             return ZValue(BOOL, expr=l_num >= r_num)
         if expr.op in {"+", "-", "*", "/", "%"}:
             l_num, r_num = self.promote_numeric(left, right)
-            typ = REAL if expr.op == "/" else left.typ
+            typ = REAL if expr.op == "/" or self.expects_real(expected) else left.typ
+            if expr.op == "/" or isinstance(typ, PrimitiveType) and typ.name in {"rat", "decimal"}:
+                if isinstance(left.typ, PrimitiveType) and left.typ.name == "int":
+                    l_num = z3.ToReal(l_num)
+                if isinstance(right.typ, PrimitiveType) and right.typ.name == "int":
+                    r_num = z3.ToReal(r_num)
             if expr.op == "+":
                 return ZValue(typ, expr=l_num + r_num)
             if expr.op == "-":
@@ -1902,6 +1907,14 @@ class BoundedEncoder:
         if isinstance(right.typ, PrimitiveType) and right.typ.name == "int" and isinstance(left.typ, PrimitiveType) and left.typ.name in {"rat", "decimal"}:
             r_num = z3.ToReal(r_num)
         return l_num, r_num
+
+    def expects_real(self, expected: TypeSpec | None) -> bool:
+        return isinstance(expected, PrimitiveType) and expected.name in {"rat", "decimal"}
+
+    def coerce_value(self, value: ZValue, expected: TypeSpec | None) -> ZValue:
+        if self.expects_real(expected) and isinstance(value.typ, PrimitiveType) and value.typ.name == "int":
+            return ZValue(REAL, expr=z3.ToReal(self.primitive_expr(value)), concrete=value.concrete, has_concrete=value.has_concrete)
+        return value
 
     def sort_for(self, typ: TypeSpec) -> Any:
         if isinstance(typ, PrimitiveType):
