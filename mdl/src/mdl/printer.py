@@ -146,7 +146,10 @@ class PrettyPrinter:
         if decl.antecedent is not None:
             header += f" when {self.expr(decl.antecedent)}"
         body = self.expr(decl.body)
-        text = f"{header}: {body}"
+        if "\n" in body:
+            text = f"{header}:\n{self.indent_text(body, 1)}"
+        else:
+            text = f"{header}: {body}"
         if decl.otherwise is not None:
             text += f" otherwise {self.expr(decl.otherwise)}"
         return text
@@ -211,7 +214,12 @@ class PrettyPrinter:
             for arm in expr.arms:
                 guard = f" when {self.expr(arm.guard)}" if arm.guard is not None else ""
                 if arm.body and not arm.body.statements and arm.body.result is not None:
-                    lines.append(f"    | {self.pattern(arm.pattern)}{guard}: {self.expr(arm.body.result)}")
+                    result = self.expr(arm.body.result)
+                    if "\n" in result:
+                        lines.append(f"    | {self.pattern(arm.pattern)}{guard}:")
+                        lines.append(self.indent_text(result, 2))
+                    else:
+                        lines.append(f"    | {self.pattern(arm.pattern)}{guard}: {result}")
                 else:
                     lines.append(f"    | {self.pattern(arm.pattern)}{guard}:")
                     lines.append(self.block(arm.body, level=2))
@@ -229,11 +237,14 @@ class PrettyPrinter:
             text = "(" + ", ".join(self.expr(i) for i in expr.items) + ")"
             prec = self.PREC_ATOM
         elif isinstance(expr, A.TemporalUnary):
-            operand_prec = self.PREC_POSTFIX_TEMPORAL if isinstance(
-                expr.operand,
-                (A.IfExpr, A.LetExpr, A.MatchExpr),
-            ) else self.PREC_LOWEST
-            text = f"{self.expr(expr.operand, operand_prec)} {expr.op}"
+            if isinstance(expr.operand, A.MatchExpr):
+                operand_prec = self.PREC_LOWEST
+            elif isinstance(expr.operand, (A.IfExpr, A.LetExpr)):
+                operand_prec = self.PREC_POSTFIX_TEMPORAL
+            else:
+                operand_prec = self.PREC_LOWEST
+            operand = self.expr(expr.operand, operand_prec)
+            text = f"{operand}\n{expr.op}" if "\n" in operand else f"{operand} {expr.op}"
             prec = self.PREC_POSTFIX_TEMPORAL
         elif isinstance(expr, A.TemporalBinary):
             prec, assoc = self.PREC_BINARY[expr.op]
@@ -260,6 +271,10 @@ class PrettyPrinter:
             child_prec, _ = self.PREC_BINARY[child.op]
             return max(default, child_prec + 1)
         return default
+
+    def indent_text(self, text: str, level: int) -> str:
+        prefix = self.indent * level
+        return "\n".join(prefix + line if line else line for line in text.splitlines())
 
     def pattern(self, pattern: A.Pattern | None) -> str:
         if pattern is None:

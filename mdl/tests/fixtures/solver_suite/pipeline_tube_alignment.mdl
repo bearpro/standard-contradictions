@@ -8,3 +8,6 @@ rule O alignment_001: fixture_pipeline_spec.pipe.length = fixture_tube_model.tub
 
 # align kind=field score=0.800 matcher=builtin
 rule O alignment_002: fixture_pipeline_spec.pipe.pressure = fixture_tube_model.tube.pressure always
+
+# align kind=field score=0.800 matcher=builtin
+rule O alignment_003: fixture_pipeline_spec.pipe.radius = fixture_tube_model.tube.r always

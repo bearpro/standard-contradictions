@@ -97,6 +97,7 @@ class AlignmentReport:
     left_module: str | None = None
     right_module: str | None = None
     accepted: list[AlignmentCandidate] = field(default_factory=list)
+    evidence: list[AlignmentCandidate] = field(default_factory=list)
     candidates: list[AlignmentCandidate] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
 
@@ -110,6 +111,7 @@ class AlignmentReport:
             "left_module": self.left_module,
             "right_module": self.right_module,
             "accepted": [candidate.to_dict() for candidate in self.accepted],
+            "evidence": [candidate.to_dict() for candidate in self.evidence],
             "candidates": [candidate.to_dict() for candidate in self.candidates],
             "diagnostics": self.diagnostics,
             "suggestions": [candidate.to_dict() for candidate in self.suggestions],
@@ -134,6 +136,16 @@ _PRIMITIVE_TYPES = {
     "string": "string",
 }
 _COLLECTION_TYPES = {"list", "set", "seq", "array", "vector", "collection"}
+_UNIT_TYPES = {"unit"}
+_ABBREVIATIONS = {
+    "addr": "address",
+    "amt": "amount",
+    "qty": "quantity",
+    "lat": "latitude",
+    "lon": "longitude",
+    "lng": "longitude",
+    "r": "radius",
+}
 
 
 def normalize(name: str) -> str:
@@ -157,7 +169,44 @@ def token_similarity(left: Sequence[str], right: Sequence[str]) -> float:
     right_set = set(right)
     jaccard = len(left_set & right_set) / len(left_set | right_set)
     sequence = SequenceMatcher(None, " ".join(left), " ".join(right)).ratio()
-    return (0.65 * jaccard) + (0.35 * sequence)
+    semantic = semantic_token_similarity(left, right)
+    return max((0.65 * jaccard) + (0.35 * sequence), semantic)
+
+
+def semantic_token_similarity(left: Sequence[str], right: Sequence[str]) -> float:
+    matches: list[float] = []
+    used_right: set[int] = set()
+    for left_token in left:
+        best_index = -1
+        best_score = 0.0
+        for index, right_token in enumerate(right):
+            if index in used_right:
+                continue
+            score = token_match_score(left_token, right_token)
+            if score > best_score:
+                best_score = score
+                best_index = index
+        if best_index >= 0:
+            used_right.add(best_index)
+        matches.append(best_score)
+    if not matches:
+        return 0.0
+    coverage = sum(matches) / max(len(left), len(right))
+    order = SequenceMatcher(None, list(left), list(right)).ratio()
+    return (0.75 * coverage) + (0.25 * order)
+
+
+def token_match_score(left: str, right: str) -> float:
+    if left == right:
+        return 1.0
+    if _ABBREVIATIONS.get(left) == right or _ABBREVIATIONS.get(right) == left:
+        return 1.0
+    shorter, longer = sorted((left, right), key=len)
+    if len(shorter) >= 3 and longer.startswith(shorter):
+        return 0.92
+    if len(shorter) == 1 and longer.startswith(shorter):
+        return 0.82
+    return SequenceMatcher(None, left, right).ratio() * 0.45
 
 
 def text_similarity(left: str | None, right: str | None) -> float:
@@ -170,6 +219,37 @@ def type_signature(typ: A.TypeExpr | A.SumType | None, printer: PrettyPrinter) -
     if isinstance(typ, A.SumType):
         return "sum " + " ".join(variant.name for variant in typ.variants)
     return printer.type_expr(typ)
+
+
+def structural_type_signature(
+    typ: A.TypeExpr | A.SumType | None,
+    type_env: dict[str, A.TypeExpr | A.SumType],
+    printer: PrettyPrinter,
+    *,
+    seen: frozenset[str] = frozenset(),
+) -> str | None:
+    resolved = resolve_type(typ, type_env, seen)
+    if isinstance(resolved, A.RecordType):
+        fields = [
+            f"{name}:{structural_type_signature(field_type, type_env, printer, seen=seen) or type_signature(field_type, printer)}"
+            for name, field_type in resolved.fields
+        ]
+        return "record " + " ".join(fields)
+    if isinstance(resolved, A.SumType):
+        variants = []
+        for variant in resolved.variants:
+            fields = [
+                structural_type_signature(field_type, type_env, printer, seen=seen) or type_signature(field_type, printer) or "unit"
+                for _, field_type in variant.fields
+            ]
+            variants.append(f"{variant.name}({','.join(fields)})")
+        return "sum " + " ".join(variants)
+    if isinstance(resolved, A.TupleType):
+        return "tuple " + " ".join(
+            structural_type_signature(item, type_env, printer, seen=seen) or type_signature(item, printer) or "unit"
+            for item in resolved.items
+        )
+    return type_signature(typ, printer)
 
 
 def normalized_type(typ: str | None) -> str | None:
@@ -185,6 +265,30 @@ def normalized_type(typ: str | None) -> str | None:
         return _PRIMITIVE_TYPES.get(words[0], words[0])
     mapped = [_PRIMITIVE_TYPES.get(word, word) for word in words]
     return " ".join(mapped)
+
+
+def terminal_type_key(
+    typ: A.TypeExpr | None,
+    type_env: dict[str, A.TypeExpr | A.SumType],
+    printer: PrettyPrinter,
+) -> str | None:
+    resolved = resolve_type(typ, type_env, frozenset())
+    if isinstance(resolved, A.RecordType):
+        return None
+    if isinstance(resolved, A.SumType):
+        return None
+    if isinstance(resolved, A.TupleType):
+        return None
+    signature = type_signature(typ, printer)
+    return normalized_type(signature)
+
+
+def is_terminal_type(
+    typ: A.TypeExpr | None,
+    type_env: dict[str, A.TypeExpr | A.SumType],
+    printer: PrettyPrinter,
+) -> bool:
+    return terminal_type_key(typ, type_env, printer) is not None
 
 
 def extract_symbols(module: A.Module) -> list[Symbol]:
@@ -213,8 +317,9 @@ def project_module(module: A.Module) -> list[AlignmentElement]:
     for decl in module.declarations:
         if not isinstance(decl, A.EntityDecl):
             continue
-        entity_type = type_signature(decl.type_annotation, printer)
+        entity_type = structural_type_signature(decl.type_annotation, type_env, printer)
         fields = list(fields_for_type(decl.type_annotation, type_env, printer))
+        variants = list(variant_fields_for_type(decl.type_annotation, type_env, printer))
         elements.append(AlignmentElement(
             kind="entity",
             module=module.name,
@@ -225,15 +330,44 @@ def project_module(module: A.Module) -> list[AlignmentElement]:
                 "tokens": split_words(decl.name),
                 "type_tokens": split_words(entity_type),
                 "field_names": [field_name for field_name, _, _ in fields],
-                "field_tokens": [token for field_name, _, _ in fields for token in split_words(field_name)],
+                "field_tokens": [
+                    token
+                    for field_name, _, _ in fields
+                    for token in split_words(field_name)
+                ] + [
+                    token
+                    for variant_name, field_name, _, _, _ in variants
+                    for token in [*split_words(variant_name), *split_words(field_name)]
+                ],
             },
             line=decl.line,
             column=decl.column,
         ))
+        if is_terminal_type(decl.type_annotation, type_env, printer):
+            entity_type_text = type_signature(decl.type_annotation, printer)
+            elements.append(AlignmentElement(
+                kind="field",
+                module=module.name,
+                path=decl.name,
+                name=decl.name,
+                type=entity_type_text,
+                metadata={
+                    "tokens": split_words(decl.name),
+                    "path_tokens": split_words(decl.name),
+                    "type_tokens": split_words(entity_type_text),
+                    "normalized_type": normalized_type(entity_type_text),
+                    "cardinality": cardinality(decl.type_annotation),
+                    "terminal": True,
+                    "source_kind": "entity",
+                },
+                line=decl.line,
+                column=decl.column,
+            ))
         for relative_path, field_name, field_type in fields:
             full_path = f"{decl.name}.{relative_path}"
             parent = ".".join(full_path.split(".")[:-1]) or decl.name
             field_type_text = type_signature(field_type, printer)
+            terminal = is_terminal_type(field_type, type_env, printer)
             elements.append(AlignmentElement(
                 kind="field",
                 module=module.name,
@@ -249,6 +383,37 @@ def project_module(module: A.Module) -> list[AlignmentElement]:
                     "normalized_type": normalized_type(field_type_text),
                     "cardinality": cardinality(field_type),
                     "relation_target": relation_target(field_type),
+                    "terminal": terminal,
+                },
+            ))
+        for variant_name, field_name, field_index, payload_count, field_type in variants:
+            if not is_terminal_type(field_type, type_env, printer):
+                continue
+            field_type_text = type_signature(field_type, printer)
+            type_name = local_type_name(decl.type_annotation)
+            path = f"{decl.name}.{variant_name}.{field_name}"
+            parent = f"{decl.name}.{variant_name}"
+            elements.append(AlignmentElement(
+                kind="field",
+                module=module.name,
+                path=path,
+                name=field_name,
+                parent=parent,
+                type=field_type_text,
+                metadata={
+                    "tokens": split_words(field_name),
+                    "path_tokens": split_words(path),
+                    "parent_tokens": split_words(parent),
+                    "type_tokens": split_words(field_type_text),
+                    "normalized_type": normalized_type(field_type_text),
+                    "cardinality": cardinality(field_type),
+                    "terminal": True,
+                    "render": "case",
+                    "subject_path": decl.name,
+                    "variant": variant_name,
+                    "type_name": type_name,
+                    "field_index": field_index,
+                    "payload_count": payload_count,
                 },
             ))
     return elements
@@ -283,6 +448,22 @@ def fields_for_type(
                     prefix=path,
                     seen=current_seen,
                 )
+
+
+def variant_fields_for_type(
+    typ: A.TypeExpr | None,
+    type_env: dict[str, A.TypeExpr | A.SumType],
+    printer: PrettyPrinter,
+) -> Iterable[tuple[str, str, int, int, A.TypeExpr]]:
+    resolved = resolve_type(typ, type_env, frozenset())
+    if not isinstance(resolved, A.SumType):
+        return
+    for variant in resolved.variants:
+        payload_count = len(variant.fields)
+        for index, (label, field_type) in enumerate(variant.fields):
+            if is_unit_type(field_type):
+                continue
+            yield variant.name, label or f"value_{index}", index, payload_count, field_type
 
 
 def resolve_type(
@@ -321,6 +502,12 @@ def relation_target(typ: A.TypeExpr | None) -> str | None:
         if type_name.lower() not in _PRIMITIVE_TYPES:
             return typ.name
     return None
+
+
+def is_unit_type(typ: A.TypeExpr | None) -> bool:
+    if isinstance(typ, A.TypeRef):
+        return typ.name.split(".")[-1].lower() in _UNIT_TYPES
+    return False
 
 
 def builtin_candidates(
@@ -366,6 +553,9 @@ def score_element_pairs(
     for left in left_items:
         for right in right_items:
             score, reason = score_pair(left, right, accepted_entities)
+            if left.kind == "field" and not compatible_terminal_pair(left, right):
+                reason += "; incompatible terminal types"
+                score = min(score, options.accept_threshold - 0.001)
             if score >= options.candidate_threshold:
                 candidates.append(AlignmentCandidate(left, right, score, matcher, reason))
     return candidates
@@ -386,8 +576,6 @@ def score_pair(
             right.metadata.get("field_tokens", []),
         )
         score = (0.45 * name_score) + (0.25 * fields_score) + (0.2 * type_score) + (0.1 * path_score)
-        if normalize(left.name) == normalize(right.name) and normalize(left.name):
-            score = max(score, 1.0 if type_score == 1.0 else 0.95)
         reason = (
             f"name={name_score:.2f}; fields={fields_score:.2f}; "
             f"type={type_score:.2f}; path={path_score:.2f}"
@@ -398,8 +586,9 @@ def score_pair(
     if left.parent in accepted_entities and accepted_entities[left.parent] == right.parent:
         parent_score = max(parent_score, 1.0)
     score = (0.4 * name_score) + (0.25 * type_score) + (0.2 * parent_score) + (0.15 * path_score)
-    if normalize(left.name) == normalize(right.name) and normalize(left.name):
-        score = max(score, 1.0 if type_score == 1.0 and parent_score == 1.0 else 0.8)
+    if compatible_terminal_pair(left, right) and terminal_name_match(left, right):
+        exact_leaf = normalize(left.name) == normalize(right.name) and path_score == 1.0
+        score = max(score, 1.0 if type_score == 1.0 and (parent_score == 1.0 or exact_leaf) else 0.8)
     reason = (
         f"name={name_score:.2f}; type={type_score:.2f}; "
         f"parent={parent_score:.2f}; path={path_score:.2f}"
@@ -417,6 +606,30 @@ def type_similarity(left: str | None, right: str | None) -> float:
     return text_similarity(left_norm, right_norm)
 
 
+def compatible_terminal_pair(left: AlignmentElement, right: AlignmentElement) -> bool:
+    if left.kind != "field" or right.kind != "field":
+        return False
+    if not left.metadata.get("terminal", True) or not right.metadata.get("terminal", True):
+        return False
+    left_type = left.metadata.get("normalized_type") or normalized_type(left.type)
+    right_type = right.metadata.get("normalized_type") or normalized_type(right.type)
+    if not left_type or not right_type or left_type != right_type:
+        return False
+    if left.metadata.get("cardinality") != right.metadata.get("cardinality"):
+        return False
+    if left.metadata.get("render") != right.metadata.get("render"):
+        return False
+    if left.metadata.get("render") == "case":
+        return left.metadata.get("variant") == right.metadata.get("variant") or terminal_name_match(left, right)
+    return True
+
+
+def terminal_name_match(left: AlignmentElement, right: AlignmentElement) -> bool:
+    if normalize(left.name) == normalize(right.name) and normalize(left.name):
+        return True
+    return token_similarity(split_words(left.name), split_words(right.name)) >= 0.75
+
+
 def accepted_parent_map(
     candidates: list[AlignmentCandidate],
     accept_threshold: float,
@@ -427,12 +640,14 @@ def accepted_parent_map(
 
 def mark_accepted(candidates: list[AlignmentCandidate], accept_threshold: float) -> None:
     selected = set()
-    for kind in ["entity", "field"]:
-        for candidate in select_one_to_one(
-            [item for item in candidates if item.kind == kind],
-            accept_threshold,
-        ):
-            selected.add((candidate.left.qualified, candidate.right.qualified))
+    for candidate in select_one_to_one(
+        [
+            item for item in candidates
+            if item.kind == "field" and compatible_terminal_pair(item.left, item.right)
+        ],
+        accept_threshold,
+    ):
+        selected.add((candidate.left.qualified, candidate.right.qualified))
     for candidate in candidates:
         candidate.accepted = (candidate.left.qualified, candidate.right.qualified) in selected
 
@@ -441,6 +656,9 @@ def select_one_to_one(
     candidates: list[AlignmentCandidate],
     accept_threshold: float,
 ) -> list[AlignmentCandidate]:
+    viable = [candidate for candidate in candidates if candidate.score >= accept_threshold]
+    if len(viable) <= 18:
+        return select_one_to_one_optimal(viable)
     selected: list[AlignmentCandidate] = []
     used_left: set[str] = set()
     used_right: set[str] = set()
@@ -453,6 +671,37 @@ def select_one_to_one(
         used_left.add(candidate.left.qualified)
         used_right.add(candidate.right.qualified)
     return selected
+
+
+def select_one_to_one_optimal(candidates: list[AlignmentCandidate]) -> list[AlignmentCandidate]:
+    by_left: dict[str, list[AlignmentCandidate]] = {}
+    right_keys = sorted({candidate.right.qualified for candidate in candidates})
+    right_index = {qualified: index for index, qualified in enumerate(right_keys)}
+    for candidate in candidates:
+        by_left.setdefault(candidate.left.qualified, []).append(candidate)
+    left_keys = sorted(by_left)
+    memo: dict[tuple[int, int], tuple[float, tuple[AlignmentCandidate, ...]]] = {}
+
+    def search(left_pos: int, used_mask: int) -> tuple[float, tuple[AlignmentCandidate, ...]]:
+        key = (left_pos, used_mask)
+        if key in memo:
+            return memo[key]
+        if left_pos >= len(left_keys):
+            return 0.0, ()
+        best_score, best_items = search(left_pos + 1, used_mask)
+        for candidate in sorted(by_left[left_keys[left_pos]], key=candidate_sort_key):
+            bit = 1 << right_index[candidate.right.qualified]
+            if used_mask & bit:
+                continue
+            rest_score, rest_items = search(left_pos + 1, used_mask | bit)
+            total = candidate.score + rest_score
+            items = (candidate, *rest_items)
+            if total > best_score or total == best_score and tuple(candidate_sort_key(item) for item in items) < tuple(candidate_sort_key(item) for item in best_items):
+                best_score, best_items = total, items
+        memo[key] = best_score, best_items
+        return memo[key]
+
+    return list(search(0, 0)[1])
 
 
 def candidate_sort_key(candidate: AlignmentCandidate) -> tuple[float, str, str]:
@@ -472,12 +721,15 @@ def external_candidates(
             right_elements,
             options=AlignmentOptions(
                 matcher="bdikit:coma",
-                candidate_threshold=options.candidate_threshold,
+                candidate_threshold=0.0,
                 accept_threshold=options.accept_threshold,
             ),
         )
         if result is not None:
-            return result, diagnostics
+            return calibrate_external_candidates(
+                result,
+                options=options,
+            ), diagnostics
         return None, ["optional align dependencies are unavailable; using builtin matcher"]
     if matcher == "bdikit:coma":
         return run_external_matcher(left_elements, right_elements, options=options)
@@ -529,6 +781,32 @@ def run_external_matcher(
 
     mark_accepted(rows, options.accept_threshold)
     return sorted(rows, key=candidate_sort_key), diagnostics
+
+
+def calibrate_external_candidates(
+    candidates: list[AlignmentCandidate],
+    *,
+    options: AlignmentOptions,
+) -> list[AlignmentCandidate]:
+    entity_candidates = [candidate for candidate in candidates if candidate.kind == "entity"]
+    accepted_entities = accepted_parent_map(entity_candidates, options.accept_threshold)
+    calibrated: list[AlignmentCandidate] = []
+    for candidate in candidates:
+        score, reason = score_pair(candidate.left, candidate.right, accepted_entities)
+        score = max(candidate.score, score)
+        if candidate.kind == "field" and not compatible_terminal_pair(candidate.left, candidate.right):
+            score = min(score, options.accept_threshold - 0.001)
+            reason += "; incompatible terminal types"
+        if score >= options.candidate_threshold or candidate.score >= options.candidate_threshold:
+            calibrated.append(AlignmentCandidate(
+                left=candidate.left,
+                right=candidate.right,
+                score=score,
+                matcher=candidate.matcher,
+                reason=f"{candidate.reason}; calibrated {reason}",
+            ))
+    mark_accepted(calibrated, options.accept_threshold)
+    return sorted(calibrated, key=candidate_sort_key)
 
 
 def dataframe_data_for_elements(
@@ -629,10 +907,15 @@ def align_modules(
             diagnostics.append(matcher_note)
 
     accepted = [candidate for candidate in candidates if candidate.accepted]
+    evidence = [
+        candidate for candidate in candidates
+        if candidate.kind == "entity" and candidate.score >= options.accept_threshold
+    ]
     return AlignmentReport(
         left_module=left.name,
         right_module=right.name,
         accepted=accepted,
+        evidence=evidence,
         candidates=candidates,
         diagnostics=diagnostics,
     )
@@ -662,9 +945,11 @@ def suggest_alignments(
             ))
             merged.candidates.extend(report.candidates)
             merged.accepted.extend(report.accepted)
+            merged.evidence.extend(report.evidence)
             merged.diagnostics.extend(report.diagnostics)
     merged.candidates.sort(key=candidate_sort_key)
     merged.accepted.sort(key=candidate_sort_key)
+    merged.evidence.sort(key=candidate_sort_key)
     return merged
 
 
@@ -692,9 +977,7 @@ def render_alignment_module(
     module.imports.append(A.ImportDecl(path=f"{right_module}.mdl"))
 
     for index, candidate in enumerate(report.accepted, start=1):
-        left_expr = expression_for_path(left_module, candidate.left.path)
-        right_expr = expression_for_path(right_module, candidate.right.path)
-        equality = A.BinaryOp(op="=", left=left_expr, right=right_expr)
+        equality = expression_for_candidate(candidate, left_module, right_module, index)
         body = A.TemporalUnary(
             op="always",
             operand=equality,
@@ -711,6 +994,71 @@ def render_alignment_module(
             annotations=[annotation],
         ))
     return module
+
+
+def expression_for_candidate(
+    candidate: AlignmentCandidate,
+    left_module: str,
+    right_module: str,
+    index: int,
+) -> A.Expr:
+    if candidate.left.metadata.get("render") == "case" and candidate.right.metadata.get("render") == "case":
+        return case_expression_for_candidate(candidate, left_module, right_module, index)
+    left_expr = expression_for_path(left_module, candidate.left.path)
+    right_expr = expression_for_path(right_module, candidate.right.path)
+    return A.BinaryOp(op="=", left=left_expr, right=right_expr)
+
+
+def case_expression_for_candidate(
+    candidate: AlignmentCandidate,
+    left_module: str,
+    right_module: str,
+    index: int,
+) -> A.Expr:
+    left_var = f"left_{index}"
+    right_var = f"right_{index}"
+    equality = A.BinaryOp(
+        op="=",
+        left=A.Name(name=left_var),
+        right=A.Name(name=right_var),
+    )
+    right_match = A.MatchExpr(
+        subject=expression_for_path(right_module, str(candidate.right.metadata["subject_path"])),
+        arms=[
+            A.MatchArm(
+                pattern=case_pattern(right_module, candidate.right, right_var),
+                body=A.Block(result=equality),
+            ),
+            A.MatchArm(
+                pattern=A.WildcardPattern(),
+                body=A.Block(result=A.Literal(value=True, kind="bool")),
+            ),
+        ],
+    )
+    return A.MatchExpr(
+        subject=expression_for_path(left_module, str(candidate.left.metadata["subject_path"])),
+        arms=[
+            A.MatchArm(
+                pattern=case_pattern(left_module, candidate.left, left_var),
+                body=A.Block(result=right_match),
+            ),
+            A.MatchArm(
+                pattern=A.WildcardPattern(),
+                body=A.Block(result=A.Literal(value=True, kind="bool")),
+            ),
+        ],
+    )
+
+
+def case_pattern(module_name: str, element: AlignmentElement, binding: str) -> A.ConstructorPattern:
+    payload_count = int(element.metadata["payload_count"])
+    field_index = int(element.metadata["field_index"])
+    args: list[A.Pattern] = [A.WildcardPattern() for _ in range(payload_count)]
+    args[field_index] = A.VarPattern(name=binding)
+    type_name = element.metadata.get("type_name")
+    variant = str(element.metadata["variant"])
+    constructor = f"{module_name}.{type_name}.{variant}" if type_name else f"{module_name}.{variant}"
+    return A.ConstructorPattern(name=constructor, args=args)
 
 
 def expression_for_path(module_name: str, path: str) -> A.Expr:

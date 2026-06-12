@@ -56,6 +56,7 @@ def test_saved_alignment_module_matches_builtin_alignment_output():
     assert accepted == {
         ("fixture_pipeline_spec.pipe.length", "fixture_tube_model.tube.length"),
         ("fixture_pipeline_spec.pipe.pressure", "fixture_tube_model.tube.pressure"),
+        ("fixture_pipeline_spec.pipe.radius", "fixture_tube_model.tube.r"),
     }
 
 
@@ -68,6 +69,7 @@ def test_saved_alignment_participates_in_multi_module_solve():
     assert entities["fixture_tube_model.tube"]["length"] == "12"
     assert "fixture_pipeline_tube_alignment.alignment_001" in payload["model"]["winning_rules"]
     assert "fixture_pipeline_tube_alignment.alignment_002" in payload["model"]["winning_rules"]
+    assert "fixture_pipeline_tube_alignment.alignment_003" in payload["model"]["winning_rules"]
 
 
 def test_policy_fixture_exercises_defeater_priority():

@@ -50,7 +50,7 @@ entity pipe: Pipe
     assert "pipe.dimensions.height" in paths
 
 
-def test_builtin_aligner_accepts_entities_and_fields():
+def test_builtin_aligner_accepts_terminal_fields_and_keeps_entity_evidence():
     left = parse('''
 module left_pipe
 
@@ -68,8 +68,10 @@ entity pipe: PipeRecord
 
     report = align_modules(left, right, AlignmentOptions(matcher="builtin"))
     accepted = {(candidate.kind, candidate.left.path, candidate.right.path) for candidate in report.accepted}
+    evidence = {(candidate.kind, candidate.left.path, candidate.right.path) for candidate in report.evidence}
 
-    assert ("entity", "pipe", "pipe") in accepted
+    assert ("entity", "pipe", "pipe") in evidence
+    assert ("entity", "pipe", "pipe") not in accepted
     assert ("field", "pipe.length", "pipe.length") in accepted
     assert ("field", "pipe.radius", "pipe.radius") in accepted
 
@@ -99,8 +101,138 @@ entity pipe: Pipe
     assert "# align kind=" in source
     assert "@ align" not in source
     assert "rule O alignment_001:" in source
-    assert "left_pipe.pipe = right_pipe.pipe always" in source
+    assert "left_pipe.pipe.length = right_pipe.pipe.length always" in source
+    assert "left_pipe.pipe = right_pipe.pipe always" not in source
     assert "rule-without-temporal" not in codes
+
+
+def test_aligner_rejects_terminal_type_mismatches():
+    left = parse('''
+module left
+
+type User = { id: string, active: bool }
+
+entity user: User
+''')
+    right = parse('''
+module right
+
+type User = { id: int, active: string }
+
+entity user: User
+''')
+
+    report = align_modules(left, right, AlignmentOptions(matcher="builtin"))
+    source = format_module(render_alignment_module(report))
+
+    assert not report.accepted
+    assert "left.user.id = right.user.id" not in source
+    assert "left.user.active = right.user.active" not in source
+
+
+def test_aligner_does_not_render_entity_equality_for_disjoint_records():
+    left = parse('''
+module left
+
+type Account = { balance: rat, currency: string }
+
+entity account: Account
+''')
+    right = parse('''
+module right
+
+type Account = { country: string, owner: string }
+
+entity account: Account
+''')
+
+    report = align_modules(left, right, AlignmentOptions(matcher="builtin"))
+    source = format_module(render_alignment_module(report))
+
+    assert "left.account = right.account always" not in source
+    assert all(candidate.kind == "field" for candidate in report.accepted)
+
+
+def test_aligner_accepts_abbreviated_terminal_names():
+    left = parse('''
+module left
+
+type Geo = { latitude: rat, longitude: rat, radius: rat }
+
+entity shape: Geo
+''')
+    right = parse('''
+module right
+
+type Geo = { lat: rat, lon: rat, r: rat }
+
+entity shape: Geo
+''')
+
+    report = align_modules(left, right, AlignmentOptions(matcher="builtin"))
+    accepted = {(candidate.left.path, candidate.right.path) for candidate in report.accepted}
+
+    assert ("shape.latitude", "shape.lat") in accepted
+    assert ("shape.longitude", "shape.lon") in accepted
+    assert ("shape.radius", "shape.r") in accepted
+
+
+def test_render_alignment_module_wraps_adt_payload_alignment_in_case():
+    left_source = '''
+module left
+
+type State = Active(value: int) | Other(unit)
+
+entity state: State
+'''
+    right_source = '''
+module right
+
+type Phase = Active(value: int) | Other(unit)
+
+entity state: Phase
+'''
+    report = align_sources(
+        [left_source, right_source],
+        options=AlignmentOptions(matcher="builtin"),
+    )
+
+    source = format_module(render_alignment_module(report))
+    diagnostics = lint_source(
+        source,
+        path="alignment.mdl",
+        documents={"left.mdl": left_source, "right.mdl": right_source},
+    )
+
+    assert "case left.state:" in source
+    assert "| left.State.Active(left_1):" in source
+    assert "| right.Phase.Active(right_1): left_1 = right_1" in source
+    assert parse(source).name == "alignment_left_right"
+    assert parse(format_module(parse(source))).name == "alignment_left_right"
+    assert not any(diagnostic.severity == "error" for diagnostic in diagnostics)
+
+
+def test_auto_calibrates_low_external_scores_with_builtin_terminal_validation():
+    left = parse('''
+module pipe_spec
+
+type Pipe = { length: rat, radius: rat }
+
+entity pipe: Pipe
+''')
+    right = parse('''
+module tube
+
+type Tube = { length: rat, r: rat }
+
+entity tube: Tube
+''')
+
+    report = align_modules(left, right, AlignmentOptions(matcher="auto"))
+    accepted = {(candidate.left.path, candidate.right.path) for candidate in report.accepted}
+
+    assert ("pipe.length", "tube.length") in accepted
+    assert ("pipe.radius", "tube.r") in accepted
 
 
 def test_cli_align_writes_module_and_report(tmp_path):
