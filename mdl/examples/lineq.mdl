@@ -1,6 +1,7 @@
 module lineq
 
 open std.collections
+open std.result
 
 
 type Term = {
@@ -34,12 +35,14 @@ rule O r0: value(equation) = 1 always
 rule O r1: list.len(equation) = 2 always
 rule O r2: values_lt_5(equation) always
 
-fact case equation:
-        | List.Cons({ coef = a }, List.Cons({coef = b}, List.Empty())):
-            a = 2 and b = -1
-        | _: false
-
 fact (
-    list.at(0, equation, Term {coef = 0, var = 0}).coef = -1 and 
-    list.at(1, equation, Term {coef = 0, var = 0}).coef = 2
+    let first_two_terms = (list.at(0, equation), list.at(1, equation)) in
+    let ab = 
+        case first_two_terms:
+            | (Result.Ok(a), Result.Ok(b)): Result.Ok((a, b))
+            | _: Result.Error(())
+    in
+    case ab:
+        | Result.Ok((a, b)): a.coef = 2 and b.coef = -1
+        | _: false
 )

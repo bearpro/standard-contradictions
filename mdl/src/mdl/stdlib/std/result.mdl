@@ -1,0 +1,3 @@
+module std.result
+
+type Result<T, TErr> = Ok(T) | Error(TErr)

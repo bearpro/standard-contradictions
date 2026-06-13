@@ -1,6 +1,7 @@
 module std.collections.list
 
 open std.collections
+open std.result
 
 func len<T>(l: List<T>) -> int:
     case l:
@@ -20,10 +21,10 @@ func _concat<T>(list_a: List<T>, list_b: List<T>, acc: List<T>) -> List<T>:
 func concat<T>(list_a: List<T>, list_b: List<T>) -> List<T>: 
     _concat(list_a, list_b, List.Empty())
 
-func _at<T>(index: int, lst: List<T>, default: T, current: int) -> T:
+func _at<T>(index: int, lst: List<T>, current: int) -> Result<T, unit>:
     case lst:
-        | List.Cons(value, tail) when index = current: value
-        | List.Cons(value, tail): _at(index, tail, default, current + 1)
-        | List.Empty(): default
+        | List.Cons(value, tail) when index = current: Result.Ok(value)
+        | List.Cons(value, tail): _at(index, tail, current + 1)
+        | List.Empty(): Result.Error(())
 
-func at<T>(index: int, lst: List<T>, default: T) -> T: _at(index, lst, default, 0)
+func at<T>(index: int, lst: List<T>) -> Result<T, unit>: _at(index, lst, 0)
