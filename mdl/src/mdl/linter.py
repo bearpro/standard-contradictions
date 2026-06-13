@@ -412,7 +412,10 @@ class SemanticChecker:
         return typ
 
     def is_known_full_type(self, name: str) -> bool:
-        return name in self.types or any(name.startswith(module_name + ".") for module_name in self.available_modules)
+        return (
+            self.resolve_type_name(name) is not None
+            or any(name.startswith(module_name + ".") for module_name in self.available_modules)
+        )
 
     def check_declaration(self, decl: A.Declaration) -> None:
         if isinstance(decl, A.TypeDecl):
@@ -487,7 +490,7 @@ class SemanticChecker:
             root = typ.name.split(".")[0]
             if (
                 typ.name not in type_params
-                and typ.name not in self.types
+                and self.resolve_type_name(typ.name) is None
                 and root not in self.imports
                 and root not in BUILTIN_ROOTS
             ):
@@ -617,8 +620,12 @@ class SemanticChecker:
                 return
             self.check_field_chain(symbol.type_expr, parts[2:], node)
             return
-        module_name, rest = self.split_module_reference(parts)
-        if module_name is not None and rest:
+        module_matches = self.symbol_module_matches(parts)
+        if len(module_matches) > 1:
+            self.error(f"ambiguous name {name!r}", node, "ambiguous-name")
+            return
+        if module_matches:
+            module_name, rest = module_matches[0]
             symbol = self.terms.get(f"{module_name}.{rest[0]}")
             if symbol is None:
                 self.error(f"undefined name {name!r}", node, "undefined-name")
@@ -630,12 +637,70 @@ class SemanticChecker:
         self.error(f"undefined name {name!r}", node, "undefined-name")
 
     def split_module_reference(self, parts: list[str]) -> tuple[str | None, list[str]]:
+        matches = self.module_reference_matches(parts)
+        if matches:
+            return matches[0]
+        return None, parts
+
+    def module_reference_matches(self, parts: list[str]) -> list[tuple[str, list[str]]]:
+        matches: list[tuple[int, str, list[str]]] = []
         module_names = [self.module.name, *self.available_modules]
-        for module_name in sorted(module_names, key=lambda item: len(split_qualified(item)), reverse=True):
+        for module_name in module_names:
             module_parts = split_qualified(module_name)
             if parts[:len(module_parts)] == module_parts:
-                return module_name, parts[len(module_parts):]
-        return None, parts
+                matches.append((len(module_parts), module_name, parts[len(module_parts):]))
+
+        opened = [opened.module for opened in self.module.opens if opened.module in self.available_modules]
+        for opened_module in opened:
+            opened_parts = split_qualified(opened_module)
+            for module_name in self.available_modules:
+                module_parts = split_qualified(module_name)
+                if len(module_parts) <= len(opened_parts) or module_parts[:len(opened_parts)] != opened_parts:
+                    continue
+                relative_parts = module_parts[len(opened_parts):]
+                if parts[:len(relative_parts)] == relative_parts:
+                    matches.append((len(relative_parts), module_name, parts[len(relative_parts):]))
+
+        unique: dict[tuple[str, tuple[str, ...]], tuple[int, str, list[str]]] = {}
+        for consumed, module_name, rest in matches:
+            unique[(module_name, tuple(rest))] = (consumed, module_name, rest)
+        return [
+            (module_name, rest)
+            for consumed, module_name, rest in sorted(
+                unique.values(),
+                key=lambda item: (item[0], len(split_qualified(item[1]))),
+                reverse=True,
+            )
+        ]
+
+    def symbol_module_matches(self, parts: list[str]) -> list[tuple[str, list[str]]]:
+        matches: list[tuple[str, list[str]]] = []
+        for module_name, rest in self.module_reference_matches(parts):
+            if rest and f"{module_name}.{rest[0]}" in self.terms:
+                matches.append((module_name, rest))
+        return matches
+
+    def resolve_type_name(self, name: str) -> str | None:
+        if name in self.types:
+            return name
+        parts = split_qualified(name)
+        for module_name, rest in self.module_reference_matches(parts):
+            if len(rest) == 1:
+                candidate = f"{module_name}.{rest[0]}"
+                if candidate in self.types:
+                    return candidate
+        return None
+
+    def resolve_constructor_name(self, name: str) -> str | None:
+        if name in self.constructors:
+            return name
+        parts = split_qualified(name)
+        for module_name, rest in self.module_reference_matches(parts):
+            if len(rest) >= 2:
+                candidate = f"{module_name}.{rest[0]}.{rest[1]}"
+                if candidate in self.constructors:
+                    return candidate
+        return None
 
     def check_field_chain(self, typ: A.TypeExpr | None, fields: list[str], node: A.Node) -> None:
         current = typ
@@ -812,18 +877,20 @@ class SemanticChecker:
         parts = split_qualified(name)
         if parts and parts[0] == self.module.name and len(parts) > 1:
             return self.terms.get(parts[1])
-        module_name, rest = self.split_module_reference(parts)
-        if module_name is not None and rest:
+        matches = self.symbol_module_matches(parts)
+        if len(matches) == 1:
+            module_name, rest = matches[0]
             return self.terms.get(f"{module_name}.{rest[0]}")
         return None
 
     def constructor_result_type(self, name: str, expected: A.TypeExpr | None) -> A.TypeExpr | None:
-        if isinstance(expected, A.TypeRef) and name in self.constructors:
-            constructor_type = self.constructors[name][0]
+        constructor_name = self.resolve_constructor_name(name)
+        if isinstance(expected, A.TypeRef) and constructor_name is not None:
+            constructor_type = self.constructors[constructor_name][0]
             if self.same_type_name(constructor_type, expected.name):
                 return expected
-        if name in self.constructors:
-            return A.TypeRef(name=self.constructors[name][0])
+        if constructor_name is not None:
+            return A.TypeRef(name=self.constructors[constructor_name][0])
         return None
 
     def is_assignable(self, actual: A.TypeExpr, expected: A.TypeExpr) -> bool:
@@ -898,6 +965,8 @@ class SemanticChecker:
     def same_type_name(self, left: str | None, right: str | None) -> bool:
         if left is None or right is None:
             return False
+        left = self.resolve_type_name(left) or left
+        right = self.resolve_type_name(right) or right
         if left == right:
             return True
         left_parts = split_qualified(left)
@@ -913,7 +982,7 @@ class SemanticChecker:
             return True
         if isinstance(typ, A.TypeRef):
             root = typ.name.split(".")[0]
-            if typ.name in PRIMITIVE_TYPES or typ.name in self.types or root in self.imports or root in BUILTIN_ROOTS:
+            if typ.name in PRIMITIVE_TYPES or self.resolve_type_name(typ.name) is not None or root in self.imports or root in BUILTIN_ROOTS:
                 return any(self.is_unknown_type(arg) for arg in typ.args)
             return True
         if isinstance(typ, A.RecordType):
@@ -975,10 +1044,14 @@ class SemanticChecker:
             return fields.get(expr.field) if fields else None
         if isinstance(expr, A.Call):
             name = self.expr_to_name(expr.func)
-            if name and name in self.terms:
-                return self.terms[name].type_expr
-            if name and name in self.constructors:
-                return A.TypeRef(name=self.constructors[name][0])
+            if name:
+                symbol = self.symbol_for_name(name)
+                if symbol is not None:
+                    return symbol.type_expr
+            if name:
+                constructor_name = self.resolve_constructor_name(name)
+                if constructor_name is not None:
+                    return A.TypeRef(name=self.constructors[constructor_name][0])
             if name and (name == "to_list" or name.endswith("strings.to_list")) and expr.args:
                 return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
         if isinstance(expr, A.BinaryOp):
@@ -1016,8 +1089,9 @@ class SemanticChecker:
         if root == self.module.name and len(parts) > 1:
             symbol = self.terms.get(parts[1])
             return self.type_after_fields(symbol.type_expr if symbol else None, parts[2:])
-        module_name, rest = self.split_module_reference(parts)
-        if module_name is not None and rest:
+        matches = self.symbol_module_matches(parts)
+        if len(matches) == 1:
+            module_name, rest = matches[0]
             symbol = self.terms.get(f"{module_name}.{rest[0]}")
             return self.type_after_fields(symbol.type_expr if symbol else None, rest[1:])
         return None
@@ -1058,15 +1132,16 @@ class SemanticChecker:
     def constructor_field_types(self, name: str, typ: A.TypeExpr | None = None) -> list[A.TypeExpr]:
         short = local_name(name)
         if isinstance(typ, A.TypeRef):
-            definition = self.type_definitions.get(typ.name)
+            definition = self.type_definitions.get(self.resolve_type_name(typ.name) or typ.name)
             if isinstance(definition, A.SumType):
-                params = self.type_params.get(typ.name, [])
+                params = self.type_params.get(self.resolve_type_name(typ.name) or typ.name, [])
                 substitutions = dict(zip(params, typ.args))
                 for variant in definition.variants:
                     if variant.name == short:
                         return [self.substitute_type_params(field_type, substitutions) for _, field_type in variant.fields]
-        if name in self.constructors:
-            return [typ for _, typ in self.constructors[name][1].fields]
+        constructor_name = self.resolve_constructor_name(name)
+        if constructor_name is not None:
+            return [typ for _, typ in self.constructors[constructor_name][1].fields]
         return []
 
     def substitute_type_params(self, typ: A.TypeExpr, substitutions: dict[str, A.TypeExpr]) -> A.TypeExpr:

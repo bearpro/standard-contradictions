@@ -1,0 +1,21 @@
+module std.collections.list
+
+open std.collections
+
+func len<T>(l: List<T>) -> int:
+    case l:
+        | List.Empty(): 0
+        | List.Cons(head, tail): 1 + len(tail)
+
+func _concat<T>(list_a: List<T>, list_b: List<T>, acc: List<T>) -> List<T>:
+    case (list_a, list_b):
+        | (List.Cons(val_a, tail_a), _): 
+            let acc = _concat(tail_a, list_b, acc)
+            List.Cons(val_a, acc)
+        | (List.Empty(), List.Cons(val_b, tail_b)):
+            let acc = _concat(List.Empty(), tail_b, acc)
+            List.Cons(val_b, acc)
+        | _: acc
+
+func concat<T>(list_a: List<T>, list_b: List<T>) -> List<T>: 
+    _concat(list_a, list_b, List.Empty())

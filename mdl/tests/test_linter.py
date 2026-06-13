@@ -537,6 +537,47 @@ open std.collections
 func xs() -> List<int>:
     List.Cons(1, List.Empty())
 
+rule O ok: list.len(xs()) = 1 always
+''')
+
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
+def test_linter_resolves_descendant_module_relative_to_open_prefix():
+    diagnostics = lint_source('''
+module hm
+
+open std.collections
+
+func xs() -> List<int>:
+    List.Cons(1, List.Empty())
+
+rule O ok: list.len(xs()) = 1 always
+''')
+
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
+def test_linter_requires_open_prefix_for_descendant_module_relative_name():
+    diagnostics = lint_source('''
+module hm
+
+rule O ok: list.len(std.collections.List.Empty()) = 0 always
+''')
+
+    assert any(d.code == "undefined-name" and "list.len" in d.message for d in diagnostics)
+
+
+def test_linter_open_descendant_module_still_exposes_plain_names():
+    diagnostics = lint_source('''
+module hm
+
+open std.collections
+open std.collections.list
+
+func xs() -> List<int>:
+    List.Cons(1, List.Empty())
+
 rule O ok: len(xs()) = 1 always
 ''')
 
@@ -551,7 +592,7 @@ open std.collections
 
 func both() -> bool:
     let empty = List.Empty()
-    len(List.Cons(1, empty)) = 1 and len(List.Cons("a", empty)) = 1
+    list.len(List.Cons(1, empty)) = 1 and list.len(List.Cons("a", empty)) = 1
 ''')
 
     assert not any(d.severity == "error" for d in diagnostics)

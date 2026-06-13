@@ -118,7 +118,7 @@ func value(equation: List<Term>) -> rat:
     case equation:
         | List.Empty(): 0
         | List.Cons(head, e):
-            let pow = 1 + len(equation)
+            let pow = 1 + list.len(equation)
             let termValue = (head).coef * pwr((head).var, pow)
             termValue + value(e)
 
@@ -132,7 +132,7 @@ func values_lt_3(equation: List<Term>) -> bool:
 entity equation: List<Term>
 
 rule O r0: value(equation) = 1 always
-rule O r1: len(equation) = 2 always
+rule O r1: list.len(equation) = 2 always
 # rule O r2: values_lt_3(equation) always
 
 fact case equation:

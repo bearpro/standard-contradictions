@@ -480,9 +480,10 @@ class TypeInference:
         return Scheme(frozenset(var.id for var in mapping.values()), TyFun(args, ret))
 
     def constructor_scheme(self, name: str) -> Scheme | None:
-        if name not in self.host.constructors:
+        constructor_name = self.host.resolve_constructor_name(name)
+        if constructor_name is None:
             return None
-        type_name, variant = self.host.constructors[name]
+        type_name, variant = self.host.constructors[constructor_name]
         params = self.host.type_params.get(type_name, [])
         mapping = {param: self.fresh(param) for param in params}
         args = tuple(self.from_ast(field_type, mapping) for _, field_type in variant.fields)

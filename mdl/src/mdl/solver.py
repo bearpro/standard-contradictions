@@ -548,11 +548,50 @@ class SolverProblem:
             open_module, open_name = self._resolve_local_decl(target_scope, parts, expected)
             if open_module is not None:
                 return open_module, open_name
-        for module_name in sorted(self.scopes, key=len, reverse=True):
+        for module_name, rest in self.module_reference_matches(scope, parts):
+            resolved_module, resolved_name = self._resolve_local_decl(self.scopes[module_name], rest, expected)
+            if resolved_module is not None:
+                return resolved_module, resolved_name
+        return None, None
+
+    def module_reference_matches(self, scope: ModuleScope, parts: list[str]) -> list[tuple[str, list[str]]]:
+        matches: list[tuple[int, str, list[str]]] = []
+        for module_name in self.scopes:
             module_parts = split_qualified(module_name)
             if parts[:len(module_parts)] == module_parts:
-                return self._resolve_local_decl(self.scopes[module_name], parts[len(module_parts):], expected)
-        return None, None
+                matches.append((len(module_parts), module_name, parts[len(module_parts):]))
+
+        for opened_module in scope.opens:
+            opened_parts = split_qualified(opened_module)
+            for module_name in self.scopes:
+                module_parts = split_qualified(module_name)
+                if len(module_parts) <= len(opened_parts) or module_parts[:len(opened_parts)] != opened_parts:
+                    continue
+                relative_parts = module_parts[len(opened_parts):]
+                if parts[:len(relative_parts)] == relative_parts:
+                    matches.append((len(relative_parts), module_name, parts[len(relative_parts):]))
+
+        unique: dict[tuple[str, tuple[str, ...]], tuple[int, str, list[str]]] = {}
+        for consumed, module_name, rest in matches:
+            unique[(module_name, tuple(rest))] = (consumed, module_name, rest)
+        return [
+            (module_name, rest)
+            for consumed, module_name, rest in sorted(
+                unique.values(),
+                key=lambda item: (item[0], len(split_qualified(item[1]))),
+                reverse=True,
+            )
+        ]
+
+    def field_parts_for_resolved_decl(self, scope: ModuleScope, name: str, module_name: str, local: str) -> list[str]:
+        parts = split_qualified(name)
+        module_parts = split_qualified(module_name)
+        if parts[:len(module_parts)] == module_parts and len(parts) > len(module_parts) and parts[len(module_parts)] == local:
+            return parts[len(module_parts) + 1:]
+        for candidate_module, rest in self.module_reference_matches(scope, parts):
+            if candidate_module == module_name and rest and rest[0] == local:
+                return rest[1:]
+        return parts[1:]
 
     def _resolve_local_decl(
         self,
@@ -1181,12 +1220,7 @@ class BoundedEncoder:
         target_scope = self.problem.scopes.get(module_name)
         if target_scope is None:
             return self.opaque_atom(name, t)
-        parts = split_qualified(name)
-        module_parts = split_qualified(module_name)
-        if parts[:len(module_parts)] == module_parts and len(parts) > len(module_parts) and parts[len(module_parts)] == local:
-            field_parts = parts[len(module_parts) + 1:]
-        else:
-            field_parts = parts[1:]
+        field_parts = self.problem.field_parts_for_resolved_decl(scope, name, module_name, local)
         if local in target_scope.entities:
             value = self.entity_value(target_scope.entities[local], t)
         else:
@@ -2054,14 +2088,8 @@ class BoundedEncoder:
         if expr is None:
             return False
         if isinstance(expr, A.Name):
-            parts = split_qualified(expr.name)
-            for module_name in sorted(self.problem.scopes, key=len, reverse=True):
-                if module_name == scope.module.name:
-                    continue
-                module_parts = split_qualified(module_name)
-                if parts[:len(module_parts)] == module_parts:
-                    return True
-            return False
+            module_name, _ = self.problem.resolve_decl(scope, expr.name, expected={"entity", "func", "type"})
+            return module_name is not None and module_name != scope.module.name
         if isinstance(expr, A.Call):
             return self.references_external_module(expr.func, scope) or any(self.references_external_module(arg, scope) for arg in expr.args)
         if isinstance(expr, A.FieldAccess):

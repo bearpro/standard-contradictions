@@ -157,8 +157,10 @@ open std.collections
 ```
 
 `open` makes names from a module available without writing their full module
-prefix where the linter/resolver supports that visibility. Fully qualified names
-remain valid even without `open`.
+prefix where the linter/resolver supports that visibility. It also makes
+descendant modules available relative to the opened prefix: after
+`open std.collections`, `std.collections.list.len` may be written as
+`list.len`. Fully qualified names remain valid even without `open`.
 
 ## 4. Types
 
@@ -563,7 +565,7 @@ Case arms may be followed by a single-expression body or an indented block:
 case xs:
     | List.Empty(): 0
     | List.Cons(head, tail):
-        let rest = len(tail)
+        let rest = list.len(tail)
         1 + rest
 ```
 
@@ -704,7 +706,25 @@ type List<T> = Empty(unit) | Cons(T, List<T>)
 type Set<T> = Empty(unit) | Insert(T, Set<T>)
 type Map<K, V> = Empty(unit) | Put(K, V, Map<K, V>)
 type Option<T> = None(unit) | Some(T)
+```
 
+### 11.2 `std.collections.list`
+
+Import path:
+
+```mdl
+import "std/collections/list.mdl"
+```
+
+Module declaration:
+
+```mdl
+module std.collections.list
+```
+
+Definitions:
+
+```mdl
 func len<T>(l: List<T>) -> int:
     case l:
         | List.Empty(): 0
@@ -717,9 +737,10 @@ Notes:
 - `Set<T>` and `Map<K, V>` are ADTs in the language; the runtime gives their
   constructors native Python `set`/`dict` behaviour.
 - `Option<T>` is either `None(unit)` or `Some(T)`.
-- `len` computes the length of a standard `List<T>` recursively.
+- `std.collections.list.len` computes the length of a standard `List<T>`
+  recursively. With `open std.collections`, it may be called as `list.len`.
 
-### 11.2 `std.system.strings`
+### 11.3 `std.system.strings`
 
 Import path:
 

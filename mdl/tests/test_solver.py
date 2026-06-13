@@ -498,7 +498,7 @@ def test_solve_std_list_generic_len_is_instantiated_per_argument_type(tmp_path):
         func xs() -> List<int>:
             List.Cons(1, List.Cons(2, List.Empty()))
 
-        rule O length_ok: len(xs()) = 2 always
+        rule O length_ok: list.len(xs()) = 2 always
         """,
     )
 
@@ -520,7 +520,7 @@ def test_solve_inferred_std_list_value_type(tmp_path):
         func xs() -> List<int>:
             List.Cons(1, List.Empty())
 
-        rule O length_ok: len(xs()) = 1 always
+        rule O length_ok: list.len(xs()) = 1 always
         """,
     )
 

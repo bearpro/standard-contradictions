@@ -4,8 +4,3 @@ type List<T> = Empty(unit) | Cons(T, List<T>)
 type Set<T> = Empty(unit) | Insert(T, Set<T>)
 type Map<K, V> = Empty(unit) | Put(K, V, Map<K, V>)
 type Option<T> = None(unit) | Some(T)
-
-func len<T>(l: List<T>) -> int:
-    case l:
-        | List.Empty(): 0
-        | List.Cons(head, tail): 1 + len(tail)
