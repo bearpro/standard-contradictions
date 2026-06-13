@@ -996,6 +996,9 @@ class BoundedEncoder:
         if isinstance(expr, A.Name):
             if expr.name in env:
                 return self.coerce_value(env[expr.name], expected)
+            local_value = self.resolve_local_value(expr.name, env)
+            if local_value is not None:
+                return self.coerce_value(local_value, expected)
             constructor = self.find_constructor(expr.name, expected, scope)
             if constructor is not None:
                 if constructor.variant.fields:
@@ -1189,6 +1192,15 @@ class BoundedEncoder:
         else:
             return self.opaque_atom(name, t)
         for field_name in field_parts:
+            value = self.field_value(value, field_name)
+        return value
+
+    def resolve_local_value(self, name: str, env: dict[str, ZValue]) -> ZValue | None:
+        parts = split_qualified(name)
+        if len(parts) < 2 or parts[0] not in env:
+            return None
+        value = env[parts[0]]
+        for field_name in parts[1:]:
             value = self.field_value(value, field_name)
         return value
 

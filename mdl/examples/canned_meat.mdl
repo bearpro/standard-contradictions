@@ -1,0 +1,48 @@
+@ ГОСТ 32125-2013 Консервы мясные. Мясо тушеное. Технические условия
+module canned_meat
+
+@ Пункт 5.2.2
+type RawMeatMaterialProperties = {
+    connective_tissue_proportion: rat,
+    adipose_tissue_proportion: rat
+}
+
+@ Раздел 1
+type MeatType =
+    | Beef (unit)
+    | Pork (unit)
+    | Mutton (unit)
+    | Horse (unit)
+    | Venison (unit)
+
+@ Раздел 1
+type CannedMeatGrade = First(unit) | Top(unit)
+
+@ Раздел 1
+entity raw_meat_type: MeatType
+@ Раздел 5.2
+entity raw_meat_properties: RawMeatMaterialProperties
+@ Раздел 1
+entity grade: CannedMeatGrade
+
+@ Пункт 5.2.2
+rule O material_proportions_satisfies_bounds:
+    let satisfies_bounds: bool =
+        case (raw_meat_type, grade):
+            | (MeatType.Beef(), CannedMeatGrade.First()): 
+                let non_muscle_tissue = 
+                    raw_meat_properties.connective_tissue_proportion + raw_meat_properties.adipose_tissue_proportion
+                (non_muscle_tissue <= 6/100)
+            | (MeatType.Pork(), CannedMeatGrade.Top()): 
+                raw_meat_properties.adipose_tissue_proportion <= 30/100
+            | _: true
+    satisfies_bounds always
+
+# non domain rule
+rule O _proportion_between_0_and_1: 
+    let { 
+        adipose_tissue_proportion = fat_tissue,
+        connective_tissue_proportion = connective_tissue 
+      } = raw_meat_properties
+    (0/100 < fat_tissue and fat_tissue < 100/100 and
+     0/100 < connective_tissue and connective_tissue < 100/100) always

@@ -457,6 +457,35 @@ def test_solve_case_pattern_bindings_survive_boolean_operators(tmp_path):
     assert pair["values"] == [1, 2]
 
 
+def test_solve_case_constructor_binding_supports_dotted_record_fields(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "case_record_fields.mdl",
+        """
+        module case_record_fields
+
+        type Props = {
+            connective: rat,
+            adipose: rat
+        }
+
+        type Meat = Beef(Props) | Pork(Props)
+        entity meat: Meat
+
+        fact case meat:
+                 | Meat.Beef(properties):
+                     properties.connective <= 6/100 and properties.adipose <= 6/100
+                 | _:
+                     true
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["diagnostics"] == []
+
+
 def test_solve_std_list_generic_len_is_instantiated_per_argument_type(tmp_path):
     spec = write_module(
         tmp_path,
