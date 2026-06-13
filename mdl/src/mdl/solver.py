@@ -1156,20 +1156,20 @@ class BoundedEncoder:
     def call_value(self, expr: A.Call, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
         name = self.expr_to_name(expr.func) or ""
         if name in STRING_TO_LIST_NAMES:
-            arg = self.compile_expr(expr.args[0], scope, t, env=env)
+            arg = self.compile_expr(expr.args[0], scope, t, expected=STRING, env=env)
+            func = self.resolve_func(name, scope)
+            return_type = func.return_type if func is not None else expected
+            if return_type is None:
+                return_type = self.std_list_type(STRING)
             if arg.has_concrete and isinstance(arg.concrete, str):
-                func = self.resolve_func(name, scope)
-                return_type = func.return_type if func is not None else expected
-                if return_type is None:
-                    return_type = self.std_list_type(STRING)
                 return self.adt_list_value(list(arg.concrete), return_type)
-            raise UnsupportedExpression("std.strings.to_list requires a concrete string in solve")
+            return ZValue(return_type, expr=self.string_to_list_function()(self.primitive_expr(arg)))
         if name in STRING_OF_LIST_NAMES:
-            arg = self.compile_expr(expr.args[0], scope, t, env=env)
+            arg = self.compile_expr(expr.args[0], scope, t, expected=self.std_list_type(STRING), env=env)
             concrete = self.concrete_string_list(arg)
-            if concrete is None:
-                raise UnsupportedExpression("std.strings.of_list requires a concrete List<string> in solve")
-            return self.literal_value("".join(concrete), "string", expected)
+            if concrete is not None:
+                return self.literal_value("".join(concrete), "string", expected)
+            return ZValue(STRING, expr=self.string_of_list_function()(self.primitive_expr(arg)))
         constructor = self.find_constructor(name, expected, scope)
         if constructor is not None:
             zero_unit = len(expr.args) == 0 and len(constructor.variant.fields) == 1 and constructor.variant.fields[0][1] == UNIT
@@ -1647,12 +1647,83 @@ class BoundedEncoder:
         if not values and len(info.variant.fields) == 1 and info.variant.fields[0][1] == UNIT:
             values = [self.literal_value(None, "unit", UNIT)]
         exprs = [self.primitive_expr(value) for value in values]
-        return ZValue(info.sum_type, expr=constructor(*exprs))
+        result = ZValue(info.sum_type, expr=constructor(*exprs))
+        concrete = self.std_list_constructor_concrete(info, values)
+        if concrete is not None:
+            result.concrete = concrete
+            result.has_concrete = True
+        return result
 
     def std_list_type(self, item_type: TypeSpec) -> TypeSpec:
         if "std.collections" not in self.problem.scopes:
             raise UnsupportedExpression("std.collections is not available")
         return self.problem.resolve_declared_type("std.collections", "List", (item_type,))
+
+    def std_string_list_type(self) -> TypeSpec:
+        return self.std_list_type(STRING)
+
+    def std_string_list_encoding(self) -> tuple[TypeSpec, SumSpec, DatatypeEncoding]:
+        list_type = self.std_string_list_type()
+        sum_type = self.resolve_named_type(list_type)
+        if not isinstance(sum_type, SumSpec):
+            raise UnsupportedExpression("std.collections.List<string> is not a sum type")
+        encoding = self.datatype_encoding(list_type)
+        return list_type, sum_type, encoding
+
+    def string_to_list_function(self) -> Any:
+        list_type, _sum_type, encoding = self.std_string_list_encoding()
+        key = f"builtin.std.strings.to_list.{self.type_key(list_type)}"
+        if key not in self.problem.functions:
+            self.problem.functions[key] = z3.RecFunction(self.safe(key), z3.StringSort(), encoding.sort)
+        if key not in self.problem.function_definitions:
+            func = self.problem.functions[key]
+            value = z3.Const(self.safe(f"{key}.arg.value"), z3.StringSort())
+            empty = self.std_list_empty_expr(encoding)
+            body = z3.If(
+                z3.Length(value) == 0,
+                empty,
+                encoding.constructors["Cons"](
+                    z3.SubString(value, 0, 1),
+                    func(z3.SubString(value, 1, z3.Length(value) - 1)),
+                ),
+            )
+            z3.RecAddDefinition(func, [value], body)
+            self.problem.function_definitions.add(key)
+        return self.problem.functions[key]
+
+    def string_of_list_function(self) -> Any:
+        list_type, _sum_type, encoding = self.std_string_list_encoding()
+        key = f"builtin.std.strings.of_list.{self.type_key(list_type)}"
+        if key not in self.problem.functions:
+            self.problem.functions[key] = z3.RecFunction(self.safe(key), encoding.sort, z3.StringSort())
+        if key not in self.problem.function_definitions:
+            func = self.problem.functions[key]
+            value = z3.Const(self.safe(f"{key}.arg.value"), encoding.sort)
+            body = z3.If(
+                encoding.recognizers["Empty"](value),
+                z3.StringVal(""),
+                z3.Concat(encoding.accessors["Cons"][0](value), func(encoding.accessors["Cons"][1](value))),
+            )
+            z3.RecAddDefinition(func, [value], body)
+            self.problem.function_definitions.add(key)
+        return self.problem.functions[key]
+
+    def std_list_empty_expr(self, encoding: DatatypeEncoding) -> Any:
+        fields = encoding.fields.get("Empty")
+        if fields is None:
+            raise UnsupportedExpression("std List has no Empty constructor")
+        values = [self.literal_value(None, "unit", field_type) for _, field_type in fields]
+        return encoding.constructors["Empty"](*[self.primitive_expr(value) for value in values])
+
+    def std_list_constructor_concrete(self, info: ConstructorInfo, values: list[ZValue]) -> list[ZValue] | None:
+        origin = self.type_origin(info.sum_type)
+        if origin is None or origin[0] != "std.collections" or origin[1] != "List":
+            return None
+        if info.variant.name == "Empty":
+            return []
+        if info.variant.name == "Cons" and len(values) == 2 and values[1].has_concrete and isinstance(values[1].concrete, list):
+            return [values[0], *values[1].concrete]
+        return None
 
     def adt_list_value(self, items: list[Any], expected: TypeSpec | None) -> ZValue:
         if expected is None:

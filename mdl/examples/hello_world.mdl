@@ -1,0 +1,12 @@
+module hello_world
+
+open std.strings
+open std.collections
+
+entity greeting: string
+entity username: string
+
+rule O greeting_contains_username:
+    greeting = concat("Hello, ", username) always
+
+fact username = "user"

@@ -20,6 +20,7 @@ def test_runtime_std_strings_of_list_round_trip():
 
     assert runtime.eval_source_expr('of_list(to_list("abc"))') == "abc"
     assert runtime.eval_source_expr('std.strings.of_list(std.strings.to_list("abc"))') == "abc"
+    assert runtime.eval_source_expr('to_list("A") = List.Cons("A", List.Empty())') is True
 
 
 def test_runtime_record_fact_and_field_access():

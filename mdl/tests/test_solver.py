@@ -660,6 +660,104 @@ def test_solve_std_strings_of_list_round_trip(tmp_path):
     assert payload["model"]["trace"][0]["entities"]["strings.value"] == "abc"
 
 
+def test_solve_std_strings_to_list_symbolic_entity(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "hello_world.mdl",
+        """
+        module hello_world
+
+        open std.strings
+        open std.collections
+
+        entity greeting: string
+
+        rule O greeting_contains_username:
+            to_list(greeting) = List.Cons("A", List.Empty()) always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["hello_world.greeting"] == "A"
+    assert payload["model"]["winning_rules"] == ["hello_world.greeting_contains_username"]
+
+
+def test_solve_std_strings_to_list_symbolic_entity_reversed_equality(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "hello_world.mdl",
+        """
+        module hello_world
+
+        open std.strings
+        open std.collections
+
+        entity greeting: string
+
+        rule O greeting_contains_username:
+            List.Cons("A", List.Empty()) = to_list(greeting) always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["hello_world.greeting"] == "A"
+
+
+def test_solve_std_strings_of_list_symbolic_round_trip(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "strings.mdl",
+        """
+        module strings
+
+        open std.strings
+
+        entity value: string
+
+        rule O round_trip:
+            of_list(to_list(value)) = value always
+
+        fact value = "abc"
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["strings.value"] == "abc"
+
+
+def test_solve_std_strings_to_list_assigns_symbolic_list(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "strings.mdl",
+        """
+        module strings
+
+        open std.strings
+        open std.collections
+
+        entity value: string
+        entity chars: List<string>
+
+        fact value = "A"
+        fact chars = to_list(value)
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    chars = payload["model"]["trace"][0]["entities"]["strings.chars"]
+    assert chars["constructor"] == "Cons"
+    assert chars["values"][0] == "A"
+    assert chars["values"][1]["constructor"] == "Empty"
+
+
 def test_solve_fib_example_evaluates_recursive_function(tmp_path):
     fib = write_module(tmp_path, "fib.mdl", FIB_SOURCE)
     payload = solve_paths([fib], SolveOptions(horizon=1))
