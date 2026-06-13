@@ -73,6 +73,7 @@ class TypeInference:
     type_params: set[str] = field(default_factory=set)
     substitutions: dict[int, Type] = field(default_factory=dict)
     _next_var: int = 0
+    _expr_types: dict[int, Type] = field(default_factory=dict)
 
     def fresh(self, name: str = "") -> TyVar:
         self._next_var += 1
@@ -96,6 +97,7 @@ class TypeInference:
         elif self.is_temporal(actual):
             self.host.error("temporal formulas cannot be used as values", expr, "temporal-as-value")
             actual = TyCon("bool")
+        self.flush_expr_types()
         return self.to_ast(actual)
 
     def check_temporal_expr(
@@ -108,6 +110,7 @@ class TypeInference:
             return
         local = self.initial_env(env or {})
         actual = self.infer_expr(expr, local)
+        self.flush_expr_types()
         if self.is_temporal(actual):
             return
         if self.is_bool(actual):
@@ -124,6 +127,7 @@ class TypeInference:
             return
         local = self.initial_env(env or {})
         self.expect_formula_operand(self.infer_expr(expr, local), expr)
+        self.flush_expr_types()
 
     def check_block(
         self,
@@ -141,9 +145,25 @@ class TypeInference:
         elif self.is_temporal(actual):
             self.host.error("temporal formulas cannot be used as values", block or A.Node(), "temporal-as-value")
             actual = TyCon("bool")
+        self.flush_expr_types()
         return self.to_ast(actual)
 
+    def flush_expr_types(self) -> None:
+        target = getattr(self.host, "expr_types", None)
+        if not isinstance(target, dict):
+            return
+        for expr_id, typ in self._expr_types.items():
+            ast_type = self.to_ast(typ)
+            if ast_type is not None:
+                target[expr_id] = ast_type
+
     def infer_expr(self, expr: A.Expr | None, env: dict[str, Scheme], expected: Type | None = None) -> Type:
+        typ = self._infer_expr(expr, env, expected)
+        if expr is not None:
+            self._expr_types[id(expr)] = typ
+        return typ
+
+    def _infer_expr(self, expr: A.Expr | None, env: dict[str, Scheme], expected: Type | None = None) -> Type:
         if expr is None:
             return TyCon("unit")
         if isinstance(expr, A.Literal):

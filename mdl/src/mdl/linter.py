@@ -41,6 +41,12 @@ class ResolvedModule:
     path: str | None = None
 
 
+@dataclass
+class SemanticAnalysis:
+    diagnostics: list[Diagnostic]
+    expr_types: dict[int, A.TypeExpr]
+
+
 def path_to_file(path: str | None) -> Path | None:
     if not path:
         return None
@@ -255,6 +261,7 @@ class SemanticChecker:
         self.rules: dict[str, Symbol] = {}
         self.type_definitions: dict[str, A.TypeExpr | A.SumType | None] = {}
         self.constructors: dict[str, tuple[str, A.Variant]] = {}
+        self.expr_types: dict[int, A.TypeExpr] = {}
 
     def check(self) -> list[Diagnostic]:
         self.register_stdlib_modules()
@@ -1239,6 +1246,23 @@ class SemanticChecker:
         ))
 
 class Linter:
+    def analyze_module(
+        self,
+        module: A.Module,
+        path: str | None = None,
+        *,
+        documents: dict[str, str] | None = None,
+        stdlib_path: str | Path | None = None,
+    ) -> SemanticAnalysis:
+        diagnostics: list[Diagnostic] = []
+        diagnostics.extend(self.check_duplicates(module, path))
+        checker = SemanticChecker(module, path, resolver=ImportResolver(path, documents, stdlib_path))
+        diagnostics.extend(checker.check())
+        diagnostics.extend(self.check_boolean_parentheses(module, path))
+        diagnostics.extend(self.check_rules(module, path))
+        diagnostics.extend(self.check_functions(module, path))
+        return SemanticAnalysis(diagnostics=diagnostics, expr_types=checker.expr_types)
+
     def lint_module(
         self,
         module: A.Module,
@@ -1247,13 +1271,12 @@ class Linter:
         documents: dict[str, str] | None = None,
         stdlib_path: str | Path | None = None,
     ) -> list[Diagnostic]:
-        diagnostics: list[Diagnostic] = []
-        diagnostics.extend(self.check_duplicates(module, path))
-        diagnostics.extend(SemanticChecker(module, path, resolver=ImportResolver(path, documents, stdlib_path)).check())
-        diagnostics.extend(self.check_boolean_parentheses(module, path))
-        diagnostics.extend(self.check_rules(module, path))
-        diagnostics.extend(self.check_functions(module, path))
-        return diagnostics
+        return self.analyze_module(
+            module,
+            path,
+            documents=documents,
+            stdlib_path=stdlib_path,
+        ).diagnostics
 
     def check_duplicates(self, module: A.Module, path: str | None) -> list[Diagnostic]:
         seen: dict[tuple[str, str], A.Declaration] = {}

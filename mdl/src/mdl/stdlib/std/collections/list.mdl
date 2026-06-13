@@ -19,3 +19,11 @@ func _concat<T>(list_a: List<T>, list_b: List<T>, acc: List<T>) -> List<T>:
 
 func concat<T>(list_a: List<T>, list_b: List<T>) -> List<T>: 
     _concat(list_a, list_b, List.Empty())
+
+func _at<T>(index: int, lst: List<T>, default: T, current: int) -> T:
+    case lst:
+        | List.Cons(value, tail) when index = current: value
+        | List.Cons(value, tail): _at(index, tail, default, current + 1)
+        | List.Empty(): default
+
+func at<T>(index: int, lst: List<T>, default: T) -> T: _at(index, lst, default, 0)

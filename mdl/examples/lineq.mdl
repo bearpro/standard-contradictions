@@ -35,6 +35,11 @@ rule O r1: list.len(equation) = 2 always
 rule O r2: values_lt_5(equation) always
 
 fact case equation:
-         | List.Cons(a, List.Cons(b, List.Empty())):
-             ((a).coef = 2) and ((b).coef = -1)
-         | _: false
+        | List.Cons({ coef = a }, List.Cons({coef = b}, List.Empty())):
+            a = 2 and b = -1
+        | _: false
+
+fact (
+    list.at(0, equation, Term {coef = 0, var = 0}).coef = -1 and 
+    list.at(1, equation, Term {coef = 0, var = 0}).coef = 2
+)

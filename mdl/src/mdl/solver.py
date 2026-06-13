@@ -20,7 +20,7 @@ else:
 from . import ast as A
 from .diagnostics import Diagnostic, MDLError, ParseError
 from .dsl import PythonDslError
-from .linter import ImportResolver, Linter
+from .linter import ImportResolver, Linter, SemanticAnalysis
 from .loader import load_module
 from .names import split_qualified
 from .printer import format_expr
@@ -246,17 +246,20 @@ def solve_modules(modules: list[A.Module], options: SolveOptions | None = None, 
         return error_payload([Diagnostic("--horizon must be >= 1", severity="error", code="invalid-horizon")])
     if opts.horizon is None and opts.max_horizon < 1:
         return error_payload([Diagnostic("--max-horizon must be >= 1", severity="error", code="invalid-horizon")])
+    analyses: dict[str, SemanticAnalysis] = {}
     semantic_diagnostics: list[Diagnostic] = []
     for idx, module in enumerate(modules):
         path = str(paths[idx]) if paths is not None and idx < len(paths) and paths[idx] is not None else None
+        analysis = Linter().analyze_module(module, path=path, stdlib_path=opts.stdlib_path)
+        analyses[module.name] = analysis
         semantic_diagnostics.extend(
             diagnostic
-            for diagnostic in Linter().lint_module(module, path=path, stdlib_path=opts.stdlib_path)
+            for diagnostic in analysis.diagnostics
             if diagnostic.severity == "error"
         )
     if semantic_diagnostics:
         return error_payload(semantic_diagnostics)
-    problem = SolverProblem(modules, opts, paths=paths)
+    problem = SolverProblem(modules, opts, paths=paths, analyses=analyses)
     if problem.diagnostics:
         return error_payload(problem.diagnostics)
     return problem.solve()
@@ -274,13 +277,21 @@ def error_payload(diagnostics: list[Diagnostic]) -> dict[str, Any]:
 
 
 class SolverProblem:
-    def __init__(self, modules: list[A.Module], options: SolveOptions, *, paths: list[Path] | None = None):
+    def __init__(
+        self,
+        modules: list[A.Module],
+        options: SolveOptions,
+        *,
+        paths: list[Path] | None = None,
+        analyses: dict[str, SemanticAnalysis] | None = None,
+    ):
         stdlib = ImportResolver(stdlib_path=options.stdlib_path).stdlib_modules()
         seen = {module.name for module in modules}
         std_modules = [resolved.module for resolved in stdlib.values() if resolved.module.name not in seen]
         self.modules = [*modules, *std_modules]
         self.options = options
         self.paths = [*(paths or [None] * len(modules)), *[Path(resolved.path) if resolved.path else None for resolved in stdlib.values() if resolved.module.name not in seen]]  # type: ignore[list-item]
+        self.analyses = analyses or {}
         self.diagnostics: list[Diagnostic] = []
         self.scopes: dict[str, ModuleScope] = {}
         self.type_cache: dict[tuple[str, str, tuple[TypeSpec, ...]], TypeSpec] = {}
@@ -806,6 +817,12 @@ class BoundedEncoder:
             return z3.BoolVal(True)
         if isinstance(expr, A.Literal) and expr.kind == "bool":
             return z3.BoolVal(bool(expr.value))
+        if isinstance(expr, A.LetExpr):
+            value_expected = self.problem.resolve_type(scope.module.name, expr.type_annotation) if expr.type_annotation else self.inferred_expected(expr.value, scope)
+            value = self.compile_expr(expr.value, scope, t, expected=value_expected, env=env)
+            local = dict(env)
+            self.bind_let_pattern(expr.pattern, value, local)
+            return self.compile_formula(expr.body, scope, t, env=local)
         if isinstance(expr, A.TemporalUnary):
             operand = expr.operand
             if expr.op == "next":
@@ -819,8 +836,6 @@ class BoundedEncoder:
         if isinstance(expr, A.TemporalBinary):
             if expr.op == "until":
                 return self.until(expr.left, expr.right, scope, t, env)
-        if isinstance(expr, A.LetExpr):
-            return self.compile_formula(self.inline_lets(expr), scope, t, env=env)
         if isinstance(expr, A.IfExpr):
             cond = self.compile_formula(expr.condition, scope, t, env=env)
             then_formula = self.compile_formula(expr.then_branch, scope, t, env=env)
@@ -1030,10 +1045,23 @@ class BoundedEncoder:
             disjuncts.append(z3.And([*prefix, self.compile_formula(right, scope, u, env=env)]))
         return z3.Or(disjuncts) if disjuncts else z3.BoolVal(False)
 
+    def inferred_expected(self, expr: A.Expr | None, scope: ModuleScope) -> TypeSpec | None:
+        if expr is None:
+            return None
+        analysis = self.problem.analyses.get(scope.module.name)
+        if analysis is None:
+            return None
+        typ = analysis.expr_types.get(id(expr))
+        if typ is None:
+            return None
+        return self.problem.resolve_type(scope.module.name, typ)
+
     def compile_expr(self, expr: A.Expr | None, scope: ModuleScope, t: int, *, expected: TypeSpec | None = None, env: dict[str, ZValue] | None = None) -> ZValue:
         if expr is None:
             return self.literal_value(None, "unit", expected)
         env = env or {}
+        if expected is None:
+            expected = self.inferred_expected(expr, scope)
         if isinstance(expr, A.Literal):
             return self.literal_value(expr.value, expr.kind, expected)
         if isinstance(expr, A.Name):
@@ -1107,12 +1135,17 @@ class BoundedEncoder:
             return self.coerce_value(self.match_value(expr, scope, t, expected, env), expected)
         if isinstance(expr, A.TupleLiteral):
             expected_resolved = self.resolve_named_type(expected) if expected is not None else None
-            expected_items = list(expected_resolved.items) if isinstance(expected_resolved, TupleSpec) else []
+            expected_tuple = (
+                expected_resolved
+                if isinstance(expected_resolved, TupleSpec) and not self.type_contains_opaque(expected_resolved)
+                else None
+            )
+            expected_items = list(expected_tuple.items) if expected_tuple is not None else []
             items = {
                 f"_{idx}": self.compile_expr(item, scope, t, expected=expected_items[idx] if idx < len(expected_items) else None, env=env)
                 for idx, item in enumerate(expr.items)
             }
-            typ: TypeSpec = expected if isinstance(expected_resolved, TupleSpec) and expected is not None else TupleSpec(tuple(item.typ for item in items.values()))
+            typ: TypeSpec = expected if expected_tuple is not None and expected is not None else TupleSpec(tuple(item.typ for item in items.values()))
             return self.product_value(typ, items)
         raise UnsupportedExpression(f"unsupported expression: {format_expr(expr)}")
 
@@ -1329,6 +1362,27 @@ class BoundedEncoder:
                 for variant in resolved.variants
             ))
         return typ
+
+    def type_contains_opaque(self, typ: TypeSpec) -> bool:
+        if isinstance(typ, OpaqueSpec):
+            return True
+        if isinstance(typ, PrimitiveType):
+            return False
+        origin = self.type_origin(typ)
+        if origin is not None and any(self.type_contains_opaque(arg) for arg in origin[2]):
+            return True
+        resolved = self.resolve_named_type(typ)
+        if isinstance(resolved, RecordSpec):
+            return any(self.type_contains_opaque(field_type) for _, field_type in resolved.fields)
+        if isinstance(resolved, TupleSpec):
+            return any(self.type_contains_opaque(item) for item in resolved.items)
+        if isinstance(resolved, SumSpec):
+            return any(
+                self.type_contains_opaque(field_type)
+                for variant in resolved.variants
+                for _, field_type in variant.fields
+            )
+        return False
 
     def function_key(self, func: FunctionInfo) -> str:
         key = f"func.{func.module}.{func.decl.name}"
@@ -1871,7 +1925,13 @@ class BoundedEncoder:
         return self.primitive_expr(left) == self.primitive_expr(right)
 
     def if_value(self, cond: Any, then_v: ZValue, else_v: ZValue) -> ZValue:
-        return ZValue(then_v.typ, expr=z3.If(cond, self.primitive_expr(then_v), self.primitive_expr(else_v)))
+        then_expr = self.primitive_expr(then_v)
+        else_expr = self.primitive_expr(else_v)
+        if not then_expr.sort().eq(else_expr.sort()):
+            raise UnsupportedExpression(
+                f"conditional branches have incompatible solver sorts: {then_v.typ!r} and {else_v.typ!r}"
+            )
+        return ZValue(then_v.typ, expr=z3.If(cond, then_expr, else_expr))
 
     # ------------------------------------------------------------------
     # Z3 helpers

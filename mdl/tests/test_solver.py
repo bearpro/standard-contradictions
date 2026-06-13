@@ -530,6 +530,84 @@ def test_solve_inferred_std_list_value_type(tmp_path):
     assert payload["model"]["winning_rules"] == ["inferred_generic_len.length_ok"]
 
 
+def test_solve_std_list_at_result_intermediate_value_uses_inferred_type(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "list_at_result.mdl",
+        """
+        module list_at_result
+
+        open std.collections
+        open std.result
+
+        type Term = {
+            coef: int,
+            var: int
+        }
+
+        entity equation: List<Term>
+
+        fact (
+            let first_two_terms = (list.at(0, equation), list.at(1, equation)) in
+            let ab =
+                case first_two_terms:
+                    | (Result.Ok(a), Result.Ok(b)): Result.Ok((a, b))
+                    | _: Result.Error(())
+            in
+            case ab:
+                | Result.Ok((a, b)): a.coef = 2 and b.coef = -1
+                | _: false
+        )
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    equation = payload["model"]["trace"][0]["entities"]["list_at_result.equation"]
+    first = equation["values"][0]
+    second = equation["values"][1]["values"][0]
+    assert first["coef"] == 2
+    assert second["coef"] == -1
+
+
+def test_solve_std_list_at_result_same_index_reports_unsat_not_sort_error(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "list_at_result_unsat.mdl",
+        """
+        module list_at_result_unsat
+
+        open std.collections
+        open std.result
+
+        type Term = {
+            coef: int,
+            var: int
+        }
+
+        entity equation: List<Term>
+
+        fact (
+            let first_two_terms = (list.at(0, equation), list.at(0, equation)) in
+            let ab =
+                case first_two_terms:
+                    | (Result.Ok(a), Result.Ok(b)): Result.Ok((a, b))
+                    | _: Result.Error(())
+            in
+            case ab:
+                | Result.Ok((a, b)): a.coef = 2 and b.coef = -1
+                | _: false
+        )
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "unsat"
+    assert payload["diagnostics"] == []
+
+
 def test_solve_recursive_function_over_std_list_constructors(tmp_path):
     spec = write_module(
         tmp_path,
