@@ -13,7 +13,7 @@ def test_parse_email_module_constructs():
     assert module.name == "email"
     assert module.annotations == ["rfc2822"]
     assert module.imports == []
-    assert [opened.module for opened in module.opens] == ["std.collections", "std.system.strings"]
+    assert [opened.module for opened in module.opens] == ["std.collections", "std.strings"]
     assert any(isinstance(d, A.TypeDecl) and d.name == "ProcessingState" for d in module.declarations)
     assert any(isinstance(d, A.FuncDecl) and d.name == "process_email" for d in module.declarations)
     assert any(isinstance(d, A.EntityDecl) and d.name == "email" for d in module.declarations)

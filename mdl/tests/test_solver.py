@@ -639,6 +639,27 @@ def test_solve_email_uses_recursive_runtime_and_ignores_declarative_align(tmp_pa
     assert payload["conflicts"] == []
 
 
+def test_solve_std_strings_of_list_round_trip(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "strings.mdl",
+        """
+        module strings
+
+        open std.strings
+
+        entity value: string
+
+        fact value = of_list(to_list("abc"))
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=1))
+
+    assert payload["status"] == "sat"
+    assert payload["model"]["trace"][0]["entities"]["strings.value"] == "abc"
+
+
 def test_solve_fib_example_evaluates_recursive_function(tmp_path):
     fib = write_module(tmp_path, "fib.mdl", FIB_SOURCE)
     payload = solve_paths([fib], SolveOptions(horizon=1))

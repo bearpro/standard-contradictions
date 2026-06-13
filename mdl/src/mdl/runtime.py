@@ -28,7 +28,10 @@ class Runtime:
         self.builtins = {
             "to_list": lambda s: list(s),
             "strings.to_list": lambda s: list(s),
-            "std.system.strings.to_list": lambda s: list(s),
+            "std.strings.to_list": lambda s: list(s),
+            "of_list": lambda items: "".join(items),
+            "strings.of_list": lambda items: "".join(items),
+            "std.strings.of_list": lambda items: "".join(items),
         }
         for decl in self.module.declarations:
             if isinstance(decl, A.FuncDecl):
@@ -138,9 +141,6 @@ class Runtime:
             return self.call_collection_constructor(collection, args)
         if func_name in self.builtins:
             return self.builtins[func_name](*args)
-        # Opened modules can make builtins available through a qualified name.
-        if local_name(func_name) in self.builtins:
-            return self.builtins[local_name(func_name)](*args)
         if func_name in self.functions:
             return self.call_user_function(self.functions[func_name], args, env)
         short = local_name(func_name)

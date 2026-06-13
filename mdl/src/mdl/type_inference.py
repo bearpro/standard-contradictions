@@ -9,6 +9,8 @@ from .names import local_name, split_qualified
 
 NUMERIC_TYPES = {"int", "rat", "decimal"}
 PRIMITIVE_TYPES = {"bool", "int", "rat", "decimal", "string", "unit"}
+STRING_TO_LIST_NAMES = {"to_list", "strings.to_list", "std.strings.to_list"}
+STRING_OF_LIST_NAMES = {"of_list", "strings.of_list", "std.strings.of_list"}
 
 
 class InferenceError(Exception):
@@ -257,11 +259,16 @@ class TypeInference:
 
     def infer_call(self, expr: A.Call, env: dict[str, Scheme], expected: Type | None) -> Type:
         name = self.host.expr_to_name(expr.func)
-        if name == "to_list" or (name is not None and name.endswith("strings.to_list")):
+        if name in STRING_TO_LIST_NAMES:
             self.host.check_arity(name or "<call>", len(expr.args), 1, expr)
             if expr.args:
                 self.expect(self.infer_expr(expr.args[0], env), TyCon("string"), expr.args[0])
             return TyCon("List", (TyCon("string"),))
+        if name in STRING_OF_LIST_NAMES:
+            self.host.check_arity(name or "<call>", len(expr.args), 1, expr)
+            if expr.args:
+                self.expect(self.infer_expr(expr.args[0], env), TyCon("List", (TyCon("string"),)), expr.args[0])
+            return TyCon("string")
 
         if name is not None:
             constructor = self.constructor_scheme(name)

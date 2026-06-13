@@ -22,6 +22,8 @@ BOOL_CHAIN_OPS = {"and", "or", "implies"}
 BUILTIN_ROOTS: set[str] = set()
 BUILTIN_TERMS: set[str] = set()
 STDLIB_ENV = "MDL_STDLIB_PATH"
+STRING_TO_LIST_NAMES = {"to_list", "strings.to_list", "std.strings.to_list"}
+STRING_OF_LIST_NAMES = {"of_list", "strings.of_list", "std.strings.of_list"}
 
 
 @dataclass
@@ -758,11 +760,21 @@ class SemanticChecker:
                 self.check_expr(arg, env, type_params=type_params)
             return None
 
-        if name == "to_list" or name.endswith("strings.to_list"):
+        if name in STRING_TO_LIST_NAMES:
             self.check_arity(name, len(expr.args), 1, expr)
             if expr.args:
                 self.check_expr(expr.args[0], env, expected=A.TypeRef(name="string"), type_params=type_params)
             return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
+        if name in STRING_OF_LIST_NAMES:
+            self.check_arity(name, len(expr.args), 1, expr)
+            if expr.args:
+                self.check_expr(
+                    expr.args[0],
+                    env,
+                    expected=A.TypeRef(name="std.collections.List", args=[A.TypeRef(name="string")]),
+                    type_params=type_params,
+                )
+            return A.TypeRef(name="string")
 
         constructor_type = self.constructor_result_type(name, expected)
         if constructor_type is not None:
@@ -1052,8 +1064,10 @@ class SemanticChecker:
                 constructor_name = self.resolve_constructor_name(name)
                 if constructor_name is not None:
                     return A.TypeRef(name=self.constructors[constructor_name][0])
-            if name and (name == "to_list" or name.endswith("strings.to_list")) and expr.args:
+            if name and name in STRING_TO_LIST_NAMES and expr.args:
                 return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
+            if name and name in STRING_OF_LIST_NAMES and expr.args:
+                return A.TypeRef(name="string")
         if isinstance(expr, A.BinaryOp):
             if expr.op in {"and", "or", "implies", "=", "!=", "<", "<=", ">", ">="}:
                 return A.TypeRef(name="bool")

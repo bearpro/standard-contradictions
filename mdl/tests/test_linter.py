@@ -598,6 +598,45 @@ func both() -> bool:
     assert not any(d.severity == "error" for d in diagnostics)
 
 
+def test_linter_accepts_std_strings_of_list_round_trip():
+    diagnostics = lint_source('''
+module strings
+
+open std.strings
+
+func round_trip() -> string:
+    of_list(to_list("abc"))
+''')
+
+    assert not any(d.severity == "error" for d in diagnostics)
+
+
+def test_linter_rejects_std_strings_of_list_non_list_argument():
+    diagnostics = lint_source('''
+module strings
+
+open std.strings
+
+func bad() -> string:
+    of_list("abc")
+''')
+
+    assert any(d.severity == "error" and d.code == "type-mismatch" for d in diagnostics)
+
+
+def test_linter_rejects_old_std_system_strings_module():
+    diagnostics = lint_source('''
+module strings
+
+open std.system.strings
+
+func value() -> string:
+    to_list("abc")
+''')
+
+    assert any(d.severity == "error" and d.code == "unresolved-open" for d in diagnostics)
+
+
 def test_linter_warns_for_numeric_coercion_without_rejecting():
     diagnostics = lint_source('''
 module hm

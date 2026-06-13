@@ -15,6 +15,13 @@ def test_runtime_evaluates_recursive_function():
     assert runtime.eval_source_expr("email_is_correct(email)") is False
 
 
+def test_runtime_std_strings_of_list_round_trip():
+    runtime = Runtime(parse("module strings\nopen std.strings\n"))
+
+    assert runtime.eval_source_expr('of_list(to_list("abc"))') == "abc"
+    assert runtime.eval_source_expr('std.strings.of_list(std.strings.to_list("abc"))') == "abc"
+
+
 def test_runtime_record_fact_and_field_access():
     module = parse(PIPE_SOURCE)
     runtime = Runtime(module)

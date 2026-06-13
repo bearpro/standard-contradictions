@@ -27,6 +27,10 @@ from .printer import format_expr
 from .runtime import Runtime
 
 
+STRING_TO_LIST_NAMES = {"to_list", "strings.to_list", "std.strings.to_list"}
+STRING_OF_LIST_NAMES = {"of_list", "strings.of_list", "std.strings.of_list"}
+
+
 class SolveError(MDLError):
     pass
 
@@ -1150,8 +1154,8 @@ class BoundedEncoder:
         raise UnsupportedExpression(f"unsupported binary operator {expr.op!r}")
 
     def call_value(self, expr: A.Call, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
-        name = self.expr_to_name(expr.func)
-        if name == "to_list" or name.endswith("strings.to_list") or name in {"strings.to_list", "std.system.strings.to_list"}:
+        name = self.expr_to_name(expr.func) or ""
+        if name in STRING_TO_LIST_NAMES:
             arg = self.compile_expr(expr.args[0], scope, t, env=env)
             if arg.has_concrete and isinstance(arg.concrete, str):
                 func = self.resolve_func(name, scope)
@@ -1159,7 +1163,13 @@ class BoundedEncoder:
                 if return_type is None:
                     return_type = self.std_list_type(STRING)
                 return self.adt_list_value(list(arg.concrete), return_type)
-            raise UnsupportedExpression("strings.to_list requires a concrete string in solve")
+            raise UnsupportedExpression("std.strings.to_list requires a concrete string in solve")
+        if name in STRING_OF_LIST_NAMES:
+            arg = self.compile_expr(expr.args[0], scope, t, env=env)
+            concrete = self.concrete_string_list(arg)
+            if concrete is None:
+                raise UnsupportedExpression("std.strings.of_list requires a concrete List<string> in solve")
+            return self.literal_value("".join(concrete), "string", expected)
         constructor = self.find_constructor(name, expected, scope)
         if constructor is not None:
             zero_unit = len(expr.args) == 0 and len(constructor.variant.fields) == 1 and constructor.variant.fields[0][1] == UNIT
@@ -1677,6 +1687,21 @@ class BoundedEncoder:
         tail.concrete = concrete_items
         tail.has_concrete = True
         return tail
+
+    def concrete_string_list(self, value: ZValue) -> list[str] | None:
+        if not value.has_concrete or not isinstance(value.concrete, list):
+            return None
+        result: list[str] = []
+        for item in value.concrete:
+            if isinstance(item, ZValue):
+                if not item.has_concrete or not isinstance(item.concrete, str):
+                    return None
+                result.append(item.concrete)
+            elif isinstance(item, str):
+                result.append(item)
+            else:
+                return None
+        return result
 
     def product_value(self, typ: TypeSpec, fields: dict[str, ZValue]) -> ZValue:
         resolved = self.resolve_named_type(typ)

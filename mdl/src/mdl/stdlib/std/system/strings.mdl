@@ -1,4 +1,0 @@
-module std.system.strings
-
-func to_list(value: string) -> std.collections.List<string>:
-    std.collections.List.Empty()

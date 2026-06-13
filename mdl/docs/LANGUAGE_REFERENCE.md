@@ -147,7 +147,7 @@ such as:
 
 ```mdl
 import "std/collections.mdl"
-import "std/system/strings.mdl"
+import "std/strings.mdl"
 ```
 
 ### 3.3 Open declarations
@@ -431,7 +431,7 @@ expressions form a tuple. `()` is unit.
 ```mdl
 f()
 f(x, y)
-std.system.strings.to_list("abc")
+std.strings.to_list("abc")
 ```
 
 Calls use postfix parentheses. Arity is checked for known functions and
@@ -740,19 +740,19 @@ Notes:
 - `std.collections.list.len` computes the length of a standard `List<T>`
   recursively. With `open std.collections`, it may be called as `list.len`.
 
-### 11.3 `std.system.strings`
+### 11.3 `std.strings`
 
 Import path:
 
 ```mdl
-import "std/system/strings.mdl"
-open std.system.strings
+import "std/strings.mdl"
+open std.strings
 ```
 
 Module declaration:
 
 ```mdl
-module std.system.strings
+module std.strings
 ```
 
 Definitions:
@@ -760,12 +760,16 @@ Definitions:
 ```mdl
 func to_list(value: string) -> std.collections.List<string>:
     std.collections.List.Empty()
+
+func of_list(value: std.collections.List<string>) -> string:
+    ""
 ```
 
 The declared MDL body is a portable placeholder. The runtime and solver
-recognise `to_list`, `strings.to_list`, and `std.system.strings.to_list` as
-built-ins. At runtime, `to_list("abc")` returns a list of one-character strings.
-In the typed language, the function returns `std.collections.List<string>`.
+recognise `to_list`, `strings.to_list`, `std.strings.to_list`, `of_list`,
+`strings.of_list`, and `std.strings.of_list` as built-ins. At runtime,
+`to_list("abc")` returns a list of one-character strings, and `of_list` joins a
+standard `List<string>` back into a string.
 
 ## 12. Complete grammar summary
 

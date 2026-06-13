@@ -3,7 +3,7 @@ EMAIL_SOURCE = """
 module email
 
 open std.collections
-open std.system.strings
+open std.strings
 
 type ProcessingState = LocalPart(unit) | Domain(unit)
 

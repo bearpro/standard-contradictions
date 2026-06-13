@@ -1,0 +1,15 @@
+module std.strings
+
+# stub, implemented inside language
+func to_list(value: string) -> std.collections.List<string>:
+    std.collections.List.Empty()
+
+# stub, implemented inside language
+func of_list(value: std.collections.List<string>) -> string:
+    ""
+
+func concat(str_a: string, str_b: string) -> string:
+    let lst_a: std.collections.List<string> = to_list(str_a)
+    let lst_b: std.collections.List<string> = to_list(str_b)
+    let lst_ab = std.collections.list.concat(lst_a, lst_b)
+    of_list(lst_ab)
