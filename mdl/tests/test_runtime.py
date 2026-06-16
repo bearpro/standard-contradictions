@@ -1,4 +1,5 @@
 import pytest
+from fractions import Fraction
 
 from mdl.parser import parse
 from mdl.runtime import Runtime, RuntimeError as MDLRuntimeError
@@ -26,6 +27,7 @@ def test_runtime_std_strings_of_list_round_trip():
 def test_runtime_record_fact_and_field_access():
     module = parse(PIPE_SOURCE)
     runtime = Runtime(module)
+    runtime.values["pipe"] = {"length": Fraction(10), "radius": Fraction(2)}
     assert runtime.eval_source_expr("pipe.length > 0") is True
 
 
@@ -39,12 +41,14 @@ def test_runtime_evaluates_implies_with_short_circuit():
 
 def test_runtime_evaluates_now_pointwise():
     runtime = Runtime(parse("module truth\nentity x: bool\nfact x = true\n"))
+    runtime.values["x"] = True
 
     assert runtime.eval_source_expr("x now") is True
 
 
-def test_runtime_reports_bare_fact_with_undefined_entity_value():
+def test_runtime_evaluates_facts_lazily_and_reports_undefined_entity_values():
     module = parse("module facts\nentity x: int\nfact x < 100\n")
+    runtime = Runtime(module)
 
     with pytest.raises(MDLRuntimeError, match="undefined runtime value"):
-        Runtime(module)
+        runtime.evaluate_facts()

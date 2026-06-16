@@ -70,6 +70,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         value = runtime.eval_source_expr(args.expr)
         print(json.dumps(value, ensure_ascii=False, indent=2, default=json_default))
     else:
+        runtime.evaluate_facts()
         print(json.dumps({"values": runtime.values, "facts": runtime.facts}, ensure_ascii=False, indent=2, default=json_default))
     return 0
 
@@ -150,7 +151,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("run", help="evaluate facts or a point-wise expression")
     p.add_argument("file")
-    p.add_argument("--expr", help="expression to evaluate after applying facts")
+    p.add_argument("--expr", help="expression to evaluate in the point-wise runtime")
     p.set_defaults(func=cmd_run)
 
     p = sub.add_parser("align", help="align two MDL modules and render an alignment module")

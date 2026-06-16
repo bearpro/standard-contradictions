@@ -262,7 +262,6 @@ class RuleDecl(Declaration):
     antecedent: Expr | None = None
     otherwise: Expr | None = None
     strength: str = "defeasible"
-    anonymous: bool = False
 
 
 @dataclass
@@ -272,7 +271,6 @@ class PriorityDecl(Declaration):
 
 @dataclass
 class FactDecl(Declaration):
-    target: str | None = None
     value: Expr | None = None
 
 

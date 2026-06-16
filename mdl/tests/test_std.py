@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from textwrap import dedent
 
@@ -8,7 +7,6 @@ import pytest
 
 pytest.importorskip("z3")
 
-from mdl.cli import main
 from mdl.solver import SolveOptions, solve_paths
 
 STDLIB = Path(__file__).resolve().parents[1] / "src" / "mdl" / "stdlib"
@@ -48,7 +46,7 @@ def test_list_concat(tmp_path):
         fact concatenated_list = list.concat(
             List.Cons(1, List.Empty()),
             List.Cons(2, List.Empty())
-            )
+            ) always
         """,
     )
 

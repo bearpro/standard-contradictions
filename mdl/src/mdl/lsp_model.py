@@ -278,7 +278,7 @@ class EditorSnapshot:
         elif isinstance(decl, A.PriorityDecl):
             kind, label = 6, "override"
         elif isinstance(decl, A.FactDecl):
-            kind, label = 13, decl.target or "fact"
+            kind, label = 13, "fact"
         else:
             return None
         symbol = {
@@ -305,9 +305,6 @@ class EditorSnapshot:
             return f"{tparams}({params}) -> {self.format_symbol_type(decl.return_type)}"
         if isinstance(decl, A.EntityDecl):
             return f": {self.format_symbol_type(decl.type_annotation)}"
-        if isinstance(decl, A.FactDecl) and decl.target and self.checker is not None:
-            typ = self.checker.infer_name_type(decl.target, {})
-            return f": {self.format_symbol_type(typ)}" if typ is not None else None
         return None
 
     def format_symbol_type(self, typ: A.TypeExpr | None) -> str:
@@ -522,7 +519,6 @@ class EditorSnapshot:
             "name": rule.name,
             "modality": rule.modality,
             "strength": rule.strength,
-            "anonymous": rule.anonymous,
             "range": self.node_range(rule),
             "annotations": rule.annotations,
         }

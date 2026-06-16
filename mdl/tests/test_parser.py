@@ -171,6 +171,30 @@ rule O r: x always
     assert without_locations(A.node_to_dict(explicit)) == without_locations(A.node_to_dict(implicit))
 
 
+def test_anonymous_rule_syntax_is_rejected():
+    with pytest.raises(ParseError):
+        parse("""
+module rules
+
+rule O: x always
+""")
+
+
+def test_fact_assignment_syntax_is_an_equality_expression():
+    module = parse("""
+module facts
+
+entity x: bool
+fact x = true
+""")
+
+    fact = next(decl for decl in module.declarations if isinstance(decl, A.FactDecl))
+    assert isinstance(fact.value, A.BinaryOp)
+    assert fact.value.op == "="
+    assert isinstance(fact.value.left, A.Name)
+    assert fact.value.left.name == "x"
+
+
 @pytest.mark.parametrize(
     ("source", "op"),
     [

@@ -4,7 +4,7 @@ import "./pipe.mdl"
 import "./tube.mdl"
 
 # align kind=field score=0.583 matcher=bdikit:coma
-rule O alignment_001: (pipe_spec.pipe.length = tube.tube.length) always
+rule O alignment_001: pipe_spec.pipe.length = tube.tube.length always
 
 # align kind=field score=0.266 matcher=bdikit:coma
-rule O alignment_002: (pipe_spec.pipe.radius = tube.tube.r) always
+rule O alignment_002: pipe_spec.pipe.radius = tube.tube.r always

@@ -339,6 +339,11 @@ class MDLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by MDLParser#ruleQualifiedName.
+    def visitRuleQualifiedName(self, ctx:MDLParser.RuleQualifiedNameContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by MDLParser#nameToken.
     def visitNameToken(self, ctx:MDLParser.NameTokenContext):
         return self.visitChildren(ctx)

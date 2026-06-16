@@ -108,7 +108,7 @@ def test_python_dsl_pipe_model_matches_textual_mdl_ast():
     assert without_locations(A.node_to_dict(dsl_reparsed)) == without_locations(A.node_to_dict(textual_module))
 
 
-def test_python_dsl_supports_module_metadata_imports_opens_types_entities_and_targeted_facts():
+def test_python_dsl_supports_module_metadata_imports_opens_types_entities_and_facts():
     source = '''
 from mdl.dsl import *
 
@@ -125,7 +125,7 @@ class EnvelopeDraft:
 message_count = entity(Int)
 envelope = entity(Envelope)
 
-fact(target="message_count", value=3)
+fact(message_count == 3)
 '''
 
     module = compile_source(source, filename="typed_model.py")
@@ -145,6 +145,18 @@ fact(target="message_count", value=3)
     assert reparsed.name == "typed_model"
     assert reparsed.imports[0].path == "./pipe.mdl"
     assert reparsed.opens[0].module == "std.collections"
+
+
+def test_python_dsl_rejects_targeted_facts():
+    source = '''
+from mdl.dsl import *
+
+message_count = entity(Int)
+fact(target="message_count", value=3)
+'''
+
+    with pytest.raises(PythonDslError, match="does not accept keyword argument 'target'"):
+        compile_source(source, filename="targeted_fact.py")
 
 
 def test_python_dsl_supports_predicates_boolops_temporal_rules_and_if_statements():

@@ -673,33 +673,21 @@ class BoundedEncoder:
     def encode_facts(self) -> None:
         for scope in self.problem.scopes.values():
             for index, fact in enumerate(scope.facts, start=1):
-                if fact.target:
-                    module_name, local = self.problem.resolve_decl(scope, fact.target, expected={"entity"})
-                    if module_name is None or local is None:
-                        self.unresolved(scope, fact.target, fact)
-                        continue
-                    entity = self.problem.scopes[module_name].entities[local]
-                    for t in range(self.horizon):
-                        target = self.entity_value(entity, t)
-                        value = self.compile_expr(fact.value, scope, t, expected=target.typ)
-                        self.track(
-                            self.equal_values(target, value),
-                            kind="fact",
-                            module=scope.module.name,
-                            name=fact.target,
-                            line=fact.line or 1,
-                            column=fact.column or 1,
-                        )
-                else:
+                if self.has_temporal_operator(fact.value):
                     formula = self.compile_formula(fact.value, scope, 0)
-                    self.track(
-                        formula,
-                        kind="fact",
-                        module=scope.module.name,
-                        name=f"bare_fact_{index}",
-                        line=fact.line or 1,
-                        column=fact.column or 1,
-                    )
+                else:
+                    formula = z3.And([
+                        self.compile_formula(fact.value, scope, t)
+                        for t in range(self.horizon)
+                    ])
+                self.track(
+                    formula,
+                    kind="fact",
+                    module=scope.module.name,
+                    name=f"fact_{index}",
+                    line=fact.line or 1,
+                    column=fact.column or 1,
+                )
 
     def encode_rules(self) -> None:
         defeats = self.defeat_pairs()
@@ -1168,6 +1156,8 @@ class BoundedEncoder:
                 return ZValue(BOOL, expr=l_num > r_num)
             return ZValue(BOOL, expr=l_num >= r_num)
         if expr.op in {"+", "-", "*", "/", "%"}:
+            l_num: Any
+            r_num: Any
             l_num, r_num = self.promote_numeric(left, right)
             typ = REAL if expr.op == "/" or self.expects_real(expected) else left.typ
             if expr.op == "/" or isinstance(typ, PrimitiveType) and typ.name in {"rat", "decimal"}:
@@ -1286,6 +1276,13 @@ class BoundedEncoder:
             return value.fields[field]
         if value.has_concrete and isinstance(value.concrete, dict):
             return self.python_value(value.concrete[field], None)
+        if value.has_concrete and isinstance(value.concrete, (tuple, list)) and field.startswith("_"):
+            try:
+                idx = int(field[1:])
+            except ValueError:
+                idx = -1
+            if 0 <= idx < len(value.concrete):
+                return self.python_value(value.concrete[idx], None)
         typ = self.resolve_named_type(value.typ)
         if isinstance(typ, RecordSpec):
             for idx, (name, field_type) in enumerate(typ.fields):

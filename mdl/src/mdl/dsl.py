@@ -504,19 +504,13 @@ class _Compiler:
         raise self._error("top-level assignments only support entity(...) declarations", stmt)
 
     def _fact_decl(self, call: py_ast.Call) -> A.FactDecl:
-        self._expect_known_keywords(call, {"target", "value"})
+        self._expect_known_keywords(call, {"value"})
         if len(call.args) > 1:
             raise self._error("fact() accepts at most one positional value", call)
         value_node = call.args[0] if call.args else self._keyword(call, "value")
         if value_node is None:
             raise self._error("fact() requires a value expression", call)
-        target = self._keyword(call, "target")
-        if target is None:
-            value = self._expr(value_node)
-            if isinstance(value, A.BinaryOp) and value.op == "=" and isinstance(value.left, A.Name):
-                return self._mark(A.FactDecl(target=value.left.name, value=value.right), call)
-            return self._mark(A.FactDecl(value=value), call)
-        return self._mark(A.FactDecl(target=self._string_or_name(target), value=self._expr(value_node)), call)
+        return self._mark(A.FactDecl(value=self._expr(value_node)), call)
 
     def _block_from_body(self, body: list[py_ast.stmt]) -> A.Block:
         statements: list[A.LetStmt] = []

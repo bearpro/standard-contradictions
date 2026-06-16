@@ -139,8 +139,7 @@ ruleStrength
     ;
 
 ruleBody
-    : deonticMod COLON block
-    | deonticMod? qualifiedName (WHEN expr)? COLON block
+    : deonticMod? ruleQualifiedName (WHEN expr)? COLON block
     ;
 
 deonticMod
@@ -154,7 +153,7 @@ priorityDecl
     ;
 
 factDecl
-    : FACT (nameToken EQ)? expr
+    : FACT expr
     ;
 
 block
@@ -314,6 +313,10 @@ recordPatternField
 
 qualifiedName
     : nameToken (DOT nameToken)*
+    ;
+
+ruleQualifiedName
+    : IDENT (DOT nameToken)*
     ;
 
 nameToken

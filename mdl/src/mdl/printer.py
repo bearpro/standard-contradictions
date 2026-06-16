@@ -139,10 +139,7 @@ class PrettyPrinter:
     def rule_decl(self, decl: A.RuleDecl) -> str:
         strength = "" if decl.strength == "defeasible" else decl.strength + " "
         modality = f"{decl.modality} " if decl.modality else ""
-        if decl.anonymous:
-            header = f"{strength}rule {modality}".rstrip()
-        else:
-            header = f"{strength}rule {modality}{decl.name}".rstrip()
+        header = f"{strength}rule {modality}{decl.name}".rstrip()
         if decl.antecedent is not None:
             header += f" when {self.expr(decl.antecedent)}"
         body = self.expr(decl.body)
@@ -158,8 +155,6 @@ class PrettyPrinter:
         return f"override {' > '.join(decl.chain)}"
 
     def fact_decl(self, decl: A.FactDecl) -> str:
-        if decl.target:
-            return f"fact {decl.target} = {self.expr(decl.value)}"
         return f"fact {self.expr(decl.value)}"
 
     def block(self, block: A.Block | None, level: int = 1) -> str:

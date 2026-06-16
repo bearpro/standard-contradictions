@@ -466,14 +466,7 @@ class SemanticChecker:
                 self.check_temporal_expr(decl.otherwise)
             return
         if isinstance(decl, A.FactDecl):
-            expected = None
-            if decl.target:
-                self.check_name(decl.target, decl, {})
-                expected = self.infer_name_type(decl.target, {})
-            else:
-                self.check_formula_expr(decl.value)
-                return
-            self.check_expr(decl.value, {}, expected=expected)
+            self.check_formula_expr(decl.value)
             return
     def add_constructors(self, decl: A.TypeDecl) -> None:
         if not isinstance(decl.definition, A.SumType):
@@ -1317,12 +1310,6 @@ class Linter:
                     f"rule {decl.name!r} has no deontic modality",
                     decl.line or 1, decl.column or 1,
                     severity="warning", code="missing-modality", path=path,
-                ))
-            if decl.anonymous:
-                diagnostics.append(Diagnostic(
-                    "anonymous rule is accepted, but named rules are better for traceability and priorities",
-                    decl.line or 1, decl.column or 1,
-                    severity="warning", code="anonymous-rule", path=path,
                 ))
         for decl in module.declarations:
             if isinstance(decl, A.PriorityDecl):

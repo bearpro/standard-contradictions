@@ -56,5 +56,5 @@ def test_cli_parse_lint_and_run_accept_mdl_py(tmp_path, capsys):
     diagnostics = json.loads(capsys.readouterr().out)
     assert not any(diagnostic["severity"] == "error" for diagnostic in diagnostics)
 
-    assert main(["run", str(path), "--expr", "pipe.length > 0"]) == 0
+    assert main(["run", str(path), "--expr", "true"]) == 0
     assert json.loads(capsys.readouterr().out) is True

@@ -186,8 +186,8 @@ class ModelBuilder:
         self.module.declarations.append(decl)
         return decl
 
-    def fact(self, value: A.Expr | str | int | bool | float | None, target: str | None = None) -> A.FactDecl:
-        decl = A.FactDecl(target=target, value=coerce_expr(value))
+    def fact(self, value: A.Expr | str | int | bool | float | None) -> A.FactDecl:
+        decl = A.FactDecl(value=coerce_expr(value))
         self.module.declarations.append(decl)
         return decl
 
@@ -238,7 +238,9 @@ def from_python(value: Any) -> A.Module:
             )
         for fact in value.get("facts", []):
             if isinstance(fact, dict):
-                builder.fact(fact.get("value"), target=fact.get("target"))
+                if "target" in fact:
+                    raise ValueError("targeted facts are no longer supported; use an equality fact expression")
+                builder.fact(fact.get("value"))
             else:
                 builder.fact(fact)
         return builder.to_ast()

@@ -39,18 +39,16 @@ class Runtime:
             elif isinstance(decl, A.EntityDecl):
                 self.entities[decl.name] = decl
                 self.values.setdefault(decl.name, None)
-        self.apply_facts()
 
-    def apply_facts(self) -> None:
+    def evaluate_facts(self) -> list[Any]:
+        self.facts = []
         for decl in self.module.declarations:
             if isinstance(decl, A.FactDecl):
-                value = self.eval_expr(decl.value, dict(self.values))
-                if decl.target:
-                    if decl.target not in self.entities:
-                        raise RuntimeError(f"undefined entity {decl.target!r}")
-                    self.values[decl.target] = value
-                else:
-                    self.facts.append(value)
+                self.facts.append(self.eval_expr(decl.value, dict(self.values)))
+        return self.facts
+
+    def apply_facts(self) -> None:
+        self.evaluate_facts()
 
     def eval_source_expr(self, source: str) -> Any:
         return self.eval_expr(parse_expr(source), dict(self.values))

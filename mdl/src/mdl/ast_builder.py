@@ -21,7 +21,6 @@ LAYOUT_TOKEN_TYPES = {MDLParser.INDENT, MDLParser.DEDENT, MDLLexer.NEWLINE, -1}
 class AstBuilder(MDLVisitor):
     def __init__(self) -> None:
         super().__init__()
-        self._anonymous_rule_counter = 0
 
     def visit(self, tree: Any) -> Any:
         result = super().visit(tree)
@@ -215,7 +214,7 @@ class AstBuilder(MDLVisitor):
     def visitRuleDecl(self, ctx: MDLParser.RuleDeclContext) -> A.RuleDecl:
         line, column = self.location(ctx)
         strength = self.visit(ctx.ruleStrength()) if ctx.ruleStrength() else "defeasible"
-        modality, name, anonymous, antecedent, body = self.visit(ctx.ruleBody())
+        modality, name, antecedent, body = self.visit(ctx.ruleBody())
         otherwise = self.visit(ctx.expr()) if ctx.expr() else None
         return A.RuleDecl(
             strength=strength,
@@ -224,7 +223,6 @@ class AstBuilder(MDLVisitor):
             body=body,
             antecedent=antecedent,
             otherwise=otherwise,
-            anonymous=anonymous,
             line=line,
             column=column,
         )
@@ -232,15 +230,12 @@ class AstBuilder(MDLVisitor):
     def visitRuleStrength(self, ctx: MDLParser.RuleStrengthContext) -> str:
         return ctx.getText()
 
-    def visitRuleBody(self, ctx: MDLParser.RuleBodyContext) -> tuple[str | None, str, bool, A.Expr | None, A.Expr]:
+    def visitRuleBody(self, ctx: MDLParser.RuleBodyContext) -> tuple[str | None, str, A.Expr | None, A.Expr]:
         modality = self.visit(ctx.deonticMod()) if ctx.deonticMod() else None
-        if ctx.qualifiedName() is None:
-            line = ctx.start.line
-            return modality, self.next_anonymous_rule_name(line), True, None, self.block_as_expr(self.visit(ctx.block()))
         antecedent = None
         if ctx.WHEN():
             antecedent = self.visit(ctx.expr())
-        return modality, self.visit(ctx.qualifiedName()), False, antecedent, self.block_as_expr(self.visit(ctx.block()))
+        return modality, self.visit(ctx.ruleQualifiedName()), antecedent, self.block_as_expr(self.visit(ctx.block()))
 
     def block_as_expr(self, block: A.Block) -> A.Expr:
         if block.result is None:
@@ -262,10 +257,6 @@ class AstBuilder(MDLVisitor):
     def visitDeonticMod(self, ctx: MDLParser.DeonticModContext) -> str:
         return ctx.getText()
 
-    def next_anonymous_rule_name(self, line: int) -> str:
-        self._anonymous_rule_counter += 1
-        return f"anonymous_rule_{line}_{self._anonymous_rule_counter}"
-
     def visitPriorityDecl(self, ctx: MDLParser.PriorityDeclContext) -> A.PriorityDecl:
         line, column = self.location(ctx)
         return A.PriorityDecl(chain=[self.visit(name) for name in ctx.qualifiedName()], line=line, column=column)
@@ -273,7 +264,6 @@ class AstBuilder(MDLVisitor):
     def visitFactDecl(self, ctx: MDLParser.FactDeclContext) -> A.FactDecl:
         line, column = self.location(ctx)
         return A.FactDecl(
-            target=self.visit(ctx.nameToken()) if ctx.nameToken() else None,
             value=self.visit(ctx.expr()),
             line=line,
             column=column,
@@ -524,6 +514,11 @@ class AstBuilder(MDLVisitor):
 
     def visitQualifiedName(self, ctx: MDLParser.QualifiedNameContext) -> str:
         return ".".join(self.visit(name) for name in ctx.nameToken())
+
+    def visitRuleQualifiedName(self, ctx: MDLParser.RuleQualifiedNameContext) -> str:
+        parts = [ctx.IDENT().getText()]
+        parts.extend(self.visit(name) for name in ctx.nameToken())
+        return ".".join(parts)
 
     def visitNameToken(self, ctx: MDLParser.NameTokenContext) -> str:
         return ctx.getText()

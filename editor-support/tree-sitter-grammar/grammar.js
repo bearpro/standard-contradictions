@@ -101,17 +101,18 @@ module.exports = grammar({
     rule_decl: $ => seq(
       optional($.rule_strength),
       'rule',
-      choice(
-        seq($.deontic_mod, ':', field('body', $.expr)),
-        seq(optional($.deontic_mod), field('name', $.qualified_name), optional(seq('when', field('antecedent', $.expr))), ':', field('body', $.expr)),
-      ),
+      optional($.deontic_mod),
+      field('name', $.rule_qualified_name),
+      optional(seq('when', field('antecedent', $.expr))),
+      ':',
+      field('body', $.expr),
       optional(seq('otherwise', field('otherwise', $.expr))),
     ),
     rule_strength: $ => choice('strict', 'defeasible', 'defeater'),
     deontic_mod: $ => choice('O', 'P', 'F'),
 
     priority_decl: $ => seq('override', $.qualified_name, repeat(seq('>', $.qualified_name))),
-    fact_decl: $ => seq('fact', choice(seq(field('target', $.identifier), '=', $.expr), $.expr)),
+    fact_decl: $ => seq('fact', $.expr),
 
     block: $ => repeat1(choice($.let_stmt, $.expr)),
     let_stmt: $ => seq('let', $.pattern, optional($.type_annotation), '=', $.expr),
@@ -186,6 +187,8 @@ module.exports = grammar({
     iri: $ => token(seq('<', /[^>]+/, '>')),
 
     qualified_name: $ => prec.left(seq($.identifier, repeat(seq('.', $.identifier)))),
+    rule_qualified_name: $ => prec.left(seq($.rule_identifier, repeat(seq('.', $.identifier)))),
+    rule_identifier: $ => /(?:[A-NQ-Za-nq-z_][A-Za-z0-9_']*|[OPF][A-Za-z0-9_']+)/,
     identifier: $ => /[A-Za-z_][A-Za-z0-9_']*/,
     line_comment: $ => token(seq('#', /.*/)),
   },

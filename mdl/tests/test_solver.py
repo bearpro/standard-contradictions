@@ -161,6 +161,24 @@ def test_solve_compiles_implies_as_formula(tmp_path):
     assert payload["model"]["trace"][0]["entities"]["implication.x"] is False
 
 
+def test_solve_non_temporal_facts_apply_across_horizon(tmp_path):
+    spec = write_module(
+        tmp_path,
+        "facts_are_global.mdl",
+        """
+        module facts_are_global
+
+        entity x: bool
+        fact x = false
+        rule O x_is_true: x always
+        """,
+    )
+
+    payload = solve_paths([spec], SolveOptions(horizon=2))
+
+    assert payload["status"] == "unsat"
+
+
 def test_solve_now_tracks_current_time_when_nested(tmp_path):
     spec = write_module(
         tmp_path,
@@ -212,7 +230,7 @@ def test_solve_inlines_let_binding_at_temporal_use_site(tmp_path):
             p always
 
         fact x now
-        fact (not x) next
+        fact not x next
         """,
     )
 
@@ -240,7 +258,7 @@ def test_solve_compiles_irrefutable_let_destructuring_in_rule_body(tmp_path):
             a always
 
         fact flags.a now
-        fact (not flags.a) next
+        fact not flags.a next
         """,
     )
 

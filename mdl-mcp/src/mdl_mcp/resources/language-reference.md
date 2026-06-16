@@ -293,7 +293,7 @@ entity account: { id: string, active: bool }
 
 An entity declares an externally supplied symbol used by facts, rules, solving,
 and runtime evaluation. The point-wise runtime initialises entity values to
-`None` until a fact assigns a value or the caller supplies a value.
+`None` until the caller supplies a value.
 
 ### 5.3 Fact declarations
 
@@ -302,9 +302,11 @@ fact condition
 fact entity_name = value
 ```
 
-A fact with a target assigns the evaluated value to that target in the runtime.
-A fact without a target is evaluated and stored in the runtime's facts list. In
-translation/solving, facts are emitted as model facts.
+Facts are boolean formulas or temporal formulas. In translation/solving,
+non-temporal facts constrain every point in the bounded trace, so `always` is
+not needed for ordinary fact equations. Temporal facts are interpreted as
+temporal formulas from the start of the trace. The point-wise runtime evaluates
+facts only when asked to do so; facts do not assign values to entities.
 
 ### 5.4 Rule declarations
 
@@ -332,21 +334,6 @@ Grammar:
   `eventually`, `next`, or `until` to construct one.
 - `otherwise` encodes a contrary-to-duty or fallback expression and must also be
   temporal when present.
-
-#### Anonymous modality form
-
-```mdl
-rule O: always valid_email
-```
-
-Grammar:
-
-```text
-[strength] rule modality : body [otherwise expr]
-```
-
-This form has no explicit name. The parser assigns an internal generated name
-based on the source line and marks the rule as anonymous.
 
 #### Rule strengths
 
@@ -666,8 +653,8 @@ point-wise runtime:
 
 - top-level functions are callable by simple or qualified local names;
 - entity declarations create mutable runtime slots initially set to `None`;
-- targeted facts assign runtime values to entities;
-- untargeted facts are evaluated and stored;
+- facts are evaluated only by explicit fact evaluation, not during runtime
+  construction;
 - records are dictionaries;
 - tuples are Python tuples;
 - standard collection constructors have native Python representations:
@@ -803,13 +790,12 @@ typeRef        ::= qualifiedName ("<" typeExpr ("," typeExpr)* ">")?
 funcDecl       ::= "func" name typeParams? "(" paramList? ")" "->" typeExpr ":" block
 param          ::= pattern ":" typeExpr
 entityDecl     ::= "entity" name ":" typeExpr
-factDecl       ::= "fact" (name "=")? expr
+factDecl       ::= "fact" expr
 priorityDecl   ::= "override" qualifiedName (">" qualifiedName)*
 
 ruleDecl       ::= ("strict" | "defeasible" | "defeater")? "rule" ruleBody
                    ("otherwise" expr)?
-ruleBody       ::= modality ":" block
-                 | modality? qualifiedName ("when" expr)? ":" block
+ruleBody       ::= modality? ruleQualifiedName ("when" expr)? ":" block
 modality       ::= "O" | "P" | "F"
 
 block          ::= NEWLINE INDENT blockLetStmt* expr? newlines? DEDENT | expr
@@ -848,6 +834,7 @@ pattern        ::= "_" | STRING | INT | DECIMAL | RAT | "(" ")"
                  | qualifiedName ("(" patternList? ")")?
 recordPattern  ::= name ("=" pattern)?
 qualifiedName  ::= name ("." name)*
+ruleQualifiedName ::= IDENT ("." name)*
 ```
 
 ## 13. Examples
