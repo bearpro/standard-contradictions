@@ -31,10 +31,12 @@ rule O material_proportions_satisfies_bounds:
         case (raw_meat_type, grade):
             | (MeatType.Beef(), CannedMeatGrade.First()): 
                 let non_muscle_tissue = 
-                    raw_meat_properties.connective_tissue_proportion + raw_meat_properties.adipose_tissue_proportion
+                    (raw_meat_properties.connective_tissue_proportion + 
+                     raw_meat_properties.adipose_tissue_proportion)
                 (non_muscle_tissue <= 6/100)
             | (MeatType.Pork(), CannedMeatGrade.Top()): 
                 raw_meat_properties.adipose_tissue_proportion <= 30/100
+            # Rest is omitted
             | _: true
     satisfies_bounds always
 
