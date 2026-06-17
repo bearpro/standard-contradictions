@@ -11,7 +11,14 @@ pytest.importorskip("z3")
 from mdl.cli import main
 from mdl.solver import SolveOptions, solve_paths
 
-from .sample_sources import ALIGNMENT_SOURCE, EMAIL_SOURCE, FIB_SOURCE, PIPE_SOURCE, PWR_SOURCE, TUBE_SOURCE
+from .sample_sources import (
+    ALIGNMENT_SOURCE,
+    EMAIL_SOURCE,
+    FIB_SOURCE,
+    PIPE_SOURCE,
+    PWR_SOURCE,
+    TUBE_SOURCE,
+)
 
 
 STDLIB = Path(__file__).resolve().parents[1] / "src" / "mdl" / "stdlib"
@@ -92,7 +99,8 @@ def test_solve_reports_unresolved_unqualified_cross_module_reference(tmp_path):
 
     assert payload["status"] == "error"
     assert any(
-        d["code"] in {"undefined-name", "unresolved-name"} and "pipe.length" in d["message"]
+        d["code"] in {"undefined-name", "unresolved-name"}
+        and "pipe.length" in d["message"]
         for d in payload["diagnostics"]
     )
 
@@ -314,7 +322,10 @@ def test_solve_rejects_refutable_let_pattern_before_encoding(tmp_path):
     payload = solve_paths([spec], SolveOptions(horizon=1))
 
     assert payload["status"] == "error"
-    assert any(diagnostic["code"] == "unsupported-let-pattern" for diagnostic in payload["diagnostics"])
+    assert any(
+        diagnostic["code"] == "unsupported-let-pattern"
+        for diagnostic in payload["diagnostics"]
+    )
 
 
 def test_solve_rejects_mixed_bool_temporal_rule_formula(tmp_path):
@@ -777,7 +788,9 @@ def test_solve_std_strings_to_list_symbolic_entity(tmp_path):
 
     assert payload["status"] == "sat"
     assert payload["model"]["trace"][0]["entities"]["hello_world.greeting"] == "A"
-    assert payload["model"]["winning_rules"] == ["hello_world.greeting_contains_username"]
+    assert payload["model"]["winning_rules"] == [
+        "hello_world.greeting_contains_username"
+    ]
 
 
 def test_solve_std_strings_to_list_symbolic_entity_reversed_equality(tmp_path):

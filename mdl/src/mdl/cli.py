@@ -45,9 +45,13 @@ def cmd_format(args: argparse.Namespace) -> int:
 
 
 def cmd_lint(args: argparse.Namespace) -> int:
-    diagnostics = lint_source(read_file(args.file), path=args.file, stdlib_path=args.stdlib_path)
+    diagnostics = lint_source(
+        read_file(args.file), path=args.file, stdlib_path=args.stdlib_path
+    )
     if args.json:
-        print(json.dumps([d.to_dict() for d in diagnostics], ensure_ascii=False, indent=2))
+        print(
+            json.dumps([d.to_dict() for d in diagnostics], ensure_ascii=False, indent=2)
+        )
     else:
         for d in diagnostics:
             location = f"{d.path or args.file}:{d.line}:{d.column}"
@@ -71,13 +75,22 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(json.dumps(value, ensure_ascii=False, indent=2, default=json_default))
     else:
         runtime.evaluate_facts()
-        print(json.dumps({"values": runtime.values, "facts": runtime.facts}, ensure_ascii=False, indent=2, default=json_default))
+        print(
+            json.dumps(
+                {"values": runtime.values, "facts": runtime.facts},
+                ensure_ascii=False,
+                indent=2,
+                default=json_default,
+            )
+        )
     return 0
 
 
 def cmd_align(args: argparse.Namespace) -> int:
     left, right = [load_module(path) for path in args.files]
-    accept_threshold = args.threshold if args.threshold is not None else args.accept_threshold
+    accept_threshold = (
+        args.threshold if args.threshold is not None else args.accept_threshold
+    )
     candidate_threshold = min(args.candidate_threshold, accept_threshold)
     options = AlignmentOptions(
         matcher=args.matcher,
@@ -130,9 +143,13 @@ def cmd_lsp(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="mdl", description="MDL / DDL-LTLf language toolkit")
+    parser = argparse.ArgumentParser(
+        prog="mdl", description="MDL / DDL-LTLf language toolkit"
+    )
     parser.add_argument("--version", action="version", version=f"mdl {__version__}")
-    parser.add_argument("--stdlib", dest="stdlib_path", help="directory containing MDL stdlib modules")
+    parser.add_argument(
+        "--stdlib", dest="stdlib_path", help="directory containing MDL stdlib modules"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("parse", help="parse a file and dump AST JSON")
@@ -154,22 +171,35 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--expr", help="expression to evaluate in the point-wise runtime")
     p.set_defaults(func=cmd_run)
 
-    p = sub.add_parser("align", help="align two MDL modules and render an alignment module")
+    p = sub.add_parser(
+        "align", help="align two MDL modules and render an alignment module"
+    )
     p.add_argument("files", nargs=2)
-    p.add_argument("--matcher", choices=["auto", "builtin", "bdikit:coma"], default="auto")
+    p.add_argument(
+        "--matcher", choices=["auto", "builtin", "bdikit:coma"], default="auto"
+    )
     p.add_argument("--candidate-threshold", type=float, default=0.55)
     p.add_argument("--accept-threshold", type=float, default=0.75)
     p.add_argument("--threshold", type=float, help=argparse.SUPPRESS)
     p.add_argument("--module-name")
     p.add_argument("-o", "--output")
     p.add_argument("--report")
-    p.add_argument("--json", action="store_true", help="print the machine-readable alignment report")
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="print the machine-readable alignment report",
+    )
     p.set_defaults(func=cmd_align)
 
     p = sub.add_parser("solve", help="solve DDL-LTLf constraints with Z3")
     p.add_argument("files", nargs="+")
     p.add_argument("--horizon", type=int, help="check exactly one finite trace horizon")
-    p.add_argument("--max-horizon", type=int, default=3, help="search horizons 1..N when --horizon is not set")
+    p.add_argument(
+        "--max-horizon",
+        type=int,
+        default=3,
+        help="search horizons 1..N when --horizon is not set",
+    )
     p.add_argument("--permission", choices=["strong", "ignore"], default="strong")
     p.add_argument("--max-conflicts", type=int, default=20)
     p.set_defaults(func=cmd_solve)

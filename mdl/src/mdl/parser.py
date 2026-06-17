@@ -9,11 +9,21 @@ from .ast_builder import AstBuilder
 from .diagnostics import ParseError
 from .lexer import Token
 
-__all__ = ["ParseError", "parse", "parse_expr", "parse_many", "parse_tokens", "parse_type_expr_source"]
+__all__ = [
+    "ParseError",
+    "parse",
+    "parse_expr",
+    "parse_many",
+    "parse_tokens",
+    "parse_type_expr_source",
+]
 
 
 def parse(source: str) -> A.Module:
-    return cast(A.Module, cast(object, AstBuilder().visit(parse_with_rule(source, "program").tree)))
+    return cast(
+        A.Module,
+        cast(object, AstBuilder().visit(parse_with_rule(source, "program").tree)),
+    )
 
 
 def parse_tokens(tokens: list[Token]) -> A.Module:
@@ -21,7 +31,10 @@ def parse_tokens(tokens: list[Token]) -> A.Module:
 
 
 def parse_expr(source: str) -> A.Expr:
-    return cast(A.Expr, cast(object, AstBuilder().visit(parse_with_rule(source, "exprOnly").tree)))
+    return cast(
+        A.Expr,
+        cast(object, AstBuilder().visit(parse_with_rule(source, "exprOnly").tree)),
+    )
 
 
 def parse_many(sources: Iterable[str]) -> list[A.Module]:
@@ -29,7 +42,10 @@ def parse_many(sources: Iterable[str]) -> list[A.Module]:
 
 
 def parse_type_expr_source(source: str) -> A.TypeExpr:
-    return cast(A.TypeExpr, cast(object, AstBuilder().visit(parse_with_rule(source, "typeExprOnly").tree)))
+    return cast(
+        A.TypeExpr,
+        cast(object, AstBuilder().visit(parse_with_rule(source, "typeExprOnly").tree)),
+    )
 
 
 def _tokens_to_source(tokens: list[Token]) -> str:

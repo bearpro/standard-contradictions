@@ -31,11 +31,31 @@ SEMANTIC_TOKEN_TYPES = [
 SEMANTIC_TOKEN_MODIFIERS = ["declaration", "defaultLibrary"]
 
 STANDARD_OPERATOR_VALUES = {
-    "O", "P", "F",
-    "and", "or", "implies", "not",
-    "always", "eventually", "next", "now", "until",
-    "->", "<=", ">=", "!=", "==", "=", "<", ">",
-    "+", "-", "*", "/", "%",
+    "O",
+    "P",
+    "F",
+    "and",
+    "or",
+    "implies",
+    "not",
+    "always",
+    "eventually",
+    "next",
+    "now",
+    "until",
+    "->",
+    "<=",
+    ">=",
+    "!=",
+    "==",
+    "=",
+    "<",
+    ">",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
 }
 
 
@@ -97,7 +117,9 @@ class EditorSnapshot:
         resolver = ImportResolver(self.uri, self.documents)
         self.checker = SemanticChecker(self.module, self.uri, resolver=resolver)
         semantic_diagnostics = self.checker.check()
-        self.diagnostics = lint_source(self.text, path=self.uri, documents=self.documents)
+        self.diagnostics = lint_source(
+            self.text, path=self.uri, documents=self.documents
+        )
         self.module_paths = self.collect_module_paths(resolver)
         self.locals = self.collect_locals()
         self.enrich_diagnostic_ranges(semantic_diagnostics)
@@ -126,7 +148,9 @@ class EditorSnapshot:
             if isinstance(decl, A.FuncDecl):
                 env: dict[str, A.TypeExpr | None] = {}
                 for param in decl.params:
-                    self.bind_pattern_symbols(param.pattern, param.type_annotation, "parameter", symbols, decl)
+                    self.bind_pattern_symbols(
+                        param.pattern, param.type_annotation, "parameter", symbols, decl
+                    )
                     self.bind_pattern_types(param.pattern, param.type_annotation, env)
                 self.collect_block_locals(decl.body, env, symbols)
             elif isinstance(decl, A.RuleDecl):
@@ -163,18 +187,28 @@ class EditorSnapshot:
             return
         if isinstance(expr, A.LetExpr):
             self.collect_expr_locals(expr.value, env, symbols)
-            typ = expr.type_annotation or (self.checker.infer_expr_type(expr.value, env) if self.checker else None)
+            typ = expr.type_annotation or (
+                self.checker.infer_expr_type(expr.value, env) if self.checker else None
+            )
             local = dict(env)
-            self.bind_pattern_symbols(expr.pattern, typ, "variable", symbols, expr.body or expr)
+            self.bind_pattern_symbols(
+                expr.pattern, typ, "variable", symbols, expr.body or expr
+            )
             self.bind_pattern_types(expr.pattern, typ, local)
             self.collect_expr_locals(expr.body, local, symbols)
             return
         if isinstance(expr, A.MatchExpr):
             self.collect_expr_locals(expr.subject, env, symbols)
-            subject_type = self.checker.infer_expr_type(expr.subject, env) if self.checker else None
+            subject_type = (
+                self.checker.infer_expr_type(expr.subject, env)
+                if self.checker
+                else None
+            )
             for arm in expr.arms:
                 local = dict(env)
-                self.bind_pattern_symbols(arm.pattern, subject_type, "variable", symbols, arm)
+                self.bind_pattern_symbols(
+                    arm.pattern, subject_type, "variable", symbols, arm
+                )
                 self.bind_pattern_types(arm.pattern, subject_type, local)
                 self.collect_expr_locals(arm.guard, local, symbols)
                 self.collect_block_locals(arm.body, local, symbols)
@@ -212,27 +246,43 @@ class EditorSnapshot:
         scope: A.Node | None = None,
     ) -> None:
         if isinstance(pattern, A.VarPattern):
-            symbols.append(EditorSymbol(pattern.name, kind, pattern, typ, self.uri, scope))
+            symbols.append(
+                EditorSymbol(pattern.name, kind, pattern, typ, self.uri, scope)
+            )
         elif isinstance(pattern, A.RecordPattern):
             fields = self.checker.fields_for_type(typ) if self.checker else None
             for name, nested in pattern.fields:
                 field_type = fields.get(name) if fields else None
                 if nested is None:
-                    symbols.append(EditorSymbol(name, kind, pattern, field_type, self.uri, scope))
+                    symbols.append(
+                        EditorSymbol(name, kind, pattern, field_type, self.uri, scope)
+                    )
                 else:
                     self.bind_pattern_symbols(nested, field_type, kind, symbols, scope)
         elif isinstance(pattern, A.TuplePattern):
             items = typ.items if isinstance(typ, A.TupleType) else []
             for idx, item in enumerate(pattern.items):
-                self.bind_pattern_symbols(item, items[idx] if idx < len(items) else None, kind, symbols, scope)
+                self.bind_pattern_symbols(
+                    item, items[idx] if idx < len(items) else None, kind, symbols, scope
+                )
         elif isinstance(pattern, A.ListPattern):
             item_type = self.checker.collection_item_type(typ) if self.checker else None
             for item in pattern.items:
                 self.bind_pattern_symbols(item, item_type, kind, symbols, scope)
         elif isinstance(pattern, A.ConstructorPattern):
-            field_types = self.checker.constructor_field_types(pattern.name, typ) if self.checker else []
+            field_types = (
+                self.checker.constructor_field_types(pattern.name, typ)
+                if self.checker
+                else []
+            )
             for idx, item in enumerate(pattern.args):
-                self.bind_pattern_symbols(item, field_types[idx] if idx < len(field_types) else None, kind, symbols, scope)
+                self.bind_pattern_symbols(
+                    item,
+                    field_types[idx] if idx < len(field_types) else None,
+                    kind,
+                    symbols,
+                    scope,
+                )
 
     def bind_pattern_types(
         self,
@@ -246,7 +296,14 @@ class EditorSnapshot:
     def enrich_diagnostic_ranges(self, diagnostics: list[Diagnostic]) -> None:
         by_key = {(d.line, d.column, d.code, d.message): d for d in diagnostics}
         for diagnostic in self.diagnostics:
-            source = by_key.get((diagnostic.line, diagnostic.column, diagnostic.code, diagnostic.message))
+            source = by_key.get(
+                (
+                    diagnostic.line,
+                    diagnostic.column,
+                    diagnostic.code,
+                    diagnostic.message,
+                )
+            )
             if source is not None and source.end_line is not None:
                 object.__setattr__(diagnostic, "end_line", source.end_line)
                 object.__setattr__(diagnostic, "end_column", source.end_column)
@@ -255,13 +312,17 @@ class EditorSnapshot:
         if self.module is None:
             return []
         children = [self.declaration_symbol(decl) for decl in self.module.declarations]
-        return [{
-            "name": self.module.name,
-            "kind": 2,
-            "range": self.node_range(self.module),
-            "selectionRange": self.name_selection_range(self.module, self.module.name),
-            "children": [item for item in children if item],
-        }]
+        return [
+            {
+                "name": self.module.name,
+                "kind": 2,
+                "range": self.node_range(self.module),
+                "selectionRange": self.name_selection_range(
+                    self.module, self.module.name
+                ),
+                "children": [item for item in children if item],
+            }
+        ]
 
     def declaration_symbol(self, decl: A.Declaration) -> dict[str, Any] | None:
         name = A.declaration_name(decl)
@@ -320,11 +381,16 @@ class EditorSnapshot:
         if resolved.type_expr is not None and self.checker is not None:
             parts.append(f"`{self.checker.format_type(resolved.type_expr)}`")
         if isinstance(resolved.node, A.RuleDecl):
-            parts.append(f"modality `{resolved.node.modality or 'none'}`, strength `{resolved.node.strength}`")
+            parts.append(
+                f"modality `{resolved.node.modality or 'none'}`, strength `{resolved.node.strength}`"
+            )
         annotations = getattr(resolved.node, "annotations", None)
         if annotations:
             parts.append("\n".join(f"@{item}" for item in annotations))
-        return {"contents": {"kind": "markdown", "value": "\n\n".join(parts)}, "range": resolved.selection_range or self.node_range(resolved.node)}
+        return {
+            "contents": {"kind": "markdown", "value": "\n\n".join(parts)},
+            "range": resolved.selection_range or self.node_range(resolved.node),
+        }
 
     def definition(self, line: int, character: int) -> dict[str, Any] | None:
         resolved = self.resolve_at(line, character)
@@ -332,7 +398,10 @@ class EditorSnapshot:
             return None
         return {
             "uri": resolved.uri or self.uri,
-            "range": resolved.selection_range or self.selection_range_for_node(resolved.node, local_name(resolved.label), resolved.uri),
+            "range": resolved.selection_range
+            or self.selection_range_for_node(
+                resolved.node, local_name(resolved.label), resolved.uri
+            ),
         }
 
     def resolve_at(self, line: int, character: int) -> ResolvedTarget | None:
@@ -350,7 +419,14 @@ class EditorSnapshot:
             if field is not None:
                 return field
             typ = self.checker.infer_name_type(through, {})
-            return ResolvedTarget(through, "field", typ, self.node_for_token(token), self.uri, self.token_range(token))
+            return ResolvedTarget(
+                through,
+                "field",
+                typ,
+                self.node_for_token(token),
+                self.uri,
+                self.token_range(token),
+            )
         local = self.resolve_local(token.value, line + 1, character + 1)
         if local is not None:
             return ResolvedTarget(
@@ -364,19 +440,42 @@ class EditorSnapshot:
         if through in self.checker.types:
             symbol = self.checker.types[through]
             node = symbol.node or self.node_for_token(token)
-            return ResolvedTarget(symbol.name, "type", symbol.type_expr, node, self.uri_for_symbol(symbol), self.selection_range_for_node(node, symbol.name, self.uri_for_symbol(symbol)))
+            return ResolvedTarget(
+                symbol.name,
+                "type",
+                symbol.type_expr,
+                node,
+                self.uri_for_symbol(symbol),
+                self.selection_range_for_node(
+                    node, symbol.name, self.uri_for_symbol(symbol)
+                ),
+            )
         constructor = self.constructor_target(through)
         if constructor is not None:
             return constructor
         symbol = self.symbol_for(through) or self.symbol_for(token.value)
         if symbol is not None and symbol.node is not None:
             uri = self.uri_for_symbol(symbol)
-            return ResolvedTarget(symbol.name, symbol.kind, symbol.type_expr, symbol.node, uri, self.selection_range_for_node(symbol.node, symbol.name, uri))
+            return ResolvedTarget(
+                symbol.name,
+                symbol.kind,
+                symbol.type_expr,
+                symbol.node,
+                uri,
+                self.selection_range_for_node(symbol.node, symbol.name, uri),
+            )
         if token.value in self.checker.types:
             symbol = self.checker.types[token.value]
             node = symbol.node or self.node_for_token(token)
             uri = self.uri_for_symbol(symbol)
-            return ResolvedTarget(symbol.name, "type", symbol.type_expr, node, uri, self.selection_range_for_node(node, symbol.name, uri))
+            return ResolvedTarget(
+                symbol.name,
+                "type",
+                symbol.type_expr,
+                node,
+                uri,
+                self.selection_range_for_node(node, symbol.name, uri),
+            )
         return None
 
     def symbol_for(self, name: str) -> Symbol | None:
@@ -386,11 +485,15 @@ class EditorSnapshot:
 
     def resolve_local(self, name: str, line: int, column: int) -> EditorSymbol | None:
         visible = [
-            symbol for symbol in self.locals
-            if symbol.name == name and before(symbol.node, line, column)
+            symbol
+            for symbol in self.locals
+            if symbol.name == name
+            and before(symbol.node, line, column)
             and (symbol.scope is None or contains_position(symbol.scope, line, column))
         ]
-        return max(visible, key=lambda item: (item.node.line, item.node.column), default=None)
+        return max(
+            visible, key=lambda item: (item.node.line, item.node.column), default=None
+        )
 
     def uri_for_symbol(self, symbol: Symbol) -> str | None:
         node_module = self.find_node_module(symbol.node)
@@ -410,14 +513,18 @@ class EditorSnapshot:
             if any(decl is node for decl in module.declarations):
                 return name
             for decl in module.declarations:
-                if isinstance(decl, A.TypeDecl) and isinstance(decl.definition, A.SumType):
+                if isinstance(decl, A.TypeDecl) and isinstance(
+                    decl.definition, A.SumType
+                ):
                     if any(variant is node for variant in decl.definition.variants):
                         return name
         return self.module.name if self.module else None
 
     def semantic_tokens(self) -> dict[str, list[int]]:
         semantic: list[SemanticToken] = []
-        declarations = {(node.line, node.column, name) for name, node in self.declaration_names()}
+        declarations = {
+            (node.line, node.column, name) for name, node in self.declaration_names()
+        }
         for idx, token in enumerate(self.tokens):
             token_type = self.semantic_type_for_token(idx)
             if token_type is None:
@@ -425,13 +532,15 @@ class EditorSnapshot:
             modifiers: list[str] = []
             if (token.line, token.column, token.value) in declarations:
                 modifiers.append("declaration")
-            semantic.append(SemanticToken(
-                token.line - 1,
-                token.column - 1,
-                max(1, token.end_column - token.column),
-                token_type,
-                tuple(modifiers),
-            ))
+            semantic.append(
+                SemanticToken(
+                    token.line - 1,
+                    token.column - 1,
+                    max(1, token.end_column - token.column),
+                    token_type,
+                    tuple(modifiers),
+                )
+            )
         return {"data": encode_semantic_tokens(semantic)}
 
     def semantic_type_for_token(self, index: int) -> str | None:
@@ -449,7 +558,11 @@ class EditorSnapshot:
             return "parameter"
         if through in self.checker.types or value in self.checker.types:
             return "type"
-        if through in self.checker.constructors or qualified in self.checker.constructors or value in self.checker.constructors:
+        if (
+            through in self.checker.constructors
+            or qualified in self.checker.constructors
+            or value in self.checker.constructors
+        ):
             return "enumMember"
         if self.is_field_position(index):
             return "property"
@@ -468,15 +581,24 @@ class EditorSnapshot:
 
     def model_summary(self) -> dict[str, Any]:
         if self.module is None:
-            return {"module": None, "diagnostics": [d.to_dict() for d in self.diagnostics]}
+            return {
+                "module": None,
+                "diagnostics": [d.to_dict() for d in self.diagnostics],
+            }
         return {
             "module": self.module.name,
             "imports": [imp.path for imp in self.module.imports],
             "opens": [opened.module for opened in self.module.opens],
-            "declarations": [self.declaration_summary(decl) for decl in self.module.declarations],
+            "declarations": [
+                self.declaration_summary(decl) for decl in self.module.declarations
+            ],
             "symbols": self.symbol_summary(),
             "types": self.type_summary(),
-            "rules": [self.rule_summary(decl) for decl in self.module.declarations if isinstance(decl, A.RuleDecl)],
+            "rules": [
+                self.rule_summary(decl)
+                for decl in self.module.declarations
+                if isinstance(decl, A.RuleDecl)
+            ],
             "diagnostics": [d.to_dict() for d in self.diagnostics],
         }
 
@@ -492,13 +614,19 @@ class EditorSnapshot:
         if self.checker is None:
             return []
         rows = []
-        for name, symbol in sorted({**self.checker.types, **self.checker.terms, **self.checker.rules}.items()):
-            rows.append({
-                "name": name,
-                "kind": symbol.kind,
-                "type": self.checker.format_type(symbol.type_expr) if symbol.type_expr else None,
-                "range": self.node_range(symbol.node) if symbol.node else None,
-            })
+        for name, symbol in sorted(
+            {**self.checker.types, **self.checker.terms, **self.checker.rules}.items()
+        ):
+            rows.append(
+                {
+                    "name": name,
+                    "kind": symbol.kind,
+                    "type": self.checker.format_type(symbol.type_expr)
+                    if symbol.type_expr
+                    else None,
+                    "range": self.node_range(symbol.node) if symbol.node else None,
+                }
+            )
         return rows
 
     def type_summary(self) -> list[dict[str, Any]]:
@@ -507,11 +635,18 @@ class EditorSnapshot:
         rows = []
         for name, definition in sorted(self.checker.type_definitions.items()):
             fields = self.checker.fields_for_type(A.TypeRef(name=name))
-            rows.append({
-                "name": name,
-                "fields": {field: self.checker.format_type(typ) for field, typ in fields.items()} if fields else None,
-                "definition": A.node_to_dict(definition),
-            })
+            rows.append(
+                {
+                    "name": name,
+                    "fields": {
+                        field: self.checker.format_type(typ)
+                        for field, typ in fields.items()
+                    }
+                    if fields
+                    else None,
+                    "definition": A.node_to_dict(definition),
+                }
+            )
         return rows
 
     def rule_summary(self, rule: A.RuleDecl) -> dict[str, Any]:
@@ -562,7 +697,10 @@ class EditorSnapshot:
             symbol = self.checker.types.get(target_type.name)
             if symbol and symbol.node:
                 uri = self.uri_for_symbol(symbol)
-                field_node = self.field_node_for_type(symbol.node, field_name, uri) or symbol.node
+                field_node = (
+                    self.field_node_for_type(symbol.node, field_name, uri)
+                    or symbol.node
+                )
                 return ResolvedTarget(
                     qualified,
                     "field",
@@ -573,7 +711,9 @@ class EditorSnapshot:
                 )
         return None
 
-    def field_node_for_type(self, node: A.Node, field_name: str, uri: str | None) -> A.Node | None:
+    def field_node_for_type(
+        self, node: A.Node, field_name: str, uri: str | None
+    ) -> A.Node | None:
         token = self.find_token_in_node_for_uri(node, field_name, uri)
         return self.node_for_token(token) if token else None
 
@@ -586,17 +726,23 @@ class EditorSnapshot:
     def name_selection_range(self, node: A.Node, name: str) -> dict[str, Any]:
         return self.selection_range_for_node(node, name, self.uri)
 
-    def selection_range_for_node(self, node: A.Node, name: str, uri: str | None) -> dict[str, Any]:
+    def selection_range_for_node(
+        self, node: A.Node, name: str, uri: str | None
+    ) -> dict[str, Any]:
         token = self.find_token_in_node_for_uri(node, local_name(name), uri)
         return self.token_range(token) if token else self.node_range(node)
 
     def find_token_in_node(self, node: A.Node, value: str) -> Token | None:
         for token in self.tokens:
-            if token.value == value and contains_position(node, token.line, token.column):
+            if token.value == value and contains_position(
+                node, token.line, token.column
+            ):
                 return token
         return None
 
-    def find_token_in_node_for_uri(self, node: A.Node, value: str, uri: str | None) -> Token | None:
+    def find_token_in_node_for_uri(
+        self, node: A.Node, value: str, uri: str | None
+    ) -> Token | None:
         if uri is None or uri == self.uri:
             return self.find_token_in_node(node, value)
         text = self.text_for_uri(uri)
@@ -607,7 +753,9 @@ class EditorSnapshot:
         except ParseError:
             return None
         for token in tokens:
-            if token.value == value and contains_position(node, token.line, token.column):
+            if token.value == value and contains_position(
+                node, token.line, token.column
+            ):
                 return token
         return None
 
@@ -628,36 +776,63 @@ class EditorSnapshot:
         source_line = line + 1
         source_column = character + 1
         for idx, token in enumerate(self.tokens):
-            if token.line == source_line and token.column <= source_column < token.end_column:
+            if (
+                token.line == source_line
+                and token.column <= source_column < token.end_column
+            ):
                 return idx
         return None
 
     def qualified_name_at(self, index: int) -> str:
         start = index
         end = index
-        while start >= 2 and self.tokens[start - 1].value == "." and is_name_token(self.tokens[start - 2]):
+        while (
+            start >= 2
+            and self.tokens[start - 1].value == "."
+            and is_name_token(self.tokens[start - 2])
+        ):
             start -= 2
-        while end + 2 < len(self.tokens) and self.tokens[end + 1].value == "." and is_name_token(self.tokens[end + 2]):
+        while (
+            end + 2 < len(self.tokens)
+            and self.tokens[end + 1].value == "."
+            and is_name_token(self.tokens[end + 2])
+        ):
             end += 2
-        return "".join(token.value for token in self.tokens[start:end + 1])
+        return "".join(token.value for token in self.tokens[start : end + 1])
 
     def qualified_name_through(self, index: int) -> str:
         start = index
-        while start >= 2 and self.tokens[start - 1].value == "." and is_name_token(self.tokens[start - 2]):
+        while (
+            start >= 2
+            and self.tokens[start - 1].value == "."
+            and is_name_token(self.tokens[start - 2])
+        ):
             start -= 2
-        return "".join(token.value for token in self.tokens[start:index + 1])
+        return "".join(token.value for token in self.tokens[start : index + 1])
 
     def is_field_position(self, index: int) -> bool:
-        return index >= 2 and self.tokens[index - 1].value == "." and is_name_token(self.tokens[index])
+        return (
+            index >= 2
+            and self.tokens[index - 1].value == "."
+            and is_name_token(self.tokens[index])
+        )
 
     def node_for_token(self, token: Token) -> A.Node:
-        return A.Node(line=token.line, column=token.column, end_line=token.end_line, end_column=token.end_column)
+        return A.Node(
+            line=token.line,
+            column=token.column,
+            end_line=token.end_line,
+            end_column=token.end_column,
+        )
 
     def node_range(self, node: A.Node | None) -> dict[str, Any]:
         if node is None:
             return empty_range()
         return {
-            "start": {"line": max(0, node.line - 1), "character": max(0, node.column - 1)},
+            "start": {
+                "line": max(0, node.line - 1),
+                "character": max(0, node.column - 1),
+            },
             "end": {
                 "line": max(0, (node.end_line or node.line) - 1),
                 "character": max(0, (node.end_column or node.column + 1) - 1),
@@ -678,13 +853,15 @@ def encode_semantic_tokens(tokens: list[SemanticToken]) -> list[int]:
     for token in sorted(tokens, key=lambda item: (item.line, item.column)):
         delta_line = token.line - last_line
         delta_start = token.column - (last_start if delta_line == 0 else 0)
-        encoded.extend([
-            delta_line,
-            delta_start,
-            token.length,
-            SEMANTIC_TOKEN_TYPES.index(token.token_type),
-            modifier_bits(token.modifiers),
-        ])
+        encoded.extend(
+            [
+                delta_line,
+                delta_start,
+                token.length,
+                SEMANTIC_TOKEN_TYPES.index(token.token_type),
+                modifier_bits(token.modifiers),
+            ]
+        )
         last_line = token.line
         last_start = token.column
     return encoded
@@ -711,7 +888,11 @@ def contains_position(node: A.Node, line: int, column: int) -> bool:
 
 
 def is_name_token(token: Token) -> bool:
-    return token.type in {"IDENT", "KEYWORD"} and token.value not in {"module", "import", "open"}
+    return token.type in {"IDENT", "KEYWORD"} and token.value not in {
+        "module",
+        "import",
+        "open",
+    }
 
 
 def path_to_uri(path: str | None) -> str | None:

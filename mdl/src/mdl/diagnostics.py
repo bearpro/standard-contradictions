@@ -36,8 +36,12 @@ class Diagnostic:
         severity_map = {"error": 1, "warning": 2, "information": 3, "hint": 4}
         line = max(0, self.line - 1)
         col = max(0, self.column - 1)
-        end_line = max(0, (self.end_line if self.end_line is not None else self.line) - 1)
-        end_col = max(0, (self.end_column if self.end_column is not None else self.column + 1) - 1)
+        end_line = max(
+            0, (self.end_line if self.end_line is not None else self.line) - 1
+        )
+        end_col = max(
+            0, (self.end_column if self.end_column is not None else self.column + 1) - 1
+        )
         return {
             "range": {
                 "start": {"line": line, "character": col},

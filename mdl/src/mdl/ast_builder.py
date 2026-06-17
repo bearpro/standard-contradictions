@@ -35,10 +35,16 @@ class AstBuilder(MDLVisitor):
     def token_location(self, token: Any) -> tuple[int, int]:
         return int(token.line or 1), int(token.column or 0) + 1
 
-    def apply_span(self, node: A.Node, ctx: Any, *, overwrite_end: bool = False) -> A.Node:
+    def apply_span(
+        self, node: A.Node, ctx: Any, *, overwrite_end: bool = False
+    ) -> A.Node:
         if not overwrite_end and node.end_line and node.end_column:
             return node
-        token = self.last_source_token(ctx) or getattr(ctx, "stop", None) or getattr(ctx, "start", None)
+        token = (
+            self.last_source_token(ctx)
+            or getattr(ctx, "stop", None)
+            or getattr(ctx, "start", None)
+        )
         if token is None:
             return node
         node.end_line, node.end_column = self.token_end_location(token)
@@ -49,7 +55,11 @@ class AstBuilder(MDLVisitor):
         if text is None:
             start = getattr(token, "start", -1)
             stop = getattr(token, "stop", -1)
-            text_length = max(1, int(stop) - int(start) + 1) if start >= 0 and stop >= start else 1
+            text_length = (
+                max(1, int(stop) - int(start) + 1)
+                if start >= 0 and stop >= start
+                else 1
+            )
         else:
             text_length = max(1, len(str(text)))
         return int(token.line or 1), int(token.column or 0) + text_length + 1
@@ -89,7 +99,14 @@ class AstBuilder(MDLVisitor):
     def visitTopItem(self, ctx: MDLParser.TopItemContext) -> tuple[list[str], Any]:
         annotations = self.visit(ctx.annotations())
         for child in ctx.getChildren():
-            if isinstance(child, (MDLParser.ImportDeclContext, MDLParser.OpenDeclContext, MDLParser.DeclarationContext)):
+            if isinstance(
+                child,
+                (
+                    MDLParser.ImportDeclContext,
+                    MDLParser.OpenDeclContext,
+                    MDLParser.DeclarationContext,
+                ),
+            ):
                 return annotations, self.visit(child)
         raise self.error(ctx, "expected top-level item")
 
@@ -102,11 +119,15 @@ class AstBuilder(MDLVisitor):
 
     def visitImportDecl(self, ctx: MDLParser.ImportDeclContext) -> A.ImportDecl:
         line, column = self.location(ctx)
-        return A.ImportDecl(path=self.string_value(ctx.STRING().getText()), line=line, column=column)
+        return A.ImportDecl(
+            path=self.string_value(ctx.STRING().getText()), line=line, column=column
+        )
 
     def visitOpenDecl(self, ctx: MDLParser.OpenDeclContext) -> A.OpenDecl:
         line, column = self.location(ctx)
-        return A.OpenDecl(module=self.visit(ctx.qualifiedName()), line=line, column=column)
+        return A.OpenDecl(
+            module=self.visit(ctx.qualifiedName()), line=line, column=column
+        )
 
     def visitDeclaration(self, ctx: MDLParser.DeclarationContext) -> A.Declaration:
         return self.visit(ctx.getChild(0))
@@ -122,11 +143,17 @@ class AstBuilder(MDLVisitor):
             column=column,
         )
 
-    def visitTypeDefinition(self, ctx: MDLParser.TypeDefinitionContext) -> A.TypeExpr | A.SumType:
+    def visitTypeDefinition(
+        self, ctx: MDLParser.TypeDefinitionContext
+    ) -> A.TypeExpr | A.SumType:
         if ctx.recordType():
             return self.visit(ctx.recordType())
         variants = [self.visit(variant) for variant in ctx.variant()]
-        line, column = self.location(variants[0]) if False else (variants[0].line, variants[0].column)
+        line, column = (
+            self.location(variants[0])
+            if False
+            else (variants[0].line, variants[0].column)
+        )
         return A.SumType(variants=variants, line=line, column=column)
 
     def visitTypeParams(self, ctx: MDLParser.TypeParamsContext) -> list[str]:
@@ -141,10 +168,14 @@ class AstBuilder(MDLVisitor):
         fields = self.visit(ctx.variantFieldList())
         return A.Variant(name=name, fields=fields, line=line, column=column)
 
-    def visitVariantFieldList(self, ctx: MDLParser.VariantFieldListContext) -> list[tuple[str | None, A.TypeExpr]]:
+    def visitVariantFieldList(
+        self, ctx: MDLParser.VariantFieldListContext
+    ) -> list[tuple[str | None, A.TypeExpr]]:
         return [self.visit(field) for field in ctx.variantField()]
 
-    def visitVariantField(self, ctx: MDLParser.VariantFieldContext) -> tuple[str | None, A.TypeExpr]:
+    def visitVariantField(
+        self, ctx: MDLParser.VariantFieldContext
+    ) -> tuple[str | None, A.TypeExpr]:
         if ctx.nameToken():
             return self.visit(ctx.nameToken()), self.visit(ctx.typeExpr())
         return None, self.visit(ctx.typeExpr())
@@ -157,13 +188,17 @@ class AstBuilder(MDLVisitor):
         fields = self.visit(ctx.typeFieldList()) if ctx.typeFieldList() else []
         return A.RecordType(fields=fields, line=line, column=column)
 
-    def visitTypeFieldList(self, ctx: MDLParser.TypeFieldListContext) -> list[tuple[str, A.TypeExpr]]:
+    def visitTypeFieldList(
+        self, ctx: MDLParser.TypeFieldListContext
+    ) -> list[tuple[str, A.TypeExpr]]:
         return [self.visit(field) for field in ctx.typeField()]
 
     def visitTypeField(self, ctx: MDLParser.TypeFieldContext) -> tuple[str, A.TypeExpr]:
         return self.visit(ctx.nameToken()), self.visit(ctx.typeExpr())
 
-    def visitTupleOrParenType(self, ctx: MDLParser.TupleOrParenTypeContext) -> A.TypeExpr:
+    def visitTupleOrParenType(
+        self, ctx: MDLParser.TupleOrParenTypeContext
+    ) -> A.TypeExpr:
         line, column = self.location(ctx)
         items = [self.visit(item) for item in ctx.typeExpr()]
         if not ctx.COMMA():
@@ -175,7 +210,9 @@ class AstBuilder(MDLVisitor):
     def visitTypeRef(self, ctx: MDLParser.TypeRefContext) -> A.TypeRef:
         line, column = self.location(ctx)
         args = self.visit(ctx.typeArgs()) if ctx.typeArgs() else []
-        return A.TypeRef(name=self.visit(ctx.qualifiedName()), args=args, line=line, column=column)
+        return A.TypeRef(
+            name=self.visit(ctx.qualifiedName()), args=args, line=line, column=column
+        )
 
     def visitTypeArgs(self, ctx: MDLParser.TypeArgsContext) -> list[A.TypeExpr]:
         return self.visit(ctx.typeExprList()) if ctx.typeExprList() else []
@@ -200,7 +237,12 @@ class AstBuilder(MDLVisitor):
 
     def visitParam(self, ctx: MDLParser.ParamContext) -> A.Param:
         line, column = self.location(ctx)
-        return A.Param(pattern=self.visit(ctx.pattern()), type_annotation=self.visit(ctx.typeExpr()), line=line, column=column)
+        return A.Param(
+            pattern=self.visit(ctx.pattern()),
+            type_annotation=self.visit(ctx.typeExpr()),
+            line=line,
+            column=column,
+        )
 
     def visitEntityDecl(self, ctx: MDLParser.EntityDeclContext) -> A.EntityDecl:
         line, column = self.location(ctx)
@@ -213,7 +255,9 @@ class AstBuilder(MDLVisitor):
 
     def visitRuleDecl(self, ctx: MDLParser.RuleDeclContext) -> A.RuleDecl:
         line, column = self.location(ctx)
-        strength = self.visit(ctx.ruleStrength()) if ctx.ruleStrength() else "defeasible"
+        strength = (
+            self.visit(ctx.ruleStrength()) if ctx.ruleStrength() else "defeasible"
+        )
         modality, name, antecedent, body = self.visit(ctx.ruleBody())
         otherwise = self.visit(ctx.expr()) if ctx.expr() else None
         return A.RuleDecl(
@@ -230,16 +274,25 @@ class AstBuilder(MDLVisitor):
     def visitRuleStrength(self, ctx: MDLParser.RuleStrengthContext) -> str:
         return ctx.getText()
 
-    def visitRuleBody(self, ctx: MDLParser.RuleBodyContext) -> tuple[str | None, str, A.Expr | None, A.Expr]:
+    def visitRuleBody(
+        self, ctx: MDLParser.RuleBodyContext
+    ) -> tuple[str | None, str, A.Expr | None, A.Expr]:
         modality = self.visit(ctx.deonticMod()) if ctx.deonticMod() else None
         antecedent = None
         if ctx.WHEN():
             antecedent = self.visit(ctx.expr())
-        return modality, self.visit(ctx.ruleQualifiedName()), antecedent, self.block_as_expr(self.visit(ctx.block()))
+        return (
+            modality,
+            self.visit(ctx.ruleQualifiedName()),
+            antecedent,
+            self.block_as_expr(self.visit(ctx.block())),
+        )
 
     def block_as_expr(self, block: A.Block) -> A.Expr:
         if block.result is None:
-            return A.Literal(value=None, kind="unit", line=block.line, column=block.column)
+            return A.Literal(
+                value=None, kind="unit", line=block.line, column=block.column
+            )
         result = block.result
         for stmt in reversed(block.statements):
             result = A.LetExpr(
@@ -259,7 +312,11 @@ class AstBuilder(MDLVisitor):
 
     def visitPriorityDecl(self, ctx: MDLParser.PriorityDeclContext) -> A.PriorityDecl:
         line, column = self.location(ctx)
-        return A.PriorityDecl(chain=[self.visit(name) for name in ctx.qualifiedName()], line=line, column=column)
+        return A.PriorityDecl(
+            chain=[self.visit(name) for name in ctx.qualifiedName()],
+            line=line,
+            column=column,
+        )
 
     def visitFactDecl(self, ctx: MDLParser.FactDeclContext) -> A.FactDecl:
         line, column = self.location(ctx)
@@ -286,7 +343,9 @@ class AstBuilder(MDLVisitor):
         return A.LetStmt(
             pattern=self.visit(ctx.pattern()),
             value=self.visit(ctx.expr()),
-            type_annotation=self.visit(ctx.typeAnnotation()) if ctx.typeAnnotation() else None,
+            type_annotation=self.visit(ctx.typeAnnotation())
+            if ctx.typeAnnotation()
+            else None,
             line=line,
             column=column,
         )
@@ -313,7 +372,13 @@ class AstBuilder(MDLVisitor):
         expr = self.visit(ctx.implication())
         for op_ctx in ctx.temporalUnaryOp():
             line, column = self.location(op_ctx)
-            expr = A.TemporalUnary(op=self.visit(op_ctx), operand=expr, position="postfix", line=line, column=column)
+            expr = A.TemporalUnary(
+                op=self.visit(op_ctx),
+                operand=expr,
+                position="postfix",
+                line=line,
+                column=column,
+            )
         return expr
 
     def visitImplication(self, ctx: MDLParser.ImplicationContext) -> A.Expr:
@@ -321,7 +386,13 @@ class AstBuilder(MDLVisitor):
         if ctx.IMPLIES():
             token = ctx.IMPLIES().symbol
             line, column = self.token_location(token)
-            return A.BinaryOp(op="implies", left=expr, right=self.visit(ctx.implication()), line=line, column=column)
+            return A.BinaryOp(
+                op="implies",
+                left=expr,
+                right=self.visit(ctx.implication()),
+                line=line,
+                column=column,
+            )
         return expr
 
     def visitOrExpr(self, ctx: MDLParser.OrExprContext) -> A.Expr:
@@ -355,9 +426,13 @@ class AstBuilder(MDLVisitor):
                 right = self.visit(operands[operand_index])
                 operand_index += 1
                 if op in TEMPORAL_BINARY:
-                    expr = A.TemporalBinary(op=op, left=expr, right=right, line=line, column=column)
+                    expr = A.TemporalBinary(
+                        op=op, left=expr, right=right, line=line, column=column
+                    )
                 else:
-                    expr = A.BinaryOp(op=op, left=expr, right=right, line=line, column=column)
+                    expr = A.BinaryOp(
+                        op=op, left=expr, right=right, line=line, column=column
+                    )
         return expr
 
     def visitUnary(self, ctx: MDLParser.UnaryContext) -> A.Expr:
@@ -387,7 +462,9 @@ class AstBuilder(MDLVisitor):
             pattern=self.visit(ctx.pattern()),
             value=self.visit(exprs),
             body=self.visit(ctx.letBodyExpr()),
-            type_annotation=self.visit(ctx.typeAnnotation()) if ctx.typeAnnotation() else None,
+            type_annotation=self.visit(ctx.typeAnnotation())
+            if ctx.typeAnnotation()
+            else None,
             line=line,
             column=column,
         )
@@ -397,8 +474,14 @@ class AstBuilder(MDLVisitor):
         arms = self.visit(ctx.caseBody())
         for arm in arms:
             if arm.column <= column:
-                raise ParseError("case arms must be indented deeper than the case expression", arm.line, arm.column)
-        return A.MatchExpr(subject=self.visit(ctx.expr()), arms=arms, line=line, column=column)
+                raise ParseError(
+                    "case arms must be indented deeper than the case expression",
+                    arm.line,
+                    arm.column,
+                )
+        return A.MatchExpr(
+            subject=self.visit(ctx.expr()), arms=arms, line=line, column=column
+        )
 
     def visitCaseBody(self, ctx: MDLParser.CaseBodyContext) -> list[A.MatchArm]:
         arms = [self.visit(arm) for arm in ctx.caseArm()]
@@ -422,7 +505,11 @@ class AstBuilder(MDLVisitor):
             line, column = self.location(suffix)
             if suffix.recordConstructorFields():
                 if not isinstance(expr, A.Name):
-                    raise ParseError("record expressions must use `TypeName { field = value }`", line, column)
+                    raise ParseError(
+                        "record expressions must use `TypeName { field = value }`",
+                        line,
+                        column,
+                    )
                 expr = A.RecordConstructor(
                     type_name=expr.name,
                     fields=self.visit(suffix.recordConstructorFields()),
@@ -433,37 +520,75 @@ class AstBuilder(MDLVisitor):
                 args = self.visit(suffix.exprList()) if suffix.exprList() else []
                 expr = A.Call(func=expr, args=args, line=line, column=column)
             elif suffix.DOT():
-                expr = A.FieldAccess(target=expr, field=self.visit(suffix.nameToken()), line=line, column=column)
+                expr = A.FieldAccess(
+                    target=expr,
+                    field=self.visit(suffix.nameToken()),
+                    line=line,
+                    column=column,
+                )
         return expr
 
-    def visitRecordConstructorFields(self, ctx: MDLParser.RecordConstructorFieldsContext) -> list[tuple[str, A.Expr]]:
-        return self.visit(ctx.recordConstructorFieldList()) if ctx.recordConstructorFieldList() else []
+    def visitRecordConstructorFields(
+        self, ctx: MDLParser.RecordConstructorFieldsContext
+    ) -> list[tuple[str, A.Expr]]:
+        return (
+            self.visit(ctx.recordConstructorFieldList())
+            if ctx.recordConstructorFieldList()
+            else []
+        )
 
-    def visitRecordConstructorFieldList(self, ctx: MDLParser.RecordConstructorFieldListContext) -> list[tuple[str, A.Expr]]:
+    def visitRecordConstructorFieldList(
+        self, ctx: MDLParser.RecordConstructorFieldListContext
+    ) -> list[tuple[str, A.Expr]]:
         return [self.visit(field) for field in ctx.recordConstructorField()]
 
-    def visitRecordConstructorField(self, ctx: MDLParser.RecordConstructorFieldContext) -> tuple[str, A.Expr]:
+    def visitRecordConstructorField(
+        self, ctx: MDLParser.RecordConstructorFieldContext
+    ) -> tuple[str, A.Expr]:
         return self.visit(ctx.nameToken()), self.visit(ctx.expr())
 
     def visitPrimary(self, ctx: MDLParser.PrimaryContext) -> A.Expr:
         line, column = self.location(ctx)
         if ctx.STRING():
-            return A.Literal(value=self.string_value(ctx.STRING().getText()), kind="string", line=line, column=column)
+            return A.Literal(
+                value=self.string_value(ctx.STRING().getText()),
+                kind="string",
+                line=line,
+                column=column,
+            )
         if ctx.INT():
-            return A.Literal(value=int(ctx.INT().getText()), kind="int", line=line, column=column)
+            return A.Literal(
+                value=int(ctx.INT().getText()), kind="int", line=line, column=column
+            )
         if ctx.DECIMAL():
-            return A.Literal(value=float(ctx.DECIMAL().getText()), kind="decimal", line=line, column=column)
+            return A.Literal(
+                value=float(ctx.DECIMAL().getText()),
+                kind="decimal",
+                line=line,
+                column=column,
+            )
         if ctx.RAT():
-            return A.Literal(value=Fraction(ctx.RAT().getText()), kind="rat", line=line, column=column)
+            return A.Literal(
+                value=Fraction(ctx.RAT().getText()),
+                kind="rat",
+                line=line,
+                column=column,
+            )
         if ctx.TRUE() or ctx.FALSE():
-            return A.Literal(value=ctx.getText() == "true", kind="bool", line=line, column=column)
+            return A.Literal(
+                value=ctx.getText() == "true", kind="bool", line=line, column=column
+            )
         if ctx.qualifiedName():
-            return A.Name(name=self.visit(ctx.qualifiedName()), line=line, column=column)
+            return A.Name(
+                name=self.visit(ctx.qualifiedName()), line=line, column=column
+            )
         exprs = ctx.expr()
         if not exprs:
             return A.Literal(value=None, kind="unit", line=line, column=column)
         if ctx.COMMA():
-            return A.TupleLiteral(items=[self.visit(expr) for expr in exprs], line=line, column=column)
+            return A.TupleLiteral(
+                items=[self.visit(expr) for expr in exprs], line=line, column=column
+            )
         expr = self.visit(exprs[0])
         setattr(expr, "_mdl_parenthesized", True)
         return expr
@@ -476,20 +601,43 @@ class AstBuilder(MDLVisitor):
         if ctx.UNDERSCORE():
             return A.WildcardPattern(line=line, column=column)
         if ctx.STRING():
-            return A.LiteralPattern(value=self.string_value(ctx.STRING().getText()), kind="string", line=line, column=column)
+            return A.LiteralPattern(
+                value=self.string_value(ctx.STRING().getText()),
+                kind="string",
+                line=line,
+                column=column,
+            )
         if ctx.INT():
-            return A.LiteralPattern(value=int(ctx.INT().getText()), kind="int", line=line, column=column)
+            return A.LiteralPattern(
+                value=int(ctx.INT().getText()), kind="int", line=line, column=column
+            )
         if ctx.DECIMAL():
-            return A.LiteralPattern(value=float(ctx.DECIMAL().getText()), kind="decimal", line=line, column=column)
+            return A.LiteralPattern(
+                value=float(ctx.DECIMAL().getText()),
+                kind="decimal",
+                line=line,
+                column=column,
+            )
         if ctx.RAT():
-            return A.LiteralPattern(value=Fraction(ctx.RAT().getText()), kind="rat", line=line, column=column)
+            return A.LiteralPattern(
+                value=Fraction(ctx.RAT().getText()),
+                kind="rat",
+                line=line,
+                column=column,
+            )
         if ctx.LBRACE():
-            fields = self.visit(ctx.recordPatternFieldList()) if ctx.recordPatternFieldList() else []
+            fields = (
+                self.visit(ctx.recordPatternFieldList())
+                if ctx.recordPatternFieldList()
+                else []
+            )
             return A.RecordPattern(fields=fields, line=line, column=column)
         if ctx.LPAREN() and ctx.qualifiedName() is None:
             patterns = [self.visit(pattern) for pattern in ctx.pattern()]
             if not patterns:
-                return A.LiteralPattern(value=None, kind="unit", line=line, column=column)
+                return A.LiteralPattern(
+                    value=None, kind="unit", line=line, column=column
+                )
             if ctx.COMMA():
                 return A.TuplePattern(items=patterns, line=line, column=column)
             return patterns[0]
@@ -506,11 +654,17 @@ class AstBuilder(MDLVisitor):
     def visitPatternList(self, ctx: MDLParser.PatternListContext) -> list[A.Pattern]:
         return [self.visit(pattern) for pattern in ctx.pattern()]
 
-    def visitRecordPatternFieldList(self, ctx: MDLParser.RecordPatternFieldListContext) -> list[tuple[str, A.Pattern | None]]:
+    def visitRecordPatternFieldList(
+        self, ctx: MDLParser.RecordPatternFieldListContext
+    ) -> list[tuple[str, A.Pattern | None]]:
         return [self.visit(field) for field in ctx.recordPatternField()]
 
-    def visitRecordPatternField(self, ctx: MDLParser.RecordPatternFieldContext) -> tuple[str, A.Pattern | None]:
-        return self.visit(ctx.nameToken()), self.visit(ctx.pattern()) if ctx.pattern() else None
+    def visitRecordPatternField(
+        self, ctx: MDLParser.RecordPatternFieldContext
+    ) -> tuple[str, A.Pattern | None]:
+        return self.visit(ctx.nameToken()), self.visit(
+            ctx.pattern()
+        ) if ctx.pattern() else None
 
     def visitQualifiedName(self, ctx: MDLParser.QualifiedNameContext) -> str:
         return ".".join(self.visit(name) for name in ctx.nameToken())

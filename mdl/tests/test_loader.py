@@ -30,11 +30,15 @@ fact(pipe == Pipe(length=10, radius=2))
 
 def test_load_module_compiles_mdl_py_to_ast(tmp_path):
     path = tmp_path / "bare.mdl.py"
-    path.write_text(dedent("""
+    path.write_text(
+        dedent("""
         from mdl.dsl import *
 
         flag = entity(Bool)
-    """).strip() + "\n", encoding="utf-8")
+    """).strip()
+        + "\n",
+        encoding="utf-8",
+    )
 
     module = load_module(path)
 

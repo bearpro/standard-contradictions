@@ -250,7 +250,9 @@ def verify_python_dsl_source(
 
     generated = run_python_dsl(source, timeout_seconds=timeout_seconds)
     if not generated["ok"]:
-        return error_result("python-dsl", generated["diagnostics"], input_kind="python-dsl")
+        return error_result(
+            "python-dsl", generated["diagnostics"], input_kind="python-dsl"
+        )
 
     result = verify_mdl_source(
         generated["source"],
@@ -290,12 +292,16 @@ class PythonDslGuard(ast.NodeVisitor):
     def visit_Import(self, node: ast.Import) -> Any:
         for alias in node.names:
             if alias.name not in ALLOWED_PYTHON_IMPORTS:
-                self.report(node, f"import {alias.name!r} is not allowed", "python-dsl-import")
+                self.report(
+                    node, f"import {alias.name!r} is not allowed", "python-dsl-import"
+                )
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> Any:
         if node.level or node.module not in ALLOWED_PYTHON_IMPORTS:
             module = "." * node.level + (node.module or "")
-            self.report(node, f"import from {module!r} is not allowed", "python-dsl-import")
+            self.report(
+                node, f"import from {module!r} is not allowed", "python-dsl-import"
+            )
 
     def visit_Name(self, node: ast.Name) -> Any:
         if node.id.startswith("__") or node.id in BANNED_PYTHON_NAMES:
@@ -303,7 +309,9 @@ class PythonDslGuard(ast.NodeVisitor):
 
     def visit_Attribute(self, node: ast.Attribute) -> Any:
         if node.attr.startswith("__") or node.attr in BANNED_PYTHON_NAMES:
-            self.report(node, f"attribute {node.attr!r} is not allowed", "python-dsl-attribute")
+            self.report(
+                node, f"attribute {node.attr!r} is not allowed", "python-dsl-attribute"
+            )
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> Any:
@@ -314,7 +322,9 @@ class PythonDslGuard(ast.NodeVisitor):
 
     def generic_visit(self, node: ast.AST) -> Any:
         if isinstance(node, BANNED_PYTHON_NODES):
-            self.report(node, f"{node.__class__.__name__} is not allowed", "python-dsl-node")
+            self.report(
+                node, f"{node.__class__.__name__} is not allowed", "python-dsl-node"
+            )
         super().generic_visit(node)
 
     def report(self, node: ast.AST, message: str, code: str) -> None:
@@ -403,7 +413,9 @@ except Exception as exc:
 """
 
 
-def run_python_dsl(source: str, *, timeout_seconds: float = DEFAULT_PYTHON_TIMEOUT) -> dict[str, Any]:
+def run_python_dsl(
+    source: str, *, timeout_seconds: float = DEFAULT_PYTHON_TIMEOUT
+) -> dict[str, Any]:
     try:
         completed = subprocess.run(
             [sys.executable, "-I", "-c", _PYTHON_DSL_RUNNER],
@@ -418,11 +430,17 @@ def run_python_dsl(source: str, *, timeout_seconds: float = DEFAULT_PYTHON_TIMEO
     except subprocess.TimeoutExpired:
         return {
             "ok": False,
-            "diagnostics": [make_diagnostic("Python DSL execution timed out", code="python-dsl-timeout")],
+            "diagnostics": [
+                make_diagnostic(
+                    "Python DSL execution timed out", code="python-dsl-timeout"
+                )
+            ],
         }
 
     if completed.returncode != 0:
-        message = (completed.stderr or completed.stdout or "Python DSL process failed").strip()
+        message = (
+            completed.stderr or completed.stdout or "Python DSL process failed"
+        ).strip()
         return {
             "ok": False,
             "diagnostics": [make_diagnostic(message, code="python-dsl-process-error")],
@@ -432,17 +450,29 @@ def run_python_dsl(source: str, *, timeout_seconds: float = DEFAULT_PYTHON_TIMEO
     except json.JSONDecodeError as exc:
         return {
             "ok": False,
-            "diagnostics": [make_diagnostic(f"Python DSL returned invalid JSON: {exc}", code="python-dsl-process-error")],
+            "diagnostics": [
+                make_diagnostic(
+                    f"Python DSL returned invalid JSON: {exc}",
+                    code="python-dsl-process-error",
+                )
+            ],
         }
     if payload.get("ok"):
         return {"ok": True, "source": payload["source"]}
     return {
         "ok": False,
-        "diagnostics": [make_diagnostic(str(payload.get("error") or "Python DSL failed"), code="python-dsl-error")],
+        "diagnostics": [
+            make_diagnostic(
+                str(payload.get("error") or "Python DSL failed"),
+                code="python-dsl-error",
+            )
+        ],
     }
 
 
-def normalize_documents(documents: list[dict[str, str]], root_logical: str) -> list[tuple[str, str]]:
+def normalize_documents(
+    documents: list[dict[str, str]], root_logical: str
+) -> list[tuple[str, str]]:
     result: list[tuple[str, str]] = []
     seen = {root_logical}
     for index, document in enumerate(documents):
@@ -472,7 +502,9 @@ def validate_logical_path(path: str) -> str:
     return pure.as_posix()
 
 
-def write_workspace(root: Path, root_logical: str, source: str, documents: list[tuple[str, str]]) -> Workspace:
+def write_workspace(
+    root: Path, root_logical: str, source: str, documents: list[tuple[str, str]]
+) -> Workspace:
     path_map: dict[str, str] = {}
     root_file = write_virtual_file(root, root_logical, source, path_map)
     for logical, text in documents:
@@ -480,7 +512,9 @@ def write_workspace(root: Path, root_logical: str, source: str, documents: list[
     return Workspace(root_file=root_file, root_logical=root_logical, path_map=path_map)
 
 
-def write_virtual_file(root: Path, logical: str, source: str, path_map: dict[str, str]) -> Path:
+def write_virtual_file(
+    root: Path, logical: str, source: str, path_map: dict[str, str]
+) -> Path:
     target = root / logical
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(source, encoding="utf-8")
@@ -495,7 +529,9 @@ def remap_paths(value: Any, path_map: dict[str, str]) -> Any:
         return [remap_paths(item, path_map) for item in value]
     if isinstance(value, str):
         text = value
-        for absolute, logical in sorted(path_map.items(), key=lambda item: len(item[0]), reverse=True):
+        for absolute, logical in sorted(
+            path_map.items(), key=lambda item: len(item[0]), reverse=True
+        ):
             text = text.replace(absolute, logical)
         return text
     return value
@@ -505,14 +541,22 @@ def has_errors(diagnostics: list[dict[str, Any]]) -> bool:
     return any(diagnostic.get("severity") == "error" for diagnostic in diagnostics)
 
 
-def summarize(diagnostics: list[dict[str, Any]], solver_payload: dict[str, Any] | None) -> dict[str, Any]:
-    errors = sum(1 for diagnostic in diagnostics if diagnostic.get("severity") == "error")
-    warnings = sum(1 for diagnostic in diagnostics if diagnostic.get("severity") == "warning")
+def summarize(
+    diagnostics: list[dict[str, Any]], solver_payload: dict[str, Any] | None
+) -> dict[str, Any]:
+    errors = sum(
+        1 for diagnostic in diagnostics if diagnostic.get("severity") == "error"
+    )
+    warnings = sum(
+        1 for diagnostic in diagnostics if diagnostic.get("severity") == "warning"
+    )
     return {
         "errors": errors,
         "warnings": warnings,
         "solver_status": solver_payload.get("status") if solver_payload else None,
-        "conflicts": len(solver_payload.get("conflicts") or []) if solver_payload else 0,
+        "conflicts": len(solver_payload.get("conflicts") or [])
+        if solver_payload
+        else 0,
     }
 
 
@@ -525,10 +569,14 @@ def make_diagnostic(
     code: str | None = None,
     path: str | None = None,
 ) -> dict[str, Any]:
-    return Diagnostic(message, line=line, column=column, severity=severity, code=code, path=path).to_dict()
+    return Diagnostic(
+        message, line=line, column=column, severity=severity, code=code, path=path
+    ).to_dict()
 
 
-def error_result(phase: str, diagnostics: list[dict[str, Any]], *, input_kind: str) -> dict[str, Any]:
+def error_result(
+    phase: str, diagnostics: list[dict[str, Any]], *, input_kind: str
+) -> dict[str, Any]:
     return {
         "ok": False,
         "input_kind": input_kind,
@@ -546,16 +594,22 @@ def read_resource_text(name: str) -> str:
     return files("mdl_mcp").joinpath("resources", name).read_text(encoding="utf-8")
 
 
-def run_mcp_server(transport: McpTransport = "stdio", host: str = "127.0.0.1", port: int = 8000) -> int:
+def run_mcp_server(
+    transport: McpTransport = "stdio", host: str = "127.0.0.1", port: int = 8000
+) -> int:
     server = create_mcp_server(host=host, port=port)
     server.run(transport=transport)
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="mdl-mcp", description="MDL MCP verification server")
+    parser = argparse.ArgumentParser(
+        prog="mdl-mcp", description="MDL MCP verification server"
+    )
     parser.add_argument("--version", action="version", version=f"mdl-mcp {__version__}")
-    parser.add_argument("--transport", choices=["stdio", "streamable-http"], default="stdio")
+    parser.add_argument(
+        "--transport", choices=["stdio", "streamable-http"], default="stdio"
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     return parser

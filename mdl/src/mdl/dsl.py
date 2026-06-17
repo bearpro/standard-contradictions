@@ -63,8 +63,14 @@ class PythonDslError(ValueError):
         self.line = line if line is not None else getattr(node, "lineno", None)
         raw_column = column if column is not None else getattr(node, "col_offset", None)
         self.column = None if raw_column is None else raw_column + 1
-        self.end_line = end_line if end_line is not None else getattr(node, "end_lineno", None)
-        raw_end_column = end_column if end_column is not None else getattr(node, "end_col_offset", None)
+        self.end_line = (
+            end_line if end_line is not None else getattr(node, "end_lineno", None)
+        )
+        raw_end_column = (
+            end_column
+            if end_column is not None
+            else getattr(node, "end_col_offset", None)
+        )
         self.end_column = None if raw_end_column is None else raw_end_column + 1
         if self.line is None:
             super().__init__(f"{filename}: {message}")
@@ -102,11 +108,15 @@ class _RuntimeExpr:
     def __getattr__(self, name: str) -> _RuntimeExpr:  # pragma: no cover - convenience
         return _RuntimeExpr(f"{self.label}.{name}")
 
-    def __call__(self, *args: object, **kwargs: object) -> _RuntimeExpr:  # pragma: no cover
+    def __call__(
+        self, *args: object, **kwargs: object
+    ) -> _RuntimeExpr:  # pragma: no cover
         return _RuntimeExpr(f"{self.label}(...)")
 
     def __bool__(self) -> bool:  # pragma: no cover - defensive runtime guard
-        raise TypeError("MDL DSL expressions are compiled statically; use '&' or compile_source(), not Python truthiness")
+        raise TypeError(
+            "MDL DSL expressions are compiled statically; use '&' or compile_source(), not Python truthiness"
+        )
 
     def _binary(self, other: object, op: str) -> _RuntimeExpr:  # pragma: no cover
         return _RuntimeExpr(f"({self.label} {op} {other!r})")
@@ -344,7 +354,9 @@ class _Compiler:
         if isinstance(stmt, py_ast.AnnAssign):
             self._assign_decl([stmt.target], stmt.value, stmt.annotation, stmt)
             return
-        raise self._error(f"unsupported top-level statement {type(stmt).__name__}", stmt)
+        raise self._error(
+            f"unsupported top-level statement {type(stmt).__name__}", stmt
+        )
 
     def _top_level_call(self, call: py_ast.Call) -> None:
         name = self._call_name(call)
@@ -360,12 +372,16 @@ class _Compiler:
         if name == "import_":
             self._expect_arg_count(call, 1)
             self._expect_no_keywords(call)
-            self.module.imports.append(self._mark(A.ImportDecl(path=self._string_or_name(call.args[0])), call))
+            self.module.imports.append(
+                self._mark(A.ImportDecl(path=self._string_or_name(call.args[0])), call)
+            )
             return
         if name == "open_":
             self._expect_arg_count(call, 1)
             self._expect_no_keywords(call)
-            self.module.opens.append(self._mark(A.OpenDecl(module=self._string_or_name(call.args[0])), call))
+            self.module.opens.append(
+                self._mark(A.OpenDecl(module=self._string_or_name(call.args[0])), call)
+            )
             return
         if name == "fact":
             self.module.declarations.append(self._fact_decl(call))
@@ -375,30 +391,47 @@ class _Compiler:
     def _class_decl(self, stmt: py_ast.ClassDef) -> None:
         decorator = self._decorator(stmt.decorator_list, "record")
         if decorator is None:
-            raise self._error("classes in MDL Python DSL must be decorated with @record", stmt)
+            raise self._error(
+                "classes in MDL Python DSL must be decorated with @record", stmt
+            )
         if isinstance(decorator, py_ast.Call):
             self._expect_known_keywords(decorator, {"name"})
             if len(decorator.args) > 1:
-                raise self._error("@record accepts at most one name argument", decorator)
+                raise self._error(
+                    "@record accepts at most one name argument", decorator
+                )
         type_name = self._decorator_name_override(decorator, default=stmt.name)
         fields: list[tuple[str, A.TypeExpr]] = []
         for item in self._without_docstring(stmt.body):
             if isinstance(item, py_ast.Pass):
                 continue
-            if not isinstance(item, py_ast.AnnAssign) or not isinstance(item.target, py_ast.Name):
-                raise self._error("record classes may only contain annotated fields", item)
+            if not isinstance(item, py_ast.AnnAssign) or not isinstance(
+                item.target, py_ast.Name
+            ):
+                raise self._error(
+                    "record classes may only contain annotated fields", item
+                )
             if item.value is not None:
                 raise self._error("record fields do not support default values", item)
             fields.append((item.target.id, self._type_expr(item.annotation)))
         self.record_types.add(type_name)
-        self.module.declarations.append(self._mark(
-            A.TypeDecl(name=type_name, definition=self._mark(A.RecordType(fields=fields), stmt)),
-            stmt,
-        ))
+        self.module.declarations.append(
+            self._mark(
+                A.TypeDecl(
+                    name=type_name,
+                    definition=self._mark(A.RecordType(fields=fields), stmt),
+                ),
+                stmt,
+            )
+        )
 
-    def _function_like_decl(self, stmt: py_ast.FunctionDef | py_ast.AsyncFunctionDef) -> None:
+    def _function_like_decl(
+        self, stmt: py_ast.FunctionDef | py_ast.AsyncFunctionDef
+    ) -> None:
         if isinstance(stmt, py_ast.AsyncFunctionDef):
-            raise self._error("async functions are not supported in MDL Python DSL", stmt)
+            raise self._error(
+                "async functions are not supported in MDL Python DSL", stmt
+            )
 
         entity_decorator = self._decorator(stmt.decorator_list, "entity")
         if entity_decorator is not None:
@@ -420,70 +453,122 @@ class _Compiler:
             self._func_decl(stmt, return_fallback=None)
             return
 
-        raise self._error("functions in MDL Python DSL must use @rule, @predicate, @function, or @entity", stmt)
+        raise self._error(
+            "functions in MDL Python DSL must use @rule, @predicate, @function, or @entity",
+            stmt,
+        )
 
-    def _entity_function_decl(self, stmt: py_ast.FunctionDef, decorator: py_ast.expr) -> None:
-        if stmt.args.args or stmt.args.kwonlyargs or stmt.args.vararg or stmt.args.kwarg:
+    def _entity_function_decl(
+        self, stmt: py_ast.FunctionDef, decorator: py_ast.expr
+    ) -> None:
+        if (
+            stmt.args.args
+            or stmt.args.kwonlyargs
+            or stmt.args.vararg
+            or stmt.args.kwarg
+        ):
             raise self._error("@entity functions must not declare parameters", stmt)
         if isinstance(decorator, py_ast.Call):
             self._expect_no_keywords(decorator)
             if len(decorator.args) != 1:
-                raise self._error("@entity requires exactly one type argument", decorator)
+                raise self._error(
+                    "@entity requires exactly one type argument", decorator
+                )
         type_annotation = self._decorator_first_type_arg(decorator)
-        self.module.declarations.append(self._mark(A.EntityDecl(name=stmt.name, type_annotation=type_annotation), stmt))
+        self.module.declarations.append(
+            self._mark(
+                A.EntityDecl(name=stmt.name, type_annotation=type_annotation), stmt
+            )
+        )
 
     def _rule_decl(self, stmt: py_ast.FunctionDef, decorator: py_ast.expr) -> None:
         if isinstance(decorator, py_ast.Call):
-            self._expect_known_keywords(decorator, {"antecedent", "modality", "name", "otherwise", "strength", "when"})
+            self._expect_known_keywords(
+                decorator,
+                {"antecedent", "modality", "name", "otherwise", "strength", "when"},
+            )
             if len(decorator.args) > 1:
-                raise self._error("@rule accepts at most one positional modality argument", decorator)
-        if stmt.args.args or stmt.args.kwonlyargs or stmt.args.vararg or stmt.args.kwarg:
+                raise self._error(
+                    "@rule accepts at most one positional modality argument", decorator
+                )
+        if (
+            stmt.args.args
+            or stmt.args.kwonlyargs
+            or stmt.args.vararg
+            or stmt.args.kwarg
+        ):
             raise self._error("@rule functions must not declare parameters", stmt)
         block = self._block_from_body(stmt.body)
         if block.result is None:
             raise self._error("@rule functions must return an expression", stmt)
         name = self._decorator_string_keyword(decorator, "name", default=stmt.name)
         modality = self._rule_modality(decorator)
-        strength = self._decorator_string_keyword(decorator, "strength", default="defeasible")
-        antecedent = self._decorator_expr_keyword(decorator, "when") or self._decorator_expr_keyword(decorator, "antecedent")
+        strength = self._decorator_string_keyword(
+            decorator, "strength", default="defeasible"
+        )
+        antecedent = self._decorator_expr_keyword(
+            decorator, "when"
+        ) or self._decorator_expr_keyword(decorator, "antecedent")
         otherwise = self._decorator_expr_keyword(decorator, "otherwise")
-        self.module.declarations.append(self._mark(
-            A.RuleDecl(
-                name=name,
-                modality=modality,
-                body=self._block_as_expr(block),
-                antecedent=antecedent,
-                otherwise=otherwise,
-                strength=strength,
-            ),
-            stmt,
-        ))
+        self.module.declarations.append(
+            self._mark(
+                A.RuleDecl(
+                    name=name,
+                    modality=modality,
+                    body=self._block_as_expr(block),
+                    antecedent=antecedent,
+                    otherwise=otherwise,
+                    strength=strength,
+                ),
+                stmt,
+            )
+        )
 
-    def _func_decl(self, stmt: py_ast.FunctionDef, return_fallback: A.TypeExpr | None) -> None:
+    def _func_decl(
+        self, stmt: py_ast.FunctionDef, return_fallback: A.TypeExpr | None
+    ) -> None:
         params: list[A.Param] = []
         for arg in stmt.args.args:
             if arg.annotation is None:
-                raise self._error(f"parameter {arg.arg!r} must have a type annotation", arg)
+                raise self._error(
+                    f"parameter {arg.arg!r} must have a type annotation", arg
+                )
             params.append(
-                self._mark(A.Param(
-                    pattern=self._mark(A.VarPattern(name=arg.arg), arg),
-                    type_annotation=self._type_expr(arg.annotation),
-                ), arg)
+                self._mark(
+                    A.Param(
+                        pattern=self._mark(A.VarPattern(name=arg.arg), arg),
+                        type_annotation=self._type_expr(arg.annotation),
+                    ),
+                    arg,
+                )
             )
-        if stmt.args.posonlyargs or stmt.args.kwonlyargs or stmt.args.vararg or stmt.args.kwarg:
+        if (
+            stmt.args.posonlyargs
+            or stmt.args.kwonlyargs
+            or stmt.args.vararg
+            or stmt.args.kwarg
+        ):
             raise self._error("only positional function parameters are supported", stmt)
-        return_type = self._type_expr(stmt.returns) if stmt.returns is not None else return_fallback
+        return_type = (
+            self._type_expr(stmt.returns)
+            if stmt.returns is not None
+            else return_fallback
+        )
         if return_type is None:
-            raise self._error("@function declarations must have a return type annotation", stmt)
-        self.module.declarations.append(self._mark(
-            A.FuncDecl(
-                name=stmt.name,
-                params=params,
-                return_type=return_type,
-                body=self._block_from_body(stmt.body),
-            ),
-            stmt,
-        ))
+            raise self._error(
+                "@function declarations must have a return type annotation", stmt
+            )
+        self.module.declarations.append(
+            self._mark(
+                A.FuncDecl(
+                    name=stmt.name,
+                    params=params,
+                    return_type=return_type,
+                    body=self._block_from_body(stmt.body),
+                ),
+                stmt,
+            )
+        )
 
     def _assign_decl(
         self,
@@ -499,9 +584,16 @@ class _Compiler:
         target_name = targets[0].id
         if isinstance(value, py_ast.Call) and self._call_name(value) == "entity":
             type_annotation = self._entity_type_from_call(value, annotation)
-            self.module.declarations.append(self._mark(A.EntityDecl(name=target_name, type_annotation=type_annotation), stmt))
+            self.module.declarations.append(
+                self._mark(
+                    A.EntityDecl(name=target_name, type_annotation=type_annotation),
+                    stmt,
+                )
+            )
             return
-        raise self._error("top-level assignments only support entity(...) declarations", stmt)
+        raise self._error(
+            "top-level assignments only support entity(...) declarations", stmt
+        )
 
     def _fact_decl(self, call: py_ast.Call) -> A.FactDecl:
         self._expect_known_keywords(call, {"value"})
@@ -520,21 +612,33 @@ class _Compiler:
                 continue
             if isinstance(stmt, py_ast.Return):
                 if result is not None:
-                    raise self._error("function body has more than one result expression", stmt)
-                result = self._expr(stmt.value) if stmt.value is not None else A.Literal(value=None, kind="unit")
+                    raise self._error(
+                        "function body has more than one result expression", stmt
+                    )
+                result = (
+                    self._expr(stmt.value)
+                    if stmt.value is not None
+                    else A.Literal(value=None, kind="unit")
+                )
                 continue
             if isinstance(stmt, py_ast.Assign):
                 statements.append(self._let_stmt(stmt.targets, stmt.value, None, stmt))
                 continue
             if isinstance(stmt, py_ast.AnnAssign):
-                statements.append(self._let_stmt([stmt.target], stmt.value, stmt.annotation, stmt))
+                statements.append(
+                    self._let_stmt([stmt.target], stmt.value, stmt.annotation, stmt)
+                )
                 continue
             if isinstance(stmt, py_ast.If):
                 if result is not None:
-                    raise self._error("if statement cannot appear after the result expression", stmt)
+                    raise self._error(
+                        "if statement cannot appear after the result expression", stmt
+                    )
                 result = self._if_stmt_expr(stmt)
                 continue
-            raise self._error(f"unsupported statement in function body: {type(stmt).__name__}", stmt)
+            raise self._error(
+                f"unsupported statement in function body: {type(stmt).__name__}", stmt
+            )
         return A.Block(statements=statements, result=result)
 
     def _let_stmt(
@@ -548,23 +652,37 @@ class _Compiler:
             raise self._error("local assignments must target a single name", stmt)
         if value is None:
             raise self._error("local annotations must also assign a value", stmt)
-        return self._mark(A.LetStmt(
-            pattern=self._mark(A.VarPattern(name=targets[0].id), targets[0]),
-            value=self._expr(value),
-            type_annotation=self._type_expr(annotation) if annotation is not None else None,
-        ), stmt)
+        return self._mark(
+            A.LetStmt(
+                pattern=self._mark(A.VarPattern(name=targets[0].id), targets[0]),
+                value=self._expr(value),
+                type_annotation=self._type_expr(annotation)
+                if annotation is not None
+                else None,
+            ),
+            stmt,
+        )
 
     def _if_stmt_expr(self, stmt: py_ast.If) -> A.IfExpr:
         then_expr = self._single_result_block(stmt.body, stmt)
         else_expr = self._single_result_block(stmt.orelse, stmt)
-        return self._mark(A.IfExpr(condition=self._expr(stmt.test), then_branch=then_expr, else_branch=else_expr), stmt)
+        return self._mark(
+            A.IfExpr(
+                condition=self._expr(stmt.test),
+                then_branch=then_expr,
+                else_branch=else_expr,
+            ),
+            stmt,
+        )
 
     def _single_result_block(self, body: list[py_ast.stmt], stmt: py_ast.If) -> A.Expr:
         if len(body) == 1 and isinstance(body[0], py_ast.Return):
             return self._expr(body[0].value)
         if len(body) == 1 and isinstance(body[0], py_ast.If):
             return self._if_stmt_expr(body[0])
-        raise self._error("if statement branches must contain a single return or nested if", stmt)
+        raise self._error(
+            "if statement branches must contain a single return or nested if", stmt
+        )
 
     def _block_as_expr(self, block: A.Block) -> A.Expr:
         if block.result is None:
@@ -590,7 +708,9 @@ class _Compiler:
         if isinstance(node, py_ast.Name):
             return self._mark(A.Name(name=node.id), node)
         if isinstance(node, py_ast.Attribute):
-            return self._mark(A.FieldAccess(target=self._expr(node.value), field=node.attr), node)
+            return self._mark(
+                A.FieldAccess(target=self._expr(node.value), field=node.attr), node
+            )
         if isinstance(node, py_ast.Call):
             return self._call_expr(node)
         if isinstance(node, py_ast.BoolOp):
@@ -602,17 +722,24 @@ class _Compiler:
         if isinstance(node, py_ast.UnaryOp):
             return self._unary_expr(node)
         if isinstance(node, py_ast.IfExp):
-            return self._mark(A.IfExpr(
-                condition=self._expr(node.test),
-                then_branch=self._expr(node.body),
-                else_branch=self._expr(node.orelse),
-            ), node)
+            return self._mark(
+                A.IfExpr(
+                    condition=self._expr(node.test),
+                    then_branch=self._expr(node.body),
+                    else_branch=self._expr(node.orelse),
+                ),
+                node,
+            )
         if isinstance(node, py_ast.Tuple):
             if len(node.elts) == 0:
                 return self._mark(A.Literal(value=None, kind="unit"), node)
             if len(node.elts) == 1:
-                raise self._error("single-item tuple literals are not valid MDL values", node)
-            return self._mark(A.TupleLiteral(items=[self._expr(item) for item in node.elts]), node)
+                raise self._error(
+                    "single-item tuple literals are not valid MDL values", node
+                )
+            return self._mark(
+                A.TupleLiteral(items=[self._expr(item) for item in node.elts]), node
+            )
         raise self._error(f"unsupported expression {type(node).__name__}", node)
 
     def _literal(self, node: py_ast.Constant) -> A.Literal:
@@ -634,23 +761,57 @@ class _Compiler:
         if name in _TEMPORAL_UNARY:
             self._expect_arg_count(node, 1)
             self._expect_no_keywords(node)
-            return self._mark(A.TemporalUnary(op=_TEMPORAL_UNARY[name], operand=self._expr(node.args[0]), position="postfix"), node)
+            return self._mark(
+                A.TemporalUnary(
+                    op=_TEMPORAL_UNARY[name],
+                    operand=self._expr(node.args[0]),
+                    position="postfix",
+                ),
+                node,
+            )
         if name == "until":
             self._expect_arg_count(node, 2)
             self._expect_no_keywords(node)
-            return self._mark(A.TemporalBinary(op="until", left=self._expr(node.args[0]), right=self._expr(node.args[1])), node)
+            return self._mark(
+                A.TemporalBinary(
+                    op="until",
+                    left=self._expr(node.args[0]),
+                    right=self._expr(node.args[1]),
+                ),
+                node,
+            )
         if name == "implies":
             self._expect_arg_count(node, 2)
             self._expect_no_keywords(node)
-            return self._mark(A.BinaryOp(op="implies", left=self._expr(node.args[0]), right=self._expr(node.args[1])), node)
+            return self._mark(
+                A.BinaryOp(
+                    op="implies",
+                    left=self._expr(node.args[0]),
+                    right=self._expr(node.args[1]),
+                ),
+                node,
+            )
         if self._is_record_constructor(node):
-            return self._mark(A.RecordConstructor(
-                type_name=self._qualified_name(node.func),
-                fields=[(kw.arg or self._raise_keyword_error(kw), self._expr(kw.value)) for kw in node.keywords],
-            ), node)
+            return self._mark(
+                A.RecordConstructor(
+                    type_name=self._qualified_name(node.func),
+                    fields=[
+                        (kw.arg or self._raise_keyword_error(kw), self._expr(kw.value))
+                        for kw in node.keywords
+                    ],
+                ),
+                node,
+            )
         if node.keywords:
-            raise self._error("ordinary function calls do not support keyword arguments", node)
-        return self._mark(A.Call(func=self._expr(node.func), args=[self._expr(arg) for arg in node.args]), node)
+            raise self._error(
+                "ordinary function calls do not support keyword arguments", node
+            )
+        return self._mark(
+            A.Call(
+                func=self._expr(node.func), args=[self._expr(arg) for arg in node.args]
+            ),
+            node,
+        )
 
     def _bool_expr(self, node: py_ast.BoolOp) -> A.Expr:
         op = "and" if isinstance(node.op, py_ast.And) else "or"
@@ -658,14 +819,21 @@ class _Compiler:
             raise self._error("boolean operations must have at least two values", node)
         result = self._expr(node.values[0])
         for value in node.values[1:]:
-            result = self._mark(A.BinaryOp(op=op, left=result, right=self._expr(value)), node)
+            result = self._mark(
+                A.BinaryOp(op=op, left=result, right=self._expr(value)), node
+            )
         return result
 
     def _binary_expr(self, node: py_ast.BinOp) -> A.BinaryOp:
         op = _BINARY_OPS.get(type(node.op))
         if op is None:
-            raise self._error(f"unsupported binary operator {type(node.op).__name__}", node)
-        return self._mark(A.BinaryOp(op=op, left=self._expr(node.left), right=self._expr(node.right)), node)
+            raise self._error(
+                f"unsupported binary operator {type(node.op).__name__}", node
+            )
+        return self._mark(
+            A.BinaryOp(op=op, left=self._expr(node.left), right=self._expr(node.right)),
+            node,
+        )
 
     def _compare_expr(self, node: py_ast.Compare) -> A.Expr:
         left = node.left
@@ -673,17 +841,28 @@ class _Compiler:
         for op_node, right in zip(node.ops, node.comparators, strict=True):
             op = _COMPARE_OPS.get(type(op_node))
             if op is None:
-                raise self._error(f"unsupported comparison operator {type(op_node).__name__}", node)
-            comparisons.append(self._mark(A.BinaryOp(op=op, left=self._expr(left), right=self._expr(right)), node))
+                raise self._error(
+                    f"unsupported comparison operator {type(op_node).__name__}", node
+                )
+            comparisons.append(
+                self._mark(
+                    A.BinaryOp(op=op, left=self._expr(left), right=self._expr(right)),
+                    node,
+                )
+            )
             left = right
         result = comparisons[0]
         for comparison in comparisons[1:]:
-            result = self._mark(A.BinaryOp(op="and", left=result, right=comparison), node)
+            result = self._mark(
+                A.BinaryOp(op="and", left=result, right=comparison), node
+            )
         return result
 
     def _unary_expr(self, node: py_ast.UnaryOp) -> A.Expr:
         if isinstance(node.op, py_ast.Not):
-            return self._mark(A.UnaryOp(op="not", operand=self._expr(node.operand)), node)
+            return self._mark(
+                A.UnaryOp(op="not", operand=self._expr(node.operand)), node
+            )
         if isinstance(node.op, py_ast.USub):
             return self._mark(A.UnaryOp(op="-", operand=self._expr(node.operand)), node)
         if isinstance(node.op, py_ast.UAdd):
@@ -700,10 +879,20 @@ class _Compiler:
         if isinstance(node, py_ast.Constant) and isinstance(node.value, str):
             return coerce_type(node.value)
         if isinstance(node, py_ast.Tuple):
-            return self._mark(A.TupleType(items=[self._type_expr(item) for item in node.elts]), node)
+            return self._mark(
+                A.TupleType(items=[self._type_expr(item) for item in node.elts]), node
+            )
         if isinstance(node, py_ast.Subscript):
             name = self._type_name(node.value)
-            return self._mark(A.TypeRef(name=name, args=[self._type_expr(arg) for arg in self._subscript_args(node.slice)]), node)
+            return self._mark(
+                A.TypeRef(
+                    name=name,
+                    args=[
+                        self._type_expr(arg) for arg in self._subscript_args(node.slice)
+                    ],
+                ),
+                node,
+            )
         raise self._error(f"unsupported type expression {type(node).__name__}", node)
 
     def _subscript_args(self, node: py_ast.expr) -> list[py_ast.expr]:
@@ -718,14 +907,18 @@ class _Compiler:
             return self._qualified_name(node)
         raise self._error(f"unsupported generic type name {type(node).__name__}", node)
 
-    def _entity_type_from_call(self, call: py_ast.Call, annotation: py_ast.expr | None) -> A.TypeExpr:
+    def _entity_type_from_call(
+        self, call: py_ast.Call, annotation: py_ast.expr | None
+    ) -> A.TypeExpr:
         if len(call.args) > 1:
             raise self._error("entity() accepts at most one type argument", call)
         if call.args:
             return self._type_expr(call.args[0])
         if annotation is not None:
             return self._type_expr(annotation)
-        raise self._error("entity() requires a type argument or annotated assignment", call)
+        raise self._error(
+            "entity() requires a type argument or annotated assignment", call
+        )
 
     def _is_record_constructor(self, node: py_ast.Call) -> bool:
         if not node.keywords:
@@ -757,21 +950,27 @@ class _Compiler:
                 return self._string_or_name(name)
         return default
 
-    def _decorator_string_keyword(self, decorator: py_ast.expr, keyword: str, default: str) -> str:
+    def _decorator_string_keyword(
+        self, decorator: py_ast.expr, keyword: str, default: str
+    ) -> str:
         if isinstance(decorator, py_ast.Call):
             value_node = self._keyword(decorator, keyword)
             if value_node is not None:
                 return self._string_or_name(value_node)
         return default
 
-    def _decorator_expr_keyword(self, decorator: py_ast.expr, keyword: str) -> A.Expr | None:
+    def _decorator_expr_keyword(
+        self, decorator: py_ast.expr, keyword: str
+    ) -> A.Expr | None:
         if isinstance(decorator, py_ast.Call):
             value_node = self._keyword(decorator, keyword)
             if value_node is not None:
                 return self._expr(value_node)
         return None
 
-    def _decorator(self, decorators: list[py_ast.expr], name: str) -> py_ast.expr | None:
+    def _decorator(
+        self, decorators: list[py_ast.expr], name: str
+    ) -> py_ast.expr | None:
         for decorator in decorators:
             if self._decorator_base_name(decorator) == name:
                 return decorator
@@ -818,7 +1017,9 @@ class _Compiler:
                 raise self._error("**kwargs are not supported", call)
             if keyword.arg not in allowed:
                 name = self._call_name(call) or "call"
-                raise self._error(f"{name}() does not accept keyword argument {keyword.arg!r}", call)
+                raise self._error(
+                    f"{name}() does not accept keyword argument {keyword.arg!r}", call
+                )
 
     def _string_or_name(self, node: py_ast.expr) -> str:
         if isinstance(node, py_ast.Constant) and isinstance(node.value, str):
@@ -840,16 +1041,24 @@ class _Compiler:
         return body
 
     def _is_docstring(self, stmt: py_ast.stmt) -> bool:
-        return isinstance(stmt, py_ast.Expr) and isinstance(stmt.value, py_ast.Constant) and isinstance(stmt.value.value, str)
+        return (
+            isinstance(stmt, py_ast.Expr)
+            and isinstance(stmt.value, py_ast.Constant)
+            and isinstance(stmt.value.value, str)
+        )
 
     def _raise_keyword_error(self, keyword: py_ast.keyword) -> str:
-        raise self._error("**kwargs are not supported in record constructors", keyword.value)
+        raise self._error(
+            "**kwargs are not supported in record constructors", keyword.value
+        )
 
     def _error(self, message: str, node: py_ast.AST | None = None) -> PythonDslError:
         return PythonDslError(message, node=node, filename=self.filename)
 
 
-def compile_source(source: str, filename: str = "<dsl>", default_module_name: str = "model") -> A.Module:
+def compile_source(
+    source: str, filename: str = "<dsl>", default_module_name: str = "model"
+) -> A.Module:
     """Compile Python DSL source into the canonical MDL AST.
 
     The compiler is static and intentionally accepts only a safe, declarative subset of
@@ -857,7 +1066,9 @@ def compile_source(source: str, filename: str = "<dsl>", default_module_name: st
     `@function`/`@predicate` functions, `@rule(...)` functions, and `fact(...)` calls.
     """
 
-    return _Compiler(filename=filename, default_module_name=default_module_name).compile(source)
+    return _Compiler(
+        filename=filename, default_module_name=default_module_name
+    ).compile(source)
 
 
 def compile_file(path: str | Path) -> A.Module:
@@ -869,12 +1080,18 @@ def compile_file(path: str | Path) -> A.Module:
     )
 
 
-def to_source(source: str, filename: str = "<dsl>", default_module_name: str = "model") -> str:
-    return format_module(compile_source(source, filename=filename, default_module_name=default_module_name))
+def to_source(
+    source: str, filename: str = "<dsl>", default_module_name: str = "model"
+) -> str:
+    return format_module(
+        compile_source(
+            source, filename=filename, default_module_name=default_module_name
+        )
+    )
 
 
 def _default_module_name(path: str | Path) -> str:
     name = Path(path).name
     if name.endswith(".mdl.py"):
-        return name[:-len(".mdl.py")] or "model"
+        return name[: -len(".mdl.py")] or "model"
     return Path(name).stem or "model"

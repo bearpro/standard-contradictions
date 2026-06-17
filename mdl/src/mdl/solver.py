@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:  # pragma: no cover
     import z3
+
     z3_import_error: BaseException | None = None
 else:
     try:  # pragma: no cover - exercised in environments without the optional wheel
@@ -187,7 +188,9 @@ def read_module(path: Path) -> A.Module:
     return load_module(path)
 
 
-def solve_paths(paths: Iterable[str | Path], options: SolveOptions | None = None) -> dict[str, Any]:
+def solve_paths(
+    paths: Iterable[str | Path], options: SolveOptions | None = None
+) -> dict[str, Any]:
     opts = options or SolveOptions()
     path_list = [Path(p) for p in paths]
     diagnostics: list[Diagnostic] = []
@@ -200,7 +203,9 @@ def solve_paths(paths: Iterable[str | Path], options: SolveOptions | None = None
         except PythonDslError as exc:
             diagnostics.append(exc.to_diagnostic(str(path)))
         except OSError as exc:
-            diagnostics.append(Diagnostic(str(exc), severity="error", code="io-error", path=str(path)))
+            diagnostics.append(
+                Diagnostic(str(exc), severity="error", code="io-error", path=str(path))
+            )
     if diagnostics:
         return error_payload(diagnostics)
     modules = collect_imported_modules(modules, opts.stdlib_path)
@@ -217,14 +222,23 @@ def collect_imported_modules(
     for resolved in resolver.stdlib_modules().values():
         if resolved.module.name not in seen_modules:
             seen_modules.add(resolved.module.name)
-            result.append((resolved.module, Path(resolved.path) if resolved.path else Path("<stdlib>")))
+            result.append(
+                (
+                    resolved.module,
+                    Path(resolved.path) if resolved.path else Path("<stdlib>"),
+                )
+            )
     queue = list(result)
     while queue:
         module, path = queue.pop(0)
         resolver = ImportResolver(str(path), stdlib_path=stdlib_path)
         for imp in module.imports:
             resolved = resolver.resolve(imp.path, str(path))
-            if resolved is None or resolved.module.name in seen_modules or resolved.path is None:
+            if (
+                resolved is None
+                or resolved.module.name in seen_modules
+                or resolved.path is None
+            ):
                 continue
             resolved_path = Path(resolved.path)
             seen_modules.add(resolved.module.name)
@@ -234,23 +248,52 @@ def collect_imported_modules(
     return result
 
 
-def solve_modules(modules: list[A.Module], options: SolveOptions | None = None, *, paths: list[Path] | None = None) -> dict[str, Any]:
+def solve_modules(
+    modules: list[A.Module],
+    options: SolveOptions | None = None,
+    *,
+    paths: list[Path] | None = None,
+) -> dict[str, Any]:
     if z3_import_error is not None:
-        return error_payload([Diagnostic(
-            f"z3-solver is not available: {z3_import_error}",
-            severity="error",
-            code="z3-unavailable",
-        )])
+        return error_payload(
+            [
+                Diagnostic(
+                    f"z3-solver is not available: {z3_import_error}",
+                    severity="error",
+                    code="z3-unavailable",
+                )
+            ]
+        )
     opts = options or SolveOptions()
     if opts.horizon is not None and opts.horizon < 1:
-        return error_payload([Diagnostic("--horizon must be >= 1", severity="error", code="invalid-horizon")])
+        return error_payload(
+            [
+                Diagnostic(
+                    "--horizon must be >= 1", severity="error", code="invalid-horizon"
+                )
+            ]
+        )
     if opts.horizon is None and opts.max_horizon < 1:
-        return error_payload([Diagnostic("--max-horizon must be >= 1", severity="error", code="invalid-horizon")])
+        return error_payload(
+            [
+                Diagnostic(
+                    "--max-horizon must be >= 1",
+                    severity="error",
+                    code="invalid-horizon",
+                )
+            ]
+        )
     analyses: dict[str, SemanticAnalysis] = {}
     semantic_diagnostics: list[Diagnostic] = []
     for idx, module in enumerate(modules):
-        path = str(paths[idx]) if paths is not None and idx < len(paths) and paths[idx] is not None else None
-        analysis = Linter().analyze_module(module, path=path, stdlib_path=opts.stdlib_path)
+        path = (
+            str(paths[idx])
+            if paths is not None and idx < len(paths) and paths[idx] is not None
+            else None
+        )
+        analysis = Linter().analyze_module(
+            module, path=path, stdlib_path=opts.stdlib_path
+        )
         analyses[module.name] = analysis
         semantic_diagnostics.extend(
             diagnostic
@@ -287,10 +330,21 @@ class SolverProblem:
     ):
         stdlib = ImportResolver(stdlib_path=options.stdlib_path).stdlib_modules()
         seen = {module.name for module in modules}
-        std_modules = [resolved.module for resolved in stdlib.values() if resolved.module.name not in seen]
+        std_modules = [
+            resolved.module
+            for resolved in stdlib.values()
+            if resolved.module.name not in seen
+        ]
         self.modules = [*modules, *std_modules]
         self.options = options
-        self.paths = [*(paths or [None] * len(modules)), *[Path(resolved.path) if resolved.path else None for resolved in stdlib.values() if resolved.module.name not in seen]]  # type: ignore[list-item]
+        self.paths = [
+            *(paths or [None] * len(modules)),
+            *[
+                Path(resolved.path) if resolved.path else None
+                for resolved in stdlib.values()
+                if resolved.module.name not in seen
+            ],
+        ]  # type: ignore[list-item]
         self.analyses = analyses or {}
         self.diagnostics: list[Diagnostic] = []
         self.scopes: dict[str, ModuleScope] = {}
@@ -307,7 +361,11 @@ class SolverProblem:
     # ------------------------------------------------------------------
 
     def solve(self) -> dict[str, Any]:
-        horizons = [self.options.horizon] if self.options.horizon is not None else list(range(1, self.options.max_horizon + 1))
+        horizons = (
+            [self.options.horizon]
+            if self.options.horizon is not None
+            else list(range(1, self.options.max_horizon + 1))
+        )
         checked: list[int] = []
         conflicts: list[dict[str, Any]] = []
         for horizon in horizons:
@@ -338,7 +396,13 @@ class SolverProblem:
                     "checked_horizons": checked,
                     "conflicts": conflicts,
                     "model": None,
-                    "diagnostics": [Diagnostic(str(encoding.solver.reason_unknown()), severity="warning", code="z3-unknown").to_dict()],
+                    "diagnostics": [
+                        Diagnostic(
+                            str(encoding.solver.reason_unknown()),
+                            severity="warning",
+                            code="z3-unknown",
+                        ).to_dict()
+                    ],
                 }
         return {
             "status": "unsat",
@@ -357,14 +421,16 @@ class SolverProblem:
         for idx, module in enumerate(self.modules):
             path = self.paths[idx] if idx < len(self.paths) else None
             if module.name in self.scopes:
-                self.diagnostics.append(Diagnostic(
-                    f"duplicate module {module.name!r}",
-                    line=module.line or 1,
-                    column=module.column or 1,
-                    severity="error",
-                    code="duplicate-module",
-                    path=str(path) if path else None,
-                ))
+                self.diagnostics.append(
+                    Diagnostic(
+                        f"duplicate module {module.name!r}",
+                        line=module.line or 1,
+                        column=module.column or 1,
+                        severity="error",
+                        code="duplicate-module",
+                        path=str(path) if path else None,
+                    )
+                )
                 continue
             self.scopes[module.name] = ModuleScope(module=module, path=path)
 
@@ -374,26 +440,30 @@ class SolverProblem:
                 if target_module is not None:
                     scope.imports[target_module] = target_module
                 else:
-                    self.diagnostics.append(Diagnostic(
-                        f"import {imp.path!r} is not present in solve inputs",
-                        line=imp.line or 1,
-                        column=imp.column or 1,
-                        severity="error",
-                        code="unresolved-import",
-                        path=str(scope.path) if scope.path else None,
-                    ))
+                    self.diagnostics.append(
+                        Diagnostic(
+                            f"import {imp.path!r} is not present in solve inputs",
+                            line=imp.line or 1,
+                            column=imp.column or 1,
+                            severity="error",
+                            code="unresolved-import",
+                            path=str(scope.path) if scope.path else None,
+                        )
+                    )
             for opened in scope.module.opens:
                 if opened.module in self.scopes:
                     scope.opens.add(opened.module)
                 else:
-                    self.diagnostics.append(Diagnostic(
-                        f"open {opened.module!r} is not present in solve inputs",
-                        line=opened.line or 1,
-                        column=opened.column or 1,
-                        severity="error",
-                        code="unresolved-open",
-                        path=str(scope.path) if scope.path else None,
-                    ))
+                    self.diagnostics.append(
+                        Diagnostic(
+                            f"open {opened.module!r} is not present in solve inputs",
+                            line=opened.line or 1,
+                            column=opened.column or 1,
+                            severity="error",
+                            code="unresolved-open",
+                            path=str(scope.path) if scope.path else None,
+                        )
+                    )
 
         for scope in self.scopes.values():
             self._index_declarations(scope)
@@ -402,20 +472,32 @@ class SolverProblem:
             for name, decl in scope.types.items():
                 self.resolve_type(scope.module.name, A.TypeRef(name=name))
             for name, entity in list(scope.entities.items()):
-                entity.typ = self.resolve_type(scope.module.name, entity.decl.type_annotation)
+                entity.typ = self.resolve_type(
+                    scope.module.name, entity.decl.type_annotation
+                )
             for name, decl in list(scope.funcs.items()):
-                params = [self.resolve_type(scope.module.name, p.type_annotation) for p in decl.decl.params]
+                params = [
+                    self.resolve_type(scope.module.name, p.type_annotation)
+                    for p in decl.decl.params
+                ]
                 ret = self.resolve_type(scope.module.name, decl.decl.return_type)
-                scope.funcs[name] = FunctionInfo(scope.module.name, decl.decl, params, ret)
+                scope.funcs[name] = FunctionInfo(
+                    scope.module.name, decl.decl, params, ret
+                )
             try:
                 scope.runtime = Runtime(scope.module)
             except Exception:
                 scope.runtime = None
 
-    def resolve_import_module(self, scope: ModuleScope, imp: A.ImportDecl) -> str | None:
+    def resolve_import_module(
+        self, scope: ModuleScope, imp: A.ImportDecl
+    ) -> str | None:
         if imp.path in self.scopes:
             return imp.path
-        resolver = ImportResolver(str(scope.path) if scope.path else None, stdlib_path=self.options.stdlib_path)
+        resolver = ImportResolver(
+            str(scope.path) if scope.path else None,
+            stdlib_path=self.options.stdlib_path,
+        )
         resolved = resolver.resolve(imp.path, str(scope.path) if scope.path else None)
         if resolved is not None and resolved.module.name in self.scopes:
             return resolved.module.name
@@ -442,14 +524,16 @@ class SolverProblem:
                 scope.rules.append(decl)
             if key is not None:
                 if key in seen:
-                    self.diagnostics.append(Diagnostic(
-                        f"duplicate {key[0]} {key[1]!r}",
-                        line=decl.line or 1,
-                        column=decl.column or 1,
-                        severity="error",
-                        code="duplicate-name",
-                        path=str(scope.path) if scope.path else None,
-                    ))
+                    self.diagnostics.append(
+                        Diagnostic(
+                            f"duplicate {key[0]} {key[1]!r}",
+                            line=decl.line or 1,
+                            column=decl.column or 1,
+                            severity="error",
+                            code="duplicate-name",
+                            path=str(scope.path) if scope.path else None,
+                        )
+                    )
                 seen.add(key)
 
     # ------------------------------------------------------------------
@@ -476,11 +560,15 @@ class SolverProblem:
             target_module, local = self.resolve_decl(scope, name, expected={"type"})
             if target_module is None or local is None:
                 return OpaqueSpec(name)
-            arg_specs = tuple(self.resolve_type(module_name, arg, type_env) for arg in typ.args)
+            arg_specs = tuple(
+                self.resolve_type(module_name, arg, type_env) for arg in typ.args
+            )
             return self.resolve_declared_type(target_module, local, arg_specs)
         return self.resolve_type_expr(module_name, typ, type_env)
 
-    def resolve_declared_type(self, module_name: str, local: str, arg_specs: tuple[TypeSpec, ...]) -> TypeSpec:
+    def resolve_declared_type(
+        self, module_name: str, local: str, arg_specs: tuple[TypeSpec, ...]
+    ) -> TypeSpec:
         key = (module_name, local, arg_specs)
         if key in self.type_cache:
             return self.type_cache[key]
@@ -495,7 +583,13 @@ class SolverProblem:
         self.type_specs_by_name[full_name] = placeholder
         if isinstance(decl.definition, A.SumType):
             variants = tuple(
-                VariantSpec(v.name, tuple((label, self.resolve_type(module_name, item_type, type_params)) for label, item_type in v.fields))
+                VariantSpec(
+                    v.name,
+                    tuple(
+                        (label, self.resolve_type(module_name, item_type, type_params))
+                        for label, item_type in v.fields
+                    ),
+                )
                 for v in decl.definition.variants
             )
             resolved: TypeSpec = SumSpec(full_name, variants)
@@ -515,17 +609,37 @@ class SolverProblem:
         if typ is None:
             return UNIT
         if isinstance(typ, A.RecordType):
-            return RecordSpec(tuple((name, self.resolve_type(module_name, field_type, type_env)) for name, field_type in typ.fields))
+            return RecordSpec(
+                tuple(
+                    (name, self.resolve_type(module_name, field_type, type_env))
+                    for name, field_type in typ.fields
+                )
+            )
         if isinstance(typ, A.TupleType):
-            return TupleSpec(tuple(self.resolve_type(module_name, item, type_env) for item in typ.items))
+            return TupleSpec(
+                tuple(
+                    self.resolve_type(module_name, item, type_env) for item in typ.items
+                )
+            )
         if isinstance(typ, A.SumType):
-            return SumSpec("<anonymous>", tuple(
-                VariantSpec(v.name, tuple((label, self.resolve_type(module_name, item_type, type_env)) for label, item_type in v.fields))
-                for v in typ.variants
-            ))
+            return SumSpec(
+                "<anonymous>",
+                tuple(
+                    VariantSpec(
+                        v.name,
+                        tuple(
+                            (label, self.resolve_type(module_name, item_type, type_env))
+                            for label, item_type in v.fields
+                        ),
+                    )
+                    for v in typ.variants
+                ),
+            )
         return self.resolve_type(module_name, typ, type_env)
 
-    def type_name(self, module_name: str, local: str, args: tuple[TypeSpec, ...]) -> str:
+    def type_name(
+        self, module_name: str, local: str, args: tuple[TypeSpec, ...]
+    ) -> str:
         if not args:
             return f"{module_name}.{local}"
         return f"{module_name}.{local}<{', '.join(repr(arg) for arg in args)}>"
@@ -560,31 +674,44 @@ class SolverProblem:
             target_scope = self.scopes.get(opened)
             if target_scope is None:
                 continue
-            open_module, open_name = self._resolve_local_decl(target_scope, parts, expected)
+            open_module, open_name = self._resolve_local_decl(
+                target_scope, parts, expected
+            )
             if open_module is not None:
                 return open_module, open_name
         for module_name, rest in self.module_reference_matches(scope, parts):
-            resolved_module, resolved_name = self._resolve_local_decl(self.scopes[module_name], rest, expected)
+            resolved_module, resolved_name = self._resolve_local_decl(
+                self.scopes[module_name], rest, expected
+            )
             if resolved_module is not None:
                 return resolved_module, resolved_name
         return None, None
 
-    def module_reference_matches(self, scope: ModuleScope, parts: list[str]) -> list[tuple[str, list[str]]]:
+    def module_reference_matches(
+        self, scope: ModuleScope, parts: list[str]
+    ) -> list[tuple[str, list[str]]]:
         matches: list[tuple[int, str, list[str]]] = []
         for module_name in self.scopes:
             module_parts = split_qualified(module_name)
-            if parts[:len(module_parts)] == module_parts:
-                matches.append((len(module_parts), module_name, parts[len(module_parts):]))
+            if parts[: len(module_parts)] == module_parts:
+                matches.append(
+                    (len(module_parts), module_name, parts[len(module_parts) :])
+                )
 
         for opened_module in scope.opens:
             opened_parts = split_qualified(opened_module)
             for module_name in self.scopes:
                 module_parts = split_qualified(module_name)
-                if len(module_parts) <= len(opened_parts) or module_parts[:len(opened_parts)] != opened_parts:
+                if (
+                    len(module_parts) <= len(opened_parts)
+                    or module_parts[: len(opened_parts)] != opened_parts
+                ):
                     continue
-                relative_parts = module_parts[len(opened_parts):]
-                if parts[:len(relative_parts)] == relative_parts:
-                    matches.append((len(relative_parts), module_name, parts[len(relative_parts):]))
+                relative_parts = module_parts[len(opened_parts) :]
+                if parts[: len(relative_parts)] == relative_parts:
+                    matches.append(
+                        (len(relative_parts), module_name, parts[len(relative_parts) :])
+                    )
 
         unique: dict[tuple[str, tuple[str, ...]], tuple[int, str, list[str]]] = {}
         for consumed, module_name, rest in matches:
@@ -598,11 +725,17 @@ class SolverProblem:
             )
         ]
 
-    def field_parts_for_resolved_decl(self, scope: ModuleScope, name: str, module_name: str, local: str) -> list[str]:
+    def field_parts_for_resolved_decl(
+        self, scope: ModuleScope, name: str, module_name: str, local: str
+    ) -> list[str]:
         parts = split_qualified(name)
         module_parts = split_qualified(module_name)
-        if parts[:len(module_parts)] == module_parts and len(parts) > len(module_parts) and parts[len(module_parts)] == local:
-            return parts[len(module_parts) + 1:]
+        if (
+            parts[: len(module_parts)] == module_parts
+            and len(parts) > len(module_parts)
+            and parts[len(module_parts)] == local
+        ):
+            return parts[len(module_parts) + 1 :]
         for candidate_module, rest in self.module_reference_matches(scope, parts):
             if candidate_module == module_name and rest and rest[0] == local:
                 return rest[1:]
@@ -633,7 +766,14 @@ class SolverProblem:
         for scope in self.scopes.values():
             for decl in scope.rules:
                 index = len(rules)
-                rules.append(RuleInfo(index=index, module=scope.module.name, decl=decl, full_name=f"{scope.module.name}.{decl.name}"))
+                rules.append(
+                    RuleInfo(
+                        index=index,
+                        module=scope.module.name,
+                        decl=decl,
+                        full_name=f"{scope.module.name}.{decl.name}",
+                    )
+                )
         return rules
 
 
@@ -662,7 +802,9 @@ class BoundedEncoder:
             self.encode_facts()
             self.encode_rules()
         except SolveError as exc:
-            self.diagnostics.append(Diagnostic(str(exc), severity="error", code="solve-error"))
+            self.diagnostics.append(
+                Diagnostic(str(exc), severity="error", code="solve-error")
+            )
 
     def encode_entities(self) -> None:
         for scope in self.problem.scopes.values():
@@ -676,10 +818,12 @@ class BoundedEncoder:
                 if self.has_temporal_operator(fact.value):
                     formula = self.compile_formula(fact.value, scope, 0)
                 else:
-                    formula = z3.And([
-                        self.compile_formula(fact.value, scope, t)
-                        for t in range(self.horizon)
-                    ])
+                    formula = z3.And(
+                        [
+                            self.compile_formula(fact.value, scope, t)
+                            for t in range(self.horizon)
+                        ]
+                    )
                 self.track(
                     formula,
                     kind="fact",
@@ -692,20 +836,39 @@ class BoundedEncoder:
     def encode_rules(self) -> None:
         defeats = self.defeat_pairs()
         for info in self.rule_infos:
-            self.rule_labels[info.full_name] = z3.Bool(f"lambda__{self.safe(info.full_name)}")
+            self.rule_labels[info.full_name] = z3.Bool(
+                f"lambda__{self.safe(info.full_name)}"
+            )
 
         for info in self.rule_infos:
             scope = self.problem.scopes[info.module]
             label = self.rule_labels[info.full_name]
-            app = self.compile_formula(info.decl.antecedent, scope, 0) if info.decl.antecedent is not None else z3.BoolVal(True)
+            app = (
+                self.compile_formula(info.decl.antecedent, scope, 0)
+                if info.decl.antecedent is not None
+                else z3.BoolVal(True)
+            )
             self.rule_applications[info.full_name] = app
-            higher_apps = [self.rule_applications.get(high.full_name) for high, low in defeats if low.full_name == info.full_name]
+            higher_apps = [
+                self.rule_applications.get(high.full_name)
+                for high, low in defeats
+                if low.full_name == info.full_name
+            ]
             # Higher applications may not yet have been encoded when the high rule appears later.
             higher_apps = [
-                self.compile_formula(high.decl.antecedent, self.problem.scopes[high.module], 0) if high.decl.antecedent is not None else z3.BoolVal(True)
-                for high, low in defeats if low.full_name == info.full_name
+                self.compile_formula(
+                    high.decl.antecedent, self.problem.scopes[high.module], 0
+                )
+                if high.decl.antecedent is not None
+                else z3.BoolVal(True)
+                for high, low in defeats
+                if low.full_name == info.full_name
             ]
-            no_defeat = z3.And([z3.Not(h) for h in higher_apps]) if higher_apps else z3.BoolVal(True)
+            no_defeat = (
+                z3.And([z3.Not(h) for h in higher_apps])
+                if higher_apps
+                else z3.BoolVal(True)
+            )
             self.track(
                 z3.Implies(label, app),
                 kind="rule-applicability",
@@ -761,16 +924,20 @@ class BoundedEncoder:
             for priority in scope.priorities:
                 resolved = []
                 for name in priority.chain:
-                    info = by_name.get(name) or by_name.get(f"{scope.module.name}.{name}")
+                    info = by_name.get(name) or by_name.get(
+                        f"{scope.module.name}.{name}"
+                    )
                     if info is None:
-                        self.diagnostics.append(Diagnostic(
-                            f"override references unknown rule {name!r}",
-                            line=priority.line or 1,
-                            column=priority.column or 1,
-                            severity="error",
-                            code="unknown-priority-rule",
-                            path=str(scope.path) if scope.path else None,
-                        ))
+                        self.diagnostics.append(
+                            Diagnostic(
+                                f"override references unknown rule {name!r}",
+                                line=priority.line or 1,
+                                column=priority.column or 1,
+                                severity="error",
+                                code="unknown-priority-rule",
+                                path=str(scope.path) if scope.path else None,
+                            )
+                        )
                     else:
                         resolved.append(info)
                 for high, low in zip(resolved, resolved[1:]):
@@ -799,28 +966,54 @@ class BoundedEncoder:
     # Expression and temporal encoding
     # ------------------------------------------------------------------
 
-    def compile_formula(self, expr: A.Expr | None, scope: ModuleScope, t: int, env: dict[str, ZValue] | None = None) -> Any:
+    def compile_formula(
+        self,
+        expr: A.Expr | None,
+        scope: ModuleScope,
+        t: int,
+        env: dict[str, ZValue] | None = None,
+    ) -> Any:
         env = env or {}
         if expr is None:
             return z3.BoolVal(True)
         if isinstance(expr, A.Literal) and expr.kind == "bool":
             return z3.BoolVal(bool(expr.value))
         if isinstance(expr, A.LetExpr):
-            value_expected = self.problem.resolve_type(scope.module.name, expr.type_annotation) if expr.type_annotation else self.inferred_expected(expr.value, scope)
-            value = self.compile_expr(expr.value, scope, t, expected=value_expected, env=env)
+            value_expected = (
+                self.problem.resolve_type(scope.module.name, expr.type_annotation)
+                if expr.type_annotation
+                else self.inferred_expected(expr.value, scope)
+            )
+            value = self.compile_expr(
+                expr.value, scope, t, expected=value_expected, env=env
+            )
             local = dict(env)
             self.bind_let_pattern(expr.pattern, value, local)
             return self.compile_formula(expr.body, scope, t, env=local)
         if isinstance(expr, A.TemporalUnary):
             operand = expr.operand
             if expr.op == "next":
-                return self.compile_formula(operand, scope, t + 1, env=env) if t < self.horizon - 1 else z3.BoolVal(False)
+                return (
+                    self.compile_formula(operand, scope, t + 1, env=env)
+                    if t < self.horizon - 1
+                    else z3.BoolVal(False)
+                )
             if expr.op == "now":
                 return self.compile_formula(operand, scope, t, env=env)
             if expr.op == "eventually":
-                return z3.Or([self.compile_formula(operand, scope, u, env=env) for u in range(t, self.horizon)])
+                return z3.Or(
+                    [
+                        self.compile_formula(operand, scope, u, env=env)
+                        for u in range(t, self.horizon)
+                    ]
+                )
             if expr.op == "always":
-                return z3.And([self.compile_formula(operand, scope, u, env=env) for u in range(t, self.horizon)])
+                return z3.And(
+                    [
+                        self.compile_formula(operand, scope, u, env=env)
+                        for u in range(t, self.horizon)
+                    ]
+                )
         if isinstance(expr, A.TemporalBinary):
             if expr.op == "until":
                 return self.until(expr.left, expr.right, scope, t, env)
@@ -844,7 +1037,9 @@ class BoundedEncoder:
     def inline_lets(self, expr: A.Expr | None) -> A.Expr | None:
         return self.substitute_let_bindings(expr, {})
 
-    def substitute_let_bindings(self, expr: A.Expr | None, aliases: dict[str, A.Expr]) -> A.Expr | None:
+    def substitute_let_bindings(
+        self, expr: A.Expr | None, aliases: dict[str, A.Expr]
+    ) -> A.Expr | None:
         if expr is None:
             return None
         if isinstance(expr, A.Name):
@@ -857,7 +1052,9 @@ class BoundedEncoder:
             local.update(self.irrefutable_pattern_aliases(expr.pattern, value))
             return self.substitute_let_bindings(expr.body, local)
         if isinstance(expr, A.UnaryOp):
-            return replace(expr, operand=self.substitute_let_bindings(expr.operand, aliases))
+            return replace(
+                expr, operand=self.substitute_let_bindings(expr.operand, aliases)
+            )
         if isinstance(expr, A.BinaryOp):
             return replace(
                 expr,
@@ -865,7 +1062,9 @@ class BoundedEncoder:
                 right=self.substitute_let_bindings(expr.right, aliases),
             )
         if isinstance(expr, A.TemporalUnary):
-            return replace(expr, operand=self.substitute_let_bindings(expr.operand, aliases))
+            return replace(
+                expr, operand=self.substitute_let_bindings(expr.operand, aliases)
+            )
         if isinstance(expr, A.TemporalBinary):
             return replace(
                 expr,
@@ -883,16 +1082,29 @@ class BoundedEncoder:
             return replace(
                 expr,
                 func=self.substitute_let_bindings(expr.func, aliases),
-                args=[self.substitute_let_binding_expr(arg, aliases) for arg in expr.args],
+                args=[
+                    self.substitute_let_binding_expr(arg, aliases) for arg in expr.args
+                ],
             )
         if isinstance(expr, A.FieldAccess):
-            return replace(expr, target=self.substitute_let_bindings(expr.target, aliases))
+            return replace(
+                expr, target=self.substitute_let_bindings(expr.target, aliases)
+            )
         if isinstance(expr, A.TupleLiteral):
-            return replace(expr, items=[self.substitute_let_binding_expr(item, aliases) for item in expr.items])
+            return replace(
+                expr,
+                items=[
+                    self.substitute_let_binding_expr(item, aliases)
+                    for item in expr.items
+                ],
+            )
         if isinstance(expr, A.RecordConstructor):
             return replace(
                 expr,
-                fields=[(name, self.substitute_let_binding_expr(value, aliases)) for name, value in expr.fields],
+                fields=[
+                    (name, self.substitute_let_binding_expr(value, aliases))
+                    for name, value in expr.fields
+                ],
             )
         if isinstance(expr, A.MatchExpr):
             return replace(
@@ -901,7 +1113,10 @@ class BoundedEncoder:
                 arms=[
                     replace(
                         arm,
-                        guard=self.substitute_let_bindings(arm.guard, self.aliases_without_pattern_bindings(aliases, arm.pattern)),
+                        guard=self.substitute_let_bindings(
+                            arm.guard,
+                            self.aliases_without_pattern_bindings(aliases, arm.pattern),
+                        ),
                         body=self.substitute_let_bindings_in_block(
                             arm.body,
                             self.aliases_without_pattern_bindings(aliases, arm.pattern),
@@ -912,10 +1127,14 @@ class BoundedEncoder:
             )
         return expr
 
-    def substitute_let_binding_expr(self, expr: A.Expr, aliases: dict[str, A.Expr]) -> A.Expr:
+    def substitute_let_binding_expr(
+        self, expr: A.Expr, aliases: dict[str, A.Expr]
+    ) -> A.Expr:
         return self.substitute_let_bindings(expr, aliases) or expr
 
-    def substitute_let_bindings_in_block(self, block: A.Block | None, aliases: dict[str, A.Expr]) -> A.Block | None:
+    def substitute_let_bindings_in_block(
+        self, block: A.Block | None, aliases: dict[str, A.Expr]
+    ) -> A.Block | None:
         if block is None:
             return None
         local = dict(aliases)
@@ -925,9 +1144,15 @@ class BoundedEncoder:
             statements.append(replace(stmt, value=value))
             if value is not None:
                 local.update(self.irrefutable_pattern_aliases(stmt.pattern, value))
-        return replace(block, statements=statements, result=self.substitute_let_bindings(block.result, local))
+        return replace(
+            block,
+            statements=statements,
+            result=self.substitute_let_bindings(block.result, local),
+        )
 
-    def alias_replacement(self, expr: A.Name, aliases: dict[str, A.Expr]) -> A.Expr | None:
+    def alias_replacement(
+        self, expr: A.Name, aliases: dict[str, A.Expr]
+    ) -> A.Expr | None:
         parts = split_qualified(expr.name)
         if not parts:
             return None
@@ -935,10 +1160,14 @@ class BoundedEncoder:
         if replacement is None:
             return None
         for field_name in parts[1:]:
-            replacement = A.FieldAccess(target=replacement, field=field_name, line=expr.line, column=expr.column)
+            replacement = A.FieldAccess(
+                target=replacement, field=field_name, line=expr.line, column=expr.column
+            )
         return replacement
 
-    def irrefutable_pattern_aliases(self, pattern: A.Pattern | None, value: A.Expr) -> dict[str, A.Expr]:
+    def irrefutable_pattern_aliases(
+        self, pattern: A.Pattern | None, value: A.Expr
+    ) -> dict[str, A.Expr]:
         if pattern is None or isinstance(pattern, A.WildcardPattern):
             return {}
         if isinstance(pattern, A.VarPattern):
@@ -946,13 +1175,20 @@ class BoundedEncoder:
         if isinstance(pattern, A.TuplePattern):
             aliases: dict[str, A.Expr] = {}
             for idx, nested in enumerate(pattern.items):
-                item = A.FieldAccess(target=value, field=f"_{idx}", line=pattern.line, column=pattern.column)
+                item = A.FieldAccess(
+                    target=value,
+                    field=f"_{idx}",
+                    line=pattern.line,
+                    column=pattern.column,
+                )
                 aliases.update(self.irrefutable_pattern_aliases(nested, item))
             return aliases
         if isinstance(pattern, A.RecordPattern):
             aliases = {}
             for field, nested in pattern.fields:
-                item = A.FieldAccess(target=value, field=field, line=pattern.line, column=pattern.column)
+                item = A.FieldAccess(
+                    target=value, field=field, line=pattern.line, column=pattern.column
+                )
                 if nested is None:
                     aliases[field] = item
                 else:
@@ -960,7 +1196,9 @@ class BoundedEncoder:
             return aliases
         raise UnsupportedExpression("let bindings only support irrefutable patterns")
 
-    def aliases_without_pattern_bindings(self, aliases: dict[str, A.Expr], pattern: A.Pattern | None) -> dict[str, A.Expr]:
+    def aliases_without_pattern_bindings(
+        self, aliases: dict[str, A.Expr], pattern: A.Pattern | None
+    ) -> dict[str, A.Expr]:
         result = dict(aliases)
         for name in self.pattern_binding_names(pattern):
             result.pop(name, None)
@@ -1001,18 +1239,28 @@ class BoundedEncoder:
         if isinstance(expr, A.UnaryOp):
             return self.has_temporal_operator(expr.operand)
         if isinstance(expr, A.BinaryOp):
-            return self.has_temporal_operator(expr.left) or self.has_temporal_operator(expr.right)
+            return self.has_temporal_operator(expr.left) or self.has_temporal_operator(
+                expr.right
+            )
         if isinstance(expr, A.IfExpr):
-            return any(self.has_temporal_operator(item) for item in [expr.condition, expr.then_branch, expr.else_branch])
+            return any(
+                self.has_temporal_operator(item)
+                for item in [expr.condition, expr.then_branch, expr.else_branch]
+            )
         if isinstance(expr, A.Call):
-            return self.has_temporal_operator(expr.func) or any(self.has_temporal_operator(arg) for arg in expr.args)
+            return self.has_temporal_operator(expr.func) or any(
+                self.has_temporal_operator(arg) for arg in expr.args
+            )
         if isinstance(expr, A.FieldAccess):
             return self.has_temporal_operator(expr.target)
         if isinstance(expr, A.LetExpr):
-            return self.has_temporal_operator(expr.value) or self.has_temporal_operator(expr.body)
+            return self.has_temporal_operator(expr.value) or self.has_temporal_operator(
+                expr.body
+            )
         if isinstance(expr, A.MatchExpr):
             return self.has_temporal_operator(expr.subject) or any(
-                self.has_temporal_operator(arm.guard) or self.has_temporal_operator_in_block(arm.body)
+                self.has_temporal_operator(arm.guard)
+                or self.has_temporal_operator_in_block(arm.body)
                 for arm in expr.arms
             )
         if isinstance(expr, A.TupleLiteral):
@@ -1024,16 +1272,31 @@ class BoundedEncoder:
     def has_temporal_operator_in_block(self, block: A.Block | None) -> bool:
         if block is None:
             return False
-        return any(self.has_temporal_operator(stmt.value) for stmt in block.statements) or self.has_temporal_operator(block.result)
+        return any(
+            self.has_temporal_operator(stmt.value) for stmt in block.statements
+        ) or self.has_temporal_operator(block.result)
 
-    def until(self, left: A.Expr | None, right: A.Expr | None, scope: ModuleScope, t: int, env: dict[str, ZValue]) -> Any:
+    def until(
+        self,
+        left: A.Expr | None,
+        right: A.Expr | None,
+        scope: ModuleScope,
+        t: int,
+        env: dict[str, ZValue],
+    ) -> Any:
         disjuncts = []
         for u in range(t, self.horizon):
-            prefix = [self.compile_formula(left, scope, v, env=env) for v in range(t, u)]
-            disjuncts.append(z3.And([*prefix, self.compile_formula(right, scope, u, env=env)]))
+            prefix = [
+                self.compile_formula(left, scope, v, env=env) for v in range(t, u)
+            ]
+            disjuncts.append(
+                z3.And([*prefix, self.compile_formula(right, scope, u, env=env)])
+            )
         return z3.Or(disjuncts) if disjuncts else z3.BoolVal(False)
 
-    def inferred_expected(self, expr: A.Expr | None, scope: ModuleScope) -> TypeSpec | None:
+    def inferred_expected(
+        self, expr: A.Expr | None, scope: ModuleScope
+    ) -> TypeSpec | None:
         if expr is None:
             return None
         analysis = self.problem.analyses.get(scope.module.name)
@@ -1044,7 +1307,15 @@ class BoundedEncoder:
             return None
         return self.problem.resolve_type(scope.module.name, typ)
 
-    def compile_expr(self, expr: A.Expr | None, scope: ModuleScope, t: int, *, expected: TypeSpec | None = None, env: dict[str, ZValue] | None = None) -> ZValue:
+    def compile_expr(
+        self,
+        expr: A.Expr | None,
+        scope: ModuleScope,
+        t: int,
+        *,
+        expected: TypeSpec | None = None,
+        env: dict[str, ZValue] | None = None,
+    ) -> ZValue:
         if expr is None:
             return self.literal_value(None, "unit", expected)
         env = env or {}
@@ -1061,13 +1332,17 @@ class BoundedEncoder:
             constructor = self.find_constructor(expr.name, expected, scope)
             if constructor is not None:
                 if constructor.variant.fields:
-                    raise UnsupportedExpression(f"constructor {expr.name!r} expects arguments; use {expr.name}(()) for unit payloads")
+                    raise UnsupportedExpression(
+                        f"constructor {expr.name!r} expects arguments; use {expr.name}(()) for unit payloads"
+                    )
                 return self.constructor_value(constructor, [])
             if isinstance(expected, PrimitiveType):
                 concrete = self.try_runtime_eval(expr, scope)
                 if concrete is not _NO_CONCRETE:
                     return self.python_value(concrete, expected)
-            return self.coerce_value(self.resolve_value(expr.name, scope, t, expected), expected)
+            return self.coerce_value(
+                self.resolve_value(expr.name, scope, t, expected), expected
+            )
         if isinstance(expr, A.RecordConstructor):
             typ = self.problem.resolve_type(
                 scope.module.name,
@@ -1075,10 +1350,16 @@ class BoundedEncoder:
             )
             resolved = self.resolve_named_type(typ)
             if not isinstance(resolved, RecordSpec):
-                raise UnsupportedExpression(f"type {expr.type_name!r} is not a record type")
+                raise UnsupportedExpression(
+                    f"type {expr.type_name!r} is not a record type"
+                )
             expected_fields = dict(resolved.fields)
             provided = {name for name, _ in expr.fields}
-            duplicates = [name for name in provided if sum(1 for field, _ in expr.fields if field == name) > 1]
+            duplicates = [
+                name
+                for name in provided
+                if sum(1 for field, _ in expr.fields if field == name) > 1
+            ]
             if duplicates:
                 raise UnsupportedExpression(f"duplicate record field {duplicates[0]!r}")
             missing = sorted(set(expected_fields) - provided)
@@ -1088,16 +1369,27 @@ class BoundedEncoder:
             if extra:
                 raise UnsupportedExpression(f"unknown field {extra[0]!r}")
             fields = {
-                name: self.compile_expr(value_expr, scope, t, expected=expected_fields[name], env=env)
+                name: self.compile_expr(
+                    value_expr, scope, t, expected=expected_fields[name], env=env
+                )
                 for name, value_expr in expr.fields
             }
             return self.product_value(typ, fields)
         if isinstance(expr, A.LetExpr):
-            value_expected = self.problem.resolve_type(scope.module.name, expr.type_annotation) if expr.type_annotation else None
-            value = self.compile_expr(expr.value, scope, t, expected=value_expected, env=env)
+            value_expected = (
+                self.problem.resolve_type(scope.module.name, expr.type_annotation)
+                if expr.type_annotation
+                else None
+            )
+            value = self.compile_expr(
+                expr.value, scope, t, expected=value_expected, env=env
+            )
             local = dict(env)
             self.bind_let_pattern(expr.pattern, value, local)
-            return self.coerce_value(self.compile_expr(expr.body, scope, t, expected=expected, env=local), expected)
+            return self.coerce_value(
+                self.compile_expr(expr.body, scope, t, expected=expected, env=local),
+                expected,
+            )
         concrete = self.try_runtime_eval(expr, scope)
         if concrete is not _NO_CONCRETE:
             return self.python_value(concrete, expected)
@@ -1105,39 +1397,75 @@ class BoundedEncoder:
             target = self.compile_expr(expr.target, scope, t, env=env)
             return self.coerce_value(self.field_value(target, expr.field), expected)
         if isinstance(expr, A.Call):
-            return self.coerce_value(self.call_value(expr, scope, t, expected, env), expected)
+            return self.coerce_value(
+                self.call_value(expr, scope, t, expected, env), expected
+            )
         if isinstance(expr, A.UnaryOp):
             value = self.compile_expr(expr.operand, scope, t, env=env)
             if expr.op == "not":
-                return self.coerce_value(ZValue(BOOL, expr=z3.Not(self.as_bool(value))), expected)
+                return self.coerce_value(
+                    ZValue(BOOL, expr=z3.Not(self.as_bool(value))), expected
+                )
             if expr.op == "-":
-                return self.coerce_value(ZValue(value.typ, expr=-self.as_numeric(value)), expected)
+                return self.coerce_value(
+                    ZValue(value.typ, expr=-self.as_numeric(value)), expected
+                )
         if isinstance(expr, A.BinaryOp):
-            return self.coerce_value(self.binary_value(expr, scope, t, expected, env), expected)
+            return self.coerce_value(
+                self.binary_value(expr, scope, t, expected, env), expected
+            )
         if isinstance(expr, A.IfExpr):
             cond = self.compile_formula(expr.condition, scope, t, env=env)
-            then_v = self.compile_expr(expr.then_branch, scope, t, expected=expected, env=env)
-            else_v = self.compile_expr(expr.else_branch, scope, t, expected=then_v.typ, env=env)
+            then_v = self.compile_expr(
+                expr.then_branch, scope, t, expected=expected, env=env
+            )
+            else_v = self.compile_expr(
+                expr.else_branch, scope, t, expected=then_v.typ, env=env
+            )
             return self.coerce_value(self.if_value(cond, then_v, else_v), expected)
         if isinstance(expr, A.MatchExpr):
-            return self.coerce_value(self.match_value(expr, scope, t, expected, env), expected)
+            return self.coerce_value(
+                self.match_value(expr, scope, t, expected, env), expected
+            )
         if isinstance(expr, A.TupleLiteral):
-            expected_resolved = self.resolve_named_type(expected) if expected is not None else None
+            expected_resolved = (
+                self.resolve_named_type(expected) if expected is not None else None
+            )
             expected_tuple = (
                 expected_resolved
-                if isinstance(expected_resolved, TupleSpec) and not self.type_contains_opaque(expected_resolved)
+                if isinstance(expected_resolved, TupleSpec)
+                and not self.type_contains_opaque(expected_resolved)
                 else None
             )
-            expected_items = list(expected_tuple.items) if expected_tuple is not None else []
+            expected_items = (
+                list(expected_tuple.items) if expected_tuple is not None else []
+            )
             items = {
-                f"_{idx}": self.compile_expr(item, scope, t, expected=expected_items[idx] if idx < len(expected_items) else None, env=env)
+                f"_{idx}": self.compile_expr(
+                    item,
+                    scope,
+                    t,
+                    expected=expected_items[idx] if idx < len(expected_items) else None,
+                    env=env,
+                )
                 for idx, item in enumerate(expr.items)
             }
-            typ: TypeSpec = expected if expected_tuple is not None and expected is not None else TupleSpec(tuple(item.typ for item in items.values()))
+            typ: TypeSpec = (
+                expected
+                if expected_tuple is not None and expected is not None
+                else TupleSpec(tuple(item.typ for item in items.values()))
+            )
             return self.product_value(typ, items)
         raise UnsupportedExpression(f"unsupported expression: {format_expr(expr)}")
 
-    def binary_value(self, expr: A.BinaryOp, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
+    def binary_value(
+        self,
+        expr: A.BinaryOp,
+        scope: ModuleScope,
+        t: int,
+        expected: TypeSpec | None,
+        env: dict[str, ZValue],
+    ) -> ZValue:
         if expr.op in {"and", "or", "implies"}:
             return ZValue(BOOL, expr=self.compile_formula(expr, scope, t, env=env))
         left = self.compile_expr(expr.left, scope, t, env=env)
@@ -1160,7 +1488,11 @@ class BoundedEncoder:
             r_num: Any
             l_num, r_num = self.promote_numeric(left, right)
             typ = REAL if expr.op == "/" or self.expects_real(expected) else left.typ
-            if expr.op == "/" or isinstance(typ, PrimitiveType) and typ.name in {"rat", "decimal"}:
+            if (
+                expr.op == "/"
+                or isinstance(typ, PrimitiveType)
+                and typ.name in {"rat", "decimal"}
+            ):
                 if isinstance(left.typ, PrimitiveType) and left.typ.name == "int":
                     l_num = z3.ToReal(l_num)
                 if isinstance(right.typ, PrimitiveType) and right.typ.name == "int":
@@ -1176,7 +1508,14 @@ class BoundedEncoder:
             return ZValue(INT, expr=l_num % r_num)
         raise UnsupportedExpression(f"unsupported binary operator {expr.op!r}")
 
-    def call_value(self, expr: A.Call, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
+    def call_value(
+        self,
+        expr: A.Call,
+        scope: ModuleScope,
+        t: int,
+        expected: TypeSpec | None,
+        env: dict[str, ZValue],
+    ) -> ZValue:
         name = self.expr_to_name(expr.func) or ""
         if name in STRING_TO_LIST_NAMES:
             arg = self.compile_expr(expr.args[0], scope, t, expected=STRING, env=env)
@@ -1186,18 +1525,31 @@ class BoundedEncoder:
                 return_type = self.std_list_type(STRING)
             if arg.has_concrete and isinstance(arg.concrete, str):
                 return self.adt_list_value(list(arg.concrete), return_type)
-            return ZValue(return_type, expr=self.string_to_list_function()(self.primitive_expr(arg)))
+            return ZValue(
+                return_type,
+                expr=self.string_to_list_function()(self.primitive_expr(arg)),
+            )
         if name in STRING_OF_LIST_NAMES:
-            arg = self.compile_expr(expr.args[0], scope, t, expected=self.std_list_type(STRING), env=env)
+            arg = self.compile_expr(
+                expr.args[0], scope, t, expected=self.std_list_type(STRING), env=env
+            )
             concrete = self.concrete_string_list(arg)
             if concrete is not None:
                 return self.literal_value("".join(concrete), "string", expected)
-            return ZValue(STRING, expr=self.string_of_list_function()(self.primitive_expr(arg)))
+            return ZValue(
+                STRING, expr=self.string_of_list_function()(self.primitive_expr(arg))
+            )
         constructor = self.find_constructor(name, expected, scope)
         if constructor is not None:
-            zero_unit = len(expr.args) == 0 and len(constructor.variant.fields) == 1 and constructor.variant.fields[0][1] == UNIT
+            zero_unit = (
+                len(expr.args) == 0
+                and len(constructor.variant.fields) == 1
+                and constructor.variant.fields[0][1] == UNIT
+            )
             if len(expr.args) != len(constructor.variant.fields) and not zero_unit:
-                raise UnsupportedExpression(f"constructor {name!r} expects {len(constructor.variant.fields)} args")
+                raise UnsupportedExpression(
+                    f"constructor {name!r} expects {len(constructor.variant.fields)} args"
+                )
             values = [
                 self.compile_expr(arg, scope, t, expected=field_type, env=env)
                 for arg, (_, field_type) in zip(expr.args, constructor.variant.fields)
@@ -1211,13 +1563,22 @@ class BoundedEncoder:
             return self.constructor_value(refined, values)
         func = self.resolve_func(name, scope)
         if func is not None:
-            args = [self.compile_expr(arg, scope, t, expected=typ, env=env) for arg, typ in zip(expr.args, func.params)]
+            args = [
+                self.compile_expr(arg, scope, t, expected=typ, env=env)
+                for arg, typ in zip(expr.args, func.params)
+            ]
             instance = self.instantiate_function(func, args, expected)
             if instance.params != func.params:
-                args = [self.compile_expr(arg, scope, t, expected=typ, env=env) for arg, typ in zip(expr.args, instance.params)]
+                args = [
+                    self.compile_expr(arg, scope, t, expected=typ, env=env)
+                    for arg, typ in zip(expr.args, instance.params)
+                ]
                 instance = self.instantiate_function(func, args, expected)
             fn = self.function_symbol(instance)
-            return ZValue(instance.return_type, expr=fn(*[self.primitive_expr(arg) for arg in args]))
+            return ZValue(
+                instance.return_type,
+                expr=fn(*[self.primitive_expr(arg) for arg in args]),
+            )
         return self.opaque_atom(format_expr(expr), t)
 
     # ------------------------------------------------------------------
@@ -1227,7 +1588,9 @@ class BoundedEncoder:
     def entity_value(self, entity: EntityInfo, t: int) -> ZValue:
         key = (entity.module, entity.decl.name, t)
         if key not in self.entity_values:
-            self.entity_values[key] = self.fresh_value(f"{entity.module}.{entity.decl.name}@{t}", entity.typ)
+            self.entity_values[key] = self.fresh_value(
+                f"{entity.module}.{entity.decl.name}@{t}", entity.typ
+            )
         return self.entity_values[key]
 
     def fresh_value(self, prefix: str, typ: TypeSpec) -> ZValue:
@@ -1245,15 +1608,21 @@ class BoundedEncoder:
         sort = self.sort_for(typ)
         return ZValue(typ, expr=z3.Const(safe, sort))
 
-    def resolve_value(self, name: str, scope: ModuleScope, t: int, expected: TypeSpec | None = None) -> ZValue:
-        module_name, local = self.problem.resolve_decl(scope, name, expected={"entity", "func"})
+    def resolve_value(
+        self, name: str, scope: ModuleScope, t: int, expected: TypeSpec | None = None
+    ) -> ZValue:
+        module_name, local = self.problem.resolve_decl(
+            scope, name, expected={"entity", "func"}
+        )
         if module_name is None or local is None:
             self.unresolved(scope, name)
             return self.opaque_atom(name, t)
         target_scope = self.problem.scopes.get(module_name)
         if target_scope is None:
             return self.opaque_atom(name, t)
-        field_parts = self.problem.field_parts_for_resolved_decl(scope, name, module_name, local)
+        field_parts = self.problem.field_parts_for_resolved_decl(
+            scope, name, module_name, local
+        )
         if local in target_scope.entities:
             value = self.entity_value(target_scope.entities[local], t)
         else:
@@ -1276,7 +1645,11 @@ class BoundedEncoder:
             return value.fields[field]
         if value.has_concrete and isinstance(value.concrete, dict):
             return self.python_value(value.concrete[field], None)
-        if value.has_concrete and isinstance(value.concrete, (tuple, list)) and field.startswith("_"):
+        if (
+            value.has_concrete
+            and isinstance(value.concrete, (tuple, list))
+            and field.startswith("_")
+        ):
             try:
                 idx = int(field[1:])
             except ValueError:
@@ -1307,7 +1680,9 @@ class BoundedEncoder:
             return self.problem.scopes[module_name].funcs.get(local)
         return None
 
-    def instantiate_function(self, func: FunctionInfo, args: list[ZValue], expected: TypeSpec | None) -> FunctionInfo:
+    def instantiate_function(
+        self, func: FunctionInfo, args: list[ZValue], expected: TypeSpec | None
+    ) -> FunctionInfo:
         if not func.decl.type_params:
             return func
         params = set(func.decl.type_params)
@@ -1316,12 +1691,17 @@ class BoundedEncoder:
             self.unify_type_params(formal, actual.typ, bindings, params)
         if expected is not None:
             self.unify_type_params(func.return_type, expected, bindings, params)
-        type_args = tuple(bindings.get(param, OpaqueSpec(param)) for param in func.decl.type_params)
+        type_args = tuple(
+            bindings.get(param, OpaqueSpec(param)) for param in func.decl.type_params
+        )
         type_env = dict(zip(func.decl.type_params, type_args))
         return FunctionInfo(
             module=func.module,
             decl=func.decl,
-            params=[self.substitute_type_params(param, type_env, params) for param in func.params],
+            params=[
+                self.substitute_type_params(param, type_env, params)
+                for param in func.params
+            ],
             return_type=self.substitute_type_params(func.return_type, type_env, params),
             type_args=type_args,
         )
@@ -1339,25 +1719,47 @@ class BoundedEncoder:
         origin = self.type_origin(typ)
         if origin is not None:
             module_name, local, args = origin
-            substituted_args = tuple(self.substitute_type_params(arg, bindings, params) for arg in args)
+            substituted_args = tuple(
+                self.substitute_type_params(arg, bindings, params) for arg in args
+            )
             if substituted_args != args:
-                return self.problem.resolve_declared_type(module_name, local, substituted_args)
+                return self.problem.resolve_declared_type(
+                    module_name, local, substituted_args
+                )
         resolved = self.resolve_named_type(typ)
         if isinstance(resolved, RecordSpec):
-            return RecordSpec(tuple(
-                (name, self.substitute_type_params(field_type, bindings, params))
-                for name, field_type in resolved.fields
-            ))
+            return RecordSpec(
+                tuple(
+                    (name, self.substitute_type_params(field_type, bindings, params))
+                    for name, field_type in resolved.fields
+                )
+            )
         if isinstance(resolved, TupleSpec):
-            return TupleSpec(tuple(self.substitute_type_params(item, bindings, params) for item in resolved.items))
+            return TupleSpec(
+                tuple(
+                    self.substitute_type_params(item, bindings, params)
+                    for item in resolved.items
+                )
+            )
         if isinstance(resolved, SumSpec):
-            return SumSpec(resolved.name, tuple(
-                VariantSpec(variant.name, tuple(
-                    (label, self.substitute_type_params(field_type, bindings, params))
-                    for label, field_type in variant.fields
-                ))
-                for variant in resolved.variants
-            ))
+            return SumSpec(
+                resolved.name,
+                tuple(
+                    VariantSpec(
+                        variant.name,
+                        tuple(
+                            (
+                                label,
+                                self.substitute_type_params(
+                                    field_type, bindings, params
+                                ),
+                            )
+                            for label, field_type in variant.fields
+                        ),
+                    )
+                    for variant in resolved.variants
+                ),
+            )
         return typ
 
     def type_contains_opaque(self, typ: TypeSpec) -> bool:
@@ -1366,11 +1768,16 @@ class BoundedEncoder:
         if isinstance(typ, PrimitiveType):
             return False
         origin = self.type_origin(typ)
-        if origin is not None and any(self.type_contains_opaque(arg) for arg in origin[2]):
+        if origin is not None and any(
+            self.type_contains_opaque(arg) for arg in origin[2]
+        ):
             return True
         resolved = self.resolve_named_type(typ)
         if isinstance(resolved, RecordSpec):
-            return any(self.type_contains_opaque(field_type) for _, field_type in resolved.fields)
+            return any(
+                self.type_contains_opaque(field_type)
+                for _, field_type in resolved.fields
+            )
         if isinstance(resolved, TupleSpec):
             return any(self.type_contains_opaque(item) for item in resolved.items)
         if isinstance(resolved, SumSpec):
@@ -1416,14 +1823,21 @@ class BoundedEncoder:
         return self.problem.functions[key]
 
     def can_define_function(self, func: FunctionInfo) -> bool:
-        return all(isinstance(param.pattern, A.VarPattern) for param in func.decl.params)
+        return all(
+            isinstance(param.pattern, A.VarPattern) for param in func.decl.params
+        )
 
     def add_function_definition(self, key: str, func: FunctionInfo) -> None:
         self.function_definitions_in_progress.add(key)
         try:
             args = [
-                z3.Const(self.safe(f"{key}.arg.{idx}.{param.pattern.name}"), self.sort_for(param_type))
-                for idx, (param, param_type) in enumerate(zip(func.decl.params, func.params))
+                z3.Const(
+                    self.safe(f"{key}.arg.{idx}.{param.pattern.name}"),
+                    self.sort_for(param_type),
+                )
+                for idx, (param, param_type) in enumerate(
+                    zip(func.decl.params, func.params)
+                )
                 if isinstance(param.pattern, A.VarPattern)
             ]
             env = {
@@ -1433,7 +1847,9 @@ class BoundedEncoder:
             }
             scope = self.problem.scopes[func.module]
             body = self.compile_block(func.decl.body, scope, 0, func.return_type, env)
-            z3.RecAddDefinition(self.problem.functions[key], args, self.primitive_expr(body))
+            z3.RecAddDefinition(
+                self.problem.functions[key], args, self.primitive_expr(body)
+            )
             self.problem.function_definitions.add(key)
         finally:
             self.function_definitions_in_progress.remove(key)
@@ -1441,11 +1857,17 @@ class BoundedEncoder:
     def opaque_atom(self, text: str, t: int) -> ZValue:
         return ZValue(BOOL, expr=z3.Bool(self.safe(f"atom.{text}@{t}")))
 
-    def opaque_call(self, name: str, args: list[ZValue], return_type: TypeSpec) -> ZValue:
+    def opaque_call(
+        self, name: str, args: list[ZValue], return_type: TypeSpec
+    ) -> ZValue:
         sort = self.sort_for(return_type)
         fn = self.problem.functions.setdefault(
             f"opaque.{name}",
-            z3.Function(self.safe(f"opaque.{name}"), *[self.sort_for(arg.typ) for arg in args], sort),
+            z3.Function(
+                self.safe(f"opaque.{name}"),
+                *[self.sort_for(arg.typ) for arg in args],
+                sort,
+            ),
         )
         return ZValue(return_type, expr=fn(*[self.primitive_expr(arg) for arg in args]))
 
@@ -1453,7 +1875,14 @@ class BoundedEncoder:
     # Pattern matching
     # ------------------------------------------------------------------
 
-    def bind_pattern(self, pattern: A.Pattern | None, value: ZValue, env: dict[str, ZValue], *, assumptions: list[Any]) -> None:
+    def bind_pattern(
+        self,
+        pattern: A.Pattern | None,
+        value: ZValue,
+        env: dict[str, ZValue],
+        *,
+        assumptions: list[Any],
+    ) -> None:
         if pattern is None or isinstance(pattern, A.WildcardPattern):
             return
         if isinstance(pattern, A.VarPattern):
@@ -1463,9 +1892,13 @@ class BoundedEncoder:
         assumptions.append(cond)
         env.update(bindings)
 
-    def bind_let_pattern(self, pattern: A.Pattern | None, value: ZValue, env: dict[str, ZValue]) -> None:
+    def bind_let_pattern(
+        self, pattern: A.Pattern | None, value: ZValue, env: dict[str, ZValue]
+    ) -> None:
         if not self.is_irrefutable_let_pattern(pattern):
-            raise UnsupportedExpression("let bindings only support irrefutable patterns")
+            raise UnsupportedExpression(
+                "let bindings only support irrefutable patterns"
+            )
         self.bind_pattern(pattern, value, env, assumptions=[])
 
     def is_irrefutable_let_pattern(self, pattern: A.Pattern | None) -> bool:
@@ -1474,10 +1907,20 @@ class BoundedEncoder:
         if isinstance(pattern, A.TuplePattern):
             return all(self.is_irrefutable_let_pattern(item) for item in pattern.items)
         if isinstance(pattern, A.RecordPattern):
-            return all(nested is None or self.is_irrefutable_let_pattern(nested) for _, nested in pattern.fields)
+            return all(
+                nested is None or self.is_irrefutable_let_pattern(nested)
+                for _, nested in pattern.fields
+            )
         return False
 
-    def match_value(self, expr: A.MatchExpr, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
+    def match_value(
+        self,
+        expr: A.MatchExpr,
+        scope: ModuleScope,
+        t: int,
+        expected: TypeSpec | None,
+        env: dict[str, ZValue],
+    ) -> ZValue:
         subject = self.compile_expr(expr.subject, scope, t, env=env)
         branches: list[tuple[Any, ZValue]] = []
         for arm in expr.arms:
@@ -1485,7 +1928,9 @@ class BoundedEncoder:
             local = dict(env)
             local.update(bindings)
             if arm.guard is not None:
-                cond = z3.And(cond, self.compile_formula(arm.guard, scope, t, env=local))
+                cond = z3.And(
+                    cond, self.compile_formula(arm.guard, scope, t, env=local)
+                )
             body = self.compile_block(arm.body, scope, t, expected, local)
             branches.append((cond, body))
         if not branches:
@@ -1495,16 +1940,35 @@ class BoundedEncoder:
             result = self.if_value(cond, value, result)
         return result
 
-    def compile_block(self, block: A.Block | None, scope: ModuleScope, t: int, expected: TypeSpec | None, env: dict[str, ZValue]) -> ZValue:
+    def compile_block(
+        self,
+        block: A.Block | None,
+        scope: ModuleScope,
+        t: int,
+        expected: TypeSpec | None,
+        env: dict[str, ZValue],
+    ) -> ZValue:
         local = dict(env)
         if block is None:
             return self.python_value(None, expected)
         for stmt in block.statements:
-            value = self.compile_expr(stmt.value, scope, t, expected=self.problem.resolve_type(scope.module.name, stmt.type_annotation) if stmt.type_annotation else None, env=local)
+            value = self.compile_expr(
+                stmt.value,
+                scope,
+                t,
+                expected=self.problem.resolve_type(
+                    scope.module.name, stmt.type_annotation
+                )
+                if stmt.type_annotation
+                else None,
+                env=local,
+            )
             self.bind_let_pattern(stmt.pattern, value, local)
         return self.compile_expr(block.result, scope, t, expected=expected, env=local)
 
-    def pattern_condition(self, pattern: A.Pattern | None, value: ZValue) -> tuple[Any, dict[str, ZValue]]:
+    def pattern_condition(
+        self, pattern: A.Pattern | None, value: ZValue
+    ) -> tuple[Any, dict[str, ZValue]]:
         if pattern is None or isinstance(pattern, A.WildcardPattern):
             return z3.BoolVal(True), {}
         if isinstance(pattern, A.VarPattern):
@@ -1538,10 +2002,16 @@ class BoundedEncoder:
             if not isinstance(sum_type, SumSpec):
                 raise UnsupportedExpression("constructor pattern requires a sum value")
             variant_name = pattern.name.split(".")[-1]
-            variant = next((item for item in sum_type.variants if item.name == variant_name), None)
+            variant = next(
+                (item for item in sum_type.variants if item.name == variant_name), None
+            )
             if variant is None:
                 raise UnsupportedExpression(f"unknown constructor {variant_name!r}")
-            zero_unit = len(pattern.args) == 0 and len(variant.fields) == 1 and variant.fields[0][1] == UNIT
+            zero_unit = (
+                len(pattern.args) == 0
+                and len(variant.fields) == 1
+                and variant.fields[0][1] == UNIT
+            )
             if len(pattern.args) != len(variant.fields) and not zero_unit:
                 return z3.BoolVal(False), {}
             encoding = self.datatype_encoding(value.typ)
@@ -1550,13 +2020,21 @@ class BoundedEncoder:
             if zero_unit:
                 return z3.And(conds), constructor_bindings
             accessors = encoding.accessors[variant_name]
-            for idx, (nested, (_, field_type)) in enumerate(zip(pattern.args, variant.fields)):
-                payload = ZValue(field_type, expr=accessors[idx](self.primitive_expr(value)))
+            for idx, (nested, (_, field_type)) in enumerate(
+                zip(pattern.args, variant.fields)
+            ):
+                payload = ZValue(
+                    field_type, expr=accessors[idx](self.primitive_expr(value))
+                )
                 cond, nested_bindings = self.pattern_condition(nested, payload)
                 conds.append(cond)
                 constructor_bindings.update(nested_bindings)
             return z3.And(conds), constructor_bindings
-        if isinstance(pattern, A.ListPattern) and value.has_concrete and isinstance(value.concrete, list):
+        if (
+            isinstance(pattern, A.ListPattern)
+            and value.has_concrete
+            and isinstance(value.concrete, list)
+        ):
             if len(pattern.items) != len(value.concrete):
                 return z3.BoolVal(False), {}
             conds = []
@@ -1572,15 +2050,23 @@ class BoundedEncoder:
     # Constructors, literals and equality
     # ------------------------------------------------------------------
 
-    def find_constructor(self, name: str, expected: TypeSpec | None, scope: ModuleScope | None = None) -> ConstructorInfo | None:
+    def find_constructor(
+        self, name: str, expected: TypeSpec | None, scope: ModuleScope | None = None
+    ) -> ConstructorInfo | None:
         parts = split_qualified(name)
         if len(parts) < 2:
             return None
         variant_name = parts[-1]
         type_name = ".".join(parts[:-1])
         if scope is None:
-            expected_resolved = self.resolve_named_type(expected) if expected is not None else None
-            origin = self.type_origin(expected_resolved) if expected_resolved is not None else None
+            expected_resolved = (
+                self.resolve_named_type(expected) if expected is not None else None
+            )
+            origin = (
+                self.type_origin(expected_resolved)
+                if expected_resolved is not None
+                else None
+            )
             if origin is None:
                 return None
             module_name, local_type, arg_specs = origin
@@ -1590,18 +2076,28 @@ class BoundedEncoder:
             if isinstance(typ, SumSpec):
                 for variant in typ.variants:
                     if variant.name == variant_name:
-                        return ConstructorInfo(typ, variant, module_name, local_type, arg_specs)
+                        return ConstructorInfo(
+                            typ, variant, module_name, local_type, arg_specs
+                        )
             return None
         if scope is None:
             return None
-        module_name, local_type = self.problem.resolve_decl(scope, type_name, expected={"type"})
+        module_name, local_type = self.problem.resolve_decl(
+            scope, type_name, expected={"type"}
+        )
         if module_name is None or local_type is None:
             return None
         decl = self.problem.scopes[module_name].types.get(local_type)
         if decl is None or not isinstance(decl.definition, A.SumType):
             return None
-        expected_resolved = self.resolve_named_type(expected) if expected is not None else None
-        origin = self.type_origin(expected_resolved) if expected_resolved is not None else None
+        expected_resolved = (
+            self.resolve_named_type(expected) if expected is not None else None
+        )
+        origin = (
+            self.type_origin(expected_resolved)
+            if expected_resolved is not None
+            else None
+        )
         if (
             isinstance(expected_resolved, SumSpec)
             and origin is not None
@@ -1616,10 +2112,14 @@ class BoundedEncoder:
         if isinstance(typ, SumSpec):
             for variant in typ.variants:
                 if variant.name == variant_name:
-                    return ConstructorInfo(typ, variant, module_name, local_type, arg_specs)
+                    return ConstructorInfo(
+                        typ, variant, module_name, local_type, arg_specs
+                    )
         return None
 
-    def type_origin(self, typ: TypeSpec) -> tuple[str, str, tuple[TypeSpec, ...]] | None:
+    def type_origin(
+        self, typ: TypeSpec
+    ) -> tuple[str, str, tuple[TypeSpec, ...]] | None:
         resolved = self.resolve_named_type(typ)
         resolved_name = resolved.name if isinstance(resolved, SumSpec) else None
         for (module_name, local, args), cached in self.problem.type_cache.items():
@@ -1634,7 +2134,9 @@ class BoundedEncoder:
                 return module_name, local, args
         return None
 
-    def refined_constructor_info(self, info: ConstructorInfo, values: list[ZValue]) -> ConstructorInfo:
+    def refined_constructor_info(
+        self, info: ConstructorInfo, values: list[ZValue]
+    ) -> ConstructorInfo:
         if info.module is None or info.local is None:
             return info
         decl = self.problem.scopes[info.module].types[info.local]
@@ -1647,15 +2149,22 @@ class BoundedEncoder:
         if not bindings:
             return info
         arg_specs = tuple(
-            bindings.get(param, info.type_args[idx] if idx < len(info.type_args) else OpaqueSpec(param))
+            bindings.get(
+                param,
+                info.type_args[idx] if idx < len(info.type_args) else OpaqueSpec(param),
+            )
             for idx, param in enumerate(decl.params)
         )
-        sum_type = self.problem.resolve_declared_type(info.module, info.local, arg_specs)
+        sum_type = self.problem.resolve_declared_type(
+            info.module, info.local, arg_specs
+        )
         if not isinstance(sum_type, SumSpec):
             return info
         for variant in sum_type.variants:
             if variant.name == info.variant.name:
-                return ConstructorInfo(sum_type, variant, info.module, info.local, arg_specs)
+                return ConstructorInfo(
+                    sum_type, variant, info.module, info.local, arg_specs
+                )
         return info
 
     def unify_type_params(
@@ -1677,7 +2186,11 @@ class BoundedEncoder:
             if not (isinstance(actual, OpaqueSpec) and actual.name == pattern.name):
                 bindings.setdefault(pattern.name, actual)
             return
-        if isinstance(pattern, SumSpec) and isinstance(actual, SumSpec) and pattern.name == actual.name:
+        if (
+            isinstance(pattern, SumSpec)
+            and isinstance(actual, SumSpec)
+            and pattern.name == actual.name
+        ):
             return
         if isinstance(pattern, RecordSpec) and isinstance(actual, RecordSpec):
             for (_, p_type), (_, a_type) in zip(pattern.fields, actual.fields):
@@ -1695,7 +2208,11 @@ class BoundedEncoder:
     def constructor_value(self, info: ConstructorInfo, values: list[ZValue]) -> ZValue:
         encoding = self.datatype_encoding(info.sum_type)
         constructor = encoding.constructors[info.variant.name]
-        if not values and len(info.variant.fields) == 1 and info.variant.fields[0][1] == UNIT:
+        if (
+            not values
+            and len(info.variant.fields) == 1
+            and info.variant.fields[0][1] == UNIT
+        ):
             values = [self.literal_value(None, "unit", UNIT)]
         exprs = [self.primitive_expr(value) for value in values]
         result = ZValue(info.sum_type, expr=constructor(*exprs))
@@ -1708,7 +2225,9 @@ class BoundedEncoder:
     def std_list_type(self, item_type: TypeSpec) -> TypeSpec:
         if "std.collections" not in self.problem.scopes:
             raise UnsupportedExpression("std.collections is not available")
-        return self.problem.resolve_declared_type("std.collections", "List", (item_type,))
+        return self.problem.resolve_declared_type(
+            "std.collections", "List", (item_type,)
+        )
 
     def std_string_list_type(self) -> TypeSpec:
         return self.std_list_type(STRING)
@@ -1717,7 +2236,9 @@ class BoundedEncoder:
         list_type = self.std_string_list_type()
         sum_type = self.resolve_named_type(list_type)
         if not isinstance(sum_type, SumSpec):
-            raise UnsupportedExpression("std.collections.List<string> is not a sum type")
+            raise UnsupportedExpression(
+                "std.collections.List<string> is not a sum type"
+            )
         encoding = self.datatype_encoding(list_type)
         return list_type, sum_type, encoding
 
@@ -1725,7 +2246,9 @@ class BoundedEncoder:
         list_type, _sum_type, encoding = self.std_string_list_encoding()
         key = f"builtin.std.strings.to_list.{self.type_key(list_type)}"
         if key not in self.problem.functions:
-            self.problem.functions[key] = z3.RecFunction(self.safe(key), z3.StringSort(), encoding.sort)
+            self.problem.functions[key] = z3.RecFunction(
+                self.safe(key), z3.StringSort(), encoding.sort
+            )
         if key not in self.problem.function_definitions:
             func = self.problem.functions[key]
             value = z3.Const(self.safe(f"{key}.arg.value"), z3.StringSort())
@@ -1746,14 +2269,19 @@ class BoundedEncoder:
         list_type, _sum_type, encoding = self.std_string_list_encoding()
         key = f"builtin.std.strings.of_list.{self.type_key(list_type)}"
         if key not in self.problem.functions:
-            self.problem.functions[key] = z3.RecFunction(self.safe(key), encoding.sort, z3.StringSort())
+            self.problem.functions[key] = z3.RecFunction(
+                self.safe(key), encoding.sort, z3.StringSort()
+            )
         if key not in self.problem.function_definitions:
             func = self.problem.functions[key]
             value = z3.Const(self.safe(f"{key}.arg.value"), encoding.sort)
             body = z3.If(
                 encoding.recognizers["Empty"](value),
                 z3.StringVal(""),
-                z3.Concat(encoding.accessors["Cons"][0](value), func(encoding.accessors["Cons"][1](value))),
+                z3.Concat(
+                    encoding.accessors["Cons"][0](value),
+                    func(encoding.accessors["Cons"][1](value)),
+                ),
             )
             z3.RecAddDefinition(func, [value], body)
             self.problem.function_definitions.add(key)
@@ -1763,22 +2291,35 @@ class BoundedEncoder:
         fields = encoding.fields.get("Empty")
         if fields is None:
             raise UnsupportedExpression("std List has no Empty constructor")
-        values = [self.literal_value(None, "unit", field_type) for _, field_type in fields]
-        return encoding.constructors["Empty"](*[self.primitive_expr(value) for value in values])
+        values = [
+            self.literal_value(None, "unit", field_type) for _, field_type in fields
+        ]
+        return encoding.constructors["Empty"](
+            *[self.primitive_expr(value) for value in values]
+        )
 
-    def std_list_constructor_concrete(self, info: ConstructorInfo, values: list[ZValue]) -> list[ZValue] | None:
+    def std_list_constructor_concrete(
+        self, info: ConstructorInfo, values: list[ZValue]
+    ) -> list[ZValue] | None:
         origin = self.type_origin(info.sum_type)
         if origin is None or origin[0] != "std.collections" or origin[1] != "List":
             return None
         if info.variant.name == "Empty":
             return []
-        if info.variant.name == "Cons" and len(values) == 2 and values[1].has_concrete and isinstance(values[1].concrete, list):
+        if (
+            info.variant.name == "Cons"
+            and len(values) == 2
+            and values[1].has_concrete
+            and isinstance(values[1].concrete, list)
+        ):
             return [values[0], *values[1].concrete]
         return None
 
     def adt_list_value(self, items: list[Any], expected: TypeSpec | None) -> ZValue:
         if expected is None:
-            item_type = self.python_value(items[0], None).typ if items else OpaqueSpec("item")
+            item_type = (
+                self.python_value(items[0], None).typ if items else OpaqueSpec("item")
+            )
             list_type = self.std_list_type(item_type)
         else:
             list_type = expected
@@ -1788,7 +2329,11 @@ class BoundedEncoder:
         variants = {variant.name: variant for variant in sum_type.variants}
         if "Empty" not in variants or "Cons" not in variants:
             raise UnsupportedExpression("expected std List constructors Empty and Cons")
-        head_type = variants["Cons"].fields[0][1] if variants["Cons"].fields else OpaqueSpec("item")
+        head_type = (
+            variants["Cons"].fields[0][1]
+            if variants["Cons"].fields
+            else OpaqueSpec("item")
+        )
         if items and isinstance(self.resolve_named_type(head_type), OpaqueSpec):
             head_type = self.python_value(items[0], None).typ
             list_type = self.std_list_type(head_type)
@@ -1796,7 +2341,9 @@ class BoundedEncoder:
             if not isinstance(sum_type, SumSpec):
                 raise UnsupportedExpression("expected std List ADT")
             variants = {variant.name: variant for variant in sum_type.variants}
-            head_type = variants["Cons"].fields[0][1] if variants["Cons"].fields else head_type
+            head_type = (
+                variants["Cons"].fields[0][1] if variants["Cons"].fields else head_type
+            )
         concrete_items = [self.python_value(item, head_type) for item in items]
         empty = ConstructorInfo(sum_type, variants["Empty"])
         empty_values = [
@@ -1805,7 +2352,9 @@ class BoundedEncoder:
         ]
         tail = self.constructor_value(empty, empty_values)
         for head in reversed(concrete_items):
-            tail = self.constructor_value(ConstructorInfo(sum_type, variants["Cons"]), [head, tail])
+            tail = self.constructor_value(
+                ConstructorInfo(sum_type, variants["Cons"]), [head, tail]
+            )
         tail.concrete = concrete_items
         tail.has_concrete = True
         return tail
@@ -1835,17 +2384,51 @@ class BoundedEncoder:
             ordered = [fields[f"_{idx}"] for idx in range(len(resolved.items))]
         else:
             raise UnsupportedExpression(f"type {typ!r} is not a product ADT")
-        return ZValue(typ, expr=constructor(*[self.primitive_expr(value) for value in ordered]), fields=fields)
+        return ZValue(
+            typ,
+            expr=constructor(*[self.primitive_expr(value) for value in ordered]),
+            fields=fields,
+        )
 
-    def literal_value(self, value: Any, kind: str, expected: TypeSpec | None = None) -> ZValue:
-        if kind == "bool" or isinstance(expected, PrimitiveType) and expected.name == "bool":
-            return ZValue(BOOL, expr=z3.BoolVal(bool(value)), concrete=bool(value), has_concrete=True)
-        if kind == "int" and not (isinstance(expected, PrimitiveType) and expected.name in {"rat", "decimal"}):
-            return ZValue(INT, expr=z3.IntVal(int(value)), concrete=int(value), has_concrete=True)
-        if kind in {"rat", "decimal"} or isinstance(expected, PrimitiveType) and expected.name in {"rat", "decimal"}:
-            return ZValue(REAL, expr=self.real_val(value), concrete=value, has_concrete=True)
-        if kind == "string" or isinstance(expected, PrimitiveType) and expected.name == "string":
-            return ZValue(STRING, expr=z3.StringVal(str(value)), concrete=str(value), has_concrete=True)
+    def literal_value(
+        self, value: Any, kind: str, expected: TypeSpec | None = None
+    ) -> ZValue:
+        if (
+            kind == "bool"
+            or isinstance(expected, PrimitiveType)
+            and expected.name == "bool"
+        ):
+            return ZValue(
+                BOOL,
+                expr=z3.BoolVal(bool(value)),
+                concrete=bool(value),
+                has_concrete=True,
+            )
+        if kind == "int" and not (
+            isinstance(expected, PrimitiveType) and expected.name in {"rat", "decimal"}
+        ):
+            return ZValue(
+                INT, expr=z3.IntVal(int(value)), concrete=int(value), has_concrete=True
+            )
+        if (
+            kind in {"rat", "decimal"}
+            or isinstance(expected, PrimitiveType)
+            and expected.name in {"rat", "decimal"}
+        ):
+            return ZValue(
+                REAL, expr=self.real_val(value), concrete=value, has_concrete=True
+            )
+        if (
+            kind == "string"
+            or isinstance(expected, PrimitiveType)
+            and expected.name == "string"
+        ):
+            return ZValue(
+                STRING,
+                expr=z3.StringVal(str(value)),
+                concrete=str(value),
+                has_concrete=True,
+            )
         return ZValue(UNIT, expr=z3.IntVal(0), concrete=value, has_concrete=True)
 
     def python_value(self, value: Any, expected: TypeSpec | None) -> ZValue:
@@ -1858,8 +2441,14 @@ class BoundedEncoder:
         if isinstance(value, str):
             constructor = self.find_constructor(value, expected)
             if constructor is not None:
-                field_types = [self.resolve_named_type(field_type) for _, field_type in constructor.variant.fields]
-                if all(isinstance(field_type, PrimitiveType) and field_type.name == "unit" for field_type in field_types):
+                field_types = [
+                    self.resolve_named_type(field_type)
+                    for _, field_type in constructor.variant.fields
+                ]
+                if all(
+                    isinstance(field_type, PrimitiveType) and field_type.name == "unit"
+                    for field_type in field_types
+                ):
                     values = [
                         self.literal_value(None, "unit", field_type)
                         for _, field_type in constructor.variant.fields
@@ -1867,10 +2456,23 @@ class BoundedEncoder:
                     return self.constructor_value(constructor, values)
             return self.literal_value(value, "string", expected)
         if isinstance(value, dict):
-            expected_resolved = self.resolve_named_type(expected) if expected is not None else None
-            expected_fields = dict(expected_resolved.fields) if isinstance(expected_resolved, RecordSpec) else {}
-            fields = {k: self.python_value(v, expected_fields.get(k)) for k, v in value.items()}
-            typ: TypeSpec = expected if isinstance(expected_resolved, RecordSpec) and expected is not None else RecordSpec(tuple((k, v.typ) for k, v in fields.items()))
+            expected_resolved = (
+                self.resolve_named_type(expected) if expected is not None else None
+            )
+            expected_fields = (
+                dict(expected_resolved.fields)
+                if isinstance(expected_resolved, RecordSpec)
+                else {}
+            )
+            fields = {
+                k: self.python_value(v, expected_fields.get(k))
+                for k, v in value.items()
+            }
+            typ: TypeSpec = (
+                expected
+                if isinstance(expected_resolved, RecordSpec) and expected is not None
+                else RecordSpec(tuple((k, v.typ) for k, v in fields.items()))
+            )
             result = self.product_value(typ, fields)
             result.concrete = value
             result.has_concrete = True
@@ -1881,7 +2483,9 @@ class BoundedEncoder:
                 raw_args = value[1] if len(value) > 1 else ()
                 values = [
                     self.python_value(arg, field_type)
-                    for arg, (_, field_type) in zip(raw_args, constructor.variant.fields)
+                    for arg, (_, field_type) in zip(
+                        raw_args, constructor.variant.fields
+                    )
                 ]
                 result = self.constructor_value(constructor, values)
                 result.concrete = value
@@ -1890,7 +2494,9 @@ class BoundedEncoder:
         if isinstance(value, list):
             return self.adt_list_value(value, expected)
         if isinstance(value, set):
-            raise UnsupportedExpression("set runtime values require an explicit ADT constructor")
+            raise UnsupportedExpression(
+                "set runtime values require an explicit ADT constructor"
+            )
         return self.literal_value(value, "unit", expected)
 
     def equal_values(self, left: ZValue, right: ZValue) -> Any:
@@ -1905,14 +2511,26 @@ class BoundedEncoder:
             common = sorted(left_fields & right_fields)
             if not common:
                 return z3.BoolVal(True)
-            return z3.And([self.equal_values(self.field_value(left, name), self.field_value(right, name)) for name in common])
+            return z3.And(
+                [
+                    self.equal_values(
+                        self.field_value(left, name), self.field_value(right, name)
+                    )
+                    for name in common
+                ]
+            )
         if isinstance(left_type, TupleSpec) and isinstance(right_type, TupleSpec):
             if len(left_type.items) != len(right_type.items):
                 return z3.BoolVal(False)
-            return z3.And([
-                self.equal_values(self.field_value(left, f"_{idx}"), self.field_value(right, f"_{idx}"))
-                for idx in range(len(left_type.items))
-            ])
+            return z3.And(
+                [
+                    self.equal_values(
+                        self.field_value(left, f"_{idx}"),
+                        self.field_value(right, f"_{idx}"),
+                    )
+                    for idx in range(len(left_type.items))
+                ]
+            )
         if self.is_datatype_type(left.typ) or self.is_datatype_type(right.typ):
             left_expr = self.primitive_expr(left)
             right_expr = self.primitive_expr(right)
@@ -1977,10 +2595,20 @@ class BoundedEncoder:
                 for variant in resolved.variants
             ]
         if isinstance(resolved, RecordSpec):
-            return [(self.product_constructor_name(), self.safe(f"{key}.value"), list(resolved.fields))]
+            return [
+                (
+                    self.product_constructor_name(),
+                    self.safe(f"{key}.value"),
+                    list(resolved.fields),
+                )
+            ]
         if isinstance(resolved, TupleSpec):
-            fields: list[tuple[str | None, TypeSpec]] = [(f"_{idx}", item) for idx, item in enumerate(resolved.items)]
-            return [(self.product_constructor_name(), self.safe(f"{key}.value"), fields)]
+            fields: list[tuple[str | None, TypeSpec]] = [
+                (f"_{idx}", item) for idx, item in enumerate(resolved.items)
+            ]
+            return [
+                (self.product_constructor_name(), self.safe(f"{key}.value"), fields)
+            ]
         raise UnsupportedExpression(f"type {typ!r} is not an ADT")
 
     def collect_datatypes(self, typ: TypeSpec, pending: dict[str, TypeSpec]) -> None:
@@ -2003,18 +2631,19 @@ class BoundedEncoder:
         if not pending:
             return
         ordered = list(pending.items())
-        builders = {
-            key: z3.Datatype(f"DT__{self.safe(key)}")
-            for key, _ in ordered
-        }
+        builders = {key: z3.Datatype(f"DT__{self.safe(key)}") for key, _ in ordered}
         for key, spec in ordered:
             builder = builders[key]
-            for public_name, z3_name, fields in self.datatype_constructor_specs(key, spec):
+            for public_name, z3_name, fields in self.datatype_constructor_specs(
+                key, spec
+            ):
                 z3_fields = []
                 for idx, (label, field_type) in enumerate(fields):
                     label_text = label if label is not None else f"_{idx}"
                     accessor_name = self.safe(f"{key}.{public_name}.{label_text}.{idx}")
-                    z3_fields.append((accessor_name, self.datatype_field_sort(field_type, builders)))
+                    z3_fields.append(
+                        (accessor_name, self.datatype_field_sort(field_type, builders))
+                    )
                 builder.declare(z3_name, *z3_fields)
         created = z3.CreateDatatypes(*[builders[key] for key, _ in ordered])
         if len(ordered) == 1 and not isinstance(created, (tuple, list)):
@@ -2024,10 +2653,14 @@ class BoundedEncoder:
             recognizers: dict[str, Any] = {}
             accessors: dict[str, list[Any]] = {}
             fields_by_constructor: dict[str, list[tuple[str | None, TypeSpec]]] = {}
-            for idx, (public_name, _, fields) in enumerate(self.datatype_constructor_specs(key, spec)):
+            for idx, (public_name, _, fields) in enumerate(
+                self.datatype_constructor_specs(key, spec)
+            ):
                 constructors[public_name] = sort.constructor(idx)
                 recognizers[public_name] = sort.recognizer(idx)
-                accessors[public_name] = [sort.accessor(idx, field_idx) for field_idx in range(len(fields))]
+                accessors[public_name] = [
+                    sort.accessor(idx, field_idx) for field_idx in range(len(fields))
+                ]
                 fields_by_constructor[public_name] = fields
             self.problem.datatype_encodings[key] = DatatypeEncoding(
                 sort=sort,
@@ -2046,7 +2679,9 @@ class BoundedEncoder:
                 return builders[key]
             if key in self.problem.datatype_encodings:
                 return self.problem.datatype_encodings[key].sort
-            raise UnsupportedExpression(f"datatype dependency {key!r} was not collected")
+            raise UnsupportedExpression(
+                f"datatype dependency {key!r} was not collected"
+            )
         return self.opaque_sort_for(typ)
 
     def datatype_encoding(self, typ: TypeSpec) -> DatatypeEncoding:
@@ -2073,9 +2708,20 @@ class BoundedEncoder:
             self.problem.opaque_sorts[key] = z3.DeclareSort(f"Sort__{key}")
         return self.problem.opaque_sorts[key]
 
-    def track(self, expr: Any, *, kind: str, module: str | None, name: str, line: int, column: int) -> None:
+    def track(
+        self,
+        expr: Any,
+        *,
+        kind: str,
+        module: str | None,
+        name: str,
+        line: int,
+        column: int,
+    ) -> None:
         self.track_counter += 1
-        key = self.safe(f"track.{kind}.{module or 'global'}.{name}.{self.track_counter}")
+        key = self.safe(
+            f"track.{kind}.{module or 'global'}.{name}.{self.track_counter}"
+        )
         lit = z3.Bool(key)
         self.tracked[key] = TrackedConstraint(key, kind, module, name, line, column)
         self.solver.assert_and_track(expr, lit)
@@ -2091,7 +2737,11 @@ class BoundedEncoder:
         return value.expr
 
     def is_numeric(self, value: ZValue) -> bool:
-        return isinstance(value.typ, PrimitiveType) and value.typ.name in {"int", "rat", "decimal"}
+        return isinstance(value.typ, PrimitiveType) and value.typ.name in {
+            "int",
+            "rat",
+            "decimal",
+        }
 
     def as_numeric(self, value: ZValue) -> Any:
         if not self.is_numeric(value):
@@ -2101,18 +2751,40 @@ class BoundedEncoder:
     def promote_numeric(self, left: ZValue, right: ZValue) -> tuple[Any, Any]:
         l_num = self.as_numeric(left)
         r_num = self.as_numeric(right)
-        if isinstance(left.typ, PrimitiveType) and left.typ.name == "int" and isinstance(right.typ, PrimitiveType) and right.typ.name in {"rat", "decimal"}:
+        if (
+            isinstance(left.typ, PrimitiveType)
+            and left.typ.name == "int"
+            and isinstance(right.typ, PrimitiveType)
+            and right.typ.name in {"rat", "decimal"}
+        ):
             l_num = z3.ToReal(l_num)
-        if isinstance(right.typ, PrimitiveType) and right.typ.name == "int" and isinstance(left.typ, PrimitiveType) and left.typ.name in {"rat", "decimal"}:
+        if (
+            isinstance(right.typ, PrimitiveType)
+            and right.typ.name == "int"
+            and isinstance(left.typ, PrimitiveType)
+            and left.typ.name in {"rat", "decimal"}
+        ):
             r_num = z3.ToReal(r_num)
         return l_num, r_num
 
     def expects_real(self, expected: TypeSpec | None) -> bool:
-        return isinstance(expected, PrimitiveType) and expected.name in {"rat", "decimal"}
+        return isinstance(expected, PrimitiveType) and expected.name in {
+            "rat",
+            "decimal",
+        }
 
     def coerce_value(self, value: ZValue, expected: TypeSpec | None) -> ZValue:
-        if self.expects_real(expected) and isinstance(value.typ, PrimitiveType) and value.typ.name == "int":
-            return ZValue(REAL, expr=z3.ToReal(self.primitive_expr(value)), concrete=value.concrete, has_concrete=value.has_concrete)
+        if (
+            self.expects_real(expected)
+            and isinstance(value.typ, PrimitiveType)
+            and value.typ.name == "int"
+        ):
+            return ZValue(
+                REAL,
+                expr=z3.ToReal(self.primitive_expr(value)),
+                concrete=value.concrete,
+                has_concrete=value.has_concrete,
+            )
         return value
 
     def sort_for(self, typ: TypeSpec) -> Any:
@@ -2173,33 +2845,53 @@ class BoundedEncoder:
                 return True
             return False
         if isinstance(expr, A.Call):
-            return self.runtime_names_resolvable(expr.func, scope) and all(self.runtime_names_resolvable(arg, scope) for arg in expr.args)
+            return self.runtime_names_resolvable(expr.func, scope) and all(
+                self.runtime_names_resolvable(arg, scope) for arg in expr.args
+            )
         if isinstance(expr, A.FieldAccess):
             return self.runtime_names_resolvable(expr.target, scope)
         if isinstance(expr, A.BinaryOp):
-            return self.runtime_names_resolvable(expr.left, scope) and self.runtime_names_resolvable(expr.right, scope)
+            return self.runtime_names_resolvable(
+                expr.left, scope
+            ) and self.runtime_names_resolvable(expr.right, scope)
         if isinstance(expr, A.UnaryOp):
             return self.runtime_names_resolvable(expr.operand, scope)
         if isinstance(expr, A.TemporalUnary):
             return self.runtime_names_resolvable(expr.operand, scope)
         if isinstance(expr, A.TemporalBinary):
-            return self.runtime_names_resolvable(expr.left, scope) and self.runtime_names_resolvable(expr.right, scope)
+            return self.runtime_names_resolvable(
+                expr.left, scope
+            ) and self.runtime_names_resolvable(expr.right, scope)
         if isinstance(expr, A.IfExpr):
-            return all(self.runtime_names_resolvable(item, scope) for item in [expr.condition, expr.then_branch, expr.else_branch])
+            return all(
+                self.runtime_names_resolvable(item, scope)
+                for item in [expr.condition, expr.then_branch, expr.else_branch]
+            )
         if isinstance(expr, A.LetExpr):
-            return self.runtime_names_resolvable(expr.value, scope) and self.runtime_names_resolvable(expr.body, scope)
+            return self.runtime_names_resolvable(
+                expr.value, scope
+            ) and self.runtime_names_resolvable(expr.body, scope)
         if isinstance(expr, A.MatchExpr):
             return self.runtime_names_resolvable(expr.subject, scope) and all(
-                self.runtime_names_resolvable(arm.guard, scope) and self.runtime_names_resolvable(arm.body.result if arm.body else None, scope)
+                self.runtime_names_resolvable(arm.guard, scope)
+                and self.runtime_names_resolvable(
+                    arm.body.result if arm.body else None, scope
+                )
                 for arm in expr.arms
             )
         if isinstance(expr, A.TupleLiteral):
-            return all(self.runtime_names_resolvable(item, scope) for item in expr.items)
+            return all(
+                self.runtime_names_resolvable(item, scope) for item in expr.items
+            )
         if isinstance(expr, A.RecordConstructor):
-            return all(self.runtime_names_resolvable(item, scope) for _, item in expr.fields)
+            return all(
+                self.runtime_names_resolvable(item, scope) for _, item in expr.fields
+            )
         return True
 
-    def runtime_references_have_values(self, expr: A.Expr | None, scope: ModuleScope) -> bool:
+    def runtime_references_have_values(
+        self, expr: A.Expr | None, scope: ModuleScope
+    ) -> bool:
         if expr is None or scope.runtime is None:
             return True
         if isinstance(expr, A.Name):
@@ -2214,59 +2906,96 @@ class BoundedEncoder:
         if isinstance(expr, A.FieldAccess):
             return self.runtime_references_have_values(expr.target, scope)
         if isinstance(expr, A.BinaryOp):
-            return self.runtime_references_have_values(expr.left, scope) and self.runtime_references_have_values(expr.right, scope)
+            return self.runtime_references_have_values(
+                expr.left, scope
+            ) and self.runtime_references_have_values(expr.right, scope)
         if isinstance(expr, A.UnaryOp):
             return self.runtime_references_have_values(expr.operand, scope)
         if isinstance(expr, A.TemporalUnary):
             return self.runtime_references_have_values(expr.operand, scope)
         if isinstance(expr, A.TemporalBinary):
-            return self.runtime_references_have_values(expr.left, scope) and self.runtime_references_have_values(expr.right, scope)
+            return self.runtime_references_have_values(
+                expr.left, scope
+            ) and self.runtime_references_have_values(expr.right, scope)
         if isinstance(expr, A.IfExpr):
-            return all(self.runtime_references_have_values(item, scope) for item in [expr.condition, expr.then_branch, expr.else_branch])
+            return all(
+                self.runtime_references_have_values(item, scope)
+                for item in [expr.condition, expr.then_branch, expr.else_branch]
+            )
         if isinstance(expr, A.LetExpr):
-            return self.runtime_references_have_values(expr.value, scope) and self.runtime_references_have_values(expr.body, scope)
+            return self.runtime_references_have_values(
+                expr.value, scope
+            ) and self.runtime_references_have_values(expr.body, scope)
         if isinstance(expr, A.MatchExpr):
             return self.runtime_references_have_values(expr.subject, scope) and all(
                 self.runtime_references_have_values(arm.guard, scope)
-                and self.runtime_references_have_values(arm.body.result if arm.body else None, scope)
+                and self.runtime_references_have_values(
+                    arm.body.result if arm.body else None, scope
+                )
                 for arm in expr.arms
             )
         if isinstance(expr, A.TupleLiteral):
-            return all(self.runtime_references_have_values(item, scope) for item in expr.items)
+            return all(
+                self.runtime_references_have_values(item, scope) for item in expr.items
+            )
         if isinstance(expr, A.RecordConstructor):
-            return all(self.runtime_references_have_values(item, scope) for _, item in expr.fields)
+            return all(
+                self.runtime_references_have_values(item, scope)
+                for _, item in expr.fields
+            )
         return True
 
-    def references_external_module(self, expr: A.Expr | None, scope: ModuleScope) -> bool:
+    def references_external_module(
+        self, expr: A.Expr | None, scope: ModuleScope
+    ) -> bool:
         if expr is None:
             return False
         if isinstance(expr, A.Name):
-            module_name, _ = self.problem.resolve_decl(scope, expr.name, expected={"entity", "func", "type"})
+            module_name, _ = self.problem.resolve_decl(
+                scope, expr.name, expected={"entity", "func", "type"}
+            )
             return module_name is not None and module_name != scope.module.name
         if isinstance(expr, A.Call):
-            return self.references_external_module(expr.func, scope) or any(self.references_external_module(arg, scope) for arg in expr.args)
+            return self.references_external_module(expr.func, scope) or any(
+                self.references_external_module(arg, scope) for arg in expr.args
+            )
         if isinstance(expr, A.FieldAccess):
             return self.references_external_module(expr.target, scope)
         if isinstance(expr, A.BinaryOp):
-            return self.references_external_module(expr.left, scope) or self.references_external_module(expr.right, scope)
+            return self.references_external_module(
+                expr.left, scope
+            ) or self.references_external_module(expr.right, scope)
         if isinstance(expr, (A.UnaryOp, A.TemporalUnary)):
             return self.references_external_module(expr.operand, scope)
         if isinstance(expr, A.TemporalBinary):
-            return self.references_external_module(expr.left, scope) or self.references_external_module(expr.right, scope)
+            return self.references_external_module(
+                expr.left, scope
+            ) or self.references_external_module(expr.right, scope)
         if isinstance(expr, A.IfExpr):
-            return any(self.references_external_module(item, scope) for item in [expr.condition, expr.then_branch, expr.else_branch])
+            return any(
+                self.references_external_module(item, scope)
+                for item in [expr.condition, expr.then_branch, expr.else_branch]
+            )
         if isinstance(expr, A.LetExpr):
-            return self.references_external_module(expr.value, scope) or self.references_external_module(expr.body, scope)
+            return self.references_external_module(
+                expr.value, scope
+            ) or self.references_external_module(expr.body, scope)
         if isinstance(expr, A.MatchExpr):
             return self.references_external_module(expr.subject, scope) or any(
                 self.references_external_module(arm.guard, scope)
-                or self.references_external_module(arm.body.result if arm.body else None, scope)
+                or self.references_external_module(
+                    arm.body.result if arm.body else None, scope
+                )
                 for arm in expr.arms
             )
         if isinstance(expr, A.TupleLiteral):
-            return any(self.references_external_module(item, scope) for item in expr.items)
+            return any(
+                self.references_external_module(item, scope) for item in expr.items
+            )
         if isinstance(expr, A.RecordConstructor):
-            return any(self.references_external_module(item, scope) for _, item in expr.fields)
+            return any(
+                self.references_external_module(item, scope) for _, item in expr.fields
+            )
         return False
 
     def references_non_list_collection_constructor(self, expr: A.Expr | None) -> bool:
@@ -2278,40 +3007,63 @@ class BoundedEncoder:
             if len(parts) >= 2 and parts[-2] in {"Set", "Map", "Option"}:
                 return True
             return self.references_non_list_collection_constructor(expr.func) or any(
-                self.references_non_list_collection_constructor(arg) for arg in expr.args
+                self.references_non_list_collection_constructor(arg)
+                for arg in expr.args
             )
         if isinstance(expr, A.FieldAccess):
             return self.references_non_list_collection_constructor(expr.target)
         if isinstance(expr, A.BinaryOp):
-            return self.references_non_list_collection_constructor(expr.left) or self.references_non_list_collection_constructor(expr.right)
+            return self.references_non_list_collection_constructor(
+                expr.left
+            ) or self.references_non_list_collection_constructor(expr.right)
         if isinstance(expr, (A.UnaryOp, A.TemporalUnary)):
             return self.references_non_list_collection_constructor(expr.operand)
         if isinstance(expr, A.TemporalBinary):
-            return self.references_non_list_collection_constructor(expr.left) or self.references_non_list_collection_constructor(expr.right)
+            return self.references_non_list_collection_constructor(
+                expr.left
+            ) or self.references_non_list_collection_constructor(expr.right)
         if isinstance(expr, A.IfExpr):
-            return any(self.references_non_list_collection_constructor(item) for item in [expr.condition, expr.then_branch, expr.else_branch])
+            return any(
+                self.references_non_list_collection_constructor(item)
+                for item in [expr.condition, expr.then_branch, expr.else_branch]
+            )
         if isinstance(expr, A.LetExpr):
-            return self.references_non_list_collection_constructor(expr.value) or self.references_non_list_collection_constructor(expr.body)
+            return self.references_non_list_collection_constructor(
+                expr.value
+            ) or self.references_non_list_collection_constructor(expr.body)
         if isinstance(expr, A.MatchExpr):
             return self.references_non_list_collection_constructor(expr.subject) or any(
-                self.references_non_list_collection_constructor(arm.guard) or self.references_non_list_collection_constructor(arm.body.result if arm.body else None)
+                self.references_non_list_collection_constructor(arm.guard)
+                or self.references_non_list_collection_constructor(
+                    arm.body.result if arm.body else None
+                )
                 for arm in expr.arms
             )
         if isinstance(expr, A.TupleLiteral):
-            return any(self.references_non_list_collection_constructor(item) for item in expr.items)
+            return any(
+                self.references_non_list_collection_constructor(item)
+                for item in expr.items
+            )
         if isinstance(expr, A.RecordConstructor):
-            return any(self.references_non_list_collection_constructor(item) for _, item in expr.fields)
+            return any(
+                self.references_non_list_collection_constructor(item)
+                for _, item in expr.fields
+            )
         return False
 
-    def unresolved(self, scope: ModuleScope, name: str, node: A.Node | None = None) -> None:
-        self.diagnostics.append(Diagnostic(
-            f"unresolved name {name!r}",
-            line=(node.line if node else 1) or 1,
-            column=(node.column if node else 1) or 1,
-            severity="error",
-            code="unresolved-name",
-            path=str(scope.path) if scope.path else None,
-        ))
+    def unresolved(
+        self, scope: ModuleScope, name: str, node: A.Node | None = None
+    ) -> None:
+        self.diagnostics.append(
+            Diagnostic(
+                f"unresolved name {name!r}",
+                line=(node.line if node else 1) or 1,
+                column=(node.column if node else 1) or 1,
+                severity="error",
+                code="unresolved-name",
+                path=str(scope.path) if scope.path else None,
+            )
+        )
 
     def expr_to_name(self, expr: A.Expr | None) -> str:
         if isinstance(expr, A.Name):
@@ -2326,8 +3078,12 @@ class BoundedEncoder:
 
     def conflict_payload(self, index: int) -> dict[str, Any]:
         core = [str(item) for item in self.solver.unsat_core()]
-        constraints = [self.tracked[name].to_dict() for name in core if name in self.tracked]
-        rules = sorted({item["name"] for item in constraints if item["kind"].startswith("rule")})
+        constraints = [
+            self.tracked[name].to_dict() for name in core if name in self.tracked
+        ]
+        rules = sorted(
+            {item["name"] for item in constraints if item["kind"].startswith("rule")}
+        )
         facts = sorted({item["name"] for item in constraints if item["kind"] == "fact"})
         return {
             "id": f"core_{index:03d}",
@@ -2346,14 +3102,18 @@ class BoundedEncoder:
             for scope in self.problem.scopes.values():
                 for entity in scope.entities.values():
                     value = self.entity_value(entity, t)
-                    entities[f"{entity.module}.{entity.decl.name}"] = self.model_value(model, value)
+                    entities[f"{entity.module}.{entity.decl.name}"] = self.model_value(
+                        model, value
+                    )
             trace.append({"time": t, "entities": entities})
         winning = []
         defeated = []
         for info in self.rule_infos:
             label = self.rule_labels.get(info.full_name)
             app = self.rule_applications.get(info.full_name)
-            if label is not None and z3.is_true(model.eval(label, model_completion=True)):
+            if label is not None and z3.is_true(
+                model.eval(label, model_completion=True)
+            ):
                 winning.append(info.full_name)
             elif app is not None and z3.is_true(model.eval(app, model_completion=True)):
                 defeated.append(info.full_name)
@@ -2369,29 +3129,64 @@ class BoundedEncoder:
         typ = self.resolve_named_type(value.typ)
         if isinstance(typ, RecordSpec):
             if value.fields is not None:
-                return {name: self.model_value(model, field_value, depth + 1) for name, field_value in value.fields.items()}
+                return {
+                    name: self.model_value(model, field_value, depth + 1)
+                    for name, field_value in value.fields.items()
+                }
             encoding = self.datatype_encoding(value.typ)
             expr = self.primitive_expr(value)
             return {
-                name: self.model_value(model, ZValue(field_type, expr=encoding.accessors[self.product_constructor_name()][idx](expr)), depth + 1)
+                name: self.model_value(
+                    model,
+                    ZValue(
+                        field_type,
+                        expr=encoding.accessors[self.product_constructor_name()][idx](
+                            expr
+                        ),
+                    ),
+                    depth + 1,
+                )
                 for idx, (name, field_type) in enumerate(typ.fields)
             }
         if isinstance(typ, TupleSpec):
             if value.fields is not None:
-                return [self.model_value(model, value.fields[f"_{idx}"], depth + 1) for idx in range(len(typ.items))]
+                return [
+                    self.model_value(model, value.fields[f"_{idx}"], depth + 1)
+                    for idx in range(len(typ.items))
+                ]
             encoding = self.datatype_encoding(value.typ)
             expr = self.primitive_expr(value)
             return [
-                self.model_value(model, ZValue(item_type, expr=encoding.accessors[self.product_constructor_name()][idx](expr)), depth + 1)
+                self.model_value(
+                    model,
+                    ZValue(
+                        item_type,
+                        expr=encoding.accessors[self.product_constructor_name()][idx](
+                            expr
+                        ),
+                    ),
+                    depth + 1,
+                )
                 for idx, item_type in enumerate(typ.items)
             ]
         if isinstance(typ, SumSpec):
             encoding = self.datatype_encoding(value.typ)
             expr = self.primitive_expr(value)
             for variant in typ.variants:
-                if z3.is_true(model.eval(encoding.recognizers[variant.name](expr), model_completion=True)):
+                if z3.is_true(
+                    model.eval(
+                        encoding.recognizers[variant.name](expr), model_completion=True
+                    )
+                ):
                     payloads = [
-                        self.model_value(model, ZValue(field_type, expr=encoding.accessors[variant.name][idx](expr)), depth + 1)
+                        self.model_value(
+                            model,
+                            ZValue(
+                                field_type,
+                                expr=encoding.accessors[variant.name][idx](expr),
+                            ),
+                            depth + 1,
+                        )
                         for idx, (_, field_type) in enumerate(variant.fields)
                     ]
                     return {
@@ -2401,7 +3196,12 @@ class BoundedEncoder:
             return str(model.eval(expr, model_completion=True))
         if value.has_concrete:
             if isinstance(value.concrete, list):
-                return [self.model_value(model, item, depth + 1) if isinstance(item, ZValue) else item for item in value.concrete]
+                return [
+                    self.model_value(model, item, depth + 1)
+                    if isinstance(item, ZValue)
+                    else item
+                    for item in value.concrete
+                ]
             if isinstance(value.concrete, set):
                 return sorted(value.concrete)
             return value.concrete
@@ -2429,5 +3229,7 @@ class _NoConcrete:
 _NO_CONCRETE = _NoConcrete()
 
 
-def solve_to_json(paths: Iterable[str | Path], options: SolveOptions | None = None, *, indent: int = 2) -> str:
+def solve_to_json(
+    paths: Iterable[str | Path], options: SolveOptions | None = None, *, indent: int = 2
+) -> str:
     return json.dumps(solve_paths(paths, options), ensure_ascii=False, indent=indent)

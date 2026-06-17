@@ -69,14 +69,20 @@ def inject_layout(raw_tokens: Iterable[AntlrToken]) -> list[AntlrToken]:
             if next_token.type == AntlrToken.EOF:
                 continue
             indent = max(0, int(next_token.column or 0))
-            tokens.append(make_token(MDLLexer.NEWLINE, "<NEWLINE>", token.line, len(text)))
+            tokens.append(
+                make_token(MDLLexer.NEWLINE, "<NEWLINE>", token.line, len(text))
+            )
             if indent > indents[-1]:
                 indents.append(indent)
-                tokens.append(make_token(MDLParser.INDENT, "<INDENT>", next_token.line, 0))
+                tokens.append(
+                    make_token(MDLParser.INDENT, "<INDENT>", next_token.line, 0)
+                )
             else:
                 while indent < indents[-1]:
                     indents.pop()
-                    tokens.append(make_token(MDLParser.DEDENT, "<DEDENT>", next_token.line, 0))
+                    tokens.append(
+                        make_token(MDLParser.DEDENT, "<DEDENT>", next_token.line, 0)
+                    )
                 if indent != indents[-1]:
                     raise ParseError("inconsistent indentation", next_token.line, 1)
             pending.appendleft(next_token)
@@ -87,7 +93,9 @@ def inject_layout(raw_tokens: Iterable[AntlrToken]) -> list[AntlrToken]:
         elif token.type in {MDLLexer.RPAREN, MDLLexer.RBRACE}:
             bracket_depth -= 1
             if bracket_depth < 0:
-                raise ParseError("unmatched closing delimiter", token.line, token.column + 1)
+                raise ParseError(
+                    "unmatched closing delimiter", token.line, token.column + 1
+                )
         tokens.append(token)
 
     eof_line = last_line + 1

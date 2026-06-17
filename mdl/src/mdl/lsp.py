@@ -54,7 +54,9 @@ class LSPServer:
         return json.loads(payload.decode("utf-8"))
 
     def send(self, payload: dict[str, Any]) -> None:
-        data = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        data = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode(
+            "utf-8"
+        )
         self.stdout.write(f"Content-Length: {len(data)}\r\n\r\n".encode("ascii"))
         self.stdout.write(data)
         self.stdout.flush()
@@ -75,26 +77,29 @@ class LSPServer:
         id_ = message.get("id")
         params = message.get("params") or {}
         if method == "initialize":
-            self.response(id_, {
-                "capabilities": {
-                    "textDocumentSync": 1,
-                    "diagnosticProvider": False,
-                    "completionProvider": {
-                        "triggerCharacters": [".", ":", " "],
-                    },
-                    "documentSymbolProvider": True,
-                    "hoverProvider": True,
-                    "definitionProvider": True,
-                    "semanticTokensProvider": {
-                        "legend": {
-                            "tokenTypes": SEMANTIC_TOKEN_TYPES,
-                            "tokenModifiers": SEMANTIC_TOKEN_MODIFIERS,
+            self.response(
+                id_,
+                {
+                    "capabilities": {
+                        "textDocumentSync": 1,
+                        "diagnosticProvider": False,
+                        "completionProvider": {
+                            "triggerCharacters": [".", ":", " "],
                         },
-                        "full": True,
+                        "documentSymbolProvider": True,
+                        "hoverProvider": True,
+                        "definitionProvider": True,
+                        "semanticTokensProvider": {
+                            "legend": {
+                                "tokenTypes": SEMANTIC_TOKEN_TYPES,
+                                "tokenModifiers": SEMANTIC_TOKEN_MODIFIERS,
+                            },
+                            "full": True,
+                        },
                     },
+                    "serverInfo": {"name": "mdl", "version": "0.0.0"},
                 },
-                "serverInfo": {"name": "mdl", "version": "0.0.0"},
-            })
+            )
         elif method == "initialized":
             return
         elif method == "shutdown":
@@ -113,7 +118,9 @@ class LSPServer:
             uri = doc.get("uri", "")
             changes = params.get("contentChanges", [])
             if changes:
-                self.documents[uri] = changes[-1].get("text", self.documents.get(uri, ""))
+                self.documents[uri] = changes[-1].get(
+                    "text", self.documents.get(uri, "")
+                )
             self.publish_diagnostics(uri, self.documents.get(uri, ""))
         elif method == "textDocument/completion":
             doc = params.get("textDocument", {})
@@ -132,7 +139,12 @@ class LSPServer:
         elif method == "textDocument/documentSymbol":
             doc = params.get("textDocument", {})
             uri = doc.get("uri", "")
-            self.response(id_, [] if is_python_dsl_path(uri) else self.snapshot(uri).document_symbols())
+            self.response(
+                id_,
+                []
+                if is_python_dsl_path(uri)
+                else self.snapshot(uri).document_symbols(),
+            )
         elif method == "textDocument/hover":
             doc = params.get("textDocument", {})
             uri = doc.get("uri", "")
@@ -164,20 +176,36 @@ class LSPServer:
         elif method == "textDocument/semanticTokens/full":
             doc = params.get("textDocument", {})
             uri = doc.get("uri", "")
-            self.response(id_, {"data": []} if is_python_dsl_path(uri) else self.snapshot(uri).semantic_tokens())
+            self.response(
+                id_,
+                {"data": []}
+                if is_python_dsl_path(uri)
+                else self.snapshot(uri).semantic_tokens(),
+            )
         elif method == "mdl/modelSummary":
             doc = params.get("textDocument", {})
             uri = doc.get("uri", "")
-            self.response(id_, {"module": None, "diagnostics": []} if is_python_dsl_path(uri) else self.snapshot(uri).model_summary())
+            self.response(
+                id_,
+                {"module": None, "diagnostics": []}
+                if is_python_dsl_path(uri)
+                else self.snapshot(uri).model_summary(),
+            )
         elif id_ is not None:
-            self.response(id_, error={"code": -32601, "message": f"unsupported method {method}"})
+            self.response(
+                id_, error={"code": -32601, "message": f"unsupported method {method}"}
+            )
 
     def snapshot(self, uri: str) -> EditorSnapshot:
         return EditorSnapshot(self.documents.get(uri, ""), uri, self.documents)
 
     def publish_diagnostics(self, uri: str, text: str) -> None:
-        diagnostics = [d.to_lsp() for d in lint_source(text, path=uri, documents=self.documents)]
-        self.notification("textDocument/publishDiagnostics", {"uri": uri, "diagnostics": diagnostics})
+        diagnostics = [
+            d.to_lsp() for d in lint_source(text, path=uri, documents=self.documents)
+        ]
+        self.notification(
+            "textDocument/publishDiagnostics", {"uri": uri, "diagnostics": diagnostics}
+        )
 
     def completion_items(
         self,
@@ -206,48 +234,62 @@ class LSPServer:
                 if self.is_type_context(prefix):
                     return self.primitive_type_items()
                 return self.keyword_items()
-        checker = SemanticChecker(module, uri, resolver=ImportResolver(uri, self.documents))
+        checker = SemanticChecker(
+            module, uri, resolver=ImportResolver(uri, self.documents)
+        )
         checker.check()
         lsp_line = line + 1
         lsp_column = character + 1
         if field_target:
             fields = (
                 checker.fields_for_reference(field_target)
-                or self.local_fields_for_reference(module, checker, field_target, lsp_line)
+                or self.local_fields_for_reference(
+                    module, checker, field_target, lsp_line
+                )
                 or {}
             )
             return [
-                {"label": name, "kind": 5, "detail": "field"}
-                for name in sorted(fields)
+                {"label": name, "kind": 5, "detail": "field"} for name in sorted(fields)
             ]
         if record_target:
             fields = checker.fields_for_type(A.TypeRef(name=record_target)) or {}
             return [
-                {"label": name, "kind": 5, "detail": "field"}
-                for name in sorted(fields)
+                {"label": name, "kind": 5, "detail": "field"} for name in sorted(fields)
             ]
         if self.is_type_context(prefix):
             return [
                 {"label": name, "kind": 7, "detail": "type"}
                 for name in checker.visible_type_names(lsp_line, lsp_column)
             ]
-        return self.with_keywords([
-            {"label": name, "kind": self.completion_kind(symbol.kind), "detail": symbol.kind}
-            for name, symbol in sorted(checker.terms.items())
-            if checker.is_visible(symbol, lsp_line, lsp_column) and "." not in name
-        ])
+        return self.with_keywords(
+            [
+                {
+                    "label": name,
+                    "kind": self.completion_kind(symbol.kind),
+                    "detail": symbol.kind,
+                }
+                for name, symbol in sorted(checker.terms.items())
+                if checker.is_visible(symbol, lsp_line, lsp_column) and "." not in name
+            ]
+        )
 
     def line_prefix(self, text: str, line: int, character: int) -> str:
         lines = text.splitlines()
         if line < 0 or line >= len(lines):
             return ""
-        return lines[line][:max(0, character)]
+        return lines[line][: max(0, character)]
 
     def field_completion_target(self, prefix: str) -> str | None:
-        parenthesized = re.search(r"\(([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\)\.[A-Za-z0-9_']*$", prefix)
+        parenthesized = re.search(
+            r"\(([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\)\.[A-Za-z0-9_']*$",
+            prefix,
+        )
         if parenthesized:
             return parenthesized.group(1)
-        match = re.search(r"([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\.[A-Za-z0-9_']*$", prefix)
+        match = re.search(
+            r"([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\.[A-Za-z0-9_']*$",
+            prefix,
+        )
         return match.group(1) if match else None
 
     def local_fields_for_reference(
@@ -265,14 +307,24 @@ class LSPServer:
                 env: dict[str, A.TypeExpr | None] = {}
                 for param in decl.params:
                     checker.bind_pattern(param.pattern, env, param.type_annotation)
-                typ = self.local_reference_type_in_block(checker, decl.body, name, line, env)
+                typ = self.local_reference_type_in_block(
+                    checker, decl.body, name, line, env
+                )
             elif isinstance(decl, A.FactDecl):
-                typ = self.local_reference_type_in_expr(checker, decl.value, name, line, {})
+                typ = self.local_reference_type_in_expr(
+                    checker, decl.value, name, line, {}
+                )
             elif isinstance(decl, A.RuleDecl):
                 typ = (
-                    self.local_reference_type_in_expr(checker, decl.antecedent, name, line, {})
-                    or self.local_reference_type_in_expr(checker, decl.body, name, line, {})
-                    or self.local_reference_type_in_expr(checker, decl.otherwise, name, line, {})
+                    self.local_reference_type_in_expr(
+                        checker, decl.antecedent, name, line, {}
+                    )
+                    or self.local_reference_type_in_expr(
+                        checker, decl.body, name, line, {}
+                    )
+                    or self.local_reference_type_in_expr(
+                        checker, decl.otherwise, name, line, {}
+                    )
                 )
             fields = checker.fields_for_type(typ)
             if fields:
@@ -293,11 +345,19 @@ class LSPServer:
         for stmt in block.statements:
             if stmt.line > line:
                 break
-            nested = self.local_reference_type_in_expr(checker, stmt.value, name, line, local)
+            nested = self.local_reference_type_in_expr(
+                checker, stmt.value, name, line, local
+            )
             if nested is not None:
                 return nested
-            checker.bind_pattern(stmt.pattern, local, stmt.type_annotation or checker.infer_expr_type(stmt.value, local))
-        nested = self.local_reference_type_in_expr(checker, block.result, name, line, local)
+            checker.bind_pattern(
+                stmt.pattern,
+                local,
+                stmt.type_annotation or checker.infer_expr_type(stmt.value, local),
+            )
+        nested = self.local_reference_type_in_expr(
+            checker, block.result, name, line, local
+        )
         return nested or checker.infer_name_type(name, local)
 
     def local_reference_type_in_expr(
@@ -313,26 +373,43 @@ class LSPServer:
         if isinstance(expr, A.MatchExpr):
             subject_type = checker.infer_expr_type(expr.subject, env)
             for idx, arm in enumerate(expr.arms):
-                next_line = expr.arms[idx + 1].line if idx + 1 < len(expr.arms) else 10**9
+                next_line = (
+                    expr.arms[idx + 1].line if idx + 1 < len(expr.arms) else 10**9
+                )
                 if arm.line <= line < next_line:
                     local = dict(env)
                     checker.bind_pattern(arm.pattern, local, subject_type)
-                    guard_type = self.local_reference_type_in_expr(checker, arm.guard, name, line, local)
+                    guard_type = self.local_reference_type_in_expr(
+                        checker, arm.guard, name, line, local
+                    )
                     if guard_type is not None:
                         return guard_type
-                    return self.local_reference_type_in_block(checker, arm.body, name, line, local)
+                    return self.local_reference_type_in_block(
+                        checker, arm.body, name, line, local
+                    )
             return None
         if isinstance(expr, A.LetExpr) and expr.line <= line:
             local = dict(env)
-            checker.bind_pattern(expr.pattern, local, expr.type_annotation or checker.infer_expr_type(expr.value, env))
-            return self.local_reference_type_in_expr(checker, expr.body, name, line, local) or checker.infer_name_type(name, local)
+            checker.bind_pattern(
+                expr.pattern,
+                local,
+                expr.type_annotation or checker.infer_expr_type(expr.value, env),
+            )
+            return self.local_reference_type_in_expr(
+                checker, expr.body, name, line, local
+            ) or checker.infer_name_type(name, local)
         return checker.infer_name_type(name, env)
 
     def record_constructor_completion_target(self, prefix: str) -> str | None:
-        match = re.search(r"(?:^|[\s:=,(])([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\s*\{[^{}]*$", prefix)
+        match = re.search(
+            r"(?:^|[\s:=,(])([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\s*\{[^{}]*$",
+            prefix,
+        )
         return match.group(1) if match else None
 
-    def repair_completion_source(self, text: str, line: int, character: int, prefix: str) -> str | None:
+    def repair_completion_source(
+        self, text: str, line: int, character: int, prefix: str
+    ) -> str | None:
         insertion = None
         if self.field_completion_target(prefix):
             insertion = "__completion__"
@@ -350,22 +427,34 @@ class LSPServer:
             return None
         return self.insert_at_position(text, line, character, insertion)
 
-    def insert_at_position(self, text: str, line: int, character: int, insertion: str) -> str:
+    def insert_at_position(
+        self, text: str, line: int, character: int, insertion: str
+    ) -> str:
         lines = text.splitlines(keepends=True)
         if line < 0 or line >= len(lines):
             return text + insertion
-        offset = sum(len(item) for item in lines[:line]) + min(character, len(lines[line]))
+        offset = sum(len(item) for item in lines[:line]) + min(
+            character, len(lines[line])
+        )
         return text[:offset] + insertion + text[offset:]
 
     def is_type_context(self, prefix: str) -> bool:
         stripped = prefix.strip()
-        if re.search(r"\b(entity|let)\s+[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$", stripped):
+        if re.search(
+            r"\b(entity|let)\s+[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$", stripped
+        ):
             return True
-        if re.search(r"\bfunc\b.*(?:\(|,)\s*[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$", stripped):
+        if re.search(
+            r"\bfunc\b.*(?:\(|,)\s*[A-Za-z_][A-Za-z0-9_']*\s*:\s*[A-Za-z0-9_'.]*$",
+            stripped,
+        ):
             return True
         if re.search(r"->\s*[A-Za-z0-9_'.]*$", stripped):
             return True
-        if re.search(r"\btype\s+[A-Za-z_][A-Za-z0-9_']*(?:<[^>]*>)?\s*=\s*[A-Za-z0-9_'.]*$", stripped):
+        if re.search(
+            r"\btype\s+[A-Za-z_][A-Za-z0-9_']*(?:<[^>]*>)?\s*=\s*[A-Za-z0-9_'.]*$",
+            stripped,
+        ):
             return True
         return False
 
@@ -392,7 +481,9 @@ class LSPServer:
 
     def with_keywords(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         seen = {item["label"] for item in items}
-        return items + [item for item in self.keyword_items() if item["label"] not in seen]
+        return items + [
+            item for item in self.keyword_items() if item["label"] not in seen
+        ]
 
 
 def run_stdio() -> int:

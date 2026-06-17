@@ -86,7 +86,10 @@ func wrong() -> int:
     payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
     message = json.loads(payload.decode("utf-8"))
     diagnostics = message["params"]["diagnostics"]
-    assert any(item["code"] == "type-mismatch" and "expected int, got bool" in item["message"] for item in diagnostics)
+    assert any(
+        item["code"] == "type-mismatch" and "expected int, got bool" in item["message"]
+        for item in diagnostics
+    )
 
 
 def test_lsp_reports_mdl_diagnostics_for_mdl_py():
@@ -106,7 +109,10 @@ def wrong() -> Int:
     payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
     message = json.loads(payload.decode("utf-8"))
     diagnostics = message["params"]["diagnostics"]
-    assert any(item["code"] == "type-mismatch" and "expected int, got bool" in item["message"] for item in diagnostics)
+    assert any(
+        item["code"] == "type-mismatch" and "expected int, got bool" in item["message"]
+        for item in diagnostics
+    )
 
 
 def test_lsp_reports_python_dsl_errors_for_mdl_py():
@@ -132,7 +138,9 @@ def test_lsp_mdl_py_completion_is_diagnostics_only():
 module("pipe")
 """
 
-    items = LSPServer().completion_items(source, 2, len('module("pipe")'), uri="file:///tmp/pipe.mdl.py")
+    items = LSPServer().completion_items(
+        source, 2, len('module("pipe")'), uri="file:///tmp/pipe.mdl.py"
+    )
 
     assert items == []
 
@@ -145,7 +153,9 @@ def test_lsp_completes_language_keywords():
     by_label = {item["label"]: item for item in items}
 
     assert labels(items) >= {"entity", "rule", "when", "always", "now", "implies"}
-    assert not (labels(items) & {"initially", "weak_next", "never", "release", "weak_until"})
+    assert not (
+        labels(items) & {"initially", "weak_next", "never", "release", "weak_until"}
+    )
     assert by_label["rule"]["kind"] == 14
 
 
@@ -161,11 +171,14 @@ ru
 
 def test_lsp_completes_imported_module_fields(tmp_path):
     imported = tmp_path / "pipe.mdl"
-    imported.write_text("""module pipe_spec
+    imported.write_text(
+        """module pipe_spec
 
 type Pipe = { length: rat, radius: rat }
 entity pipe: Pipe
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     current = tmp_path / "alignment.mdl"
     source = """module alignment
 
@@ -175,7 +188,9 @@ rule O aligned: pipe_spec.
 """
     server = LSPServer()
 
-    items = server.completion_items(source, 4, len("rule O aligned: pipe_spec."), uri=str(current))
+    items = server.completion_items(
+        source, 4, len("rule O aligned: pipe_spec."), uri=str(current)
+    )
 
     assert "pipe" in labels(items)
 
@@ -194,7 +209,12 @@ type Pipe = { length: rat, radius: rat }
 entity pipe: Pipe
 """
 
-    items = server.completion_items(source, 4, len("rule O aligned: pipe_spec.pipe."), uri="file:///tmp/alignment.mdl")
+    items = server.completion_items(
+        source,
+        4,
+        len("rule O aligned: pipe_spec.pipe."),
+        uri="file:///tmp/alignment.mdl",
+    )
 
     assert labels(items) >= {"length", "radius"}
 
@@ -235,7 +255,9 @@ rule O positive: pipe.length > 0 always
     assert symbols[0]["name"] == "pipe"
     children = {child["name"]: child for child in symbols[0]["children"]}
     assert set(children) >= {"Pipe", "threshold", "pipe", "positive_pipe", "positive"}
-    assert symbols[0]["children"][0]["selectionRange"]["start"]["character"] == len("type ")
+    assert symbols[0]["children"][0]["selectionRange"]["start"]["character"] == len(
+        "type "
+    )
     assert children["Pipe"]["detail"] == "= { length: rat, radius: rat }"
     assert children["threshold"]["detail"] == "() -> int"
     assert children["pipe"]["detail"] == ": Pipe"
@@ -308,7 +330,10 @@ fact foo(name)
     entity_line, entity_col = position_of(source, "entity name")
     entity_definition = snapshot.definition(entity_line, entity_col + len("entity "))
     assert entity_definition is not None
-    assert entity_definition["range"]["start"] == {"line": 4, "character": len("entity ")}
+    assert entity_definition["range"]["start"] == {
+        "line": 4,
+        "character": len("entity "),
+    }
 
 
 def test_lsp_definition_for_function_body_parameter_uses_function_scope():
@@ -346,7 +371,11 @@ fact time > 0
 
     payload = out.getvalue().split(b"\r\n\r\n", 1)[1]
     message = json.loads(payload.decode("utf-8"))
-    diagnostic = next(item for item in message["params"]["diagnostics"] if item["code"] == "undefined-name")
+    diagnostic = next(
+        item
+        for item in message["params"]["diagnostics"]
+        if item["code"] == "undefined-name"
+    )
     assert diagnostic["range"] == {
         "start": {"line": 4, "character": len("fact ")},
         "end": {"line": 4, "character": len("fact time")},
@@ -381,7 +410,10 @@ func x() -> MyUnion: MyUnion.CaseA()
     assert type_definition is not None
     assert type_definition["range"]["start"] == {"line": 2, "character": len("type ")}
     assert case_definition is not None
-    assert case_definition["range"]["start"] == {"line": 2, "character": len("type MyUnion = ")}
+    assert case_definition["range"]["start"] == {
+        "line": 2,
+        "character": len("type MyUnion = "),
+    }
 
 
 def test_lsp_standard_operators_have_semantic_operator_tokens():
@@ -407,8 +439,29 @@ rule P t: last now
         return snapshot.semantic_type_for_token(index)
 
     for needle in [
-        "->", "+", "-", "*", "/", "%", "!=", "O r", "not", ">", "and", "<=", "or", ">=",
-        "implies", "= 1", "always", "F s", "< 5", "until", "eventually", "P t", "now",
+        "->",
+        "+",
+        "-",
+        "*",
+        "/",
+        "%",
+        "!=",
+        "O r",
+        "not",
+        ">",
+        "and",
+        "<=",
+        "or",
+        ">=",
+        "implies",
+        "= 1",
+        "always",
+        "F s",
+        "< 5",
+        "until",
+        "eventually",
+        "P t",
+        "now",
     ]:
         assert token_type(needle) == "operator"
     assert token_type("last now") == "variable"
@@ -430,8 +483,14 @@ rule O positive: pipe.length > 0 always
     definition = snapshot.definition(line, col)
 
     assert definition is not None
-    assert definition["range"]["start"] == {"line": 2, "character": len("type Pipe = { ")}
-    assert definition["range"]["end"] == {"line": 2, "character": len("type Pipe = { length")}
+    assert definition["range"]["start"] == {
+        "line": 2,
+        "character": len("type Pipe = { "),
+    }
+    assert definition["range"]["end"] == {
+        "line": 2,
+        "character": len("type Pipe = { length"),
+    }
 
 
 def test_lsp_completion_after_function_return_arrow_suggests_types_only():

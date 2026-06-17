@@ -8,7 +8,7 @@ from mdl.printer import format_module
 from .sample_sources import PIPE_SOURCE
 
 
-PIPE_DSL = '''
+PIPE_DSL = """
 from mdl.dsl import *
 
 module("pipe_spec")
@@ -25,7 +25,7 @@ def pipe_length_positive():
     return always(pipe.length > 0)
 
 fact(pipe == Pipe(length=10, radius=2))
-'''
+"""
 
 
 def without_locations(value):
@@ -105,11 +105,13 @@ def test_python_dsl_pipe_model_matches_textual_mdl_ast():
     dsl_reparsed = parse(format_module(dsl_module))
     textual_module = parse(PIPE_SOURCE)
 
-    assert without_locations(A.node_to_dict(dsl_reparsed)) == without_locations(A.node_to_dict(textual_module))
+    assert without_locations(A.node_to_dict(dsl_reparsed)) == without_locations(
+        A.node_to_dict(textual_module)
+    )
 
 
 def test_python_dsl_supports_module_metadata_imports_opens_types_entities_and_facts():
-    source = '''
+    source = """
 from mdl.dsl import *
 
 module("typed_model", annotations=["source generated", "# raw annotation"])
@@ -126,7 +128,7 @@ message_count = entity(Int)
 envelope = entity(Envelope)
 
 fact(message_count == 3)
-'''
+"""
 
     module = compile_source(source, filename="typed_model.py")
     rendered = format_module(module)
@@ -148,19 +150,21 @@ fact(message_count == 3)
 
 
 def test_python_dsl_rejects_targeted_facts():
-    source = '''
+    source = """
 from mdl.dsl import *
 
 message_count = entity(Int)
 fact(target="message_count", value=3)
-'''
+"""
 
-    with pytest.raises(PythonDslError, match="does not accept keyword argument 'target'"):
+    with pytest.raises(
+        PythonDslError, match="does not accept keyword argument 'target'"
+    ):
         compile_source(source, filename="targeted_fact.py")
 
 
 def test_python_dsl_supports_predicates_boolops_temporal_rules_and_if_statements():
-    source = '''
+    source = """
 from mdl.dsl import *
 
 module("email")
@@ -181,7 +185,7 @@ def normalize_score(score: Rat) -> Rat:
 @rule(F)
 def malformed_email_received():
     return eventually(email_received(email) and not email_is_correct(email))
-'''
+"""
 
     module = compile_source(source, filename="email.py")
     rendered = format_module(module)
@@ -196,7 +200,7 @@ def malformed_email_received():
 
 
 def test_python_dsl_preserves_local_annotations_in_rule_let_expressions():
-    source = '''
+    source = """
 from mdl.dsl import *
 
 module("typed_rule")
@@ -205,7 +209,7 @@ module("typed_rule")
 def checked():
     x: Bool = 5
     return now(True)
-'''
+"""
 
     module = compile_source(source, filename="typed_rule.py")
     rendered = format_module(module)
@@ -215,7 +219,7 @@ def checked():
 
 
 def test_python_dsl_supports_temporal_binary_implies_and_rule_metadata():
-    source = '''
+    source = """
 from mdl.dsl import *
 
 module("temporal")
@@ -228,7 +232,7 @@ fallback = entity(Bool)
 @rule(F, name="eventual_completion", strength="strict", when=started, otherwise=fallback)
 def completion():
     return implies(started, until(next_(running), now(done)))
-'''
+"""
 
     module = compile_source(source, filename="temporal.py")
     rendered = format_module(module)
@@ -250,20 +254,22 @@ def completion():
 
 
 def test_python_dsl_reports_clear_error_for_non_entity_assignment():
-    source = '''
+    source = """
 from mdl.dsl import *
 
 module("bad")
 
 answer: Int = 42
-'''
+"""
 
-    with pytest.raises(PythonDslError, match=r"top-level assignments only support entity"):
+    with pytest.raises(
+        PythonDslError, match=r"top-level assignments only support entity"
+    ):
         compile_source(source, filename="bad.py")
 
 
 def test_python_dsl_supports_chained_comparisons_as_boolean_conjunctions():
-    source = '''
+    source = """
 from mdl.dsl import *
 
 module("ranges")
@@ -273,11 +279,13 @@ score = entity(Rat)
 @predicate
 def valid_score(score: Rat):
     return 0 <= score <= 1
-'''
+"""
 
     module = compile_source(source, filename="ranges.py")
     rendered = format_module(module)
-    predicate = next(decl for decl in module.declarations if isinstance(decl, A.FuncDecl))
+    predicate = next(
+        decl for decl in module.declarations if isinstance(decl, A.FuncDecl)
+    )
 
     assert predicate.body is not None
     assert predicate.body.result is not None
@@ -288,7 +296,7 @@ def valid_score(score: Rat):
 
 
 def test_python_dsl_supports_decorator_entity_form():
-    source = '''
+    source = """
 from mdl.dsl import *
 
 module("pipe_spec")
@@ -300,7 +308,7 @@ class Pipe:
 @entity(Pipe)
 def pipe():
     pass
-'''
+"""
 
     module = compile_source(source)
 
@@ -317,9 +325,9 @@ def test_python_dsl_to_source_helper_returns_mdl_source():
 
 def test_python_dsl_rejects_unsupported_top_level_statements():
     with pytest.raises(PythonDslError, match="unsupported top-level statement For"):
-        compile_source('''
+        compile_source("""
 from mdl.dsl import *
 module("bad")
 for item in []:
     pass
-''')
+""")

@@ -35,6 +35,7 @@ def coerce_type(value: TypeInput) -> A.TypeExpr:
     if any(ch in text for ch in "<>{}(),:"):
         # Keep the builder useful for inferred Python models that store type syntax as strings.
         from .parser import parse_type_expr_source
+
         return parse_type_expr_source(text)
     return A.TypeRef(name=text)
 
@@ -65,7 +66,9 @@ def lit(value: Any) -> A.Literal:
     return A.Literal(value=value, kind="unknown")
 
 
-def call(name_or_expr: str | A.Expr, *args: A.Expr | str | int | bool | float | None) -> A.Call:
+def call(
+    name_or_expr: str | A.Expr, *args: A.Expr | str | int | bool | float | None
+) -> A.Call:
     func = ref(name_or_expr) if isinstance(name_or_expr, str) else name_or_expr
     return A.Call(func=func, args=[coerce_expr(a) for a in args])
 
@@ -74,15 +77,24 @@ def field(target: str | A.Expr, name: str) -> A.FieldAccess:
     return A.FieldAccess(target=coerce_expr(target), field=name)
 
 
-def eq(left: A.Expr | str | int | bool | float | None, right: A.Expr | str | int | bool | float | None) -> A.BinaryOp:
+def eq(
+    left: A.Expr | str | int | bool | float | None,
+    right: A.Expr | str | int | bool | float | None,
+) -> A.BinaryOp:
     return binary("=", left, right)
 
 
-def binary(op: str, left: A.Expr | str | int | bool | float | None, right: A.Expr | str | int | bool | float | None) -> A.BinaryOp:
+def binary(
+    op: str,
+    left: A.Expr | str | int | bool | float | None,
+    right: A.Expr | str | int | bool | float | None,
+) -> A.BinaryOp:
     return A.BinaryOp(op=op, left=coerce_expr(left), right=coerce_expr(right))
 
 
-def temporal_binary(op: str, left: A.Expr | str, right: A.Expr | str) -> A.TemporalBinary:
+def temporal_binary(
+    op: str, left: A.Expr | str, right: A.Expr | str
+) -> A.TemporalBinary:
     if op != "until":
         raise ValueError("only temporal binary operator 'until' is supported")
     return A.TemporalBinary(op=op, left=coerce_expr(left), right=coerce_expr(right))
@@ -93,7 +105,9 @@ def always(expr: A.Expr | str) -> A.TemporalUnary:
 
 
 def eventually(expr: A.Expr | str) -> A.TemporalUnary:
-    return A.TemporalUnary(op="eventually", operand=coerce_expr(expr), position="postfix")
+    return A.TemporalUnary(
+        op="eventually", operand=coerce_expr(expr), position="postfix"
+    )
 
 
 def next_(expr: A.Expr | str) -> A.TemporalUnary:
@@ -153,9 +167,13 @@ class ModelBuilder:
         normalized = []
         for variant in variants:
             if not isinstance(variant, A.Variant):
-                raise ValueError("sum_type variants must be A.Variant values with payload fields")
+                raise ValueError(
+                    "sum_type variants must be A.Variant values with payload fields"
+                )
             if not variant.fields:
-                raise ValueError(f"sum type variant {variant.name!r} must declare payload fields")
+                raise ValueError(
+                    f"sum type variant {variant.name!r} must declare payload fields"
+                )
             normalized.append(variant)
         decl = A.TypeDecl(name=name, definition=A.SumType(variants=normalized))
         self.module.declarations.append(decl)
@@ -166,15 +184,33 @@ class ModelBuilder:
         self.module.declarations.append(decl)
         return decl
 
-    def func(self, name: str, params: list[tuple[str, TypeInput]], return_type: TypeInput, body: A.Block | A.Expr) -> A.FuncDecl:
-        ps = [A.Param(pattern=A.VarPattern(name=p), type_annotation=coerce_type(t)) for p, t in params]
+    def func(
+        self,
+        name: str,
+        params: list[tuple[str, TypeInput]],
+        return_type: TypeInput,
+        body: A.Block | A.Expr,
+    ) -> A.FuncDecl:
+        ps = [
+            A.Param(pattern=A.VarPattern(name=p), type_annotation=coerce_type(t))
+            for p, t in params
+        ]
         block = body if isinstance(body, A.Block) else A.Block(result=body)
-        decl = A.FuncDecl(name=name, params=ps, return_type=coerce_type(return_type), body=block)
+        decl = A.FuncDecl(
+            name=name, params=ps, return_type=coerce_type(return_type), body=block
+        )
         self.module.declarations.append(decl)
         return decl
 
-    def rule(self, name: str, modality: str, body: A.Expr | str, strength: str = "defeasible",
-             antecedent: A.Expr | None = None, otherwise: A.Expr | None = None) -> A.RuleDecl:
+    def rule(
+        self,
+        name: str,
+        modality: str,
+        body: A.Expr | str,
+        strength: str = "defeasible",
+        antecedent: A.Expr | None = None,
+        otherwise: A.Expr | None = None,
+    ) -> A.RuleDecl:
         decl = A.RuleDecl(
             name=name,
             modality=modality,
@@ -212,7 +248,9 @@ def from_python(value: Any) -> A.Module:
         return value.to_ast()
     if isinstance(value, dict):
         if "events" in value:
-            raise ValueError("events are no longer supported; use entity declarations for temporal state")
+            raise ValueError(
+                "events are no longer supported; use entity declarations for temporal state"
+            )
         name = str(value.get("module") or value.get("name") or "model")
         builder = ModelBuilder(name, annotations=list(value.get("annotations", [])))
         for imp in value.get("imports", []):
@@ -233,13 +271,17 @@ def from_python(value: Any) -> A.Module:
             builder.rule(
                 name=rule["name"],
                 modality=rule.get("modality", "O"),
-                body=rule["body"] if isinstance(rule["body"], A.Expr) else ref(str(rule["body"])),
+                body=rule["body"]
+                if isinstance(rule["body"], A.Expr)
+                else ref(str(rule["body"])),
                 strength=rule.get("strength", "defeasible"),
             )
         for fact in value.get("facts", []):
             if isinstance(fact, dict):
                 if "target" in fact:
-                    raise ValueError("targeted facts are no longer supported; use an equality fact expression")
+                    raise ValueError(
+                        "targeted facts are no longer supported; use an equality fact expression"
+                    )
                 builder.fact(fact.get("value"))
             else:
                 builder.fact(fact)

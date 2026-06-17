@@ -93,7 +93,11 @@ def stdlib_resource_files(root: Traversable) -> list[Traversable]:
 
 def is_file_import(path: str) -> bool:
     normalized = path.replace("\\", "/")
-    return normalized.endswith(".mdl") or normalized.endswith(".mdl.py") or "/" in normalized
+    return (
+        normalized.endswith(".mdl")
+        or normalized.endswith(".mdl.py")
+        or "/" in normalized
+    )
 
 
 class ImportResolver:
@@ -109,7 +113,9 @@ class ImportResolver:
         self.cache: dict[tuple[str | None, str], ResolvedModule | None] = {}
         self.stdlib_cache: dict[str, ResolvedModule] | None = None
 
-    def resolve(self, import_path: str, base_path: str | None = None) -> ResolvedModule | None:
+    def resolve(
+        self, import_path: str, base_path: str | None = None
+    ) -> ResolvedModule | None:
         base_path = base_path or self.path
         key = (base_path, import_path)
         if key in self.cache:
@@ -123,8 +129,14 @@ class ImportResolver:
         self.cache[key] = resolved
         return resolved
 
-    def resolve_from_documents(self, import_path: str, base_path: str | None) -> ResolvedModule | None:
-        candidates = {p.resolve() for p in self.file_candidates(import_path, base_path) if p.is_absolute() or base_path}
+    def resolve_from_documents(
+        self, import_path: str, base_path: str | None
+    ) -> ResolvedModule | None:
+        candidates = {
+            p.resolve()
+            for p in self.file_candidates(import_path, base_path)
+            if p.is_absolute() or base_path
+        }
         for uri, text in self.documents.items():
             document_path = path_to_file(uri)
             try:
@@ -171,16 +183,26 @@ class ImportResolver:
         self.stdlib_cache = modules
         return modules
 
-    def resolve_from_files(self, import_path: str, base_path: str | None) -> ResolvedModule | None:
+    def resolve_from_files(
+        self, import_path: str, base_path: str | None
+    ) -> ResolvedModule | None:
         for candidate in self.file_candidates(import_path, base_path):
-            resolved = self.load_file(candidate) if is_file_import(import_path) else self.load_if_module(candidate, import_path)
+            resolved = (
+                self.load_file(candidate)
+                if is_file_import(import_path)
+                else self.load_if_module(candidate, import_path)
+            )
             if resolved is not None:
                 return resolved
         current = path_to_file(base_path)
         if current is None:
             return None
         base_dir = current.resolve().parent if current.suffix else current.resolve()
-        fallback_module = Path(import_path.replace("\\", "/")).stem if is_file_import(import_path) else import_path
+        fallback_module = (
+            Path(import_path.replace("\\", "/")).stem
+            if is_file_import(import_path)
+            else import_path
+        )
         for candidate in sorted(base_dir.glob("*.mdl")):
             resolved = self.load_if_module(candidate, fallback_module)
             if resolved is not None:
@@ -254,7 +276,8 @@ class SemanticChecker:
         self.imported_names: set[str] = set()
         self.available_modules: dict[str, A.Module] = {}
         self.types: dict[str, Symbol] = {
-            name: Symbol(name, "type", A.TypeRef(name=name)) for name in sorted(PRIMITIVE_TYPES)
+            name: Symbol(name, "type", A.TypeRef(name=name))
+            for name in sorted(PRIMITIVE_TYPES)
         }
         self.type_params: dict[str, list[str]] = {}
         self.terms: dict[str, Symbol] = {}
@@ -288,22 +311,32 @@ class SemanticChecker:
             return
         self.register_module_namespace(resolved.module, resolved.path, imp)
 
-    def register_module_namespace(self, module: A.Module, path: str | None = None, node: A.Node | None = None) -> None:
+    def register_module_namespace(
+        self, module: A.Module, path: str | None = None, node: A.Node | None = None
+    ) -> None:
         if module.name == self.module.name or module.name in self.available_modules:
             return
         self.available_modules[module.name] = module
         self.imports.add(root_name(module.name))
-        declared_types = {decl.name for decl in module.declarations if isinstance(decl, A.TypeDecl)}
+        declared_types = {
+            decl.name for decl in module.declarations if isinstance(decl, A.TypeDecl)
+        }
         module_fields: list[tuple[str, A.TypeExpr]] = []
         for decl in module.declarations:
             if not isinstance(decl, (A.TypeDecl, A.FuncDecl, A.EntityDecl)):
                 continue
             if isinstance(decl, A.TypeDecl):
                 qualified_name = f"{module.name}.{decl.name}"
-                qualified_type = A.TypeRef(name=qualified_name, line=decl.line, column=decl.column)
-                self.types[qualified_name] = Symbol(qualified_name, "type", qualified_type, decl)
+                qualified_type = A.TypeRef(
+                    name=qualified_name, line=decl.line, column=decl.column
+                )
+                self.types[qualified_name] = Symbol(
+                    qualified_name, "type", qualified_type, decl
+                )
                 self.type_params[qualified_name] = list(decl.params)
-                self.type_definitions[qualified_name] = self.qualify_type_definition(decl.definition, module.name, declared_types, set(decl.params))
+                self.type_definitions[qualified_name] = self.qualify_type_definition(
+                    decl.definition, module.name, declared_types, set(decl.params)
+                )
                 module_fields.append((decl.name, qualified_type))
                 if isinstance(decl.definition, A.SumType):
                     for variant in decl.definition.variants:
@@ -312,23 +345,42 @@ class SemanticChecker:
                 continue
             typ = self.declaration_type(decl)
             typ = self.qualify_type_expr(typ, module.name, declared_types, set())
-            self.terms[f"{module.name}.{decl.name}"] = Symbol(f"{module.name}.{decl.name}", self.declaration_kind(decl), typ, decl)
+            self.terms[f"{module.name}.{decl.name}"] = Symbol(
+                f"{module.name}.{decl.name}", self.declaration_kind(decl), typ, decl
+            )
             module_fields.append((decl.name, typ or A.TypeRef(name="unit")))
-        self.terms[module.name] = Symbol(module.name, "module", A.RecordType(fields=module_fields), node)
+        self.terms[module.name] = Symbol(
+            module.name, "module", A.RecordType(fields=module_fields), node
+        )
 
     def register_open(self, opened: A.OpenDecl) -> None:
         module = self.available_modules.get(opened.module)
         if module is None:
             self.error(f"unresolved open {opened.module!r}", opened, "unresolved-open")
             return
-        local_names = {name for name in (A.declaration_name(decl) for decl in self.module.declarations) if name}
-        declared_types = {decl.name for decl in module.declarations if isinstance(decl, A.TypeDecl)}
+        local_names = {
+            name
+            for name in (A.declaration_name(decl) for decl in self.module.declarations)
+            if name
+        }
+        declared_types = {
+            decl.name for decl in module.declarations if isinstance(decl, A.TypeDecl)
+        }
         for decl in module.declarations:
             name = A.declaration_name(decl)
             if not name or not isinstance(decl, (A.TypeDecl, A.FuncDecl, A.EntityDecl)):
                 continue
-            if name in local_names or name in self.imported_names or name in self.terms or name in self.types:
-                self.error(f"open {opened.module!r} introduces conflicting name {name!r}", opened, "ambiguous-open")
+            if (
+                name in local_names
+                or name in self.imported_names
+                or name in self.terms
+                or name in self.types
+            ):
+                self.error(
+                    f"open {opened.module!r} introduces conflicting name {name!r}",
+                    opened,
+                    "ambiguous-open",
+                )
                 continue
             self.imported_names.add(name)
             if isinstance(decl, A.TypeDecl):
@@ -370,7 +422,16 @@ class SemanticChecker:
                 variants=[
                     A.Variant(
                         name=variant.name,
-                        fields=[(label, self.qualify_type_expr(typ, module_name, declared_types, type_params) or typ) for label, typ in variant.fields],
+                        fields=[
+                            (
+                                label,
+                                self.qualify_type_expr(
+                                    typ, module_name, declared_types, type_params
+                                )
+                                or typ,
+                            )
+                            for label, typ in variant.fields
+                        ],
                         line=variant.line,
                         column=variant.column,
                     )
@@ -379,7 +440,9 @@ class SemanticChecker:
                 line=definition.line,
                 column=definition.column,
             )
-        return self.qualify_type_expr(definition, module_name, declared_types, type_params)
+        return self.qualify_type_expr(
+            definition, module_name, declared_types, type_params
+        )
 
     def qualify_type_expr(
         self,
@@ -391,44 +454,74 @@ class SemanticChecker:
         if typ is None:
             return None
         if isinstance(typ, A.TypeRef):
-            if typ.name in PRIMITIVE_TYPES or typ.name in type_params or self.is_known_full_type(typ.name):
+            if (
+                typ.name in PRIMITIVE_TYPES
+                or typ.name in type_params
+                or self.is_known_full_type(typ.name)
+            ):
                 name = typ.name
             elif typ.name in declared_types:
                 name = f"{module_name}.{typ.name}"
             elif typ.name in self.types:
                 type_symbol = self.types[typ.name]
-                name = type_symbol.type_expr.name if isinstance(type_symbol.type_expr, A.TypeRef) else typ.name
+                name = (
+                    type_symbol.type_expr.name
+                    if isinstance(type_symbol.type_expr, A.TypeRef)
+                    else typ.name
+                )
             else:
                 name = typ.name
             return A.TypeRef(
                 name=name,
-                args=[self.qualify_type_expr(arg, module_name, declared_types, type_params) or arg for arg in typ.args],
+                args=[
+                    self.qualify_type_expr(
+                        arg, module_name, declared_types, type_params
+                    )
+                    or arg
+                    for arg in typ.args
+                ],
                 line=typ.line,
                 column=typ.column,
             )
         if isinstance(typ, A.RecordType):
             return A.RecordType(
-                fields=[(name, self.qualify_type_expr(field_type, module_name, declared_types, type_params) or field_type) for name, field_type in typ.fields],
+                fields=[
+                    (
+                        name,
+                        self.qualify_type_expr(
+                            field_type, module_name, declared_types, type_params
+                        )
+                        or field_type,
+                    )
+                    for name, field_type in typ.fields
+                ],
                 line=typ.line,
                 column=typ.column,
             )
         if isinstance(typ, A.TupleType):
             return A.TupleType(
-                items=[self.qualify_type_expr(item, module_name, declared_types, type_params) or item for item in typ.items],
+                items=[
+                    self.qualify_type_expr(
+                        item, module_name, declared_types, type_params
+                    )
+                    or item
+                    for item in typ.items
+                ],
                 line=typ.line,
                 column=typ.column,
             )
         return typ
 
     def is_known_full_type(self, name: str) -> bool:
-        return (
-            self.resolve_type_name(name) is not None
-            or any(name.startswith(module_name + ".") for module_name in self.available_modules)
+        return self.resolve_type_name(name) is not None or any(
+            name.startswith(module_name + ".") for module_name in self.available_modules
         )
 
     def check_declaration(self, decl: A.Declaration) -> None:
         if isinstance(decl, A.TypeDecl):
-            self.types[decl.name] = Symbol(decl.name, "type", A.TypeRef(name=decl.name), decl)
+            self.types[decl.name] = Symbol(
+                decl.name, "type", A.TypeRef(name=decl.name), decl
+            )
             self.type_params[decl.name] = list(decl.params)
             self.type_definitions[decl.name] = decl.definition
             self.check_type_definition(decl.definition, set(decl.params))
@@ -455,7 +548,9 @@ class SemanticChecker:
             return
         if isinstance(decl, A.EntityDecl):
             self.check_type_expr(decl.type_annotation)
-            self.terms[decl.name] = Symbol(decl.name, "entity", decl.type_annotation, decl)
+            self.terms[decl.name] = Symbol(
+                decl.name, "entity", decl.type_annotation, decl
+            )
             return
         if isinstance(decl, A.RuleDecl):
             self.rules[decl.name] = Symbol(decl.name, "rule", node=decl)
@@ -468,15 +563,20 @@ class SemanticChecker:
         if isinstance(decl, A.FactDecl):
             self.check_formula_expr(decl.value)
             return
+
     def add_constructors(self, decl: A.TypeDecl) -> None:
         if not isinstance(decl.definition, A.SumType):
             return
         result_type = A.TypeRef(name=decl.name)
         for variant in decl.definition.variants:
             self.constructors[f"{decl.name}.{variant.name}"] = (decl.name, variant)
-            self.terms[f"{decl.name}.{variant.name}"] = Symbol(f"{decl.name}.{variant.name}", "constructor", result_type, variant)
+            self.terms[f"{decl.name}.{variant.name}"] = Symbol(
+                f"{decl.name}.{variant.name}", "constructor", result_type, variant
+            )
 
-    def check_type_definition(self, definition: A.TypeExpr | A.SumType | None, type_params: set[str]) -> None:
+    def check_type_definition(
+        self, definition: A.TypeExpr | A.SumType | None, type_params: set[str]
+    ) -> None:
         if isinstance(definition, A.SumType):
             for variant in definition.variants:
                 for _, typ in variant.fields:
@@ -484,7 +584,9 @@ class SemanticChecker:
         else:
             self.check_type_expr(definition, type_params)
 
-    def check_type_expr(self, typ: A.TypeExpr | None, type_params: set[str] | None = None) -> None:
+    def check_type_expr(
+        self, typ: A.TypeExpr | None, type_params: set[str] | None = None
+    ) -> None:
         type_params = type_params or set()
         if typ is None:
             return
@@ -516,7 +618,9 @@ class SemanticChecker:
         *,
         expected: A.TypeExpr | None = None,
     ) -> A.TypeExpr | None:
-        return TypeInference(self, type_params or set()).check_block(block, env, expected=expected)
+        return TypeInference(self, type_params or set()).check_block(
+            block, env, expected=expected
+        )
 
     def check_expr(
         self,
@@ -526,7 +630,9 @@ class SemanticChecker:
         expected: A.TypeExpr | None = None,
         type_params: set[str] | None = None,
     ) -> A.TypeExpr | None:
-        return TypeInference(self, type_params or set()).check_expr(expr, env, expected=expected)
+        return TypeInference(self, type_params or set()).check_expr(
+            expr, env, expected=expected
+        )
 
     def check_temporal_expr(
         self,
@@ -554,28 +660,50 @@ class SemanticChecker:
         if isinstance(pattern, A.LiteralPattern):
             self.check_assignable(self.pattern_literal_type(pattern), typ, pattern)
         if isinstance(pattern, A.ConstructorPattern):
-            if pattern.name not in self.constructors and pattern.name not in BUILTIN_TERMS:
-                self.error(f"undefined constructor {pattern.name!r}", pattern, "undefined-name")
+            if (
+                pattern.name not in self.constructors
+                and pattern.name not in BUILTIN_TERMS
+            ):
+                self.error(
+                    f"undefined constructor {pattern.name!r}", pattern, "undefined-name"
+                )
             field_types = self.constructor_field_types(pattern.name, typ)
             if field_types:
-                self.constructor_arity_matches(pattern.name, len(pattern.args), field_types, pattern)
+                self.constructor_arity_matches(
+                    pattern.name, len(pattern.args), field_types, pattern
+                )
             for idx, arg in enumerate(pattern.args):
-                self.check_pattern(arg, field_types[idx] if idx < len(field_types) else None, type_params)
+                self.check_pattern(
+                    arg,
+                    field_types[idx] if idx < len(field_types) else None,
+                    type_params,
+                )
         elif isinstance(pattern, A.RecordPattern):
             fields = self.fields_for_type(typ)
             for name, nested in pattern.fields:
-                self.check_pattern(nested, fields.get(name) if fields else None, type_params)
+                self.check_pattern(
+                    nested, fields.get(name) if fields else None, type_params
+                )
         elif isinstance(pattern, A.TuplePattern):
             items = typ.items if isinstance(typ, A.TupleType) else []
             for idx, item in enumerate(pattern.items):
-                self.check_pattern(item, items[idx] if idx < len(items) else None, type_params)
+                self.check_pattern(
+                    item, items[idx] if idx < len(items) else None, type_params
+                )
         elif isinstance(pattern, A.ListPattern):
             item_type = self.collection_item_type(typ)
             for item in pattern.items:
                 self.check_pattern(item, item_type, type_params)
 
-    def bind_pattern(self, pattern: A.Pattern | None, env: dict[str, A.TypeExpr | None], typ: A.TypeExpr | None = None) -> None:
-        if pattern is None or isinstance(pattern, (A.WildcardPattern, A.LiteralPattern)):
+    def bind_pattern(
+        self,
+        pattern: A.Pattern | None,
+        env: dict[str, A.TypeExpr | None],
+        typ: A.TypeExpr | None = None,
+    ) -> None:
+        if pattern is None or isinstance(
+            pattern, (A.WildcardPattern, A.LiteralPattern)
+        ):
             return
         if isinstance(pattern, A.VarPattern):
             env[pattern.name] = typ
@@ -583,7 +711,9 @@ class SemanticChecker:
         if isinstance(pattern, A.ConstructorPattern):
             field_types = self.constructor_field_types(pattern.name, typ)
             for idx, arg in enumerate(pattern.args):
-                self.bind_pattern(arg, env, field_types[idx] if idx < len(field_types) else None)
+                self.bind_pattern(
+                    arg, env, field_types[idx] if idx < len(field_types) else None
+                )
             return
         if isinstance(pattern, A.RecordPattern):
             fields = self.fields_for_type(typ)
@@ -604,8 +734,15 @@ class SemanticChecker:
             for item in pattern.items:
                 self.bind_pattern(item, env, item_type)
 
-    def check_name(self, name: str, node: A.Node, env: dict[str, A.TypeExpr | None]) -> None:
-        if name in BUILTIN_TERMS or name in self.terms or name in env or name in self.imported_names:
+    def check_name(
+        self, name: str, node: A.Node, env: dict[str, A.TypeExpr | None]
+    ) -> None:
+        if (
+            name in BUILTIN_TERMS
+            or name in self.terms
+            or name in env
+            or name in self.imported_names
+        ):
             return
         parts = split_qualified(name)
         root = parts[0]
@@ -649,19 +786,30 @@ class SemanticChecker:
         module_names = [self.module.name, *self.available_modules]
         for module_name in module_names:
             module_parts = split_qualified(module_name)
-            if parts[:len(module_parts)] == module_parts:
-                matches.append((len(module_parts), module_name, parts[len(module_parts):]))
+            if parts[: len(module_parts)] == module_parts:
+                matches.append(
+                    (len(module_parts), module_name, parts[len(module_parts) :])
+                )
 
-        opened = [opened.module for opened in self.module.opens if opened.module in self.available_modules]
+        opened = [
+            opened.module
+            for opened in self.module.opens
+            if opened.module in self.available_modules
+        ]
         for opened_module in opened:
             opened_parts = split_qualified(opened_module)
             for module_name in self.available_modules:
                 module_parts = split_qualified(module_name)
-                if len(module_parts) <= len(opened_parts) or module_parts[:len(opened_parts)] != opened_parts:
+                if (
+                    len(module_parts) <= len(opened_parts)
+                    or module_parts[: len(opened_parts)] != opened_parts
+                ):
                     continue
-                relative_parts = module_parts[len(opened_parts):]
-                if parts[:len(relative_parts)] == relative_parts:
-                    matches.append((len(relative_parts), module_name, parts[len(relative_parts):]))
+                relative_parts = module_parts[len(opened_parts) :]
+                if parts[: len(relative_parts)] == relative_parts:
+                    matches.append(
+                        (len(relative_parts), module_name, parts[len(relative_parts) :])
+                    )
 
         unique: dict[tuple[str, tuple[str, ...]], tuple[int, str, list[str]]] = {}
         for consumed, module_name, rest in matches:
@@ -704,7 +852,9 @@ class SemanticChecker:
                     return candidate
         return None
 
-    def check_field_chain(self, typ: A.TypeExpr | None, fields: list[str], node: A.Node) -> None:
+    def check_field_chain(
+        self, typ: A.TypeExpr | None, fields: list[str], node: A.Node
+    ) -> None:
         current = typ
         for field in fields:
             available = self.fields_for_type(current)
@@ -732,18 +882,29 @@ class SemanticChecker:
         fields = self.fields_for_type(typ)
         type_known = expr.type_name in self.types
         if fields is None and type_known:
-            self.error(f"type {expr.type_name!r} is not a record type", expr, "not-record-type")
+            self.error(
+                f"type {expr.type_name!r} is not a record type", expr, "not-record-type"
+            )
         seen: set[str] = set()
         for name, value in expr.fields:
             if name in seen:
-                self.error(f"duplicate record field {name!r}", expr, "duplicate-record-field")
+                self.error(
+                    f"duplicate record field {name!r}", expr, "duplicate-record-field"
+                )
             seen.add(name)
             if fields is not None and name not in fields:
                 self.error(f"unknown field {name!r}", expr, "unknown-field")
-            self.check_expr(value, env, expected=fields.get(name) if fields else None, type_params=type_params)
+            self.check_expr(
+                value,
+                env,
+                expected=fields.get(name) if fields else None,
+                type_params=type_params,
+            )
         if fields is not None:
             for name in sorted(set(fields) - seen):
-                self.error(f"missing record field {name!r}", expr, "missing-record-field")
+                self.error(
+                    f"missing record field {name!r}", expr, "missing-record-field"
+                )
         return typ
 
     def check_call(
@@ -763,7 +924,12 @@ class SemanticChecker:
         if name in STRING_TO_LIST_NAMES:
             self.check_arity(name, len(expr.args), 1, expr)
             if expr.args:
-                self.check_expr(expr.args[0], env, expected=A.TypeRef(name="string"), type_params=type_params)
+                self.check_expr(
+                    expr.args[0],
+                    env,
+                    expected=A.TypeRef(name="string"),
+                    type_params=type_params,
+                )
             return A.TypeRef(name="List", args=[A.TypeRef(name="string")])
         if name in STRING_OF_LIST_NAMES:
             self.check_arity(name, len(expr.args), 1, expr)
@@ -771,7 +937,9 @@ class SemanticChecker:
                 self.check_expr(
                     expr.args[0],
                     env,
-                    expected=A.TypeRef(name="std.collections.List", args=[A.TypeRef(name="string")]),
+                    expected=A.TypeRef(
+                        name="std.collections.List", args=[A.TypeRef(name="string")]
+                    ),
                     type_params=type_params,
                 )
             return A.TypeRef(name="string")
@@ -794,13 +962,28 @@ class SemanticChecker:
                 actual = self.check_expr(arg, env, type_params=type_params)
                 actuals.append(actual)
                 if actual is not None:
-                    self.unify_type_params(param.type_annotation, actual, substitutions, set(func.type_params))
+                    self.unify_type_params(
+                        param.type_annotation,
+                        actual,
+                        substitutions,
+                        set(func.type_params),
+                    )
             if expected is not None:
-                self.unify_type_params(func.return_type, expected, substitutions, set(func.type_params))
+                self.unify_type_params(
+                    func.return_type, expected, substitutions, set(func.type_params)
+                )
             for actual, param, arg in zip(actuals, func.params, expr.args):
-                formal = self.substitute_type_params(param.type_annotation, substitutions) if param.type_annotation else None
+                formal = (
+                    self.substitute_type_params(param.type_annotation, substitutions)
+                    if param.type_annotation
+                    else None
+                )
                 self.check_assignable(actual, formal, arg)
-            return self.substitute_type_params(func.return_type, substitutions) if func.return_type else None
+            return (
+                self.substitute_type_params(func.return_type, substitutions)
+                if func.return_type
+                else None
+            )
 
         self.check_expr(expr.func, env, type_params=type_params)
         for arg in expr.args:
@@ -816,13 +999,19 @@ class SemanticChecker:
         bool_type = A.TypeRef(name="bool")
         if expr.op in {"and", "or", "implies"}:
             self.check_expr(expr.left, env, expected=bool_type, type_params=type_params)
-            self.check_expr(expr.right, env, expected=bool_type, type_params=type_params)
+            self.check_expr(
+                expr.right, env, expected=bool_type, type_params=type_params
+            )
             return bool_type
 
         left = self.check_expr(expr.left, env, type_params=type_params)
         right = self.check_expr(expr.right, env, type_params=type_params)
         if expr.op in {"=", "!="}:
-            if left is not None and right is not None and not self.are_comparable(left, right, type_params):
+            if (
+                left is not None
+                and right is not None
+                and not self.are_comparable(left, right, type_params)
+            ):
                 self.error(
                     f"cannot compare {self.format_type(left)} and {self.format_type(right)}",
                     expr,
@@ -838,7 +1027,11 @@ class SemanticChecker:
         if expr.op in {"+", "-", "*", "/", "%"}:
             self.check_numeric_operand(left, expr.left or expr)
             self.check_numeric_operand(right, expr.right or expr)
-            if expr.op == "/" or self.type_name(left) in {"rat", "decimal"} or self.type_name(right) in {"rat", "decimal"}:
+            if (
+                expr.op == "/"
+                or self.type_name(left) in {"rat", "decimal"}
+                or self.type_name(right) in {"rat", "decimal"}
+            ):
                 return A.TypeRef(name="rat")
             return A.TypeRef(name="int")
 
@@ -857,31 +1050,55 @@ class SemanticChecker:
         if self.is_assignable(actual, expected):
             return
         code = "non-bool-expression" if self.is_bool_type(expected) else "type-mismatch"
-        self.error(f"expected {self.format_type(expected)}, got {self.format_type(actual)}", node, code)
+        self.error(
+            f"expected {self.format_type(expected)}, got {self.format_type(actual)}",
+            node,
+            code,
+        )
 
     def check_numeric_operand(self, typ: A.TypeExpr | None, node: A.Node) -> None:
         if typ is None or self.is_unknown_type(typ):
             return
         if not self.is_numeric_type(typ):
-            self.error(f"expected numeric expression, got {self.format_type(typ)}", node, "non-numeric-expression")
+            self.error(
+                f"expected numeric expression, got {self.format_type(typ)}",
+                node,
+                "non-numeric-expression",
+            )
 
     def check_arity(self, name: str, actual: int, expected: int, node: A.Node) -> None:
         if actual != expected:
-            self.error(f"{name!r} expects {expected} args, got {actual}", node, "arity-mismatch")
+            self.error(
+                f"{name!r} expects {expected} args, got {actual}",
+                node,
+                "arity-mismatch",
+            )
 
-    def constructor_arity_matches(self, name: str, actual: int, field_types: list[A.TypeExpr], node: A.Node) -> bool:
+    def constructor_arity_matches(
+        self, name: str, actual: int, field_types: list[A.TypeExpr], node: A.Node
+    ) -> bool:
         if actual == len(field_types):
             return True
-        if actual == 0 and len(field_types) == 1 and self.type_name(field_types[0]) == "unit":
+        if (
+            actual == 0
+            and len(field_types) == 1
+            and self.type_name(field_types[0]) == "unit"
+        ):
             return True
-        self.error(f"{name!r} expects {len(field_types)} args, got {actual}", node, "arity-mismatch")
+        self.error(
+            f"{name!r} expects {len(field_types)} args, got {actual}",
+            node,
+            "arity-mismatch",
+        )
         return False
 
     def literal_type(self, expr: A.Literal) -> A.TypeExpr:
         return A.TypeRef(name=expr.kind if expr.kind in PRIMITIVE_TYPES else "unit")
 
     def pattern_literal_type(self, pattern: A.LiteralPattern) -> A.TypeExpr:
-        return A.TypeRef(name=pattern.kind if pattern.kind in PRIMITIVE_TYPES else "unit")
+        return A.TypeRef(
+            name=pattern.kind if pattern.kind in PRIMITIVE_TYPES else "unit"
+        )
 
     def symbol_for_name(self, name: str) -> Symbol | None:
         if name in self.terms:
@@ -895,7 +1112,9 @@ class SemanticChecker:
             return self.terms.get(f"{module_name}.{rest[0]}")
         return None
 
-    def constructor_result_type(self, name: str, expected: A.TypeExpr | None) -> A.TypeExpr | None:
+    def constructor_result_type(
+        self, name: str, expected: A.TypeExpr | None
+    ) -> A.TypeExpr | None:
         constructor_name = self.resolve_constructor_name(name)
         if isinstance(expected, A.TypeRef) and constructor_name is not None:
             constructor_type = self.constructors[constructor_name][0]
@@ -914,13 +1133,18 @@ class SemanticChecker:
                     self.is_assignable(a, e) for a, e in zip(actual.args, expected.args)
                 )
             return True
-        if expected_name in {"rat", "decimal"} and actual_name in {"int", "rat", "decimal"}:
+        if expected_name in {"rat", "decimal"} and actual_name in {
+            "int",
+            "rat",
+            "decimal",
+        }:
             return True
         if isinstance(actual, A.RecordType) and isinstance(expected, A.RecordType):
             actual_fields = dict(actual.fields)
             expected_fields = dict(expected.fields)
             return set(actual_fields) == set(expected_fields) and all(
-                self.is_assignable(actual_fields[name], expected_fields[name]) for name in expected_fields
+                self.is_assignable(actual_fields[name], expected_fields[name])
+                for name in expected_fields
             )
         if isinstance(actual, A.TupleType) and isinstance(expected, A.TupleType):
             return len(actual.items) == len(expected.items) and all(
@@ -928,16 +1152,23 @@ class SemanticChecker:
             )
         return False
 
-    def are_comparable(self, left: A.TypeExpr, right: A.TypeExpr, type_params: set[str]) -> bool:
+    def are_comparable(
+        self, left: A.TypeExpr, right: A.TypeExpr, type_params: set[str]
+    ) -> bool:
         if self.is_assignable(left, right) or self.is_assignable(right, left):
             return True
-        if self.is_numeric_type(left, type_params) and self.is_numeric_type(right, type_params):
+        if self.is_numeric_type(left, type_params) and self.is_numeric_type(
+            right, type_params
+        ):
             return True
         left_fields = self.fields_for_type(left)
         right_fields = self.fields_for_type(right)
         if left_fields is not None and right_fields is not None:
             common = sorted(set(left_fields) & set(right_fields))
-            return bool(common) and all(self.are_comparable(left_fields[name], right_fields[name], type_params) for name in common)
+            return bool(common) and all(
+                self.are_comparable(left_fields[name], right_fields[name], type_params)
+                for name in common
+            )
         return False
 
     def common_type(
@@ -954,7 +1185,9 @@ class SemanticChecker:
             return right
         if self.is_assignable(right, left):
             return left
-        if self.is_numeric_type(left, type_params) and self.is_numeric_type(right, type_params):
+        if self.is_numeric_type(left, type_params) and self.is_numeric_type(
+            right, type_params
+        ):
             if self.type_name(left) in {"rat", "decimal"}:
                 return left
             if self.type_name(right) in {"rat", "decimal"}:
@@ -965,9 +1198,13 @@ class SemanticChecker:
     def is_bool_type(self, typ: A.TypeExpr | None) -> bool:
         return self.type_name(typ) == "bool"
 
-    def is_numeric_type(self, typ: A.TypeExpr | None, type_params: set[str] | None = None) -> bool:
+    def is_numeric_type(
+        self, typ: A.TypeExpr | None, type_params: set[str] | None = None
+    ) -> bool:
         name = self.type_name(typ)
-        return name in {"int", "rat", "decimal"} or bool(name and type_params and name in type_params)
+        return name in {"int", "rat", "decimal"} or bool(
+            name and type_params and name in type_params
+        )
 
     def type_name(self, typ: A.TypeExpr | None) -> str | None:
         if isinstance(typ, A.TypeRef):
@@ -994,7 +1231,12 @@ class SemanticChecker:
             return True
         if isinstance(typ, A.TypeRef):
             root = typ.name.split(".")[0]
-            if typ.name in PRIMITIVE_TYPES or self.resolve_type_name(typ.name) is not None or root in self.imports or root in BUILTIN_ROOTS:
+            if (
+                typ.name in PRIMITIVE_TYPES
+                or self.resolve_type_name(typ.name) is not None
+                or root in self.imports
+                or root in BUILTIN_ROOTS
+            ):
                 return any(self.is_unknown_type(arg) for arg in typ.args)
             return True
         if isinstance(typ, A.RecordType):
@@ -1008,10 +1250,21 @@ class SemanticChecker:
             return "unknown"
         if isinstance(typ, A.TypeRef):
             if typ.args:
-                return f"{typ.name}<" + ", ".join(self.format_type(arg) for arg in typ.args) + ">"
+                return (
+                    f"{typ.name}<"
+                    + ", ".join(self.format_type(arg) for arg in typ.args)
+                    + ">"
+                )
             return typ.name
         if isinstance(typ, A.RecordType):
-            return "{ " + ", ".join(f"{name}: {self.format_type(field_type)}" for name, field_type in typ.fields) + " }"
+            return (
+                "{ "
+                + ", ".join(
+                    f"{name}: {self.format_type(field_type)}"
+                    for name, field_type in typ.fields
+                )
+                + " }"
+            )
         if isinstance(typ, A.TupleType):
             return "(" + ", ".join(self.format_type(item) for item in typ.items) + ")"
         return "unknown"
@@ -1037,13 +1290,17 @@ class SemanticChecker:
             actual_fields = dict(actual.fields)
             for name, field_type in pattern.fields:
                 if name in actual_fields:
-                    self.unify_type_params(field_type, actual_fields[name], substitutions, type_params)
+                    self.unify_type_params(
+                        field_type, actual_fields[name], substitutions, type_params
+                    )
             return
         if isinstance(pattern, A.TupleType) and isinstance(actual, A.TupleType):
             for p_item, a_item in zip(pattern.items, actual.items):
                 self.unify_type_params(p_item, a_item, substitutions, type_params)
 
-    def infer_expr_type(self, expr: A.Expr | None, env: dict[str, A.TypeExpr | None]) -> A.TypeExpr | None:
+    def infer_expr_type(
+        self, expr: A.Expr | None, env: dict[str, A.TypeExpr | None]
+    ) -> A.TypeExpr | None:
         if expr is None:
             return None
         if isinstance(expr, A.Literal):
@@ -1073,7 +1330,11 @@ class SemanticChecker:
                 return A.TypeRef(name="bool")
             return self.infer_expr_type(expr.left, env)
         if isinstance(expr, A.UnaryOp):
-            return A.TypeRef(name="bool") if expr.op == "not" else self.infer_expr_type(expr.operand, env)
+            return (
+                A.TypeRef(name="bool")
+                if expr.op == "not"
+                else self.infer_expr_type(expr.operand, env)
+            )
         if isinstance(expr, A.IfExpr):
             return self.infer_expr_type(expr.then_branch, env)
         if isinstance(expr, A.LetExpr):
@@ -1084,12 +1345,19 @@ class SemanticChecker:
         if isinstance(expr, A.RecordConstructor):
             return A.TypeRef(name=expr.type_name)
         if isinstance(expr, A.TupleLiteral):
-            return A.TupleType(items=[self.infer_expr_type(item, env) or A.TypeRef(name="unit") for item in expr.items])
+            return A.TupleType(
+                items=[
+                    self.infer_expr_type(item, env) or A.TypeRef(name="unit")
+                    for item in expr.items
+                ]
+            )
         if isinstance(expr, (A.TemporalUnary, A.TemporalBinary)):
             return A.TypeRef(name="bool")
         return None
 
-    def infer_name_type(self, name: str, env: dict[str, A.TypeExpr | None]) -> A.TypeExpr | None:
+    def infer_name_type(
+        self, name: str, env: dict[str, A.TypeExpr | None]
+    ) -> A.TypeExpr | None:
         if name in env:
             return env[name]
         if name in self.terms:
@@ -1102,15 +1370,21 @@ class SemanticChecker:
             return self.type_after_fields(self.terms[root].type_expr, parts[1:])
         if root == self.module.name and len(parts) > 1:
             symbol = self.terms.get(parts[1])
-            return self.type_after_fields(symbol.type_expr if symbol else None, parts[2:])
+            return self.type_after_fields(
+                symbol.type_expr if symbol else None, parts[2:]
+            )
         matches = self.symbol_module_matches(parts)
         if len(matches) == 1:
             module_name, rest = matches[0]
             symbol = self.terms.get(f"{module_name}.{rest[0]}")
-            return self.type_after_fields(symbol.type_expr if symbol else None, rest[1:])
+            return self.type_after_fields(
+                symbol.type_expr if symbol else None, rest[1:]
+            )
         return None
 
-    def type_after_fields(self, typ: A.TypeExpr | None, fields: list[str]) -> A.TypeExpr | None:
+    def type_after_fields(
+        self, typ: A.TypeExpr | None, fields: list[str]
+    ) -> A.TypeExpr | None:
         current = typ
         for field in fields:
             available = self.fields_for_type(current)
@@ -1124,7 +1398,9 @@ class SemanticChecker:
     def fields_for_reference(self, name: str) -> dict[str, A.TypeExpr] | None:
         return self.fields_for_type(self.infer_name_type(name, {}))
 
-    def fields_for_type(self, typ: A.TypeExpr | None, seen: set[str] | None = None) -> dict[str, A.TypeExpr] | None:
+    def fields_for_type(
+        self, typ: A.TypeExpr | None, seen: set[str] | None = None
+    ) -> dict[str, A.TypeExpr] | None:
         seen = seen or set()
         if isinstance(typ, A.RecordType):
             return dict(typ.fields)
@@ -1139,44 +1415,67 @@ class SemanticChecker:
         return None
 
     def collection_item_type(self, typ: A.TypeExpr | None) -> A.TypeExpr | None:
-        if isinstance(typ, A.TypeRef) and local_name(typ.name) in {"List", "Set"} and typ.args:
+        if (
+            isinstance(typ, A.TypeRef)
+            and local_name(typ.name) in {"List", "Set"}
+            and typ.args
+        ):
             return typ.args[0]
         return None
 
-    def constructor_field_types(self, name: str, typ: A.TypeExpr | None = None) -> list[A.TypeExpr]:
+    def constructor_field_types(
+        self, name: str, typ: A.TypeExpr | None = None
+    ) -> list[A.TypeExpr]:
         short = local_name(name)
         if isinstance(typ, A.TypeRef):
-            definition = self.type_definitions.get(self.resolve_type_name(typ.name) or typ.name)
+            definition = self.type_definitions.get(
+                self.resolve_type_name(typ.name) or typ.name
+            )
             if isinstance(definition, A.SumType):
-                params = self.type_params.get(self.resolve_type_name(typ.name) or typ.name, [])
+                params = self.type_params.get(
+                    self.resolve_type_name(typ.name) or typ.name, []
+                )
                 substitutions = dict(zip(params, typ.args))
                 for variant in definition.variants:
                     if variant.name == short:
-                        return [self.substitute_type_params(field_type, substitutions) for _, field_type in variant.fields]
+                        return [
+                            self.substitute_type_params(field_type, substitutions)
+                            for _, field_type in variant.fields
+                        ]
         constructor_name = self.resolve_constructor_name(name)
         if constructor_name is not None:
             return [typ for _, typ in self.constructors[constructor_name][1].fields]
         return []
 
-    def substitute_type_params(self, typ: A.TypeExpr, substitutions: dict[str, A.TypeExpr]) -> A.TypeExpr:
+    def substitute_type_params(
+        self, typ: A.TypeExpr, substitutions: dict[str, A.TypeExpr]
+    ) -> A.TypeExpr:
         if isinstance(typ, A.TypeRef):
             if typ.name in substitutions and not typ.args:
                 return substitutions[typ.name]
             return A.TypeRef(
                 name=typ.name,
-                args=[self.substitute_type_params(arg, substitutions) for arg in typ.args],
+                args=[
+                    self.substitute_type_params(arg, substitutions) for arg in typ.args
+                ],
                 line=typ.line,
                 column=typ.column,
             )
         if isinstance(typ, A.RecordType):
             return A.RecordType(
-                fields=[(name, self.substitute_type_params(field_type, substitutions)) for name, field_type in typ.fields],
+                fields=[
+                    (name, self.substitute_type_params(field_type, substitutions))
+                    for name, field_type in typ.fields
+                ],
                 line=typ.line,
                 column=typ.column,
             )
         if isinstance(typ, A.TupleType):
             return A.TupleType(
-                items=[self.substitute_type_params(item, substitutions) for item in typ.items],
+                items=[
+                    self.substitute_type_params(item, substitutions)
+                    for item in typ.items
+                ],
                 line=typ.line,
                 column=typ.column,
             )
@@ -1191,10 +1490,18 @@ class SemanticChecker:
         return None
 
     def visible_type_names(self, line: int, column: int) -> list[str]:
-        return sorted(name for name, symbol in self.types.items() if self.is_visible(symbol, line, column))
+        return sorted(
+            name
+            for name, symbol in self.types.items()
+            if self.is_visible(symbol, line, column)
+        )
 
     def visible_term_names(self, line: int, column: int) -> list[str]:
-        return sorted(name for name, symbol in self.terms.items() if self.is_visible(symbol, line, column))
+        return sorted(
+            name
+            for name, symbol in self.terms.items()
+            if self.is_visible(symbol, line, column)
+        )
 
     def is_visible(self, symbol: Symbol, line: int, column: int) -> bool:
         if symbol.node is None:
@@ -1204,16 +1511,18 @@ class SemanticChecker:
         return symbol.node.line == line and symbol.node.column < column
 
     def error(self, message: str, node: A.Node, code: str) -> None:
-        self.diagnostics.append(Diagnostic(
-            message,
-            line=node.line or 1,
-            column=node.column or 1,
-            severity="error",
-            code=code,
-            path=self.path,
-            end_line=node.end_line or None,
-            end_column=node.end_column or None,
-        ))
+        self.diagnostics.append(
+            Diagnostic(
+                message,
+                line=node.line or 1,
+                column=node.column or 1,
+                severity="error",
+                code=code,
+                path=self.path,
+                end_line=node.end_line or None,
+                end_column=node.end_column or None,
+            )
+        )
 
     def warning(self, message: str, node: A.Node, code: str) -> None:
         line = node.line or 1
@@ -1227,16 +1536,19 @@ class SemanticChecker:
             for d in self.diagnostics
         ):
             return
-        self.diagnostics.append(Diagnostic(
-            message,
-            line=line,
-            column=column,
-            severity="warning",
-            code=code,
-            path=self.path,
-            end_line=node.end_line or None,
-            end_column=node.end_column or None,
-        ))
+        self.diagnostics.append(
+            Diagnostic(
+                message,
+                line=line,
+                column=column,
+                severity="warning",
+                code=code,
+                path=self.path,
+                end_line=node.end_line or None,
+                end_column=node.end_column or None,
+            )
+        )
+
 
 class Linter:
     def analyze_module(
@@ -1249,7 +1561,9 @@ class Linter:
     ) -> SemanticAnalysis:
         diagnostics: list[Diagnostic] = []
         diagnostics.extend(self.check_duplicates(module, path))
-        checker = SemanticChecker(module, path, resolver=ImportResolver(path, documents, stdlib_path))
+        checker = SemanticChecker(
+            module, path, resolver=ImportResolver(path, documents, stdlib_path)
+        )
         diagnostics.extend(checker.check())
         diagnostics.extend(self.check_boolean_parentheses(module, path))
         diagnostics.extend(self.check_rules(module, path))
@@ -1281,14 +1595,16 @@ class Linter:
             kind = decl.__class__.__name__
             key = (kind, name)
             if key in seen:
-                diagnostics.append(Diagnostic(
-                    f"duplicate {kind} name {name!r}",
-                    line=decl.line or 1,
-                    column=decl.column or 1,
-                    severity="error",
-                    code="duplicate-name",
-                    path=path,
-                ))
+                diagnostics.append(
+                    Diagnostic(
+                        f"duplicate {kind} name {name!r}",
+                        line=decl.line or 1,
+                        column=decl.column or 1,
+                        severity="error",
+                        code="duplicate-name",
+                        path=path,
+                    )
+                )
             else:
                 seen[key] = decl
         return diagnostics
@@ -1300,26 +1616,42 @@ class Linter:
             if not isinstance(decl, A.RuleDecl):
                 continue
             if decl.name in rule_names:
-                diagnostics.append(Diagnostic(
-                    f"duplicate rule name {decl.name!r}", decl.line or 1, decl.column or 1,
-                    severity="error", code="duplicate-rule", path=path,
-                ))
+                diagnostics.append(
+                    Diagnostic(
+                        f"duplicate rule name {decl.name!r}",
+                        decl.line or 1,
+                        decl.column or 1,
+                        severity="error",
+                        code="duplicate-rule",
+                        path=path,
+                    )
+                )
             rule_names.add(decl.name)
             if not decl.modality:
-                diagnostics.append(Diagnostic(
-                    f"rule {decl.name!r} has no deontic modality",
-                    decl.line or 1, decl.column or 1,
-                    severity="warning", code="missing-modality", path=path,
-                ))
+                diagnostics.append(
+                    Diagnostic(
+                        f"rule {decl.name!r} has no deontic modality",
+                        decl.line or 1,
+                        decl.column or 1,
+                        severity="warning",
+                        code="missing-modality",
+                        path=path,
+                    )
+                )
         for decl in module.declarations:
             if isinstance(decl, A.PriorityDecl):
                 for name in decl.chain:
                     if name not in rule_names:
-                        diagnostics.append(Diagnostic(
-                            f"override references unknown rule {name!r}",
-                            decl.line or 1, decl.column or 1,
-                            severity="warning", code="unknown-priority-rule", path=path,
-                        ))
+                        diagnostics.append(
+                            Diagnostic(
+                                f"override references unknown rule {name!r}",
+                                decl.line or 1,
+                                decl.column or 1,
+                                severity="warning",
+                                code="unknown-priority-rule",
+                                path=path,
+                            )
+                        )
         return diagnostics
 
     def check_functions(self, module: A.Module, path: str | None) -> list[Diagnostic]:
@@ -1327,28 +1659,46 @@ class Linter:
         for decl in module.declarations:
             if isinstance(decl, A.FuncDecl):
                 if decl.body is None or decl.body.result is None:
-                    diagnostics.append(Diagnostic(
-                        f"function {decl.name!r} has no final expression",
-                        decl.line or 1, decl.column or 1,
-                        severity="error", code="function-without-result", path=path,
-                    ))
+                    diagnostics.append(
+                        Diagnostic(
+                            f"function {decl.name!r} has no final expression",
+                            decl.line or 1,
+                            decl.column or 1,
+                            severity="error",
+                            code="function-without-result",
+                            path=path,
+                        )
+                    )
                 if self.has_temporal_operator_in_block(decl.body):
-                    diagnostics.append(Diagnostic(
-                        f"function {decl.name!r} contains temporal operators; temporal logic belongs in rules",
-                        decl.line or 1, decl.column or 1,
-                        severity="error", code="temporal-in-function", path=path,
-                    ))
+                    diagnostics.append(
+                        Diagnostic(
+                            f"function {decl.name!r} contains temporal operators; temporal logic belongs in rules",
+                            decl.line or 1,
+                            decl.column or 1,
+                            severity="error",
+                            code="temporal-in-function",
+                            path=path,
+                        )
+                    )
         return diagnostics
 
-    def check_boolean_parentheses(self, module: A.Module, path: str | None) -> list[Diagnostic]:
+    def check_boolean_parentheses(
+        self, module: A.Module, path: str | None
+    ) -> list[Diagnostic]:
         diagnostics: list[Diagnostic] = []
         for decl in module.declarations:
             if isinstance(decl, A.FuncDecl):
-                self.collect_boolean_parentheses_warnings_in_block(decl.body, diagnostics, path)
+                self.collect_boolean_parentheses_warnings_in_block(
+                    decl.body, diagnostics, path
+                )
             elif isinstance(decl, A.RuleDecl):
-                self.collect_boolean_parentheses_warnings(decl.antecedent, diagnostics, path)
+                self.collect_boolean_parentheses_warnings(
+                    decl.antecedent, diagnostics, path
+                )
                 self.collect_boolean_parentheses_warnings(decl.body, diagnostics, path)
-                self.collect_boolean_parentheses_warnings(decl.otherwise, diagnostics, path)
+                self.collect_boolean_parentheses_warnings(
+                    decl.otherwise, diagnostics, path
+                )
             elif isinstance(decl, A.FactDecl):
                 self.collect_boolean_parentheses_warnings(decl.value, diagnostics, path)
         return diagnostics
@@ -1376,17 +1726,21 @@ class Linter:
         if isinstance(expr, A.BinaryOp):
             if expr.op in BOOL_CHAIN_OPS:
                 for child in (expr.left, expr.right):
-                    if child is not None and self.needs_boolean_parentheses_warning(expr, child):
-                        diagnostics.append(Diagnostic(
-                            "use explicit parentheses around chained boolean expression",
-                            child.line or expr.line or 1,
-                            child.column or expr.column or 1,
-                            severity="warning",
-                            code="ambiguous-boolean-chain",
-                            path=path,
-                            end_line=child.end_line or None,
-                            end_column=child.end_column or None,
-                        ))
+                    if child is not None and self.needs_boolean_parentheses_warning(
+                        expr, child
+                    ):
+                        diagnostics.append(
+                            Diagnostic(
+                                "use explicit parentheses around chained boolean expression",
+                                child.line or expr.line or 1,
+                                child.column or expr.column or 1,
+                                severity="warning",
+                                code="ambiguous-boolean-chain",
+                                path=path,
+                                end_line=child.end_line or None,
+                                end_column=child.end_column or None,
+                            )
+                        )
             self.collect_boolean_parentheses_warnings(expr.left, diagnostics, path)
             self.collect_boolean_parentheses_warnings(expr.right, diagnostics, path)
         elif isinstance(expr, A.UnaryOp):
@@ -1409,7 +1763,9 @@ class Linter:
             self.collect_boolean_parentheses_warnings(expr.subject, diagnostics, path)
             for arm in expr.arms:
                 self.collect_boolean_parentheses_warnings(arm.guard, diagnostics, path)
-                self.collect_boolean_parentheses_warnings_in_block(arm.body, diagnostics, path)
+                self.collect_boolean_parentheses_warnings_in_block(
+                    arm.body, diagnostics, path
+                )
         elif isinstance(expr, A.LetExpr):
             self.collect_boolean_parentheses_warnings(expr.value, diagnostics, path)
             self.collect_boolean_parentheses_warnings(expr.body, diagnostics, path)
@@ -1420,7 +1776,9 @@ class Linter:
             for _, value in expr.fields:
                 self.collect_boolean_parentheses_warnings(value, diagnostics, path)
 
-    def needs_boolean_parentheses_warning(self, parent: A.BinaryOp, child: A.Expr | None) -> bool:
+    def needs_boolean_parentheses_warning(
+        self, parent: A.BinaryOp, child: A.Expr | None
+    ) -> bool:
         if not isinstance(child, A.BinaryOp):
             return False
         if getattr(child, "_mdl_parenthesized", False):
@@ -1432,7 +1790,9 @@ class Linter:
     def has_temporal_operator_in_block(self, block: A.Block | None) -> bool:
         if block is None:
             return False
-        return any(self.has_temporal_operator(stmt.value) for stmt in block.statements) or self.has_temporal_operator(block.result)
+        return any(
+            self.has_temporal_operator(stmt.value) for stmt in block.statements
+        ) or self.has_temporal_operator(block.result)
 
     def expr_start_position(self, expr: A.Expr) -> tuple[int, int]:
         if isinstance(expr, (A.BinaryOp, A.TemporalBinary)) and expr.left is not None:
@@ -1445,7 +1805,9 @@ class Linter:
             return self.expr_start_position(expr.target)
         return expr.line or 1, expr.column or 1
 
-    def expressions_without_explicit_temporal(self, expr: A.Expr | None) -> list[A.Expr]:
+    def expressions_without_explicit_temporal(
+        self, expr: A.Expr | None
+    ) -> list[A.Expr]:
         if expr is None or isinstance(expr, (A.TemporalUnary, A.TemporalBinary)):
             return []
         if not self.has_temporal_operator(expr):
@@ -1476,8 +1838,12 @@ class Linter:
                 uncovered.extend(self.expressions_without_explicit_temporal(arm.guard))
                 if arm.body is not None:
                     for stmt in arm.body.statements:
-                        uncovered.extend(self.expressions_without_explicit_temporal(stmt.value))
-                    uncovered.extend(self.expressions_without_explicit_temporal(arm.body.result))
+                        uncovered.extend(
+                            self.expressions_without_explicit_temporal(stmt.value)
+                        )
+                    uncovered.extend(
+                        self.expressions_without_explicit_temporal(arm.body.result)
+                    )
             return uncovered
         if isinstance(expr, A.LetExpr):
             return [
@@ -1502,22 +1868,32 @@ class Linter:
         if isinstance(expr, (A.TemporalUnary, A.TemporalBinary)):
             return True
         if isinstance(expr, A.BinaryOp):
-            return self.has_temporal_operator(expr.left) or self.has_temporal_operator(expr.right)
+            return self.has_temporal_operator(expr.left) or self.has_temporal_operator(
+                expr.right
+            )
         if isinstance(expr, A.UnaryOp):
             return self.has_temporal_operator(expr.operand)
         if isinstance(expr, A.IfExpr):
-            return any(self.has_temporal_operator(e) for e in [expr.condition, expr.then_branch, expr.else_branch])
+            return any(
+                self.has_temporal_operator(e)
+                for e in [expr.condition, expr.then_branch, expr.else_branch]
+            )
         if isinstance(expr, A.Call):
-            return self.has_temporal_operator(expr.func) or any(self.has_temporal_operator(a) for a in expr.args)
+            return self.has_temporal_operator(expr.func) or any(
+                self.has_temporal_operator(a) for a in expr.args
+            )
         if isinstance(expr, A.FieldAccess):
             return self.has_temporal_operator(expr.target)
         if isinstance(expr, A.MatchExpr):
             return self.has_temporal_operator(expr.subject) or any(
-                self.has_temporal_operator(arm.guard) or self.has_temporal_operator_in_block(arm.body)
+                self.has_temporal_operator(arm.guard)
+                or self.has_temporal_operator_in_block(arm.body)
                 for arm in expr.arms
             )
         if isinstance(expr, A.LetExpr):
-            return self.has_temporal_operator(expr.value) or self.has_temporal_operator(expr.body)
+            return self.has_temporal_operator(expr.value) or self.has_temporal_operator(
+                expr.body
+            )
         if isinstance(expr, A.TupleLiteral):
             return any(self.has_temporal_operator(i) for i in expr.items)
         if isinstance(expr, A.RecordConstructor):
@@ -1537,4 +1913,6 @@ def lint_source(
         return [exc.to_diagnostic(path)]
     except PythonDslError as exc:
         return [exc.to_diagnostic(path)]
-    return Linter().lint_module(module, path=path, documents=documents, stdlib_path=stdlib_path)
+    return Linter().lint_module(
+        module, path=path, documents=documents, stdlib_path=stdlib_path
+    )

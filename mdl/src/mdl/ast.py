@@ -16,6 +16,7 @@ class Node:
 # Type AST
 # ---------------------------
 
+
 @dataclass
 class TypeExpr(Node):
     pass
@@ -51,6 +52,7 @@ class SumType(Node):
 # ---------------------------
 # Pattern AST
 # ---------------------------
+
 
 @dataclass
 class Pattern(Node):
@@ -97,6 +99,7 @@ class ListPattern(Pattern):
 # ---------------------------
 # Expression AST
 # ---------------------------
+
 
 @dataclass
 class Expr(Node):
@@ -195,6 +198,7 @@ class TemporalBinary(Expr):
 # ---------------------------
 # Blocks and declarations
 # ---------------------------
+
 
 @dataclass
 class LetStmt(Node):

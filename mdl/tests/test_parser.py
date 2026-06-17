@@ -13,11 +13,25 @@ def test_parse_email_module_constructs():
     assert module.name == "email"
     assert module.annotations == ["rfc2822"]
     assert module.imports == []
-    assert [opened.module for opened in module.opens] == ["std.collections", "std.strings"]
-    assert any(isinstance(d, A.TypeDecl) and d.name == "ProcessingState" for d in module.declarations)
-    assert any(isinstance(d, A.FuncDecl) and d.name == "process_email" for d in module.declarations)
-    assert any(isinstance(d, A.EntityDecl) and d.name == "email" for d in module.declarations)
-    assert any(isinstance(d, A.RuleDecl) and d.name == "email_addr_spec_correct" for d in module.declarations)
+    assert [opened.module for opened in module.opens] == [
+        "std.collections",
+        "std.strings",
+    ]
+    assert any(
+        isinstance(d, A.TypeDecl) and d.name == "ProcessingState"
+        for d in module.declarations
+    )
+    assert any(
+        isinstance(d, A.FuncDecl) and d.name == "process_email"
+        for d in module.declarations
+    )
+    assert any(
+        isinstance(d, A.EntityDecl) and d.name == "email" for d in module.declarations
+    )
+    assert any(
+        isinstance(d, A.RuleDecl) and d.name == "email_addr_spec_correct"
+        for d in module.declarations
+    )
 
 
 def test_event_is_plain_identifier():
@@ -27,12 +41,14 @@ module names
 entity event: bool
 """)
 
-    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+    entity = next(
+        decl for decl in module.declarations if isinstance(decl, A.EntityDecl)
+    )
     assert entity.name == "event"
 
 
 def test_parse_temporal_postfix_grouped_atom():
-    expr = parse_expr('(email_received and not email_is_correct(email)) eventually')
+    expr = parse_expr("(email_received and not email_is_correct(email)) eventually")
     assert isinstance(expr, A.TemporalUnary)
     assert expr.op == "eventually"
     assert isinstance(expr.operand, A.BinaryOp)
@@ -84,8 +100,12 @@ type UnionBlock =
 entity value: UnionBlock
 """)
 
-    type_decl = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
-    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+    type_decl = next(
+        decl for decl in module.declarations if isinstance(decl, A.TypeDecl)
+    )
+    entity = next(
+        decl for decl in module.declarations if isinstance(decl, A.EntityDecl)
+    )
 
     assert isinstance(type_decl.definition, A.SumType)
     assert [variant.name for variant in type_decl.definition.variants] == ["A", "B"]
@@ -109,15 +129,25 @@ type Result<T> =
     | Error(message: string)
 """)
 
-    inline_decl = next(decl for decl in inline.declarations if isinstance(decl, A.TypeDecl))
-    block_decl = next(decl for decl in block.declarations if isinstance(decl, A.TypeDecl))
+    inline_decl = next(
+        decl for decl in inline.declarations if isinstance(decl, A.TypeDecl)
+    )
+    block_decl = next(
+        decl for decl in block.declarations if isinstance(decl, A.TypeDecl)
+    )
 
-    assert without_locations(A.node_to_dict(block_decl)) == without_locations(A.node_to_dict(inline_decl))
+    assert without_locations(A.node_to_dict(block_decl)) == without_locations(
+        A.node_to_dict(inline_decl)
+    )
 
 
 def without_locations(value):
     if isinstance(value, dict):
-        return {k: without_locations(v) for k, v in value.items() if k not in {"line", "column", "end_line", "end_column"}}
+        return {
+            k: without_locations(v)
+            for k, v in value.items()
+            if k not in {"line", "column", "end_line", "end_column"}
+        }
     if isinstance(value, list):
         return [without_locations(item) for item in value]
     return value
@@ -133,8 +163,12 @@ rule F forbid: priority always
 override forbid > must
 """)
 
-    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
-    priority = next(decl for decl in module.declarations if isinstance(decl, A.PriorityDecl))
+    entity = next(
+        decl for decl in module.declarations if isinstance(decl, A.EntityDecl)
+    )
+    priority = next(
+        decl for decl in module.declarations if isinstance(decl, A.PriorityDecl)
+    )
     assert entity.name == "priority"
     assert priority.chain == ["forbid", "must"]
 
@@ -147,7 +181,9 @@ entity last: bool
 rule O must: last now
 """)
 
-    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+    entity = next(
+        decl for decl in module.declarations if isinstance(decl, A.EntityDecl)
+    )
     rule = next(decl for decl in module.declarations if isinstance(decl, A.RuleDecl))
 
     assert entity.name == "last"
@@ -168,7 +204,9 @@ module rules
 rule O r: x always
 """)
 
-    assert without_locations(A.node_to_dict(explicit)) == without_locations(A.node_to_dict(implicit))
+    assert without_locations(A.node_to_dict(explicit)) == without_locations(
+        A.node_to_dict(implicit)
+    )
 
 
 def test_anonymous_rule_syntax_is_rejected():
@@ -236,7 +274,9 @@ def test_format_expr_preserves_precedence_round_trip():
     ]:
         expr = parse_expr(source)
         reparsed = parse_expr(format_expr(expr))
-        assert without_locations(A.node_to_dict(reparsed)) == without_locations(A.node_to_dict(expr))
+        assert without_locations(A.node_to_dict(reparsed)) == without_locations(
+            A.node_to_dict(expr)
+        )
 
 
 def test_format_expr_prints_temporal_unary_as_postfix():
@@ -272,7 +312,9 @@ def test_parse_and_format_let_expr_type_annotation():
     assert format_expr(expr) == "let x: bool = 5 in true"
 
     reparsed = parse_expr(format_expr(expr))
-    assert without_locations(A.node_to_dict(reparsed)) == without_locations(A.node_to_dict(expr))
+    assert without_locations(A.node_to_dict(reparsed)) == without_locations(
+        A.node_to_dict(expr)
+    )
 
 
 def test_parse_block_let_with_indented_rhs():
@@ -390,10 +432,14 @@ entity boxed: Box<int>
     typ = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
     assert typ.params == ["T"]
 
-    entity = next(decl for decl in module.declarations if isinstance(decl, A.EntityDecl))
+    entity = next(
+        decl for decl in module.declarations if isinstance(decl, A.EntityDecl)
+    )
     assert isinstance(entity.type_annotation, A.TypeRef)
     assert entity.type_annotation.name == "Box"
-    assert [arg.name for arg in entity.type_annotation.args if isinstance(arg, A.TypeRef)] == ["int"]
+    assert [
+        arg.name for arg in entity.type_annotation.args if isinstance(arg, A.TypeRef)
+    ] == ["int"]
 
 
 def test_case_arms_must_be_indented_deeper_than_case_expression():
@@ -449,12 +495,12 @@ rule O r2:
 
 
 def test_parse_file_import_path():
-    module = parse('''
+    module = parse("""
 module imports
 
 import "./pipe.mdl"
 open std.collections
-''')
+""")
 
     assert module.imports[0].path == "./pipe.mdl"
     assert module.opens[0].module == "std.collections"
@@ -473,7 +519,9 @@ rule O ok: pipe.length > 0 always
     assert module.end_line == 5
     assert module.end_column == len("rule O ok: pipe.length > 0 always") + 1
 
-    type_decl = next(decl for decl in module.declarations if isinstance(decl, A.TypeDecl))
+    type_decl = next(
+        decl for decl in module.declarations if isinstance(decl, A.TypeDecl)
+    )
     assert type_decl.end_line == 3
     assert type_decl.end_column == len("type Pipe = { length: rat, radius: rat }") + 1
 
@@ -483,16 +531,23 @@ rule O ok: pipe.length > 0 always
 
 
 def test_hash_comments_are_supported():
-    module = parse('''
+    module = parse("""
 module comments
 
 # full-line comment
 entity ready: bool # inline comment
 entity still_ready: bool # inline comment after a declaration
 rule O ok: ready always # trailing comment
-''')
+""")
 
     assert module.name == "comments"
-    assert any(isinstance(d, A.EntityDecl) and d.name == "ready" for d in module.declarations)
-    assert any(isinstance(d, A.EntityDecl) and d.name == "still_ready" for d in module.declarations)
-    assert any(isinstance(d, A.RuleDecl) and d.name == "ok" for d in module.declarations)
+    assert any(
+        isinstance(d, A.EntityDecl) and d.name == "ready" for d in module.declarations
+    )
+    assert any(
+        isinstance(d, A.EntityDecl) and d.name == "still_ready"
+        for d in module.declarations
+    )
+    assert any(
+        isinstance(d, A.RuleDecl) and d.name == "ok" for d in module.declarations
+    )

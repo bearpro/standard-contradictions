@@ -16,10 +16,17 @@ class PrettyPrinter:
         "or": (3, "left"),
         "and": (4, "left"),
         "until": (5, "left"),
-        "=": (6, "left"), "!=": (6, "left"),
-        "<": (6, "left"), "<=": (6, "left"), ">": (6, "left"), ">=": (6, "left"),
-        "+": (7, "left"), "-": (7, "left"),
-        "*": (8, "left"), "/": (8, "left"), "%": (8, "left"),
+        "=": (6, "left"),
+        "!=": (6, "left"),
+        "<": (6, "left"),
+        "<=": (6, "left"),
+        ">": (6, "left"),
+        ">=": (6, "left"),
+        "+": (7, "left"),
+        "-": (7, "left"),
+        "*": (8, "left"),
+        "/": (8, "left"),
+        "%": (8, "left"),
     }
     PREC_PREFIX = 9
     PREC_POSTFIX_TEMPORAL = 10
@@ -107,19 +114,29 @@ class PrettyPrinter:
             raise ValueError(f"sum type variant {variant.name!r} has no payload fields")
         fields = []
         for label, typ in variant.fields:
-            fields.append(f"{label}: {self.type_expr(typ)}" if label else self.type_expr(typ))
+            fields.append(
+                f"{label}: {self.type_expr(typ)}" if label else self.type_expr(typ)
+            )
         return f"{variant.name}({', '.join(fields)})"
 
     def type_expr(self, typ: A.TypeExpr | None) -> str:
         if typ is None:
             return "unit"
         if isinstance(typ, A.TypeRef):
-            args = f"<{', '.join(self.type_expr(a) for a in typ.args)}>" if typ.args else ""
+            args = (
+                f"<{', '.join(self.type_expr(a) for a in typ.args)}>"
+                if typ.args
+                else ""
+            )
             return typ.name + args
         if isinstance(typ, A.RecordType):
             if not typ.fields:
                 return "{}"
-            return "{ " + ", ".join(f"{name}: {self.type_expr(t)}" for name, t in typ.fields) + " }"
+            return (
+                "{ "
+                + ", ".join(f"{name}: {self.type_expr(t)}" for name, t in typ.fields)
+                + " }"
+            )
         if isinstance(typ, A.TupleType):
             return "(" + ", ".join(self.type_expr(t) for t in typ.items) + ")"
         return "unit"
@@ -162,17 +179,29 @@ class PrettyPrinter:
             return self.indent * level + "()"
         lines: list[str] = []
         for stmt in block.statements:
-            ann = f": {self.type_expr(stmt.type_annotation)}" if stmt.type_annotation else ""
-            lines.append(self.indent * level + f"let {self.pattern(stmt.pattern)}{ann} = {self.expr(stmt.value)}")
+            ann = (
+                f": {self.type_expr(stmt.type_annotation)}"
+                if stmt.type_annotation
+                else ""
+            )
+            lines.append(
+                self.indent * level
+                + f"let {self.pattern(stmt.pattern)}{ann} = {self.expr(stmt.value)}"
+            )
         if block.result is not None:
             result = self.expr(block.result)
             if "\n" in result:
-                lines.extend(self.indent * level + line if line else line for line in result.splitlines())
+                lines.extend(
+                    self.indent * level + line if line else line
+                    for line in result.splitlines()
+                )
             else:
                 lines.append(self.indent * level + result)
         return "\n".join(lines) if lines else self.indent * level + "()"
 
-    def expr(self, expr: A.Expr | None, parent_prec: int = PREC_LOWEST, side: str = "") -> str:
+    def expr(
+        self, expr: A.Expr | None, parent_prec: int = PREC_LOWEST, side: str = ""
+    ) -> str:
         if expr is None:
             return "()"
         if isinstance(expr, A.Literal):
@@ -182,7 +211,11 @@ class PrettyPrinter:
             text = expr.name
             prec = self.PREC_ATOM
         elif isinstance(expr, A.Call):
-            text = f"{self.expr(expr.func, self.PREC_POSTFIX)}(" + ", ".join(self.expr(a) for a in expr.args) + ")"
+            text = (
+                f"{self.expr(expr.func, self.PREC_POSTFIX)}("
+                + ", ".join(self.expr(a) for a in expr.args)
+                + ")"
+            )
             prec = self.PREC_POSTFIX
         elif isinstance(expr, A.FieldAccess):
             text = f"{self.expr(expr.target, self.PREC_POSTFIX)}.{expr.field}"
@@ -192,7 +225,9 @@ class PrettyPrinter:
             left_parent = prec + 1 if assoc == "right" else prec
             right_parent = prec if assoc == "right" else prec + 1
             left_parent = self.boolean_child_parent_prec(expr, expr.left, left_parent)
-            right_parent = self.boolean_child_parent_prec(expr, expr.right, right_parent)
+            right_parent = self.boolean_child_parent_prec(
+                expr, expr.right, right_parent
+            )
             text = f"{self.expr(expr.left, left_parent, 'left')} {expr.op} {self.expr(expr.right, right_parent, 'right')}"
         elif isinstance(expr, A.UnaryOp):
             text = f"{expr.op} {self.expr(expr.operand, self.PREC_PREFIX)}"
@@ -201,7 +236,11 @@ class PrettyPrinter:
             text = f"if {self.expr(expr.condition)} then {self.expr(expr.then_branch)} else {self.expr(expr.else_branch)}"
             prec = self.PREC_LOWEST
         elif isinstance(expr, A.LetExpr):
-            ann = f": {self.type_expr(expr.type_annotation)}" if expr.type_annotation else ""
+            ann = (
+                f": {self.type_expr(expr.type_annotation)}"
+                if expr.type_annotation
+                else ""
+            )
             text = f"let {self.pattern(expr.pattern)}{ann} = {self.expr(expr.value)} in {self.expr(expr.body)}"
             prec = self.PREC_LOWEST
         elif isinstance(expr, A.MatchExpr):
@@ -214,7 +253,9 @@ class PrettyPrinter:
                         lines.append(f"    | {self.pattern(arm.pattern)}{guard}:")
                         lines.append(self.indent_text(result, 2))
                     else:
-                        lines.append(f"    | {self.pattern(arm.pattern)}{guard}: {result}")
+                        lines.append(
+                            f"    | {self.pattern(arm.pattern)}{guard}: {result}"
+                        )
                 else:
                     lines.append(f"    | {self.pattern(arm.pattern)}{guard}:")
                     lines.append(self.block(arm.body, level=2))
@@ -224,11 +265,17 @@ class PrettyPrinter:
             if not expr.fields:
                 text = f"{expr.type_name} {{}}"
             else:
-                text = f"{expr.type_name} {{ " + ", ".join(f"{k} = {self.expr(v)}" for k, v in expr.fields) + " }"
+                text = (
+                    f"{expr.type_name} {{ "
+                    + ", ".join(f"{k} = {self.expr(v)}" for k, v in expr.fields)
+                    + " }"
+                )
             prec = self.PREC_RECORD_CONSTRUCTOR
         elif isinstance(expr, A.TupleLiteral):
             if len(expr.items) < 2:
-                raise ValueError("tuple literals must contain at least two items; use () for unit")
+                raise ValueError(
+                    "tuple literals must contain at least two items; use () for unit"
+                )
             text = "(" + ", ".join(self.expr(i) for i in expr.items) + ")"
             prec = self.PREC_ATOM
         elif isinstance(expr, A.TemporalUnary):
@@ -239,7 +286,9 @@ class PrettyPrinter:
             else:
                 operand_prec = self.PREC_LOWEST
             operand = self.expr(expr.operand, operand_prec)
-            text = f"{operand}\n{expr.op}" if "\n" in operand else f"{operand} {expr.op}"
+            text = (
+                f"{operand}\n{expr.op}" if "\n" in operand else f"{operand} {expr.op}"
+            )
             prec = self.PREC_POSTFIX_TEMPORAL
         elif isinstance(expr, A.TemporalBinary):
             prec, assoc = self.PREC_BINARY[expr.op]
@@ -257,7 +306,9 @@ class PrettyPrinter:
             return f"({text})"
         return text
 
-    def boolean_child_parent_prec(self, parent: A.BinaryOp, child: A.Expr | None, default: int) -> int:
+    def boolean_child_parent_prec(
+        self, parent: A.BinaryOp, child: A.Expr | None, default: int
+    ) -> int:
         if not isinstance(child, A.BinaryOp):
             return default
         if parent.op not in self.BOOL_CHAIN_OPS or child.op not in self.BOOL_CHAIN_OPS:
@@ -283,7 +334,12 @@ class PrettyPrinter:
         if isinstance(pattern, A.ConstructorPattern):
             if not pattern.args:
                 return pattern.name
-            return pattern.name + "(" + ", ".join(self.pattern(a) for a in pattern.args) + ")"
+            return (
+                pattern.name
+                + "("
+                + ", ".join(self.pattern(a) for a in pattern.args)
+                + ")"
+            )
         if isinstance(pattern, A.RecordPattern):
             parts = []
             for name, pat in pattern.fields:
@@ -292,7 +348,9 @@ class PrettyPrinter:
         if isinstance(pattern, A.TuplePattern):
             return "(" + ", ".join(self.pattern(i) for i in pattern.items) + ")"
         if isinstance(pattern, A.ListPattern):
-            raise ValueError("list patterns are not canonical MDL syntax; use std.collections.list constructor patterns")
+            raise ValueError(
+                "list patterns are not canonical MDL syntax; use std.collections.list constructor patterns"
+            )
         return "_"
 
     def literal(self, value: object, kind: str = "unknown") -> str:
