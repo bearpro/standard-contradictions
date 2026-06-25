@@ -1,0 +1,10 @@
+module canned_meat_fact
+
+# This module specifies that we are interested in Beef meat
+
+import "canned_meat_gost.mdl"
+
+open canned_meat_gost
+
+fact raw_meat_type = MeatType.Beef()
+fact grade = CannedMeatGrade.First()

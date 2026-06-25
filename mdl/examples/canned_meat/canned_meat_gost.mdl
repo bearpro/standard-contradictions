@@ -1,5 +1,5 @@
 @ ГОСТ 32125-2013 Консервы мясные. Мясо тушеное. Технические условия
-module canned_meat
+module canned_meat_gost
 
 @ Пункт 5.2.2
 type RawMeatMaterialProperties = {
@@ -25,7 +25,7 @@ entity raw_meat_properties: RawMeatMaterialProperties
 @ Раздел 1
 entity grade: CannedMeatGrade
 
-@ Пункт 5.2.2
+@ Пункт 5.2.1
 rule O material_proportions_satisfies_bounds:
     let satisfies_bounds: bool =
         case (raw_meat_type, grade):
@@ -36,7 +36,7 @@ rule O material_proportions_satisfies_bounds:
                 (non_muscle_tissue <= 6/100)
             | (MeatType.Pork(), CannedMeatGrade.Top()): 
                 raw_meat_properties.adipose_tissue_proportion <= 30/100
-            # Rest is omitted
+            # ...
             | _: true
     satisfies_bounds always
 

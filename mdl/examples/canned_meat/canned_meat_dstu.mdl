@@ -1,0 +1,54 @@
+@ ДСТУ 4450:2005 Консерви м'ясні. М'ясо тушковане. Технічні умови
+# Спрощена модель: залишено тільки властивості, потрібні для порівняння з ГОСТ 32125-2013.
+module canned_meat_dstu
+
+@ Пункт 5.2.1
+type RawMeatMaterialProperties = {
+    connective_tissue_proportion: rat,
+    adipose_tissue_proportion: rat
+}
+
+@ Пункти 4.1-4.5
+# Набір варіантів збережено сумісним з моделлю ГОСТ; нерелевантні обмеження опущено.
+type MeatType =
+    | Beef (unit)
+    | Pork (unit)
+    | Mutton (unit)
+    | Horse (unit)
+    | Venison (unit)
+
+@ Пункти 4.2-4.5
+type CannedMeatGrade = First(unit) | Top(unit)
+
+@ Пункти 4.1-4.5
+entity raw_meat_type: MeatType
+@ Пункт 5.2.1
+entity raw_meat_properties: RawMeatMaterialProperties
+@ Пункти 4.2-4.5
+entity grade: CannedMeatGrade
+
+@ Пункт 5.2.1
+# Знежилована яловичина повинна містити від 6 % до 14 %
+# жирової та сполучної тканини. Пункт не встановлює різні межі
+# для вищого і першого сорту, тому одна межа застосована до обох.
+rule O material_proportions_satisfies_bounds:
+    let satisfies_bounds: bool =
+        case (raw_meat_type, grade):
+            | (MeatType.Beef(), _):
+                let non_muscle_tissue =
+                    (raw_meat_properties.connective_tissue_proportion +
+                     raw_meat_properties.adipose_tissue_proportion)
+                (6/100 < non_muscle_tissue and
+                 non_muscle_tissue <= 14/100)
+            # Решта вимог стандарту не потрібна для обраного порівняння.
+            | _: true
+    satisfies_bounds always
+
+# Недоменне обмеження: частки є величинами від 0 до 1.
+rule O _proportion_between_0_and_1:
+    let {
+        adipose_tissue_proportion = fat_tissue,
+        connective_tissue_proportion = connective_tissue
+      } = raw_meat_properties
+    (0/100 <= fat_tissue and fat_tissue <= 100/100 and
+     0/100 <= connective_tissue and connective_tissue <= 100/100) always

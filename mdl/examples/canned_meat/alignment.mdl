@@ -1,0 +1,46 @@
+module alignment_canned_meat_canned_meat_dstu
+
+import "canned_meat_gost.mdl"
+import "canned_meat_dstu.mdl"
+
+# align kind=field score=0.986 matcher=bdikit:coma
+rule O alignment_001: 
+    let (a, b) = (
+        canned_meat_gost.raw_meat_properties.connective_tissue_proportion,
+        canned_meat_dstu.raw_meat_properties.connective_tissue_proportion)
+    a = b always
+
+# align kind=field score=0.985 matcher=bdikit:coma
+rule O alignment_002: 
+    let (a, b) = (
+        canned_meat_gost.raw_meat_properties.adipose_tissue_proportion,
+        canned_meat_dstu.raw_meat_properties.adipose_tissue_proportion)
+    a = b always
+
+# manually added rules
+
+rule O m_alignment_001_meat_type:
+    let gost_meat_type = canned_meat_gost.raw_meat_type in
+    let dstu_meat_type = canned_meat_dstu.raw_meat_type in
+    let meat_type_match =
+        case (gost_meat_type, dstu_meat_type):
+            | (canned_meat_gost.MeatType.Beef(), canned_meat_dstu.MeatType.Beef()): true
+            | (canned_meat_gost.MeatType.Pork(), canned_meat_dstu.MeatType.Pork()): true
+            | (canned_meat_gost.MeatType.Mutton(), canned_meat_dstu.MeatType.Mutton()): true
+            | (canned_meat_gost.MeatType.Horse(), canned_meat_dstu.MeatType.Horse()): true
+            | (canned_meat_gost.MeatType.Venison(), canned_meat_dstu.MeatType.Venison()): true
+            | _: false
+    in
+    meat_type_match always
+        
+
+rule O m_alignment_002_grade:
+    let gost_meat_grade = canned_meat_gost.grade in
+    let dstu_meat_grade = canned_meat_dstu.grade in
+    let match = 
+        case (gost_meat_grade, dstu_meat_grade):
+            | (canned_meat_gost.CannedMeatGrade.First(), canned_meat_dstu.CannedMeatGrade.First()): true
+            | (canned_meat_gost.CannedMeatGrade.Top(),   canned_meat_dstu.CannedMeatGrade.Top()): true
+            | _: false
+    in
+    match always
