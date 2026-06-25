@@ -1,0 +1,30 @@
+[build-system]
+requires = ["uv_build>=0.10,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "contract-nli-bench"
+version = "0.0.0"
+description = "Contract-NLI benchmark for prompt-driven MDL generation."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "mprokazin-mdl[solver]",
+  "openai>=2.41.1",
+  "python-dotenv>=1.2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+]
+
+[project.scripts]
+contract-nli-bench = "contract_nli_bench.cli:main"
+
+[tool.uv.build-backend]
+module-name = "contract_nli_bench"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

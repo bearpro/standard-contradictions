@@ -3,6 +3,7 @@ name = "standard-contradictions"
 version = "0.0.0"
 requires-python = ">=3.11,<3.13"
 dependencies = [
+  "contract-nli-bench",
   "mprokazin-mdl",
   "mprokazin-mdl-mcp",
 ]
@@ -20,9 +21,11 @@ package = false
 members = [
   "mdl",
   "mdl-mcp",
+  "mdl-bench/contracts-nli",
 ]
 
 [tool.uv.sources]
+contract-nli-bench = { workspace = true }
 mprokazin-mdl = { workspace = true }
 mprokazin-mdl-mcp = { workspace = true }
 

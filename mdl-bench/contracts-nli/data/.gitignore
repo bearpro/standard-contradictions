@@ -1,0 +1,7 @@
+*
+!.gitignore
+!generated/
+!generated/**
+raw/
+cache/
+tmp/

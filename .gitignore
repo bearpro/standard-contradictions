@@ -3,12 +3,18 @@
 **/Desktop.ini
 
 **/.env*
+!**/.env.sample
 **/.venv/
 **/.pytest_cache/
 **/.ruff_cache/
 **/__pycache__/
 **/data/*
-**/data/!gitignore
+!**/data/.gitignore
+!mdl-bench/contracts-nli/data/generated/
+!mdl-bench/contracts-nli/data/generated/**
+mdl-bench/contracts-nli/data/raw/
+mdl-bench/contracts-nli/data/cache/
+mdl-bench/contracts-nli/data/tmp/
 
 .codex
 *.egg-info/
