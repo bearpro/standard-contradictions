@@ -302,6 +302,8 @@ A module consists of the following top-level constructs:
 - The logical operators `and`, `not`, `or`, and `implies` apply to expressions
   of type `bool` and `temporal`.
 
+The only supported syntax for comments is python-like `# line comment`.
+
 ## Main Steps for Preparing an MDL Model
 
 The following is the recommended order for writing an MDL model for normative
