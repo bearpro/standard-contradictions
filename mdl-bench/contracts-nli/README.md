@@ -1,18 +1,20 @@
 # Contract-NLI MDL Benchmark
 
-This benchmark evaluates a generation scenario, not just a model. A run is
-identified by both the model slug and a short prompt scenario slug:
+This benchmark evaluates a generation scenario, not just a model. A scenario is
+the pair of a system prompt and a user data template, and a run is identified by
+both the model slug and a short scenario slug:
 
 ```text
 data/generated/{model_slug}-no-align/{scenario_slug}/{scope}/{split}/{doc_id}/{hypothesis_id}.mdl
 ```
 
-The model receives only the contract text and one hypothesis. It does not receive
-the Contract-NLI gold label or evidence spans. The generated artifact is a single
-MDL module containing both the document model and the hypothesis model. The
-benchmark then runs `mdl solve`: `Contradiction` is expected to be `unsat`,
-`Entailment` is expected to be `sat`, and `NotMentioned` is reported but skipped
-from the main v1 accuracy.
+The model receives a generic MDL system prompt plus a user prompt containing
+only the contract text and one hypothesis. It does not receive the Contract-NLI
+gold label or evidence spans. The generated artifact is a single MDL module
+containing both the document model and the hypothesis model. The benchmark then
+runs `mdl solve`: `Contradiction` is expected to be `unsat`, `Entailment` is
+expected to be `sat`, and `NotMentioned` is reported but skipped from the main
+v1 accuracy.
 
 ## Layout
 
@@ -25,8 +27,9 @@ Each generated case stores:
 
 - `.mdl`: extracted MDL source used by validation and evaluation.
 - `.raw.txt`: raw model text returned by the API.
-- `.meta.json`: run metadata, prompt hash, model, scenario, usage, and response
-  metadata. It intentionally does not store the gold label or evidence spans.
+- `.meta.json`: run metadata, prompt file names and hashes, model, scenario,
+  usage, and response metadata. It intentionally does not store the gold label
+  or evidence spans.
 
 ## Setup
 
@@ -86,7 +89,8 @@ directory. `full` covers train, dev, and test and uses the separate
 
 To add a new prompt scenario:
 
-1. Add a template under `prompts/`, or pass `--prompt-template`.
+1. Add system/user prompt files under `prompts/`, or pass `--system-prompt` and
+   `--user-template`.
 2. Choose a short ASCII slug such as `rules-only-v2`.
 3. Run inference with `--scenario rules-only-v2` and either `dev` or `full`.
 4. Commit the resulting `data/generated/.../rules-only-v2/{scope}/...`

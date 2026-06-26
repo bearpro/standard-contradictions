@@ -6,7 +6,8 @@ from pathlib import Path
 
 BENCH_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_ROOT = BENCH_ROOT / "data"
-DEFAULT_PROMPT_TEMPLATE = BENCH_ROOT / "prompts" / "no_align_v1.md"
+DEFAULT_SYSTEM_PROMPT = BENCH_ROOT / "prompts" / "no_align_v1.system.md"
+DEFAULT_USER_TEMPLATE = BENCH_ROOT / "prompts" / "no_align_v1.user.md"
 
 _SLUG_RE = re.compile(r"[^A-Za-z0-9._-]+")
 

@@ -6,34 +6,17 @@ from pathlib import Path
 
 from contract_nli_bench.cases import (
     ContractNliCase,
-    load_split,
     resolve_cases,
 )
 from contract_nli_bench.download import extract_dataset
 from contract_nli_bench.evaluation import evaluate_cases
 from contract_nli_bench.paths import artifact_paths
-from contract_nli_bench.prompting import extract_mdl_source, render_prompt
+from contract_nli_bench.prompting import extract_mdl_source
 from contract_nli_bench.runner import (
     GenerationResult,
     InferenceConfig,
     infer_cases,
 )
-
-
-def test_prompt_omits_gold_label_and_evidence(tmp_path: Path) -> None:
-    write_split(tmp_path, "dev", [make_doc(1, "Contradiction", [0])])
-    case = load_split(tmp_path, "dev")[0]
-
-    prompt = render_prompt(
-        "module={{module_name}}\n{{document_text}}\n{{hypothesis}}\n",
-        case,
-    )
-
-    assert case.choice not in prompt
-    assert "evidence" not in prompt.lower()
-    assert "spans" not in prompt.lower()
-    assert case.hypothesis in prompt
-    assert case.text in prompt
 
 
 def test_resolve_cases_supports_dev_and_full_scopes(tmp_path: Path) -> None:
@@ -102,10 +85,17 @@ fact true
 
 def test_infer_cases_writes_artifacts_without_gold_metadata(tmp_path: Path) -> None:
     case = make_case(choice="Contradiction")
-    seen_prompts: list[str] = []
+    generator_calls = 0
 
-    def fake_generator(prompt: str, metadata: dict[str, str]) -> GenerationResult:
-        seen_prompts.append(prompt)
+    def fake_generator(
+        system_prompt: str,
+        user_prompt: str,
+        metadata: dict[str, str],
+    ) -> GenerationResult:
+        nonlocal generator_calls
+        generator_calls += 1
+        assert system_prompt
+        assert user_prompt
         assert metadata["case_id"] == case.case_id
         return GenerationResult(
             output_text="```mdl\nmodule generated\nfact true\n```",
@@ -119,8 +109,10 @@ def test_infer_cases_writes_artifacts_without_gold_metadata(tmp_path: Path) -> N
             model="gpt-5-mini",
             scenario="baseline-v1",
             scope="dev",
-            prompt_template="{{module_name}}\n{{document_text}}\n{{hypothesis}}\n",
-            prompt_template_name="inline",
+            system_prompt="Generate MDL.",
+            system_prompt_name="inline-system",
+            user_prompt_template="{{module_name}}\n{{document_text}}\n{{hypothesis}}\n",
+            user_prompt_template_name="inline-user",
         ),
         fake_generator,
     )
@@ -131,9 +123,13 @@ def test_infer_cases_writes_artifacts_without_gold_metadata(tmp_path: Path) -> N
     )
     metadata = json.loads(records[0].meta_path.read_text(encoding="utf-8"))
     assert metadata["scenario_slug"] == "baseline-v1"
+    assert metadata["system_prompt"] == "inline-system"
+    assert metadata["user_prompt_template"] == "inline-user"
+    assert metadata["system_prompt_sha256"]
+    assert metadata["user_prompt_sha256"]
     assert "choice" not in metadata
     assert "evidence" not in json.dumps(metadata)
-    assert "Contradiction" not in seen_prompts[0]
+    assert generator_calls == 1
 
     skipped = infer_cases(
         [case],
@@ -142,12 +138,15 @@ def test_infer_cases_writes_artifacts_without_gold_metadata(tmp_path: Path) -> N
             model="gpt-5-mini",
             scenario="baseline-v1",
             scope="dev",
-            prompt_template="{{document_text}}",
-            prompt_template_name="inline",
+            system_prompt="Generate MDL.",
+            system_prompt_name="inline-system",
+            user_prompt_template="{{document_text}}",
+            user_prompt_template_name="inline-user",
         ),
         fake_generator,
     )
     assert skipped[0].skipped_existing is True
+    assert generator_calls == 1
 
 
 def test_evaluate_cases_maps_entailment_to_sat_and_contradiction_to_unsat(

@@ -20,7 +20,7 @@ class GenerationResult:
     response: dict[str, Any]
 
 
-Generator = Callable[[str, dict[str, str]], GenerationResult]
+Generator = Callable[[str, str, dict[str, str]], GenerationResult]
 
 
 @dataclass(frozen=True)
@@ -29,8 +29,10 @@ class InferenceConfig:
     model: str
     scenario: str
     scope: str
-    prompt_template: str
-    prompt_template_name: str
+    system_prompt: str
+    system_prompt_name: str
+    user_prompt_template: str
+    user_prompt_template_name: str
     base_url: str | None = None
     max_output_tokens: int = 9000
     temperature: float | None = None
@@ -62,7 +64,12 @@ class OpenAIResponsesGenerator:
         self.max_output_tokens = max_output_tokens
         self.temperature = temperature
 
-    def __call__(self, prompt: str, metadata: dict[str, str]) -> GenerationResult:
+    def __call__(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        metadata: dict[str, str],
+    ) -> GenerationResult:
         from openai import OpenAI
 
         api_key = os.environ.get(self.api_key_env)
@@ -72,7 +79,10 @@ class OpenAIResponsesGenerator:
         client = OpenAI(api_key=api_key, base_url=self.base_url)
         kwargs: dict[str, Any] = {
             "model": self.model,
-            "input": prompt,
+            "input": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
             "max_output_tokens": self.max_output_tokens,
             "metadata": metadata,
         }
@@ -114,14 +124,17 @@ def infer_cases(
             )
             continue
 
-        prompt = render_prompt(config.prompt_template, case)
-        prompt_sha = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        user_prompt = render_prompt(config.user_prompt_template, case)
+        system_prompt_sha = hashlib.sha256(
+            config.system_prompt.encode("utf-8")
+        ).hexdigest()
+        user_prompt_sha = hashlib.sha256(user_prompt.encode("utf-8")).hexdigest()
         metadata = {
             "benchmark": BENCHMARK_NAME,
             "case_id": case.case_id,
             "scenario": scenario_run_slug(config.scenario),
         }
-        result = generator(prompt, metadata)
+        result = generator(config.system_prompt, user_prompt, metadata)
         mdl_source = extract_mdl_source(result.output_text)
 
         paths.case_root.mkdir(parents=True, exist_ok=True)
@@ -141,8 +154,10 @@ def infer_cases(
                 "scope": config.scope,
                 "scenario": config.scenario,
                 "scenario_slug": scenario_run_slug(config.scenario),
-                "prompt_template": config.prompt_template_name,
-                "prompt_sha256": prompt_sha,
+                "system_prompt": config.system_prompt_name,
+                "system_prompt_sha256": system_prompt_sha,
+                "user_prompt_template": config.user_prompt_template_name,
+                "user_prompt_sha256": user_prompt_sha,
                 "created_at": datetime.now(UTC).isoformat(),
                 "base_url": config.base_url,
                 "max_output_tokens": config.max_output_tokens,

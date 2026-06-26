@@ -12,8 +12,14 @@ from .cases import resolve_cases
 from .constants import RUN_SCOPES
 from .download import download_dataset
 from .evaluation import evaluate_cases, validate_file
-from .paths import BENCH_ROOT, DEFAULT_DATA_ROOT, DEFAULT_PROMPT_TEMPLATE, artifact_paths
-from .prompting import read_prompt_template
+from .paths import (
+    BENCH_ROOT,
+    DEFAULT_DATA_ROOT,
+    DEFAULT_SYSTEM_PROMPT,
+    DEFAULT_USER_TEMPLATE,
+    artifact_paths,
+)
+from .prompting import read_prompt_file
 from .runner import InferenceConfig, OpenAIResponsesGenerator, infer_cases
 
 
@@ -30,14 +36,17 @@ def cmd_infer(args: argparse.Namespace) -> int:
         print(json.dumps({"cases": len(cases)}, indent=2))
         return 0
 
-    prompt_path = Path(args.prompt_template)
+    system_prompt_path = Path(args.system_prompt)
+    user_template_path = Path(args.user_template)
     config = InferenceConfig(
         data_root=data_root,
         model=args.model,
         scenario=args.scenario,
         scope=args.scope,
-        prompt_template=read_prompt_template(prompt_path),
-        prompt_template_name=str(prompt_path),
+        system_prompt=read_prompt_file(system_prompt_path),
+        system_prompt_name=str(system_prompt_path),
+        user_prompt_template=read_prompt_file(user_template_path),
+        user_prompt_template_name=str(user_template_path),
         base_url=_base_url(args),
         max_output_tokens=args.max_output_tokens,
         temperature=args.temperature,
@@ -134,7 +143,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--base-url")
     p.add_argument("--max-output-tokens", type=int, default=9000)
     p.add_argument("--temperature", type=float)
-    p.add_argument("--prompt-template", default=str(DEFAULT_PROMPT_TEMPLATE))
+    p.add_argument("--system-prompt", default=str(DEFAULT_SYSTEM_PROMPT))
+    p.add_argument("--user-template", default=str(DEFAULT_USER_TEMPLATE))
     p.add_argument("--force", action="store_true")
     p.add_argument("--no-resume", action="store_false", dest="resume")
     p.add_argument("--dry-run", action="store_true")

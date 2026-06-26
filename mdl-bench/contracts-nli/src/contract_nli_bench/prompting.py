@@ -4,13 +4,12 @@ import re
 from pathlib import Path
 
 from .cases import ContractNliCase
-from .paths import DEFAULT_PROMPT_TEMPLATE
 
 _FENCE_RE = re.compile(r"```(?P<lang>[A-Za-z0-9_-]*)\s*\n(?P<body>.*?)```", re.S)
 
 
-def read_prompt_template(path: Path | None = None) -> str:
-    return (path or DEFAULT_PROMPT_TEMPLATE).read_text(encoding="utf-8")
+def read_prompt_file(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
 def render_prompt(template: str, case: ContractNliCase) -> str:
