@@ -610,6 +610,8 @@ structure and naming of model objects are so important.
 @ annotation text
 module my.module
 
+# comment
+
 import "relative/path.mdl"
 open std.collections
 
