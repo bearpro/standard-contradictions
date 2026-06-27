@@ -52,6 +52,7 @@ def cmd_infer(args: argparse.Namespace) -> int:
         temperature=args.temperature,
         force=args.force,
         resume=args.resume,
+        progress=args.progress,
     )
     generator = OpenAIResponsesGenerator(
         model=args.model,
@@ -147,8 +148,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--user-template", default=str(DEFAULT_USER_TEMPLATE))
     p.add_argument("--force", action="store_true")
     p.add_argument("--no-resume", action="store_false", dest="resume")
+    p.add_argument("--no-progress", action="store_false", dest="progress")
     p.add_argument("--dry-run", action="store_true")
-    p.set_defaults(func=cmd_infer, resume=True)
+    p.set_defaults(func=cmd_infer, resume=True, progress=True)
 
     p = sub.add_parser("validate", help="parse and lint persisted MDL artifacts")
     _add_scope_arg(p)

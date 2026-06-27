@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sys
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -38,6 +40,7 @@ class InferenceConfig:
     temperature: float | None = None
     force: bool = False
     resume: bool = True
+    progress: bool = False
 
 
 @dataclass(frozen=True)
@@ -102,7 +105,14 @@ def infer_cases(
     generator: Generator,
 ) -> list[ArtifactRecord]:
     records: list[ArtifactRecord] = []
-    for case in cases:
+    started_at = time.monotonic()
+    total = len(cases)
+    skipped_count = 0
+    generated_count = 0
+    if config.progress:
+        _print_infer_progress(0, total, skipped_count, generated_count, started_at)
+
+    for index, case in enumerate(cases, start=1):
         paths = artifact_paths(
             config.data_root,
             config.model,
@@ -122,6 +132,17 @@ def infer_cases(
                     skipped_existing=True,
                 )
             )
+            skipped_count += 1
+            if config.progress:
+                _print_infer_progress(
+                    index,
+                    total,
+                    skipped_count,
+                    generated_count,
+                    started_at,
+                    status="skipped",
+                    case_id=case.case_id,
+                )
             continue
 
         user_prompt = render_prompt(config.user_prompt_template, case)
@@ -173,7 +194,59 @@ def infer_cases(
                 meta_path=paths.meta,
             )
         )
+        generated_count += 1
+        if config.progress:
+            _print_infer_progress(
+                index,
+                total,
+                skipped_count,
+                generated_count,
+                started_at,
+                status="generated",
+                case_id=case.case_id,
+            )
     return records
+
+
+def _print_infer_progress(
+    completed: int,
+    total: int,
+    skipped: int,
+    generated: int,
+    started_at: float,
+    status: str | None = None,
+    case_id: str | None = None,
+) -> None:
+    elapsed = time.monotonic() - started_at
+    eta = _eta_seconds(elapsed, completed, total)
+    label = f" {status}" if status else ""
+    case = f" {case_id}" if case_id else ""
+    print(
+        "infer progress:"
+        f" {completed}/{total}"
+        f" generated={generated}"
+        f" skipped={skipped}"
+        f" elapsed={_format_duration(elapsed)}"
+        f" eta={_format_duration(eta) if eta is not None else '?'}"
+        f"{label}{case}",
+        file=sys.stderr,
+        flush=True,
+    )
+
+
+def _eta_seconds(elapsed: float, completed: int, total: int) -> float | None:
+    if completed <= 0 or total <= completed:
+        return 0.0 if total <= completed else None
+    return elapsed / completed * (total - completed)
+
+
+def _format_duration(seconds: float) -> str:
+    rounded = int(seconds)
+    hours, remainder = divmod(rounded, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours:d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:d}:{secs:02d}"
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
