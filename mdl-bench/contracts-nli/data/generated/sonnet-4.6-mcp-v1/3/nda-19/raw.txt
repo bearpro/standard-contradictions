@@ -1,0 +1,7 @@
+```mdl
+version 1.0
+
+model test {
+  a string
+}
+```

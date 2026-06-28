@@ -1,0 +1,27 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_count": 1037,
+  "completed_at": null,
+  "force": false,
+  "generated_count": 0,
+  "max_output_tokens": 9000,
+  "mdl_tool_max_attempts": 4,
+  "mdl_tools": true,
+  "model": "anthropic/claude-sonnet-4.6",
+  "model_slug": "anthropic-claude-sonnet-4.6-no-align",
+  "resume": true,
+  "scenario": "sonnet-4.6-mcp-v1",
+  "scenario_slug": "sonnet-4.6-mcp-v1",
+  "scope": "dev",
+  "skipped_existing": 0,
+  "splits": [
+    "dev"
+  ],
+  "started_at": "2026-06-28T14:39:43.312616+00:00",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "48a23d35e8160c5c4cad437f5a205c86f3e075db941f0c9a58c1728af0fe291f",
+  "temperature": null,
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md",
+  "user_prompt_template_sha256": "a05c4d6c9fcb44b167e8f77f162036627434f088cda6c9fdbe0626b665262a50"
+}

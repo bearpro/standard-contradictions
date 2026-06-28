@@ -1,0 +1,19 @@
+```mdl
+@ OISAIR PROJECT TWO-WAY CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_11
+
+@ Clause 1 - Definition and interpretation
+type ConfidentialInfoForm = Documentary(unit) | Oral(unit) | Visual(unit) | Other(unit)
+
+@ Clause 3f - Obligations of confidentiality and non-use
+type ReverseEngineeringAction = Alter(unit) | Modify(unit) | Disassemble(unit) | ReverseEngineer(unit) | Decompile(unit)
+
+@ Clause 3 - Obligations of confidentiality and non-use
+type ConfidentialInfoHandling = { disclosed_to_third_party_without_consent: bool, used_beyond_permitted_purpose: bool, copied_without_authorization: bool, reverse_engineered: bool, patent_applied_for: bool }
+
+@ Clause 3 - Obligations of confidentiality and non-use
+entity confidential_info_handling: ConfidentialInfoHandling
+
+@ Clause 3f - Not to alter, modify, disassemble, reverse engineer or decompile any Confidential Information
+rule F reverse_engineering: confidential_info_handling.reverse_engineered always
+```

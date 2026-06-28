@@ -1,0 +1,104 @@
+{
+  "trace": [
+    {
+      "attempt": 1,
+      "call_id": "toolu_0123yDZ9DipkhSReGBo7z6xH",
+      "diagnostics": [
+        {
+          "code": "parse-error",
+          "column": 2,
+          "end_column": 3,
+          "end_line": 31,
+          "line": 31,
+          "message": "extraneous input '<NEWLINE>' expecting {'let', 'if', 'case', 'true', 'false', 'not', 'O', 'P', 'F', STRING, RAT, DECIMAL, INT, IDENT, '(', '-'}",
+          "path": "generated.mdl",
+          "severity": "error"
+        }
+      ],
+      "ok": false,
+      "phase": "parse",
+      "summary": {
+        "conflicts": 0,
+        "errors": 1,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    },
+    {
+      "attempt": 2,
+      "call_id": "toolu_01KLJ47rtnf9aYzYrtYaJ1PR",
+      "diagnostics": [
+        {
+          "code": "parse-error",
+          "column": 1,
+          "end_column": 2,
+          "end_line": 1,
+          "line": 1,
+          "message": "mismatched input 'Please' expecting {'module', ANNOT, NEWLINE}",
+          "path": "generated.mdl",
+          "severity": "error"
+        }
+      ],
+      "ok": false,
+      "phase": "parse",
+      "summary": {
+        "conflicts": 0,
+        "errors": 1,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    },
+    {
+      "attempt": 3,
+      "call_id": "toolu_01QKcby4DAxQvkBasrzgN3V2",
+      "diagnostics": [
+        {
+          "code": "parse-error",
+          "column": 1,
+          "end_column": 2,
+          "end_line": 1,
+          "line": 1,
+          "message": "mismatched input '-' expecting {'module', ANNOT, NEWLINE}",
+          "path": "generated.mdl",
+          "severity": "error"
+        }
+      ],
+      "ok": false,
+      "phase": "parse",
+      "summary": {
+        "conflicts": 0,
+        "errors": 1,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    },
+    {
+      "attempt": 4,
+      "call_id": "toolu_01XcUHSToh9qk3FB9o4FvPxo",
+      "diagnostics": [
+        {
+          "code": "parse-error",
+          "column": 12,
+          "end_column": 13,
+          "end_line": 1,
+          "line": 1,
+          "message": "token recognition error at: ';'",
+          "path": "generated.mdl",
+          "severity": "error"
+        }
+      ],
+      "ok": false,
+      "phase": "parse",
+      "summary": {
+        "conflicts": 0,
+        "errors": 1,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    }
+  ]
+}

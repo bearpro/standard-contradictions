@@ -1,0 +1,124 @@
+@ OISAIR PROJECT – Two-Way Confidentiality and Non-Disclosure Agreement (INNOVAIR Platform)
+module oisair.nda
+
+@ Clause 1 – Definition of Confidential Information forms
+type DisclosureForm = Documentary(unit) | Oral(unit) | Visual(unit)
+
+@ Clause 1 – Confidential Information descriptor
+type ConfidentialInformation = { disclosure_form: DisclosureForm, is_marked_confidential: bool, oral_visual_summarized_within_30_days: bool, objection_raised_within_30_days: bool }
+
+@ Clauses 2a–2f – Grounds that remove the confidentiality obligation
+type ExclusionBasis = PriorKnowledge(unit) | PublicKnowledge(unit) | ThirdPartyDisclosure(unit) | IndependentDevelopment(unit) | WrittenConsentOfDisclosingParty(unit) | LegalOrGovernmentalOrder(unit)
+
+@ Clause 5 – State of Confidential Information held by Receiving Party after Agreement end
+type RetentionState = Returned(unit) | Destroyed(unit) | RetainedForRegulatoryOrInsurance(unit)
+
+@ Clause 10 – Notice mechanism for early termination
+type TerminationNotice = { days_notice: int, is_registered_letter_with_proof: bool }
+
+@ Clause 10 – Agreement duration and survival parameters
+type AgreementDuration = { term_years: int, survival_years_after_disclosure: int, early_termination_notice: TerminationNotice }
+
+@ Sections 1, 3, 4, 5 – The receiving party's handling profile
+type ReceivingPartyObligations = { uses_only_for_permitted_purpose: bool, no_unauthorized_third_party_disclosure: bool, no_commercial_use_without_consent: bool, no_copies_without_authorization: bool, no_reverse_engineering: bool, no_patent_application_on_ci: bool, applies_reasonable_care: bool, access_limited_to_need_to_know_representatives: bool, representatives_aware_of_obligations: bool }
+
+@ Section 5 – Return / destruction / retention of Confidential Information
+type CIReturnProfile = { retention_state: RetentionState, retained_copy_with_legal_representative: bool, retained_only_for_regulatory_or_insurance: bool }
+
+@ Section 16 – Secrecy of the Agreement's existence
+type AgreementSecrecy = { existence_disclosed_to_third_party: bool, external_communication_authorized_in_writing: bool }
+
+@ Section 15 – Communication method
+type CommunicationMethod = Fax(unit) | RegisteredMail(unit) | CertifiedMail(unit) | Courier(unit)
+
+@ Clause 1 – The confidential information being exchanged
+entity confidential_information: ConfidentialInformation
+
+@ Clause 2 – Exclusion applicable to this disclosure (if any)
+entity exclusion: ExclusionBasis
+
+@ Clauses 3, 4 – Obligations profile of the receiving party
+entity receiving_party_obligations: ReceivingPartyObligations
+
+@ Section 5 – Return/destruction/retention profile for CI after agreement
+entity ci_return_profile: CIReturnProfile
+
+@ Section 10 – Duration parameters of this agreement
+entity agreement_duration: AgreementDuration
+
+@ Section 16 – Secrecy status of the agreement itself
+entity agreement_secrecy: AgreementSecrecy
+
+@ Clause 1 – Oral/visual CI must be summarized within 30 days
+func oral_visual_properly_notified(ci: ConfidentialInformation) -> bool:
+    case ci.disclosure_form:
+        | DisclosureForm.Documentary: true
+        | DisclosureForm.Oral: ci.oral_visual_summarized_within_30_days
+        | DisclosureForm.Visual: ci.oral_visual_summarized_within_30_days
+
+@ Clause 5 – Retained copy is permissible only if held by legal rep and for regulatory/insurance
+func retention_is_permissible(profile: CIReturnProfile) -> bool:
+    case profile.retention_state:
+        | RetentionState.Returned: true
+        | RetentionState.Destroyed: true
+        | RetentionState.RetainedForRegulatoryOrInsurance: profile.retained_copy_with_legal_representative and profile.retained_only_for_regulatory_or_insurance
+
+@ Clause 10 – Early termination notice must be 30 days by registered letter with proof
+func termination_notice_valid(notice: TerminationNotice) -> bool:
+    notice.days_notice >= 30 and notice.is_registered_letter_with_proof
+
+@ Clause 10 – Agreement term must be 5 years, survival 3 years
+func duration_valid(d: AgreementDuration) -> bool:
+    d.term_years = 5 and d.survival_years_after_disclosure = 3
+
+@ Clause 1 – Documentary CI must be marked as confidential
+rule O documentary_ci_must_be_marked:
+    case confidential_information.disclosure_form:
+        | DisclosureForm.Documentary: confidential_information.is_marked_confidential
+        | _: true
+    always
+
+@ Clause 1 – Oral/visual CI must be summarized within 30 days
+rule O oral_visual_ci_must_be_summarized: oral_visual_properly_notified(confidential_information) always
+
+@ Clause 3a – Receiving party must take reasonable measures to ensure secrecy
+rule O receiving_party_ensures_secrecy: receiving_party_obligations.applies_reasonable_care always
+
+@ Clause 3b – No disclosure to third parties without prior written consent
+rule F receiving_party_unauthorized_third_party_disclosure: not receiving_party_obligations.no_unauthorized_third_party_disclosure always
+
+@ Clause 3c – Use only for the Permitted Purpose
+rule F receiving_party_use_beyond_permitted_purpose: not receiving_party_obligations.uses_only_for_permitted_purpose always
+
+@ Clause 3d – No commercial use without prior written consent
+rule F receiving_party_unauthorized_commercial_use: not receiving_party_obligations.no_commercial_use_without_consent always
+
+@ Clause 3e – No copies without prior written authorisation
+rule F receiving_party_unauthorized_copies: not receiving_party_obligations.no_copies_without_authorization always
+
+@ Clause 3f – No reverse engineering or decompilation
+rule F receiving_party_reverse_engineering: not receiving_party_obligations.no_reverse_engineering always
+
+@ Clause 3g – No patent application that could include Confidential Information
+rule F receiving_party_patent_application_on_ci: not receiving_party_obligations.no_patent_application_on_ci always
+
+@ Clause 4 – At least reasonable care must be applied
+rule O receiving_party_applies_reasonable_care: receiving_party_obligations.applies_reasonable_care always
+
+@ Clause 4 – Access limited to need-to-know representatives
+rule O access_limited_to_need_to_know: receiving_party_obligations.access_limited_to_need_to_know_representatives always
+
+@ Clause 4 – Representatives must be made aware of obligations
+rule O representatives_aware_of_obligations: receiving_party_obligations.representatives_aware_of_obligations always
+
+@ Clause 5 – CI must be returned, destroyed, or permissibly retained
+rule O ci_returned_or_destroyed_or_permissibly_retained: retention_is_permissible(ci_return_profile) always
+
+@ Clause 10 – Agreement term must be exactly 5 years, survival 3 years after disclosure
+rule O agreement_duration_valid: duration_valid(agreement_duration) always
+
+@ Clause 10 – Early termination notice must be at least 30 days by registered letter
+rule O early_termination_notice_valid: termination_notice_valid(agreement_duration.early_termination_notice) always
+
+@ Clause 16 – Existence of the Agreement must not be disclosed to third parties without written authorisation
+rule F agreement_existence_disclosed_without_authorization: agreement_secrecy.existence_disclosed_to_third_party and not agreement_secrecy.external_communication_authorized_in_writing always

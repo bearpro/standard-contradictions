@@ -1,0 +1,37 @@
+@ OISAIR PROJECT TWO-WAY CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_1
+
+@ Clause 1 – Definition of Confidential Information
+type DisclosureForm = Documentary(unit) | Oral(unit) | Visual(unit) | Other(unit)
+
+@ Clause 1 – Definition of Confidential Information
+type ConfidentialInformation = { disclosure_form: DisclosureForm, is_marked_confidential: bool, has_written_summary: bool, has_written_objection: bool }
+
+@ Clause 1 – Definition of Confidential Information
+entity confidential_information: ConfidentialInformation
+
+@ Clause 1 – Identification requirements for documentary form
+func is_identified_documentary(ci: ConfidentialInformation) -> bool:
+    case ci.disclosure_form:
+        | DisclosureForm.Documentary: ci.is_marked_confidential
+        | _: true
+
+@ Clause 1 – Identification requirements for oral / visual form
+func is_identified_oral_visual(ci: ConfidentialInformation) -> bool:
+    case ci.disclosure_form:
+        | DisclosureForm.Oral: ci.has_written_summary
+        | DisclosureForm.Visual: ci.has_written_summary
+        | _: true
+
+@ Clause 1 – Combined identification requirement
+func is_identified(ci: ConfidentialInformation) -> bool:
+    is_identified_documentary(ci) and is_identified_oral_visual(ci)
+
+@ Clause 1 – Documentary confidential information must be marked as confidential
+rule O documentary_ci_must_be_marked: is_identified_documentary(confidential_information) always
+
+@ Clause 1 – Oral/visual confidential information must have a written summary
+rule O oral_visual_ci_must_have_written_summary: is_identified_oral_visual(confidential_information) always
+
+@ Clause 1 – All confidential information must be expressly identified
+rule O all_ci_must_be_identified: is_identified(confidential_information) always

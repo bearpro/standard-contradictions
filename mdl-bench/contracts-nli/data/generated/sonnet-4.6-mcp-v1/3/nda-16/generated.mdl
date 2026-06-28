@@ -1,0 +1,22 @@
+@ OISAIR PROJECT TWO-WAY CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_16
+
+type ReturnOrDestroyScope = All(unit) | Some(unit) | None(unit)
+
+type ConfidentialInformationHandling = { return_or_destroy_scope: ReturnOrDestroyScope, return_or_destroy_triggered_by_termination: bool, may_retain_one_copy_for_regulatory: bool }
+
+entity confidential_information_handling: ConfidentialInformationHandling
+
+@ Clause 5
+rule O return_or_destroy_on_termination: confidential_information_handling.return_or_destroy_triggered_by_termination always
+
+@ Clause 5
+rule O return_or_destroy_scope_is_all:
+    case confidential_information_handling.return_or_destroy_scope:
+        | ReturnOrDestroyScope.All: true
+        | ReturnOrDestroyScope.Some: false
+        | ReturnOrDestroyScope.None: false
+    always
+
+@ Clause 5
+rule O may_retain_one_copy_for_regulatory: confidential_information_handling.may_retain_one_copy_for_regulatory always

@@ -1,0 +1,26 @@
+@ OISAIR PROJECT TWO-WAY CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_15
+
+type RightType = License(unit) | Patent(unit) | Copyright(unit) | AnyRight(unit)
+
+type ConfidentialInformation = { pertains_to_field: bool, marked_confidential: bool }
+
+type Agreement = { grants_rights_beyond_permitted_purpose: bool, grants_license: bool, grants_patent: bool, grants_copyright: bool }
+
+@ Clause 6
+entity agreement: Agreement
+
+@ Clause 6
+entity confidential_information: ConfidentialInformation
+
+@ Clause 6 - No implied rights: Agreement shall not grant any rights beyond scope of Permitted Purpose
+rule O no_rights_beyond_permitted_purpose: not agreement.grants_rights_beyond_permitted_purpose always
+
+@ Clause 6 - No license granted
+rule O no_license_granted: not agreement.grants_license always
+
+@ Clause 6 - No patent granted
+rule O no_patent_granted: not agreement.grants_patent always
+
+@ Clause 6 - No copyright granted
+rule O no_copyright_granted: not agreement.grants_copyright always

@@ -1,0 +1,28 @@
+```mdl
+@ OISAIR PROJECT TWO-WAY CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_10
+
+@ Section 16
+type DisclosureTarget = ThirdParty(unit) | Party(unit)
+
+@ Section 16
+type CommunicationType = Oral(unit) | Written(unit)
+
+@ Section 16
+type ExternalCommunication = { target: DisclosureTarget, communication_type: CommunicationType, discloses_agreement_existence: bool, discloses_potential_cooperation: bool, has_prior_written_authorization: bool }
+
+@ Section 16
+entity external_communication: ExternalCommunication
+
+@ Section 16
+func is_unauthorized_disclosure(comm: ExternalCommunication) -> bool:
+    let discloses_sensitive = comm.discloses_agreement_existence or comm.discloses_potential_cooperation
+    let to_third_party = case comm.target:
+    | DisclosureTarget.ThirdParty: true
+    | DisclosureTarget.Party: false
+    let unauthorized = not comm.has_prior_written_authorization
+    discloses_sensitive and to_third_party and unauthorized
+
+@ Section 16
+rule F disclose_agreement_existence_or_cooperation: is_unauthorized_disclosure(external_communication) always
+```

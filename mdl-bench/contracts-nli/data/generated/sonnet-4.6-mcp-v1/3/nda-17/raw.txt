@@ -1,0 +1,25 @@
+```mdl
+@ OISAIR PROJECT TWO-WAY CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_17
+
+type CopyPurpose = RegulatoryOrInsurance(unit) | Other(unit)
+
+type ConfidentialInfoCopy = { exists: bool, purpose: CopyPurpose, has_prior_written_authorization: bool, stored_securely_with_legal_representative: bool }
+
+type ConfidentialInformation = { copy: ConfidentialInfoCopy }
+
+@ Clause 3(e), Clause 5
+entity confidential_information: ConfidentialInformation
+
+@ Clause 5
+func copy_is_permitted(ci: ConfidentialInformation) -> bool:
+    case ci.copy.purpose:
+        | CopyPurpose.RegulatoryOrInsurance: ci.copy.stored_securely_with_legal_representative
+        | CopyPurpose.Other: ci.copy.has_prior_written_authorization
+
+@ Clause 3(e): Not to make copies of the Confidential Information in any format without prior written authorisation by the Disclosing Party
+rule O no_unauthorized_copy: not confidential_information.copy.exists or confidential_information.copy.has_prior_written_authorization always
+
+@ Clause 5: The Receiving Party may retain one (1) copy ... only if required for regulatory or insurance purposes
+rule P retain_one_copy_for_regulatory_or_insurance: confidential_information.copy.exists and copy_is_permitted(confidential_information) always
+```

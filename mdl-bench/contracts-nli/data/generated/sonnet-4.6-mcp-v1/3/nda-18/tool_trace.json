@@ -1,0 +1,104 @@
+{
+  "trace": [
+    {
+      "attempt": 1,
+      "call_id": "toolu_01HLkv5N3irBHGwxwB96Cf4u",
+      "diagnostics": [
+        {
+          "code": "parse-error",
+          "column": 2,
+          "end_column": 3,
+          "end_line": 35,
+          "line": 35,
+          "message": "mismatched input '<NEWLINE>' expecting {'let', 'if', 'case', 'true', 'false', 'not', 'O', 'P', 'F', STRING, RAT, DECIMAL, INT, IDENT, '(', '-'}",
+          "path": "generated.mdl",
+          "severity": "error"
+        }
+      ],
+      "ok": false,
+      "phase": "parse",
+      "summary": {
+        "conflicts": 0,
+        "errors": 1,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    },
+    {
+      "attempt": 2,
+      "call_id": "toolu_01G1NKDtbbwwdRNT5JLbq2X7",
+      "diagnostics": [
+        {
+          "code": "parse-error",
+          "column": 1,
+          "end_column": 2,
+          "end_line": 1,
+          "line": 1,
+          "message": "mismatched input '/' expecting {'module', ANNOT, NEWLINE}",
+          "path": "generated.mdl",
+          "severity": "error"
+        }
+      ],
+      "ok": false,
+      "phase": "parse",
+      "summary": {
+        "conflicts": 0,
+        "errors": 1,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    },
+    {
+      "attempt": 3,
+      "call_id": "toolu_01TmFHrm4XHZ6D2R2tVFQUPp",
+      "diagnostics": [
+        {
+          "code": "parse-error",
+          "column": 12,
+          "end_column": 13,
+          "end_line": 1,
+          "line": 1,
+          "message": "token recognition error at: ';'",
+          "path": "generated.mdl",
+          "severity": "error"
+        }
+      ],
+      "ok": false,
+      "phase": "parse",
+      "summary": {
+        "conflicts": 0,
+        "errors": 1,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    },
+    {
+      "attempt": 4,
+      "call_id": "toolu_01Gyv7uemtK5kEqFgi1cjpXD",
+      "diagnostics": [
+        {
+          "code": "parse-error",
+          "column": 1,
+          "end_column": 2,
+          "end_line": 1,
+          "line": 1,
+          "message": "mismatched input 'version' expecting {'module', ANNOT, NEWLINE}",
+          "path": "generated.mdl",
+          "severity": "error"
+        }
+      ],
+      "ok": false,
+      "phase": "parse",
+      "summary": {
+        "conflicts": 0,
+        "errors": 1,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    }
+  ]
+}

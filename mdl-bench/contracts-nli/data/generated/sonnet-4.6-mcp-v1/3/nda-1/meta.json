@@ -1,0 +1,12 @@
+{
+  "case_id": "dev-3-nda-1",
+  "doc_id": 3,
+  "hypothesis_id": "nda-1",
+  "mdl_tool_attempts": 1,
+  "mdl_tool_final_ok": true,
+  "mdl_tool_final_phase": "complete",
+  "mdl_tools": true,
+  "module_name": "contract_nli_no_align_dev_3_nda_1",
+  "split": "dev",
+  "user_prompt_sha256": "2c5166fa64a1cbcb8595f4001a31e8fa592705a9e4cd65f2bd0602246d70ff9a"
+}

@@ -1,0 +1,26 @@
+@ OISAIR PROJECT TWO-WAY CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_13
+
+@ Section 2
+type ThirdPartyDisclosureCondition = NoObligationToDisclosingParty(unit) | HasObligationToDisclosingParty(unit)
+
+@ Section 1
+type ConfidentialInformationSource = FromDisclosingParty(unit) | FromThirdParty(ThirdPartyDisclosureCondition)
+
+@ Section 1, 3
+type InformationAcquisition = { source: ConfidentialInformationSource, is_similar_to_confidential_info: bool }
+
+@ Section 1 (Definitions: Receiving Party, Disclosing Party)
+entity information_acquisition: InformationAcquisition
+
+@ Section 2(c)
+func third_party_disclosure_permitted(acq: InformationAcquisition) -> bool:
+    case acq.source:
+        | ConfidentialInformationSource.FromThirdParty(cond):
+            case cond:
+                | ThirdPartyDisclosureCondition.NoObligationToDisclosingParty: true
+                | ThirdPartyDisclosureCondition.HasObligationToDisclosingParty: false
+        | ConfidentialInformationSource.FromDisclosingParty: false
+
+@ Section 2(c) — Exclusion: information lawfully disclosed by a third party
+rule P acquire_from_third_party: third_party_disclosure_permitted(information_acquisition) always

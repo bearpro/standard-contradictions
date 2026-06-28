@@ -1,0 +1,18 @@
+{
+  "trace": [
+    {
+      "attempt": 1,
+      "call_id": "toolu_012bjrr4cNRh39iPePsWxAgj",
+      "diagnostics": [],
+      "ok": true,
+      "phase": "complete",
+      "summary": {
+        "conflicts": 0,
+        "errors": 0,
+        "solver_status": null,
+        "warnings": 0
+      },
+      "tool": "mdl_verify"
+    }
+  ]
+}
