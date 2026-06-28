@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import sys
 import time
 from dataclasses import dataclass
@@ -219,18 +220,49 @@ def _print_infer_progress(
 ) -> None:
     elapsed = time.monotonic() - started_at
     eta = _eta_seconds(elapsed, completed, total)
-    label = f" {status}" if status else ""
-    case = f" {case_id}" if case_id else ""
-    print(
-        "infer progress:"
+    message = _render_infer_progress(
+        completed=completed,
+        total=total,
+        skipped=skipped,
+        generated=generated,
+        elapsed=elapsed,
+        eta=eta,
+        status=status,
+        case_id=case_id,
+        width=_progress_bar_width(),
+    )
+    if sys.stderr.isatty():
+        end = "\n" if completed >= total else ""
+        print(f"\r{message}", file=sys.stderr, end=end, flush=True)
+        return
+
+    print(message, file=sys.stderr, flush=True)
+
+
+def _render_infer_progress(
+    completed: int,
+    total: int,
+    skipped: int,
+    generated: int,
+    elapsed: float,
+    eta: float | None,
+    status: str | None = None,
+    case_id: str | None = None,
+    width: int = 28,
+) -> str:
+    ratio = 1.0 if total <= 0 else min(1.0, max(0.0, completed / total))
+    filled = round(ratio * width)
+    bar = "#" * filled + "-" * (width - filled)
+    percent = round(ratio * 100)
+    action = _progress_action(status, case_id)
+    return (
+        f"infer [{bar}] {percent:3d}%"
         f" {completed}/{total}"
-        f" generated={generated}"
-        f" skipped={skipped}"
-        f" elapsed={_format_duration(elapsed)}"
-        f" eta={_format_duration(eta) if eta is not None else '?'}"
-        f"{label}{case}",
-        file=sys.stderr,
-        flush=True,
+        f" | gen {generated}"
+        f" | skip {skipped}"
+        f" | elapsed {_format_duration(elapsed)}"
+        f" | eta {_format_duration(eta) if eta is not None else '--:--'}"
+        f"{action}"
     )
 
 
@@ -247,6 +279,21 @@ def _format_duration(seconds: float) -> str:
     if hours:
         return f"{hours:d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:d}:{secs:02d}"
+
+
+def _progress_action(status: str | None, case_id: str | None) -> str:
+    if status is None and case_id is None:
+        return ""
+    if status is None:
+        return f" | {case_id}"
+    if case_id is None:
+        return f" | {status}"
+    return f" | {status} {case_id}"
+
+
+def _progress_bar_width() -> int:
+    columns = shutil.get_terminal_size(fallback=(100, 24)).columns
+    return max(16, min(36, columns // 4))
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
