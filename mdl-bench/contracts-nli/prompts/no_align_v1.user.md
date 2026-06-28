@@ -1,11 +1,5 @@
-Use this exact module name:
-
-{{module_name}}
-
-Document:
+Model this document:
 
 {{document_text}}
-
-Hypothesis:
 
 {{hypothesis}}

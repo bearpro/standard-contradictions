@@ -440,6 +440,7 @@ version = "0.0.0"
 source = { editable = "mdl-bench/contracts-nli" }
 dependencies = [
     { name = "mprokazin-mdl", extra = ["solver"] },
+    { name = "mprokazin-mdl-mcp" },
     { name = "openai" },
     { name = "python-dotenv" },
 ]
@@ -452,6 +453,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "mprokazin-mdl", extras = ["solver"], editable = "mdl" },
+    { name = "mprokazin-mdl-mcp", editable = "mdl-mcp" },
     { name = "openai", specifier = ">=2.41.1" },
     { name = "python-dotenv", specifier = ">=1.2" },
 ]

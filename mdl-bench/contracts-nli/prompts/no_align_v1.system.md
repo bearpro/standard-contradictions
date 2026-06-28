@@ -606,6 +606,38 @@ structure and naming of model objects are so important.
           raw_meat_material.properties) always
   ```
 
+- Use comments in unsupported form.  
+  Wrong:
+
+  ```invalid
+  // comment
+  /* comment */
+  -- comment
+  ```
+
+  Right:
+  - `# comment`
+
+- Use newlines in logical expressions. Newlines in wrong place may break
+  parser.  
+  Examples:
+
+  ```mdl
+  # right
+  rule F not_use_empty_or_forbidden_resources:
+    isEmpty and isRestricted always
+
+  # right
+  rule F not_use_empty_or_forbidden_resources:
+    (isEmpty and
+     isRestricted always)
+
+  # wrong
+  rule F not_use_empty_or_forbidden_resources:
+    isEmpty and
+    isRestricted always
+  ```
+
 ## Super-Compact Syntax Reference
 
 ```mdl

@@ -30,6 +30,9 @@ def cmd_download(args: argparse.Namespace) -> int:
 
 
 def cmd_infer(args: argparse.Namespace) -> int:
+    if args.mdl_tool_max_attempts < 1:
+        raise ValueError("--mdl-tool-max-attempts must be at least 1")
+
     data_root = Path(args.data_root)
     cases = _resolve_args_cases(args, data_root)
     if args.dry_run:
@@ -53,6 +56,8 @@ def cmd_infer(args: argparse.Namespace) -> int:
         force=args.force,
         resume=args.resume,
         progress=args.progress,
+        mdl_tools=args.mdl_tools,
+        mdl_tool_max_attempts=args.mdl_tool_max_attempts,
     )
     generator = OpenAIResponsesGenerator(
         model=args.model,
@@ -60,6 +65,8 @@ def cmd_infer(args: argparse.Namespace) -> int:
         base_url=_base_url(args),
         max_output_tokens=args.max_output_tokens,
         temperature=args.temperature,
+        mdl_tools=args.mdl_tools,
+        mdl_tool_max_attempts=args.mdl_tool_max_attempts,
     )
     records = infer_cases(cases, config, generator)
     print(
@@ -144,6 +151,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true")
     p.add_argument("--no-resume", action="store_false", dest="resume")
     p.add_argument("--no-progress", action="store_false", dest="progress")
+    p.add_argument("--mdl-tools", action="store_true")
+    p.add_argument("--mdl-tool-max-attempts", type=int, default=4)
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(func=cmd_infer, resume=True, progress=True)
 

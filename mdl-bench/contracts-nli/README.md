@@ -27,6 +27,7 @@ Each generated case directory stores:
 
 - `generated.mdl`: extracted MDL source used by validation and evaluation.
 - `raw.txt`: raw model text returned by the API.
+- `user_prompt.txt`: rendered user prompt sent to the model for this case.
 - `meta.json`: case metadata without the gold label or evidence spans.
 
 The scenario run directory also stores `meta.json` with the inference
@@ -68,6 +69,26 @@ uv run contract-nli-bench infer \
 Set `OPENAI_BASE_URL=https://openrouter.ai/api/v1` in `.env`, or pass
 `--base-url https://openrouter.ai/api/v1`. Keep the provider key in
 `OPENAI_API_KEY`.
+
+To let OpenRouter models check generated MDL before the benchmark accepts it,
+enable the MDL verifier tool loop:
+
+```bash
+uv run contract-nli-bench infer \
+  dev \
+  --model openai/o4-mini \
+  --scenario mcp-v1 \
+  --mdl-tools
+```
+
+`--mdl-tools` exposes the existing `mdl_verify` verifier as a Responses API
+function tool. The infer step accepts a candidate only after MDL parse and lint
+checks pass; it does not require `mdl solve` to return `sat`, because
+`Contradiction` cases are expected to evaluate to `unsat`. Use
+`--mdl-tool-max-attempts` to change the default limit of 4 verification attempts
+per case. Tool-enabled runs write `tool_trace.json` in each generated case
+directory, plus `tool_inputs/attempt-*.mdl` with every MDL source passed to the
+verifier.
 
 ## Iterating On Prompts
 

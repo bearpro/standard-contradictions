@@ -37,6 +37,7 @@ class ArtifactPaths:
     case_root: Path
     mdl: Path
     raw: Path
+    user_prompt: Path
     meta: Path
 
 
@@ -53,5 +54,6 @@ def artifact_paths(
         case_root=case_root,
         mdl=case_root / "generated.mdl",
         raw=case_root / "raw.txt",
+        user_prompt=case_root / "user_prompt.txt",
         meta=run_root / "meta.json",
     )

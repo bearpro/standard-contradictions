@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import os
@@ -13,6 +14,12 @@ from typing import Any, Callable
 
 from .cases import ContractNliCase
 from .constants import BENCHMARK_NAME
+from .mdl_tools import (
+    MDL_VERIFY_TOOL,
+    MDL_VERIFY_TOOL_NAME,
+    call_mdl_verify_tool,
+    is_successful_mdl_verify,
+)
 from .paths import artifact_paths, model_run_slug, scenario_run_slug
 from .prompting import extract_mdl_source, render_prompt
 
@@ -21,9 +28,27 @@ from .prompting import extract_mdl_source, render_prompt
 class GenerationResult:
     output_text: str
     response: dict[str, Any]
+    verified_source: str | None = None
+    tool_trace: tuple[dict[str, Any], ...] = ()
+    tool_documents: tuple[dict[str, Any], ...] = ()
 
 
 Generator = Callable[[str, str, dict[str, str]], GenerationResult]
+
+
+TEXT_TOOL_OUTPUT_MESSAGE_MODEL_PATTERNS = [
+    "openai/*",
+    "anthropic/*",
+    "minimax/*",
+    "deepseek/*",
+]
+
+
+@dataclass(frozen=True)
+class FunctionCall:
+    name: str
+    call_id: str
+    arguments: str
 
 
 @dataclass(frozen=True)
@@ -42,6 +67,8 @@ class InferenceConfig:
     force: bool = False
     resume: bool = True
     progress: bool = False
+    mdl_tools: bool = False
+    mdl_tool_max_attempts: int = 4
 
 
 @dataclass(frozen=True)
@@ -61,12 +88,18 @@ class OpenAIResponsesGenerator:
         base_url: str | None,
         max_output_tokens: int,
         temperature: float | None,
+        mdl_tools: bool = False,
+        mdl_tool_max_attempts: int = 4,
+        client: Any | None = None,
     ):
         self.model = model
         self.api_key_env = api_key_env
         self.base_url = base_url
         self.max_output_tokens = max_output_tokens
         self.temperature = temperature
+        self.mdl_tools = mdl_tools
+        self.mdl_tool_max_attempts = mdl_tool_max_attempts
+        self.client = client
 
     def __call__(
         self,
@@ -74,13 +107,7 @@ class OpenAIResponsesGenerator:
         user_prompt: str,
         metadata: dict[str, str],
     ) -> GenerationResult:
-        from openai import OpenAI
-
-        api_key = os.environ.get(self.api_key_env)
-        if not api_key:
-            raise RuntimeError(f"missing API key in ${self.api_key_env}")
-
-        client = OpenAI(api_key=api_key, base_url=self.base_url)
+        client = self._client()
         kwargs: dict[str, Any] = {
             "model": self.model,
             "input": [
@@ -92,11 +119,122 @@ class OpenAIResponsesGenerator:
         }
         if self.temperature is not None:
             kwargs["temperature"] = self.temperature
+        if self.mdl_tools:
+            return self._call_with_mdl_tools(client, kwargs)
+
         response = client.responses.create(**kwargs)
         payload = _response_dump(response)
         return GenerationResult(
             output_text=_response_output_text(response, payload),
             response=payload,
+        )
+
+    def _client(self) -> Any:
+        if self.client is not None:
+            return self.client
+
+        from openai import OpenAI
+
+        api_key = os.environ.get(self.api_key_env)
+        if not api_key:
+            raise RuntimeError(f"missing API key in ${self.api_key_env}")
+        return OpenAI(api_key=api_key, base_url=self.base_url)
+
+    def _call_with_mdl_tools(
+        self,
+        client: Any,
+        kwargs: dict[str, Any],
+    ) -> GenerationResult:
+        trace: list[dict[str, Any]] = []
+        tool_documents: list[dict[str, Any]] = []
+        responses: list[dict[str, Any]] = []
+        last_text: str | None = None
+        last_verified_source: str | None = None
+
+        kwargs = {
+            **kwargs,
+            "input": [
+                *kwargs["input"],
+                {
+                    "role": "user",
+                    "content": (
+                        "Before your final answer, call mdl_verify with the complete "
+                        "MDL source. If diagnostics report errors, revise the source "
+                        "and call mdl_verify again."
+                    ),
+                },
+            ],
+            "tools": [MDL_VERIFY_TOOL],
+            "tool_choice": {"type": "function", "name": MDL_VERIFY_TOOL_NAME},
+        }
+
+        for attempt in range(1, max(1, self.mdl_tool_max_attempts) + 1):
+            response = client.responses.create(**kwargs)
+            payload = _response_dump(response)
+            responses.append(payload)
+            last_text = _response_output_text_or_none(response, payload) or last_text
+            calls = _response_function_calls(payload)
+
+            if not calls:
+                trace.append(
+                    {
+                        "attempt": attempt,
+                        "tool": None,
+                        "ok": False,
+                        "phase": "missing-tool-call",
+                    }
+                )
+                kwargs = _next_tool_retry_kwargs(
+                    kwargs,
+                    payload,
+                    "No mdl_verify call was returned. Call mdl_verify with source.",
+                )
+                continue
+
+            call = calls[0]
+            candidate = _tool_call_source(call.arguments)
+            if candidate is not None:
+                last_text = f"```mdl\n{candidate.strip()}\n```"
+                tool_documents.append(
+                    {
+                        "attempt": attempt,
+                        "tool": call.name,
+                        "call_id": call.call_id,
+                        "source": candidate,
+                    }
+                )
+            if call.name == MDL_VERIFY_TOOL_NAME:
+                tool_payload = call_mdl_verify_tool(call.arguments)
+            else:
+                tool_payload = _wrong_tool_payload(call.name)
+            trace.append(
+                {
+                    "attempt": attempt,
+                    "tool": call.name,
+                    "call_id": call.call_id,
+                    "ok": tool_payload.get("ok"),
+                    "phase": tool_payload.get("phase"),
+                    "summary": tool_payload.get("summary"),
+                    "diagnostics": tool_payload.get("diagnostics", []),
+                }
+            )
+            if is_successful_mdl_verify(tool_payload):
+                formatted = tool_payload.get("formatted_source")
+                if isinstance(formatted, str) and formatted.strip():
+                    last_verified_source = formatted
+                    last_text = f"```mdl\n{formatted.strip()}\n```"
+                break
+
+            kwargs = _next_tool_output_kwargs(kwargs, payload, call.call_id, tool_payload)
+
+        if last_text is None:
+            raise RuntimeError("model response did not contain output text")
+        return GenerationResult(
+            output_text=last_text,
+            response={"responses": responses},
+            verified_source=last_verified_source,
+            tool_trace=tuple(trace),
+            tool_documents=tuple(tool_documents),
         )
 
 
@@ -169,12 +307,23 @@ def infer_cases(
             "scenario": scenario_run_slug(config.scenario),
         }
         result = generator(config.system_prompt, user_prompt, metadata)
-        mdl_source = extract_mdl_source(result.output_text)
+        mdl_source = result.verified_source or extract_mdl_source(result.output_text)
 
         paths.case_root.mkdir(parents=True, exist_ok=True)
         paths.mdl.write_text(mdl_source, encoding="utf-8")
         paths.raw.write_text(result.output_text, encoding="utf-8")
-        _write_json(paths.case_root / "meta.json", _case_metadata(case, user_prompt_sha))
+        paths.user_prompt.write_text(user_prompt, encoding="utf-8")
+        if result.tool_documents:
+            _write_tool_documents(paths.case_root, result.tool_documents)
+        if result.tool_trace:
+            _write_json(
+                paths.case_root / "tool_trace.json",
+                {"trace": list(result.tool_trace)},
+            )
+        _write_json(
+            paths.case_root / "meta.json",
+            _case_metadata(case, user_prompt_sha, result),
+        )
         records.append(
             ArtifactRecord(
                 case_id=case.case_id,
@@ -248,14 +397,17 @@ def _run_metadata(
         "temperature": config.temperature,
         "force": config.force,
         "resume": config.resume,
+        "mdl_tools": config.mdl_tools,
+        "mdl_tool_max_attempts": config.mdl_tool_max_attempts,
     }
 
 
 def _case_metadata(
     case: ContractNliCase,
     user_prompt_sha: str,
+    result: GenerationResult | None = None,
 ) -> dict[str, Any]:
-    return {
+    metadata = {
         "case_id": case.case_id,
         "split": case.split,
         "doc_id": case.doc_id,
@@ -263,6 +415,42 @@ def _case_metadata(
         "module_name": case.module_name,
         "user_prompt_sha256": user_prompt_sha,
     }
+    if result is None or not result.tool_trace:
+        return metadata
+
+    final = result.tool_trace[-1]
+    metadata.update(
+        {
+            "mdl_tools": True,
+            "mdl_tool_attempts": len(result.tool_trace),
+            "mdl_tool_final_ok": final.get("ok"),
+            "mdl_tool_final_phase": final.get("phase"),
+        }
+    )
+    return metadata
+
+
+def _write_tool_documents(
+    case_root: Path,
+    tool_documents: tuple[dict[str, Any], ...],
+) -> None:
+    output_root = case_root / "tool_inputs"
+    output_root.mkdir(parents=True, exist_ok=True)
+    for index, document in enumerate(tool_documents, start=1):
+        source = document.get("source")
+        if not isinstance(source, str):
+            continue
+        attempt = document.get("attempt")
+        attempt_number = attempt if isinstance(attempt, int) and attempt > 0 else index
+        tool = document.get("tool")
+        tool_name = tool if isinstance(tool, str) and tool else "tool"
+        filename = f"attempt-{attempt_number:03d}-{_safe_artifact_name(tool_name)}.mdl"
+        (output_root / filename).write_text(source, encoding="utf-8")
+
+
+def _safe_artifact_name(value: str) -> str:
+    safe = "".join(char if char.isalnum() or char in "._-" else "-" for char in value)
+    return safe.strip("-._") or "tool"
 
 
 def _print_infer_progress(
@@ -368,6 +556,13 @@ def _response_dump(response: Any) -> dict[str, Any]:
 
 
 def _response_output_text(response: Any, payload: dict[str, Any]) -> str:
+    text = _response_output_text_or_none(response, payload)
+    if text is not None:
+        return text
+    raise RuntimeError("model response did not contain output text")
+
+
+def _response_output_text_or_none(response: Any, payload: dict[str, Any]) -> str | None:
     output_text = getattr(response, "output_text", None)
     if isinstance(output_text, str) and output_text.strip():
         return output_text
@@ -383,4 +578,125 @@ def _response_output_text(response: Any, payload: dict[str, Any]) -> str:
                     parts.append(text)
     if parts:
         return "".join(parts)
-    raise RuntimeError("model response did not contain output text")
+    return None
+
+
+def _response_function_calls(payload: dict[str, Any]) -> list[FunctionCall]:
+    calls: list[FunctionCall] = []
+    for item in payload.get("output", []):
+        if not isinstance(item, dict):
+            continue
+        call = _function_call_from_item(item)
+        if call is not None:
+            calls.append(call)
+    return calls
+
+
+def _function_call_from_item(item: dict[str, Any]) -> FunctionCall | None:
+    if item.get("type") != "function_call":
+        return None
+    name = item.get("name")
+    call_id = item.get("call_id") or item.get("id")
+    arguments = item.get("arguments", "{}")
+    if not isinstance(name, str) or not isinstance(call_id, str):
+        return None
+    if not isinstance(arguments, str):
+        arguments = json.dumps(arguments, ensure_ascii=False)
+    return FunctionCall(name=name, call_id=call_id, arguments=arguments)
+
+
+def _tool_call_source(arguments: str) -> str | None:
+    try:
+        payload = json.loads(arguments)
+    except json.JSONDecodeError:
+        return None
+    source = payload.get("source")
+    return source if isinstance(source, str) and source.strip() else None
+
+
+def _next_tool_output_kwargs(
+    kwargs: dict[str, Any],
+    response_payload: dict[str, Any],
+    call_id: str,
+    tool_payload: dict[str, Any],
+) -> dict[str, Any]:
+    output = json.dumps(tool_payload, ensure_ascii=False)
+    input_items = [
+        {
+            "type": "function_call_output",
+            "call_id": call_id,
+            "output": output,
+        }
+    ]
+    if _needs_text_tool_output_message(str(kwargs.get("model", ""))):
+        input_items.append({"role": "user", "content": output})
+
+    return _next_response_kwargs(
+        kwargs,
+        response_payload,
+        input_items,
+    )
+
+
+def _next_tool_retry_kwargs(
+    kwargs: dict[str, Any],
+    response_payload: dict[str, Any],
+    message: str,
+) -> dict[str, Any]:
+    return _next_response_kwargs(
+        kwargs,
+        response_payload,
+        [{"role": "user", "content": message}],
+    )
+
+
+def _next_response_kwargs(
+    kwargs: dict[str, Any],
+    response_payload: dict[str, Any],
+    input_items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    keep = {
+        "model",
+        "max_output_tokens",
+        "metadata",
+        "temperature",
+        "tools",
+        "tool_choice",
+    }
+    next_kwargs = {key: value for key, value in kwargs.items() if key in keep}
+    previous_response_id = response_payload.get("id")
+    if isinstance(previous_response_id, str) and previous_response_id:
+        next_kwargs["previous_response_id"] = previous_response_id
+    next_kwargs["input"] = input_items
+    return next_kwargs
+
+
+def _needs_text_tool_output_message(model: str) -> bool:
+    normalized = model.lower()
+    return any(
+        fnmatch.fnmatchcase(normalized, pattern)
+        for pattern in TEXT_TOOL_OUTPUT_MESSAGE_MODEL_PATTERNS
+    )
+
+
+def _wrong_tool_payload(name: str) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "input_kind": "mdl",
+        "phase": "input",
+        "module": None,
+        "diagnostics": [
+            {
+                "message": f"unsupported tool call {name!r}; call {MDL_VERIFY_TOOL_NAME}",
+                "line": 1,
+                "column": 1,
+                "severity": "error",
+                "code": "unsupported-tool",
+                "path": None,
+            }
+        ],
+        "formatted_source": None,
+        "generated_source": None,
+        "solver": None,
+        "summary": {"errors": 1, "warnings": 0, "solver_status": None, "conflicts": 0},
+    }
