@@ -81,10 +81,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     for case in cases:
         paths = artifact_paths(
             data_root,
-            args.model,
             args.scenario,
-            args.scope,
-            case.split,
             case.doc_id,
             case.hypothesis_id,
         )
@@ -115,9 +112,7 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     _, summary = evaluate_cases(
         cases,
         data_root=data_root,
-        model=args.model,
         scenario=args.scenario,
-        scope=args.scope,
         horizon=args.horizon,
         write=True,
     )
@@ -154,12 +149,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("validate", help="parse and lint persisted MDL artifacts")
     _add_scope_arg(p)
-    _add_run_args(p)
+    p.add_argument("--scenario", required=True)
     p.set_defaults(func=cmd_validate)
 
     p = sub.add_parser("evaluate", help="solve persisted MDL artifacts")
     _add_scope_arg(p)
-    _add_run_args(p)
+    p.add_argument("--scenario", required=True)
     p.add_argument("--horizon", type=int, default=1)
     p.set_defaults(func=cmd_evaluate)
     return parser

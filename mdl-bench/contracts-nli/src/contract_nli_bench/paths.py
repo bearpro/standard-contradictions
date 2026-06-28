@@ -42,26 +42,16 @@ class ArtifactPaths:
 
 def artifact_paths(
     data_root: Path,
-    model: str,
     scenario: str,
-    scope: str,
-    split: str,
     doc_id: int | str,
     hypothesis_id: str,
 ) -> ArtifactPaths:
-    run_root = (
-        data_root
-        / "generated"
-        / model_run_slug(model)
-        / scenario_run_slug(scenario)
-        / scope
-    )
-    case_root = run_root / split / str(doc_id) / hypothesis_id
-    stem = hypothesis_id
+    run_root = data_root / "generated" / scenario_run_slug(scenario)
+    case_root = run_root / str(doc_id) / hypothesis_id
     return ArtifactPaths(
         run_root=run_root,
         case_root=case_root,
-        mdl=case_root / f"{stem}.mdl",
-        raw=case_root / f"{stem}.raw.txt",
-        meta=case_root / f"{stem}.meta.json",
+        mdl=case_root / "generated.mdl",
+        raw=case_root / "raw.txt",
+        meta=run_root / "meta.json",
     )

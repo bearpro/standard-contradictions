@@ -34,13 +34,10 @@ def test_resolve_cases_supports_dev_and_full_scopes(tmp_path: Path) -> None:
     ]
 
 
-def test_artifact_path_uses_model_and_scenario_slugs(tmp_path: Path) -> None:
+def test_artifact_path_uses_scenario_slug_only(tmp_path: Path) -> None:
     paths = artifact_paths(
         tmp_path,
-        "openai/gpt-5.2",
         "Rules Only V2",
-        "full",
-        "dev",
         3,
         "nda-11",
     )
@@ -48,14 +45,15 @@ def test_artifact_path_uses_model_and_scenario_slugs(tmp_path: Path) -> None:
     assert paths.mdl == (
         tmp_path
         / "generated"
-        / "openai-gpt-5.2-no-align"
         / "rules-only-v2"
-        / "full"
-        / "dev"
         / "3"
         / "nda-11"
-        / "nda-11.mdl"
+        / "generated.mdl"
     )
+    assert paths.raw == (
+        tmp_path / "generated" / "rules-only-v2" / "3" / "nda-11" / "raw.txt"
+    )
+    assert paths.meta == tmp_path / "generated" / "rules-only-v2" / "meta.json"
 
 
 def test_extract_dataset_unpacks_contract_nli_directory(tmp_path: Path) -> None:
@@ -121,14 +119,23 @@ def test_infer_cases_writes_artifacts_without_gold_metadata(tmp_path: Path) -> N
     assert records[0].mdl_path.read_text(encoding="utf-8") == (
         "module generated\nfact true\n"
     )
-    metadata = json.loads(records[0].meta_path.read_text(encoding="utf-8"))
-    assert metadata["scenario_slug"] == "baseline-v1"
-    assert metadata["system_prompt"] == "inline-system"
-    assert metadata["user_prompt_template"] == "inline-user"
-    assert metadata["system_prompt_sha256"]
-    assert metadata["user_prompt_sha256"]
-    assert "choice" not in metadata
-    assert "evidence" not in json.dumps(metadata)
+    run_metadata = json.loads(records[0].meta_path.read_text(encoding="utf-8"))
+    assert run_metadata["scenario_slug"] == "baseline-v1"
+    assert run_metadata["model"] == "gpt-5-mini"
+    assert run_metadata["scope"] == "dev"
+    assert run_metadata["splits"] == ["dev"]
+    assert run_metadata["completed_at"]
+    assert run_metadata["system_prompt"] == "inline-system"
+    assert run_metadata["user_prompt_template"] == "inline-user"
+    assert run_metadata["system_prompt_sha256"]
+    assert run_metadata["user_prompt_template_sha256"]
+    assert "choice" not in run_metadata
+    assert "evidence" not in json.dumps(run_metadata)
+    case_metadata = json.loads(
+        (records[0].mdl_path.parent / "meta.json").read_text(encoding="utf-8")
+    )
+    assert case_metadata["case_id"] == case.case_id
+    assert case_metadata["user_prompt_sha256"]
     assert generator_calls == 1
 
     skipped = infer_cases(
@@ -158,12 +165,10 @@ def test_evaluate_cases_maps_entailment_to_sat_and_contradiction_to_unsat(
         choice="Contradiction",
         hypothesis_id="nda-2",
     )
-    model = "gpt-5-mini"
     scenario = "baseline-v1"
 
     write_artifact(
         tmp_path,
-        model,
         scenario,
         entailment,
         f"""module {entailment.module_name}
@@ -173,7 +178,6 @@ fact x = true
     )
     write_artifact(
         tmp_path,
-        model,
         scenario,
         contradiction,
         f"""module {contradiction.module_name}
@@ -186,9 +190,7 @@ fact x = false
     _, summary = evaluate_cases(
         [entailment, contradiction],
         data_root=tmp_path,
-        model=model,
         scenario=scenario,
-        scope="dev",
         horizon=1,
         write=True,
     )
@@ -196,29 +198,18 @@ fact x = false
     assert summary["evaluated_cases"] == 2
     assert summary["correct_evaluated"] == 2
     assert summary["accuracy_evaluated"] == 1.0
-    assert (
-        tmp_path
-        / "generated"
-        / "gpt-5-mini-no-align"
-        / "baseline-v1"
-        / "dev"
-        / "results.jsonl"
-    ).exists()
+    assert (tmp_path / "generated" / "baseline-v1" / "results.jsonl").exists()
 
 
 def write_artifact(
     data_root: Path,
-    model: str,
     scenario: str,
     case: ContractNliCase,
     source: str,
 ) -> None:
     paths = artifact_paths(
         data_root,
-        model,
         scenario,
-        "dev",
-        case.split,
         case.doc_id,
         case.hypothesis_id,
     )

@@ -66,17 +66,12 @@ def validate_file(path: Path) -> tuple[bool, int, str | None]:
 def evaluate_case(
     case: ContractNliCase,
     data_root: Path,
-    model: str,
     scenario: str,
-    scope: str,
     horizon: int,
 ) -> CaseEvaluation:
     paths = artifact_paths(
         data_root,
-        model,
         scenario,
-        scope,
-        case.split,
         case.doc_id,
         case.hypothesis_id,
     )
@@ -142,21 +137,14 @@ def evaluate_case(
 def evaluate_cases(
     cases: list[ContractNliCase],
     data_root: Path,
-    model: str,
     scenario: str,
-    scope: str,
     horizon: int,
     write: bool = True,
 ) -> tuple[list[CaseEvaluation], dict[str, Any]]:
-    results = [
-        evaluate_case(case, data_root, model, scenario, scope, horizon)
-        for case in cases
-    ]
+    results = [evaluate_case(case, data_root, scenario, horizon) for case in cases]
     summary = summarize(results)
     if write:
-        run_root = artifact_paths(
-            data_root, model, scenario, scope, "dev", 0, "x"
-        ).run_root
+        run_root = artifact_paths(data_root, scenario, 0, "x").run_root
         run_root.mkdir(parents=True, exist_ok=True)
         results_path = run_root / "results.jsonl"
         summary_path = run_root / "summary.json"

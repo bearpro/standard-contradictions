@@ -1,11 +1,11 @@
 # Contract-NLI MDL Benchmark
 
 This benchmark evaluates a generation scenario, not just a model. A scenario is
-the pair of a system prompt and a user data template, and a run is identified by
-both the model slug and a short scenario slug:
+the pair of a system prompt and a user data template, and a run is stored under
+a short scenario slug:
 
 ```text
-data/generated/{model_slug}-no-align/{scenario_slug}/{scope}/{split}/{doc_id}/{hypothesis_id}.mdl
+data/generated/{scenario_slug}/{doc_id}/{hypothesis_id}/generated.mdl
 ```
 
 The model receives a generic MDL system prompt plus a user prompt containing
@@ -23,13 +23,15 @@ v1 accuracy.
 - `data/raw/`: downloaded and extracted Contract-NLI dataset, ignored by git.
 - `data/generated/`: paid generation artifacts, intentionally allowed by git.
 
-Each generated case stores:
+Each generated case directory stores:
 
-- `.mdl`: extracted MDL source used by validation and evaluation.
-- `.raw.txt`: raw model text returned by the API.
-- `.meta.json`: run metadata, prompt file names and hashes, model, scenario,
-  usage, and response metadata. It intentionally does not store the gold label
-  or evidence spans.
+- `generated.mdl`: extracted MDL source used by validation and evaluation.
+- `raw.txt`: raw model text returned by the API.
+- `meta.json`: case metadata without the gold label or evidence spans.
+
+The scenario run directory also stores `meta.json` with the inference
+configuration: start/end timestamps, model, scope, splits, prompt file names and
+hashes, generation counts, and API settings.
 
 ## Setup
 
@@ -79,13 +81,14 @@ uv run contract-nli-bench infer \
 
 uv run contract-nli-bench evaluate \
   dev \
-  --model gpt-5-mini \
   --scenario baseline-v1
 ```
 
-`dev` writes and reads artifacts under the `.../{scenario_slug}/dev/` run
-directory. `full` covers train, dev, and test and uses the separate
-`.../{scenario_slug}/full/` directory.
+`dev` writes and reads artifacts under `data/generated/{scenario_slug}/`.
+`full` covers train, dev, and test in the same scenario directory, so use a
+different `--scenario` slug when you want to preserve separate runs. Inference
+prints progress, elapsed time, and ETA to stderr; pass `--no-progress` to
+silence it.
 
 To add a new prompt scenario:
 
@@ -93,8 +96,8 @@ To add a new prompt scenario:
    `--user-template`.
 2. Choose a short ASCII slug such as `rules-only-v2`.
 3. Run inference with `--scenario rules-only-v2` and either `dev` or `full`.
-4. Commit the resulting `data/generated/.../rules-only-v2/{scope}/...`
-   artifacts if the run should be preserved.
+4. Commit the resulting `data/generated/rules-only-v2/` artifacts if the run
+   should be preserved.
 
 ## Full Runs
 
@@ -108,15 +111,13 @@ uv run contract-nli-bench infer \
 
 uv run contract-nli-bench validate \
   full \
-  --model gpt-5-mini \
   --scenario baseline-v1
 
 uv run contract-nli-bench evaluate \
   full \
-  --model gpt-5-mini \
   --scenario baseline-v1 \
   --horizon 1
 ```
 
-Evaluation writes `results.jsonl` and `summary.json` under the model/scenario
-run directory.
+Evaluation writes `results.jsonl` and `summary.json` under the scenario run
+directory.

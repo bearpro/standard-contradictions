@@ -107,19 +107,34 @@ def infer_cases(
 ) -> list[ArtifactRecord]:
     records: list[ArtifactRecord] = []
     started_at = time.monotonic()
+    started_at_iso = datetime.now(UTC).isoformat()
     total = len(cases)
     skipped_count = 0
     generated_count = 0
+    system_prompt_sha = hashlib.sha256(config.system_prompt.encode("utf-8")).hexdigest()
+    user_prompt_template_sha = hashlib.sha256(
+        config.user_prompt_template.encode("utf-8")
+    ).hexdigest()
+    run_meta = _run_metadata(
+        config,
+        cases,
+        started_at_iso=started_at_iso,
+        completed_at=None,
+        generated_count=0,
+        skipped_existing=0,
+        system_prompt_sha=system_prompt_sha,
+        user_prompt_template_sha=user_prompt_template_sha,
+    )
+    run_root = _run_root(config.data_root, config.scenario)
+    run_root.mkdir(parents=True, exist_ok=True)
+    _write_json(run_root / "meta.json", run_meta)
     if config.progress:
         _print_infer_progress(0, total, skipped_count, generated_count, started_at)
 
     for index, case in enumerate(cases, start=1):
         paths = artifact_paths(
             config.data_root,
-            config.model,
             config.scenario,
-            config.scope,
-            case.split,
             case.doc_id,
             case.hypothesis_id,
         )
@@ -147,9 +162,6 @@ def infer_cases(
             continue
 
         user_prompt = render_prompt(config.user_prompt_template, case)
-        system_prompt_sha = hashlib.sha256(
-            config.system_prompt.encode("utf-8")
-        ).hexdigest()
         user_prompt_sha = hashlib.sha256(user_prompt.encode("utf-8")).hexdigest()
         metadata = {
             "benchmark": BENCHMARK_NAME,
@@ -162,31 +174,7 @@ def infer_cases(
         paths.case_root.mkdir(parents=True, exist_ok=True)
         paths.mdl.write_text(mdl_source, encoding="utf-8")
         paths.raw.write_text(result.output_text, encoding="utf-8")
-        _write_json(
-            paths.meta,
-            {
-                "benchmark": BENCHMARK_NAME,
-                "case_id": case.case_id,
-                "split": case.split,
-                "doc_id": case.doc_id,
-                "hypothesis_id": case.hypothesis_id,
-                "module_name": case.module_name,
-                "model": config.model,
-                "model_slug": model_run_slug(config.model),
-                "scope": config.scope,
-                "scenario": config.scenario,
-                "scenario_slug": scenario_run_slug(config.scenario),
-                "system_prompt": config.system_prompt_name,
-                "system_prompt_sha256": system_prompt_sha,
-                "user_prompt_template": config.user_prompt_template_name,
-                "user_prompt_sha256": user_prompt_sha,
-                "created_at": datetime.now(UTC).isoformat(),
-                "base_url": config.base_url,
-                "max_output_tokens": config.max_output_tokens,
-                "temperature": config.temperature,
-                "response": result.response,
-            },
-        )
+        _write_json(paths.case_root / "meta.json", _case_metadata(case, user_prompt_sha))
         records.append(
             ArtifactRecord(
                 case_id=case.case_id,
@@ -206,7 +194,75 @@ def infer_cases(
                 status="generated",
                 case_id=case.case_id,
             )
+    _write_json(
+        run_root / "meta.json",
+        _run_metadata(
+            config,
+            cases,
+            started_at_iso=started_at_iso,
+            completed_at=datetime.now(UTC).isoformat(),
+            generated_count=generated_count,
+            skipped_existing=skipped_count,
+            system_prompt_sha=system_prompt_sha,
+            user_prompt_template_sha=user_prompt_template_sha,
+        ),
+    )
     return records
+
+
+def _run_root(data_root: Path, scenario: str) -> Path:
+    return data_root / "generated" / scenario_run_slug(scenario)
+
+
+def _run_metadata(
+    config: InferenceConfig,
+    cases: list[ContractNliCase],
+    *,
+    started_at_iso: str,
+    completed_at: str | None,
+    generated_count: int,
+    skipped_existing: int,
+    system_prompt_sha: str,
+    user_prompt_template_sha: str,
+) -> dict[str, Any]:
+    splits = sorted({case.split for case in cases})
+    return {
+        "benchmark": BENCHMARK_NAME,
+        "started_at": started_at_iso,
+        "completed_at": completed_at,
+        "model": config.model,
+        "model_slug": model_run_slug(config.model),
+        "scope": config.scope,
+        "splits": splits,
+        "case_count": len(cases),
+        "generated_count": generated_count,
+        "skipped_existing": skipped_existing,
+        "scenario": config.scenario,
+        "scenario_slug": scenario_run_slug(config.scenario),
+        "system_prompt": config.system_prompt_name,
+        "system_prompt_sha256": system_prompt_sha,
+        "user_prompt_template": config.user_prompt_template_name,
+        "user_prompt_template_sha256": user_prompt_template_sha,
+        "base_url": config.base_url,
+        "max_output_tokens": config.max_output_tokens,
+        "temperature": config.temperature,
+        "force": config.force,
+        "resume": config.resume,
+    }
+
+
+def _case_metadata(
+    case: ContractNliCase,
+    user_prompt_sha: str,
+) -> dict[str, Any]:
+    return {
+        "case_id": case.case_id,
+        "split": case.split,
+        "doc_id": case.doc_id,
+        "hypothesis_id": case.hypothesis_id,
+        "module_name": case.module_name,
+        "user_prompt_sha256": user_prompt_sha,
+    }
 
 
 def _print_infer_progress(
