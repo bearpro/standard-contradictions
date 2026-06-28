@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-11",
+  "created_at": "2026-06-26T00:21:27.305182+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-11",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_11",
+  "response": {
+    "background": false,
+    "completed_at": 1782433287.0,
+    "created_at": 1782433283.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433283-drLiBZfXfUf3qiexU5IN",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-11",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ CONFIDENTIALITY (NON‑DISCLOSURE) AGREEMENT – Model for contract_nli_no_align_dev_12_nda_11\nmodule contract_nli_no_align_dev_12_nda_11\n\n# ----------------------------------------------------------------------\n# Types – domain concepts used throughout the agreement\n# ----------------------------------------------------------------------\ntype Party = {\n    name: string\n}\n\ntype ConfidentialKind =\n    | Personal\n    | Financial\n    | Product\n    | Formulation\n    | Procedure\n\ntype ConfidentialInfo = {\n    source: Party,                     # the Disclosing Party (CLIENT)\n    kind: ConfidentialKind,            # kind of information\n    is_disclosed: bool,                # has the info been disclosed by BROOKS?\n    client_consent: bool,              # CLIENT has given written consent?\n    already_possesses: bool,           # BROOKS already possessed the info\n    developed_independently: bool,     # BROOKS developed it independently\n    rightfully_received: bool,         # received from a third party without duty\n    public: bool,                      # public domain\n    is_embodied_in_object: bool,      # the info is embodied in a tangible object\n    reverse_engineered: bool,          # BROOKS performed reverse‑engineering?\n    is_compelled: bool                 # legal compulsion to disclose?\n}\n\n# ----------------------------------------------------------------------\n# Entities – the concrete objects that the rules refer to\n# ----------------------------------------------------------------------\n@ Parties (BROOKS and CLIENT)\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ Confidential information that may be exchanged\nentity confidential_info: ConfidentialInfo\n\n@ Termination of the business relationship\nentity termination: { occurred: bool }\n\n@ CLIENT’s request for return of material after termination\nentity client_request_return: { requested: bool }\n\n@ Material that may be returned, retained or disposed\nentity material: {\n    returned: bool,\n    retained: bool,\n    disposed: bool\n}\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements (obligations, prohibitions, permissions)\n# ----------------------------------------------------------------------\n@ Clause 1.2 – BROOKS must not disclose Confidential Information without CLIENT consent\nrule F unauthorized_disclosure:\n    confidential_info.is_disclosed and\n    not (\n        confidential_info.already_possesses\n        or confidential_info.developed_independently\n        or confidential_info.rightfully_received\n        or confidential_info.public\n        or confidential_info.client_consent\n    ) always\n\n@ Clause 2.2 – BROOKS must notify CLIENT immediately if legally compelled to disclose\nrule O notify_compelled:\n    confidential_info.is_compelled implies receiving_party.notified always\n\n@ Clause 4 – BROOKS must use best efforts to obtain a protective order when compelled\nrule O best_efforts_protective_order:\n    confidential_info.is_compelled implies true always\n\n@ Clause 5 – Return of material after termination (CLIENT request vs. retention)\nrule O return_material:\n    termination.occurred implies\n        (client_request_return.requested implies material.returned) and\n        (not client_request_return.requested implies material.retained) always\n\n@ Clause 5 – If material is retained, it must be disposed after the 10‑day notice period\nrule O dispose_material:\n    (not client_request_return.requested and material.retained) eventually material.disposed always\n\n@ Hypothesis – Receiving Party shall not reverse‑engineer any objects embodying Confidential Information\nrule F reverse_engineer:\n    confidential_info.is_embodied_in_object and confidential_info.reverse_engineered always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_64rjwpmx8n7",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00224791875,
+      "cost_details": {
+        "upstream_inference_cost": 0.002270625,
+        "upstream_inference_input_cost": 0.000507375,
+        "upstream_inference_output_cost": 0.00176325
+      },
+      "input_tokens": 7020,
+      "input_tokens_details": {
+        "cached_tokens": 5545
+      },
+      "is_byok": false,
+      "output_tokens": 2351,
+      "output_tokens_details": {
+        "reasoning_tokens": 1649
+      },
+      "total_tokens": 9371
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "c4296d100019215e0a5718745d686c88f94e94cb18fd9a2a3605bbdee8e62d2a",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

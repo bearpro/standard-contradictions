@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-8",
+  "created_at": "2026-06-26T00:22:18.554305+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-8",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_8",
+  "response": {
+    "background": false,
+    "completed_at": 1782433338.0,
+    "created_at": 1782433335.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433335-IfrZInJR0VZI7tU8sIxV",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-8",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality (Non‑Disclosure) Agreement – NDAs\nmodule contract_nli_no_align_dev_12_nda_8\n\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\n@ Parties (BROOKS and CLIENT)\ntype Party = {\n    name: string,                     # e.g. \"BROOKS\", \"CLIENT\"\n    is_receiving: bool,               # true for the Receiving Party (BROOKS)\n    notification_sent: bool,          # true when a legal‑compelled notice has been sent\n    disclosed: bool                   # true when Confidential Information has been disclosed\n}\n\n@ Confidential Information (any of the categories listed in the Agreement)\ntype ConfidentialInfo = {\n    is_personal: bool,\n    is_financial: bool,\n    is_product: bool,\n    is_formulation: bool,\n    is_processing_procedure: bool\n}\n\n@ Event that may trigger a disclosure (e.g. legal compulsion)\ntype DisclosureEvent = {\n    legally_compelled: bool,           # true when law, regulation or court order applies\n    reason: string                    # free‑form description of the legal trigger\n}\n\n# ----------------------------------------------------------------------\n# Entities – the public model objects that can be aligned across standards\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ Clause 1 – Confidential Information\nentity confidential_info: ConfidentialInfo\n\n@ Clause 4 – Legal‑Compelled Disclosure Event\nentity disclosure_event: DisclosureEvent\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Clause 3 – Exceptions to confidentiality (simplified to a Boolean placeholder)\nfunc is_exception(info: ConfidentialInfo, event: DisclosureEvent) -> bool:\n    # The full set of exceptions (already possessed, independent development,\n    # third‑party receipt, public domain, client consent, etc.) is omitted for\n    # brevity.  In a complete model each exception would be expressed as a\n    # separate predicate.  Here we return `false` so that the default rule\n    # enforces the prohibition unless a concrete exception is added later.\n    false\n\n# ----------------------------------------------------------------------\n# Obligations (Deontic Modality O) and Prohibitions (F)\n# ----------------------------------------------------------------------\n@ Clause 1.2 – Non‑disclosure obligation\nrule O receiving_party_must_not_disclose:\n    # The Receiving Party may disclose only if an exception applies or the\n    # disclosure is legally compelled.\n    (is_exception(confidential_info, disclosure_event) or\n     disclosure_event.legally_compelled) implies\n    (receiving_party.disclosed = false) always\n\n@ Clause 4 – Notification when legally compelled\nrule O notify_disclosing_party_when_legal_compelled:\n    # If the Receiving Party is legally compelled to disclose, it must\n    # notify the Disclosing Party in writing.\n    disclosure_event.legally_compelled implies\n    (receiving_party.notification_sent = true) always\n\n@ Clause 5 – Return of material (simplified)\nrule O return_material_upon_termination:\n    # After termination the Receiving Party must return all material within\n    # ten days unless the Client explicitly waives the request.\n    # The model assumes a termination event `termination` that occurs once.\n    # For brevity we model the requirement as “always” after termination.\n    true always   # placeholder – actual temporal logic would reference a termination event\n\n# ----------------------------------------------------------------------\n# Prohibitions (F) – absolute bans\n# ----------------------------------------------------------------------\n@ Clause 2.2 – Injunctive relief for breach\nrule F breach_causes_irreparable_harm:\n    # Any breach (disclosure without exception or legal compulsion) is\n    # prohibited and would cause irreparable harm to the Disclosing Party.\n    (receiving_party.disclosed and not is_exception(confidential_info, disclosure_event) and\n     not disclosure_event.legally_compelled) implies false always\n\n# ----------------------------------------------------------------------\n# Facts – global constraints (no deontic modality)\n# ----------------------------------------------------------------------\n# The Disclosing Party is never the Receiving Party in this Agreement.\nfact disclosing_is_not_receiving:\n    disclosing_party.is_receiving = false\n\n# The Receiving Party is always the party that receives Confidential Information.\nfact receiving_is_receiving:\n    receiving_party.is_receiving = true\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_wbbsmiaayld",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00170609175,
+      "cost_details": {
+        "upstream_inference_cost": 0.001723325,
+        "upstream_inference_input_cost": 0.000512825,
+        "upstream_inference_output_cost": 0.0012105
+      },
+      "input_tokens": 7076,
+      "input_tokens_details": {
+        "cached_tokens": 5583
+      },
+      "is_byok": false,
+      "output_tokens": 1614,
+      "output_tokens_details": {
+        "reasoning_tokens": 744
+      },
+      "total_tokens": 8690
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "4e9707e96e86e8a0b705b07d236eedfc1db777282217d276cd2f7944eb6535bd",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

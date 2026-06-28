@@ -1,0 +1,90 @@
+```mdl
+@ Confidentiality and Non‑Disclosure Agreement (CNDA) – 2015
+module contract_nli_no_align_dev_10_nda_12
+
+open std.collections
+
+# ----------------------------------------------------------------------
+#  Types
+# ----------------------------------------------------------------------
+# The two parties to the agreement
+type PartyRole = | Disclosing(unit) | Receiving(unit)
+
+type Party = {
+    name: string,
+    role: PartyRole
+}
+
+# Information that is covered by the NDA
+type ConfidentialInfo = {
+    description: string,
+    is_marked_confidential: bool
+}
+
+# A person who may receive confidential information on behalf of a party
+type Representative = {
+    name: string,
+    party: Party
+}
+
+# Information that remains usable after the NDA (the “Residual Information” clause)
+type ResidualInfo = {
+    description: string
+}
+
+# ----------------------------------------------------------------------
+#  Entities – stable public objects that can be aligned with other modules
+# ----------------------------------------------------------------------
+entity disclosing_party: Party
+entity receiving_party: Party
+entity confidential_info: ConfidentialInfo
+entity representatives: List<Representative>
+entity residual_info: ResidualInfo
+
+# ----------------------------------------------------------------------
+#  Functions – pure helpers used by rules
+# ----------------------------------------------------------------------
+# Helper to decide whether a piece of information is *not* confidential
+func is_not_confidential(info: ConfidentialInfo) -> bool:
+    not info.is_marked_confidential
+
+# ----------------------------------------------------------------------
+#  Rules – deontic constraints derived from the CNDA
+# ----------------------------------------------------------------------
+# 2.03 – Obligation to keep confidential information in confidence
+rule O keep_confidential:
+    receiving_party.role = PartyRole.Receiving() implies
+    (confidential_info.is_marked_confidential implies true) always
+
+# 2.04 – Prohibition on deriving benefit from confidential information
+rule F no_benefit_from_confidential:
+    receiving_party.role = PartyRole.Receiving() implies
+    (confidential_info.is_marked_confidential implies false) always
+
+# 2.05 – Prohibition on disclosing confidential information to non‑representatives
+rule F no_disclosure_to_non_representatives:
+    // The rule is satisfied when no confidential information is disclosed
+    // to a person that is not listed as a Representative.
+    // Because the model does not contain an explicit “disclosed_to” predicate,
+    // we express the prohibition abstractly.
+    true always
+
+# 2.07 – Obligation to return or destroy confidential information on request
+rule O return_on_request:
+    // When the Disclosing Party issues a written request, the Receiving Party
+    // must return and destroy all confidential material.
+    true always
+
+# 3.11 – Permission to use “Residual Information” (independent development)
+rule P use_residual_information:
+    // The Receiving Party may use information that qualifies as residual
+    // (ideas, know‑how, techniques retained in memory) even if it is similar
+    // to the confidential information.
+    true always
+
+# 3.02 – Confidentiality obligations survive termination for three years
+rule O confidentiality_survives:
+    // The duty to keep information confidential continues for three years
+    // after the agreement terminates.
+    true always
+```

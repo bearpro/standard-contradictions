@@ -1,0 +1,181 @@
+@ Contract ofNLI‑No‑Align‑Dev‑12‑NDA‑19 – Confidentiality (Non‑Disclosure) Agreement
+module contract_nli_no_align_dev_12_nda_19
+
+# ----------------------------------------------------------------------
+# Standard library imports (implicit in most environments)
+# ----------------------------------------------------------------------
+open std.strings
+open std.collections
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party = {
+    name: string
+}
+
+@ Information that may be disclosed by CLIENT to BROOKS
+type ConfidentialInfo = {
+    is_personal: bool,          -- personal data
+    is_financial: bool,         -- financial data
+    is_product: bool,           -- product data
+    is_formulation: bool,       -- CLIENT’s Formulations
+    is_processing: bool         -- CLIENT’s Processing Procedures
+}
+
+@ Types of exceptions that relieve BROOKS from the confidentiality duty
+type Exception =
+    | AlreadyPossesses(unit)
+    | IndependentlyDevelops(unit)
+    | ThirdPartyNoObligation(unit)
+    | InadvertentDisclosure(unit)
+    | ClientConsentWritten(unit)
+    | ServiceRelatedDisclosure(unit)
+
+@ State of the agreement (used for temporal reasoning)
+type AgreementState = {
+    terminated: bool,           -- true once the business relationship ends
+    amendment: bool,            -- true if a written amendment changes the term
+    years_since_termination: int, -- number of years after termination (0‑based)
+    client_requested_return: bool, -- CLIENT has asked for return of material
+    client_given_consent: bool, -- CLIENT has given written consent for a disclosure
+    brooks_compelled: bool,     -- BROOKS is legally compelled to disclose
+    brooks_compelled_opinion: bool, -- opinion counsel says disclosure is required
+    brooks_best_efforts_done: bool -- BROOKS has used best efforts to obtain protective order
+}
+
+# ----------------------------------------------------------------------
+# Entities – the public objects that can be aligned with other standards
+# ----------------------------------------------------------------------
+@ The two parties to the agreement
+entity brooks: Party
+entity client: Party
+
+@ Information supplied by CLIENT to BROOKS
+entity confidential_info: ConfidentialInfo
+
+@ The mutable state of the agreement (updated by the environment)
+entity agreement_state: AgreementState
+
+# ----------------------------------------------------------------------
+# Helper functions – pure, side‑effect‑free predicates
+# ----------------------------------------------------------------------
+@ Does the current confidential information fall under one of the listed exceptions?
+func exception_applies(info: ConfidentialInfo, exc: Exception) -> bool:
+    case exc of
+        | AlreadyPossesses():            false   -- not modelled – assume false
+        | IndependentlyDevelops():       false   -- not modelled – assume false
+        | ThirdPartyNoObligation():      false   -- not modelled – assume false
+        | InadvertentDisclosure():       false   -- not modelled – assume false
+        | ClientConsentWritten():        info.is_personal or info.is_financial or info.is_product or info.is_formulation or info.is_processing
+        | ServiceRelatedDisclosure():    true    -- assumed always permitted when service‑related
+
+@ Is the confidentiality obligation still in force?
+func confidentiality_active(state: AgreementState) -> bool:
+    -- The obligation survives until the earlier of:
+    --   a) one year after termination, or
+    --   b) a written amendment that changes the term.
+    not state.terminated
+    or (state.termination_since_since_termination 1)
+   
+ not state.amendment
+
+@ Does BROOKS have a legitimate need to access the confidential information?
+func reasonable_need(state: AgreementState) -> bool:
+    -- For modeling purposes we treat the need as always true when the
+    -- information is being processed for the business relationship.
+    true
+
+# ----------------------------------------------------------------------
+# Rules – normative statements (deontic modalities + LTLf)
+# ----------------------------------------------------------------------
+@ 1.1 Confidential Information must be received in confidence
+rule O receive_confidential_in_confidence:
+    confidentiality_active(agreement_state) implies
+    (confidential_info.is_personal or
+     confidential_info.is_financial or
+     confidential_info.is_product or
+     confidential_info.is_formulation or
+     confidential_info.is_processing) always
+
+@ 1.2 BROOKS must not disclose confidential information unless an exception applies
+rule F forbid_unauthorized_disclosure:
+    confidentiality_active(agreement_state) implies
+    not (
+        (confidential_info.is_personal or
+         confidential_info.is_financial or
+         confidential_info.is_product or
+         confidential_info.is_formulation or
+         confidential_info.is_processing) and
+        not (reasonable_need(agreement_state) and
+             (exception_applies(confidential_info, ClientConsentWritten()) or
+              exception_applies(confidential_info, ServiceRelatedDisclosure())))
+    ) always
+
+@ 2.2 Breach causes immediate irreparable harm – obliges BROOKS to seek injunctive relief
+rule O seek_injunctive_relief_on_breach:
+    not confidentiality_active(agreement_state) implies
+    false always   -- This rule is a placeholder to capture the legal effect; the solver
+    -- will treat it as an obligation that cannot be satisfied without
+    -- a breach, thus highlighting the conflict if a breach occurs.
+
+@ 3.5 CLIENT may give prior written consent for disclosure
+rule P disclose_with_client_consent:
+    confidentiality_active(agreement_state) and
+    agreement_state.client_given_consent implies
+    (confidential_info.is_personal or
+     confidential_info.is_financial or
+     confidential_info.is_product or
+     confidential_info.is_formulation or
+     confidential_info.is_processing) always
+
+@ 4. Compelled disclosure – permission only after notice and best‑efforts
+rule P compelled_disclosure_permission:
+    agreement_state.brooks_compelled and
+    confidentiality_active(agreement_state) implies
+    (agreement_state.brooks_best_efforts_done and
+     agreement_state.brooks_compelled_opinion) always
+
+@ 5. Return of material upon termination (or after 3‑year retention if no request)
+rule O return_material_after_termination:
+    agreement_state.terminated implies
+    (agreement_state.client_requested_return implies
+        (confidential_info.is_product or
+         confidential_info.is_formulation or
+         confidential_info.is_processing) eventually) and
+    (not agreement_state.client_requested_return implies
+        (confidential_info.is_product or
+         confidential_info.is_formulation or
+         confidential_info.is_processing) eventually)   -- retained for 3 years, then disposal
+    always
+
+@ 7. Survival of confidentiality obligations
+rule O confidentiality_survives_until_expiry:
+    (confidential_info.is_personal or
+     confidential_info.is_financial or
+     confidential_info.is_product or
+     confidential_info.is_formulation or
+     confidential_info.is_processing) until
+    (agreement_state.termination_years_elapsed >= 1 or
+     agreement_state.amendment) always
+
+@ 10. Amendment and modification – only by written document
+rule O amendment_requires_written_agreement:
+    agreement_state.amendment implies
+    false always   -- The model treats a written amendment as an external event;
+    -- the rule captures that without the amendment the term cannot change.
+
+@ 11. Notice – must be delivered in writing
+rule O notice_must_be_written:
+    true always   -- Placeholder to indicate that any notice event must satisfy a
+    -- “written” predicate; omitted here for brevity.
+
+# ----------------------------------------------------------------------
+# Facts – external data that can be supplied to the solver (optional)
+# ----------------------------------------------------------------------
+# Example fact (to be replaced by actual data when solving)
+# fact agreement_state = { terminated = false, amendment = false,
+#                         years_since_termination = 0, client_requested_return = false,
+#                         client_given_consent = false, brooks_compelled = false,
+#                         brooks_compelled_opinion = false, brooks_best_efforts_done = false }

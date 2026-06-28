@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-16",
+  "created_at": "2026-06-26T00:18:15.037177+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-16",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_16",
+  "response": {
+    "background": false,
+    "completed_at": 1782433094.0,
+    "created_at": 1782433092.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433092-hcJwl3OuDvrPsAO6mWO3",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-16",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: OISAIR PROJECT – TWO‑WAY CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT\n@ Module name required by the task\nmodule contract_nli_no_align_dev_3_nda_16\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 1 – definition of the parties\ntype PartyRole = Disclosing(unit) | Receiving(unit)\n\ntype Party = {\n    name : string,\n    role : PartyRole\n}\n\n@ Clause 1 – definition of a piece of Confidential Information\ntype ConfidentialInformation = {\n    id               : int,          -- stable identifier for the item\n    owner            : Party,        -- the Disclosing Party that owns it\n    retained_copy    : bool,         -- true if a copy may be kept for regulatory/insurance purposes\n    returned         : bool,         -- true once the item has been returned to the Disclosing Party\n    destroyed        : bool,         -- true once the item has been destroyed\n    retention_allowed: bool          -- true if the retained‑copy exception is exercised\n}\n\n# ----------------------------------------------------------------------\n# Entities – the objects that will be aligned across modules\n# ----------------------------------------------------------------------\n@ Parties (the two contractual sides)\nentity disclosing_party : Party\nentity receiving_party : Party\n\n@ Every piece of Confidential Information is modelled by an entity.\n@ In a concrete deployment the solver will be given a collection of such\n@ entities (e.g. by instantiating the module multiple times or by using a\n@ list type).  The rules below are written so that they hold for *any*\n@ ConfidentialInformation entity.\nentity ci : ConfidentialInformation\n\n@ Temporal flags required to express the post‑termination obligations\nentity termination_occurred : bool          -- becomes true on the Termination Date\nentity instruction_given    : bool          -- true when the Disclosing Party has issued the\n                                          -- “return or destroy” instruction\nentity days_since_instruction : int         -- number of days elapsed since the instruction\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n@ Returns true when the allowed‑copy exception may be used (regulatory/insurance)\nfunc allowed_retention(ci: ConfidentialInformation) -> bool:\n    ci.retained_copy and ci.retention_allowed\n\n@ Returns true when the item has been dealt with (returned or destroyed)\nfunc dealt_with(ci: ConfidentialInformation) -> bool:\n    ci.returned or ci.destroyed\n\n@ Returns true when the deadline (7 days) has not been exceeded\nfunc within_deadline(days: int) -> bool:\n    days <= 7\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements (deontic modality O = obligation)\n# ----------------------------------------------------------------------\n@ Clause 5 – obligation to return or destroy Confidential Information\nrule O ci_return_or_destroy_after_termination:\n    -- The obligation becomes active after the Termination Date and after the\n    -- Disclosing Party has issued its written instruction.\n    (termination_occurred and instruction_given and within_deadline(days_since_instruction))\n        implies (dealt_with(ci) or allowed_retention(ci)) always\n\n@ Clause 5 – the retained‑copy exception may be exercised only for one copy\nrule O single_retained_copy_allowed:\n    -- If a piece of information is marked as retained, the retention_allowed flag\n    -- must be true for at most one piece per Receiving Party.\n    let retained_cnt : int =\n        case (receiving_party.role):\n            | PartyRole.Receiving():\n                -- The solver can count retained copies across all ci entities.\n                -- In practice this is expressed by a separate alignment module;\n                -- here we state the intended property.\n                1   -- placeholder – the actual counting is performed by the solver\n            | _: 0\n    retained_cnt <= 1 always\n\n@ Clause 5 – the Receiving Party must keep the information secret at all times\nrule O confidentiality_obligation:\n    -- This rule captures the general “do not disclose” duty.\n    ci.owner.role = PartyRole.Disclosing() implies (ci.returned = false and ci.destroyed = false) always\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_8hx7yqd19wo",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0017979885,
+      "cost_details": {
+        "upstream_inference_cost": 0.00181615,
+        "upstream_inference_input_cost": 0.0006544,
+        "upstream_inference_output_cost": 0.00116175
+      },
+      "input_tokens": 7627,
+      "input_tokens_details": {
+        "cached_tokens": 5566
+      },
+      "is_byok": false,
+      "output_tokens": 1549,
+      "output_tokens_details": {
+        "reasoning_tokens": 729
+      },
+      "total_tokens": 9176
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "dcfa5734cccf54511424eb75fe811d31227c80a85ac09284bf92dc9283fa4464",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

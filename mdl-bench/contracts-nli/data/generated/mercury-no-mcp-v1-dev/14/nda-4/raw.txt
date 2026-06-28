@@ -1,0 +1,54 @@
+```mdl
+@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the Stockholder List
+module contract_nli_no_align_dev_14_nda_4
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain model
+# ----------------------------------------------------------------------
+@ Party – any of the two Parties to the Agreement
+type Party = {
+    name: string,
+    role: PartyRole
+}
+
+@ PartyRole – the two possible roles in this contract
+type PartyRole = Company | Stockholder
+
+@ ConfidentialMaterial – the information that may be inspected
+type ConfidentialMaterial = {
+    description: string
+}
+
+@ ConfidentialUse – an event where a Party uses the ConfidentialMaterial for a purpose
+type ConfidentialUse = {
+    party: Party,
+    material: ConfidentialMaterial,
+    purpose: string
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+entity receiving_party: Party
+entity confidential_material: ConfidentialMaterial
+entity confidential_use: ConfidentialUse
+
+# ----------------------------------------------------------------------
+# Helper function
+# ----------------------------------------------------------------------
+@ Determines whether a purpose is permitted by the Agreement.
+# The Agreement permits purposes “reasonably related to Stockholder’s interests as a stockholder of the Company”.
+# For modeling purposes we treat any purpose that mentions “interest” (case‑insensitive) as permitted.
+func is_permitted_purpose(p: string) -> bool:
+    contains(to_lower(p), "interest")
+
+# ----------------------------------------------------------------------
+# Requirement (hypothesis) – a prohibition
+# ----------------------------------------------------------------------
+@ Receiving Party shall not use any Confidential Information for any purpose other than the purposes stated in the Agreement.
+rule F use_confidential_material_unpermitted:
+    let permitted = is_permitted_purpose(confidential_use.purpose) in
+    not permitted always
+```

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-20",
+  "created_at": "2026-06-26T00:23:44.947819+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-20",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_20",
+  "response": {
+    "background": false,
+    "completed_at": 1782433424.0,
+    "created_at": 1782433422.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433422-yy1iQwOhyzHXnMVtEQYd",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-20",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement (the “Agreement”)\nmodule contract_nli_no_align_dev_14_nda_20\n\n# ----------------------------------------------------------------------\n#  Types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\ntype Party = {\n    name: string,\n    # has the party disclosed any Confidential Material?\n    has_disclosed_confidential_material: bool,\n    # has the party retained any Confidential Material after it has been\n    # returned or destroyed?\n    has_retained_confidential_material: bool\n}\n\n@ Clause 2 – Confidential Material (the stock‑holder list and any derived data)\ntype ConfidentialMaterial = {\n    description: string\n}\n\n# ----------------------------------------------------------------------\n#  Entities\n# ----------------------------------------------------------------------\n@ The two Parties to the Agreement\nentity company: Party\nentity stockholder: Party\n\n@ The Confidential Material that is the subject of the Agreement\nentity confidential_material: ConfidentialMaterial\n\n# ----------------------------------------------------------------------\n#  Rules – Obligations, Prohibitions and Permissions derived from the Agreement\n# ----------------------------------------------------------------------\n@ Clause 1 – Use of Confidential Material only for purposes reasonably related\nrule O use_confidential_material_for_purposes:\n    # The Agreement does not model the purpose directly; we capture the\n    # obligation that the Stockholder must be allowed to use the material.\n    true always\n\n@ Clause 2 – Prohibition on disclosure, publication or communication\nrule F disclose_confidential_material:\n    stockholder.has_disclosed_confidential_material = false always\n\n@ Clause 3 – Prohibition on retaining Confidential Material after return\n# (the Agreement is silent on a “return” or “destruction” event, but the\n# usual interpretation of a confidentiality agreement is that the\n# receiving party must not keep the material once its purpose has ended.)\nrule F retain_confidential_material_after_return:\n    stockholder.has_retained_confidential_material = false always\n\n# ----------------------------------------------------------------------\n#  Hypothesis – Receiving Party may retain Confidential Information\n# ----------------------------------------------------------------------\n@ Hypothesis: “Receiving Party may retain some Confidential Information even\n# after the return or destruction of Confidential Information.”\nrule P retain_confidential_material_after_return_hypothesis:\n    stockholder.has_retained_confidential_material = true always\n\n# ----------------------------------------------------------------------\n#  Optional helper function (pure) – not required for this simple model\n# ----------------------------------------------------------------------\nfunc is_retention_allowed(p: Party) -> bool:\n    p.has_retained_confidential_material\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_m5kd3845ro",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00135474075,
+      "cost_details": {
+        "upstream_inference_cost": 0.001368425,
+        "upstream_inference_input_cost": 0.000401675,
+        "upstream_inference_output_cost": 0.00096675
+      },
+      "input_tokens": 6563,
+      "input_tokens_details": {
+        "cached_tokens": 5507
+      },
+      "is_byok": false,
+      "output_tokens": 1289,
+      "output_tokens_details": {
+        "reasoning_tokens": 815
+      },
+      "total_tokens": 7852
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "418b085451f32f57b9cfca2211cab352bb1f6793e5554b70b86237d3aac3bae7",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

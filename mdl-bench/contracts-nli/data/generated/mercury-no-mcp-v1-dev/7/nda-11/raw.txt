@@ -1,0 +1,43 @@
+```mdl
+@ Non‑Disclosure Agreement – reverse‑engineering prohibition
+module contract_nli_no_align_dev_7_nda_11
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type Party = {
+    name: string
+}
+
+type ConfidentialObject = {
+    owner: Party,                     # party that owns the object (the Disclosing Party)
+    embodies_confidential_info: bool # true iff the object contains Confidential Information
+}
+
+# ----------------------------------------------------------------------
+# Entities – the stable public objects that can be aligned across modules
+# ----------------------------------------------------------------------
+entity receiving_party: Party      # the “Recipient” of the Confidential Information
+entity disclosing_party: Party     # the “Discloser” of the Confidential Information
+entity confidential_object: ConfidentialObject
+
+# ----------------------------------------------------------------------
+# Helper function – models the act of reverse‑engineering
+# ----------------------------------------------------------------------
+func reverse_engineer(actor: Party, obj: ConfidentialObject) -> bool:
+    # In a concrete deployment this predicate would be linked to an external
+    # audit or monitoring system.  For the purpose of the logical model it is
+    # a free Boolean that the solver may assign.
+    false
+
+# ----------------------------------------------------------------------
+# Obligation (O) – the Receiving Party must never reverse‑engineer any
+# object that embodies the Disclosing Party’s Confidential Information.
+# ----------------------------------------------------------------------
+@ Clause 2.1 (handling of Confidential Information)
+rule O not_reverse_engineer:
+    let is_confidential =
+        confidential_object.embodies_confidential_info and
+        confidential_object.owner = disclosing_party
+    (is_confidential implies not reverse_engineer(receiving_party, confidential_object)) always
+```

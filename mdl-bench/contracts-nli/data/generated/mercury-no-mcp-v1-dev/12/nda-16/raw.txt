@@ -1,0 +1,78 @@
+```mdl
+@ Contract: Non‑Disclosure Agreement (NDA) – “BROOKS’ BOTTLING COMPANY, LLC v. CLIENT”
+module contract_nli_no_align_dev_12_nda_16
+
+# ------------------------------------------------------------
+# Types
+# ------------------------------------------------------------
+type Party = {
+    name: string,               # e.g. "BROOKS" or "CLIENT"
+    is_receiving_party: bool   # true for the party that receives Confidential Information
+}
+
+type ConfidentialMaterial = {
+    description: string,   # free‑form description of the material
+    is_returned: bool,      # true if the material has been handed back to CLIENT
+    is_destroyed: bool,     # true if the material has been destroyed / disposed
+    retained_years: int,    # number of years the material has been kept after termination
+    notice_given: bool      # true if CLIENT has received the required 10‑day written notice
+}
+
+# ------------------------------------------------------------
+# Entities
+# ------------------------------------------------------------
+@ Section 1 – Parties
+entity brooks: Party = { name = "BROOKS", is_receiving_party = true }
+entity client: Party = { name = "CLIENT", is_receiving_party = false }
+
+@ Section 5 – Confidential material that BROOKS holds
+entity material: ConfidentialMaterial = {
+    description = "Confidential records, data, information and other documents",
+    is_returned = false,
+    is_destroyed = false,
+    retained_years = 0,
+    notice_given = false
+}
+
+# ------------------------------------------------------------
+# Helper functions
+# ------------------------------------------------------------
+func client_requested_return() -> bool:
+    # The NDA does not give a concrete flag; we model the request as a boolean
+    # that can be set by the environment (e.g. a test harness).  The function
+    # exists only to keep the rule readable.
+    false   # default: no written request (can be overridden in a concrete trace)
+
+# ------------------------------------------------------------
+# Rules – obligations of the Receiving Party (BROOKS)
+# ------------------------------------------------------------
+@ Section 5 – Return of material upon termination
+rule O return_or_destroy_on_termination:
+    # The termination event is implicit – the rule is evaluated at the step
+    # where the agreement has ended.  The obligation is:
+    #   * If CLIENT requests the material, BROOKS must return it immediately.
+    #   * If CLIENT does not request it, BROOKS may retain it for up to 3 years,
+    #     after which it must give CLIENT a 10‑day written notice and then
+    #     destroy the material.
+    let termination: bool = true               # the rule is scoped to the termination step
+    let request: bool = client_requested_return()
+    let must_return: bool = request implies material.is_returned
+    let must_destroy: bool =
+        (not request) implies
+            (material.retained_years >= 3 and material.notice_given and material.is_destroyed)
+    (termination implies (must_return and must_destroy)) always
+
+@ Section 2 – Prohibition on disclosure (for completeness)
+rule F disclose_confidential_information:
+    # BROOKS, its directors, employees, agents and representatives shall not
+    # disclose Confidential Information except as permitted in Sections 3 or 4.
+    true always   # placeholder – the actual disclosure logic would be modelled elsewhere
+
+# ------------------------------------------------------------
+# Optional: a fact to instantiate a concrete scenario (used only for testing)
+# ------------------------------------------------------------
+# fact material.retained_years = 4
+# fact material.notice_given = true
+# fact material.is_destroyed = true
+# fact client_requested_return = false
+```

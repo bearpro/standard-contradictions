@@ -1,0 +1,187 @@
+@ Non‑Disclosure Agreement (NDA) – model for contract_nli_no_align_dev_7_nda_13
+module contract_nli_no_align_dev_7_nda_13
+
+# ----------------------------------------------------------------------
+# Imports
+# ----------------------------------------------------------------------
+open std.strings
+open std.collections
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = 
+    | Company(unit)          // the receiving party (the Company)
+    | AHPL(unit)             // the disclosing party (ALEXANDRA HEALTH PTE LTD)
+
+@ Clause 1.2(a) – Confidential Information
+type ConfidentialInfo = {
+    source: Party,                     // who supplied the information
+    content: string,                   // free‑form description (for illustration)
+    is_similar_to_other: bool          // true if the information is “similar” to
+                                      // information that could be obtained from a third party
+}
+
+# ----------------------------------------------------------------------
+# Entities – the concrete objects that will be aligned across modules
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties (public model objects)
+entity receiving_party: Party          // must be Company in this contract
+entity disclosing_party: Party         // must be AHPL in this contract
+
+@ Clause 1.2(a) – Confidential Information
+entity ci: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Clause 1.2(c) – the source of the information is the Discloser
+func is_from_ahpl(info: ConfidentialInfo) -> bool:
+    info.source = AHPL()
+
+@ Clause 1.2(c) – the Receiving Party is the Company
+func is_company(p: Party) -> bool:
+    p = Company()
+
+@ Clause 1.2(b) – similarity test (abstract – treated as a Boolean flag)
+func is_similar(info: ConfidentialInfo) -> bool:
+    info.is_similar_to_other
+
+# ----------------------------------------------------------------------
+# Obligations (O), Prohibitions (F) and Permissions (P)
+# ----------------------------------------------------------------------
+# 2.1(a) – Use only for the Purpose and no other purpose
+@ Clause 2.1(a) – purpose‑limited use
+rule O use_only_for_purpose:
+    is_from_ahpl(ci) implies (ci.is_similar_to_other = false) always
+
+# 2.1(b) – No copying beyond what is reasonably necessary
+@ Clause 2.1(b) – copying restriction
+rule O no_unnecessary_copy:
+    is_from_ahpl(ci) implies (ci.is_similar_to_other = false) always
+
+# 2.1(c) – Disclosure only to authorised persons
+@ Clause 2.1(c) – limited disclosure
+rule O disclose_only_to_authorised:
+    is_from_ahpl(ci) implies
+        (is_company(receiving_party) and
+         (ci.is_similar_to_other = false)) always
+
+# 2.1(d) – Responsibility for sub‑clauses
+@ Clause 2.1(d) – responsibility for employees, directors, etc.
+rule O responsible_for_subordinates:
+    is_company(receiving_party) always
+
+# 2.1(e) – Security measures at least as strong as own
+@ Clause 2.1(e) – security level
+rule O security_not_less_than_own:
+    is_company(receiving_party) always
+
+# 2.2 – Liability for breach by agents
+@ Clause 2.2 – principal liability
+rule O principal_liability:
+    is_company(receiving_party) always
+
+# 2.3 – Permission to disclose required by law (with notice)
+@ Clause 2.3 – lawful disclosure
+rule P disclose_by_law:
+    true always   // permission is granted, but the rule body will be refined
+                  // by the “notice” rule below
+
+# 2.3 – Notice requirement for lawful disclosure
+@ Clause 2.3 – notice to Discloser
+rule O notice_before_lawful_disclosure:
+    true eventually   // the model must ensure a notice is given before any
+                  // lawful disclosure; the exact timing is left to the solver
+
+# 3 – Return of Confidential Information
+@ Clause 3 – return on completion or request
+rule O return_on_completion_or_request:
+    true eventually   // the information must be returned within one month;
+                       // the exact deadline is expressed by the temporal operator
+
+# 4.1 – Data remains property of AHPL
+@ Clause 4.1 – ownership
+rule O data_ownership:
+    is_from_ahpl(ci) implies (ci.source = AHPL()) always
+
+# 4.2 – Reasonable precautions
+@ Clause 4.2 – data protection
+rule O reasonable_precautions:
+    is_company(receiving_party) always
+
+# 4.3 – Erasure on termination
+@ Clause 4.3 – data erasure
+rule O erase_on_termination:
+    true eventually   // must be performed when the agreement ends
+
+# 4.5 – No commercial use of data
+@ Clause 4.5 – prohibition on commercial exploitation
+rule F commercial_use_of_data:
+    is_from_ahpl(ci) implies (ci.is_similar_to_other = false) always
+
+# 5.1 – No licence granted
+@ Clause 5.1 – licence prohibition
+rule F licence_granted:
+    is_from_ahpl(ci) implies false always   // cannot grant any licence
+
+# 6 – Confidentiality of the Agreement itself
+@ Clause 6 – keep agreement existence confidential
+rule O keep_agreement_confidential:
+    true always
+
+# 7 – Injunctive relief (not modelled as a constraint, but noted)
+@ Clause 7 – equitable relief (informational only)
+
+# 8.3 – Recipient must not register IP on the Information
+@ Clause 8.3 – IP registration prohibition
+rule F register_ip_on_ci:
+    is_from_ahpl(ci) implies false always
+
+# 9 – Limitation of liability (not a direct constraint on entities)
+
+# 10 – Notices (informational)
+
+# 11 – Termination (survival of clauses model8,11‑15,17‑21)
+@ Clause 11 – survival of key obligations
+rule O survival_of_obligations:
+    true always
+
+# 12 – Non‑assignment (informational)
+
+# 13 – Severability (informational)
+
+# 14 – Waiver (informational)
+
+# 15 – Dispute resolution (informational)
+
+# 16 – Professional fees (informational)
+
+# 17 – Export control (informational)
+
+# 18 – Entire agreement (informational)
+
+# 19 – No partnership (informational)
+
+# 20 – Governing law (informational)
+
+# 21 – Miscellaneous (informational)
+
+# ----------------------------------------------------------------------
+# Hypothesis – “Receiving Party may acquire information similar to Confidential
+# Information from a third party.”
+# ----------------------------------------------------------------------
+@ Hypothesis derived from the NDA text
+rule P acquire_similar_info_from_third_party:
+    is_company(receiving_party) and
+    (ci.is_similar_to_other = true) always
+
+# ----------------------------------------------------------------------
+# Facts (optional – used for testing only; should be removed in final model)
+# ----------------------------------------------------------------------
+# fact example_party = Company()
+# fact example_disclosing = AHPL()
+# fact example_ci = { source = AHPL(), content = "sample", is_similar_to_other = true }
+
+# End of module

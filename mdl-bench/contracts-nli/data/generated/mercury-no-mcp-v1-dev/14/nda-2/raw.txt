@@ -1,0 +1,89 @@
+```mdl
+@ Confidentiality and Non‑Disclosure Agreement governing inspection of stockholder list
+module contract_nli_no_align_dev_14_nda_2
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+# The two parties to the agreement
+type Party = {
+    name: string,
+    is_company: bool          # true = Company, false = Stockholder
+}
+
+# The material that the Stockholder may inspect
+type ConfidentialMaterial = {
+    is_technical: bool        # hypothesis: only technical information
+    is_confidential: bool
+}
+
+# The way the Stockholder intends to use the material
+type Usage = {
+    related_to_stockholder_interests: bool   # true if purpose is reasonably related
+}
+
+# A request for disclosure that may arise from legal process
+type DisclosureRequest = {
+    is_by_law: bool
+    received: bool
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+entity company: Party
+entity stockholder: Party
+entity confidential_material: ConfidentialMaterial
+entity usage: Usage
+entity disclosure_request: DisclosureRequest
+
+# ----------------------------------------------------------------------
+# Functions (pure helpers)
+# ----------------------------------------------------------------------
+func is_allowed_use(u: Usage) -> bool:
+    u.related_to_stockholder_interests
+
+func notice_due(r: DisclosureRequest) -> bool:
+    r.is_by_law and r.received
+
+# ----------------------------------------------------------------------
+# Rules – obligations (O), prohibitions (F) and permissions (P)
+# ----------------------------------------------------------------------
+# 1. Stockholder may use Confidential Material only for purposes reasonably
+#    related to Stockholder’s interests.
+rule O use_confidential_material_only_for_allowed_purposes:
+    is_allowed_use(usage) always
+
+# 2. Stockholder must not disclose, publish or communicate Confidential Material
+#    to any person or entity, except as permitted by law.
+rule F disclose_confidential_material:
+    not (confidential_material.is_confidential) always
+
+# 3. If a legal disclosure request is received, Stockholder must give the
+#    Company prompt notice (within 2 business days) before any disclosure.
+rule O give_prompt_notice_to_company_when_required:
+    notice_due(disclosure_request) implies true always   # the “true” is a placeholder for the act of giving notice
+
+# 4. Each Party submits to the exclusive jurisdiction of the Delaware Court of
+#    Chancery.
+rule O accept_delaware_chancery_jurisdiction:
+    true always
+
+# 5. The Agreement may be amended only by a written instrument signed by the
+#    Party against whom enforcement is sought.
+rule F amend_without_written_agreement:
+    not (confidential_material.is_confidential) always   # placeholder – actual amendment logic would be modeled elsewhere
+
+# 6. The Agreement is binding upon the Parties and their successors, assigns,
+#    heirs, etc.
+rule O agreement_is_binding_on_successors:
+    true always
+
+# 7. The Agreement is governed by the laws of the State of Delaware.
+rule O governed_by_delaware_law:
+    true always
+
+# 8. Hypothesis – Confidential Material shall only include technical information.
+rule O confidential_material_is_technical:
+    confidential_material.is_technical always
+```

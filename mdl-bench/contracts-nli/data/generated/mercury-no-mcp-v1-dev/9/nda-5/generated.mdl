@@ -1,0 +1,69 @@
+@ Non‑Negotiable Confidentiality and Non‑Disclosure Agreement (Transportation Challenge 2017)
+module contract_nli_no_align_dev_9_nda_5
+
+open std.collections
+open std.strings
+
+@ Parties defined in the agreement
+type Party = BPS | Vendor
+
+@ Person represents a human who may access confidential information
+type Person = {
+    name: string,
+    role: string,
+    employer: Party,
+    authorized: bool,               -- has BPS approved this person to receive the data
+    has_confidential_access: bool   -- true when the person is currently allowed to view Confidential Information
+}
+
+@ The set of data covered by the agreement
+type ConfidentialInfo = {
+    description: string
+}
+
+@ Entities – stable public anchors for cross‑module alignment
+entity bps: Party = BPS
+entity vendor: Party = Vendor
+entity confidential_info: ConfidentialInfo
+
+@ Employees (or representatives) of the Vendor
+entity vendor_employee: Person
+
+@ BPS officials (or other authorized agents)
+entity bps_official: Person
+
+@ -------------------------------------------------------------------------
+-- 1.  Authorization – only authorized persons may receive Confidential Info
+@ -------------------------------------------------------------------------
+func can_receive(p: Person) -> bool:
+    p.authorized
+
+rule O authorized_employee_may_receive:
+    -- A Vendor employee who is authorized by BPS may be granted access
+    (vendor_employee.employer = Vendor and can_receive(vendor_employee)) implies
+        vendor_employee.has_confidential_access always
+
+@ -------------------------------------------------------------------------
+-- 2.  Prohibition – non‑authorized persons must not receive Confidential Info
+@ -------------------------------------------------------------------------
+rule F unauthorized_employee_must_not_receive:
+    -- Any Vendor employee who is NOT authorized must NOT have access
+    (vendor_employee.employer = Vendor and not can_receive(vendor_employee)) implies
+        not vendor_employee.has_confidential_access always
+
+@ -------------------------------------------------------------------------
+-- 3.  Hypothesis – the Receiving Party (Vendor) may share some Confidential
+--     Information with some of its employees.
+--     This hypothesis is satisfied when there exists at least one authorized
+--     employee who has confidential access.
+@ -------------------------------------------------------------------------
+func exists_authorized_employee_with_access(employees: List<Person>) -> bool:
+    case employees:
+        | Empty(_): false
+        | Cons(h, t):
+            (h.employer = Vendor and h.authorized and h.has_confidential_access) or
+            exists_authorized_employee_with_access(t)
+
+rule O hypothesis_sharing_with_employee_allowed:
+    -- The hypothesis holds if the above function evaluates to true.
+    exists_authorized_employee_with_access(to_list(vendor_employee)) always

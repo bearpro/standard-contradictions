@@ -1,0 +1,174 @@
+@ Non‑Disclosure Agreement – OISAIR Project
+module contract_nli_no_align_dev_3_nda_12
+
+open std.collections
+open std.strings
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Definitions
+type ConfidentialInformation = {
+    is_confidential: bool,          # true if the data falls under the definition of “Confidential Information”
+    is_independently_developed: bool,  # true if the Receiving Party created the data without using the Disclosing Party’s information
+    is_public: bool,                # true if the data is already public knowledge
+    is_known_prior: bool,           # true if the Receiving Party already possessed the data before disclosure
+    is_third_party_disclosed: bool, # true if a third party (with no duty to the Disclosing Party) disclosed the data
+    is_legal_disclosure: bool,      # true if disclosure is required by law or governmental order
+    is_written_consent: bool        # true if the Disclosing Party gave written consent to disclose
+}
+
+@ Clause 2 – Parties
+type Party = {
+    name: string,
+    role: PartyRole,                # Disclosing or Receiving
+    representatives: List<Representative>
+}
+
+type PartyRole = Disclosing | Receiving
+
+type Representative = {
+    name: string,
+    position: string,
+    is_aware_of_terms: bool
+}
+
+@ Clause 10 – Temporal data
+type AgreementDates = {
+    effective_date: int,   # days since epoch – used only for temporal reasoning
+    termination_date: int, # effective_date + 5*365
+    notice_period_days: int = 30,
+    return_deadline_days: int = 7,
+    survival_years: int = 3
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 1 – Confidential Information (the object of the obligations)
+entity confidential_information: ConfidentialInformation
+
+@ Clause 10 – Dates needed for temporal rules
+entity dates: AgreementDates
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+func is_obligation_applicable(info: ConfidentialInformation) -> bool:
+    # The confidentiality obligation applies iff the information is confidential
+    # and none of the exclusion grounds apply.
+    not info.is_confidential or
+    info.is_public or
+    info.is_known_prior or
+    info.is_third_party_disclosed or
+    info.is_legal_disclosure or
+    info.is_written_consent or
+    info.is_independently_developed
+
+func within_days(target_day: int, delta: int) -> bool:
+    -- true if the current step is no later than target_day + delta
+    target_day <= now and now <= target_day + delta
+
+# ----------------------------------------------------------------------
+# Rules – Obligations of the Receiving Party
+# ----------------------------------------------------------------------
+@ Clause 3 – General confidentiality and non‑use obligations
+rule O confidentiality_obligation:
+    is_obligation_applicable(confidential_information) implies
+    (confidential_information.is_confidential) always
+
+@ Clause 3a – Reasonable protective measures
+rule O reasonable_measures:
+    is_obligation_applicable(confidential_information) implies
+    (confidential_information.is_confidential) always   # abstract placeholder for “proper and reasonable measures”
+
+@ Clause 3b – No disclosure to third parties without consent
+rule O no_third_party_disclosure:
+    is_obligation_applicable(confidential_information) implies
+    (not confidential_information.is_written_consent) always
+
+@ Clause 3c – Use limited to the Permitted Purpose
+rule O use_limited_to_permitted_purpose:
+    is_obligation_applicable(confidential_information) implies
+    (confidential_information.is_confidential) always   # abstract placeholder for “use only for permitted purpose”
+
+@ Clause 3d – No commercial use without consent
+rule O no_commercial_use_without_consent:
+    is_obligation_applicable(confidential_information) implies
+    (not confidential_information.is_written_consent) always
+
+@ Clause 3e – No copying without authorisation
+rule O no_unauthorised_copy:
+    is_obligation_applicable(confidential_information) implies
+    (not confidential_information.is_written_consent) always
+
+@ Clause 3f – No alteration, reverse‑engineering, etc.
+rule O no_alteration_reverse_engineering:
+    is_obligation_applicable(confidential_information) implies
+    (not confidential_information.is_written_consent) always
+
+@ Clause 3g – No patent/trademark filing that includes confidential data
+rule O no_patent_filing:
+    is_obligation_applicable(confidential_information) implies
+    (not confidential_information.is_written_consent) always
+
+# ----------------------------------------------------------------------
+# Rules – Disclosure to Representatives
+# ----------------------------------------------------------------------
+@ Clause 4 – Care level for Representatives
+rule O care_for_representatives:
+    (receiving_party.role = Receiving) implies
+    (all r in receiving_party.representatives:
+        r.is_aware_of_terms) always
+
+# ----------------------------------------------------------------------
+# Rules – Return / Destruction of Information
+# ----------------------------------------------------------------------
+@ Clause 5 – Return or destroy at termination or on request
+rule O return_or_destroy_by_deadline:
+    (now >= dates.termination_date) implies
+    (confidential_information.is_confidential) eventually
+    and within_days(dates.termination_date, dates.return_deadline_days)
+
+@ Clause 5 – Retention of one copy for regulatory/insurance purposes
+rule O retain_one_copy_if_required:
+    (confidential_information.is_confidential) implies
+    (confidential_information.is_confidential) always   # abstract placeholder for “retain one copy securely”
+
+# ----------------------------------------------------------------------
+# Rules – Duration and Survival
+# ----------------------------------------------------------------------
+@ Clause 10 – Obligations survive for 3 years after disclosure
+rule O survival_of_obligations:
+    (confidential_information.is_confidential) implies
+    (confidential_information.is_confidential) until
+        (now >= dates.effective_date + dates.survival_years * 365)
+
+# ----------------------------------------------------------------------
+# Rules – Exclusions (the hypothesis)
+# ----------------------------------------------------------------------
+@ Clause 2d – Independently developed information is excluded from the obligation
+rule F confidentiality_not_required_for_independently_developed:
+    confidential_information.is_independently_developed always
+
+# ----------------------------------------------------------------------
+# Rules – Termination notice
+# ----------------------------------------------------------------------
+@ Clause 10 – Either Party may terminate with 30‑day notice
+rule O termination_notice:
+    (now >= dates.effective_date) implies
+    (now <= dates.effective_date + dates.notice_period_days) eventually
+
+# ----------------------------------------------------------------------
+# Rules – Governing law, jurisdiction, and other boilerplate (non‑deontic)
+# ----------------------------------------------------------------------
+rule P governing_law_and_jurisdiction:
+    true always   # placeholder – not a normative obligation for the solver
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------

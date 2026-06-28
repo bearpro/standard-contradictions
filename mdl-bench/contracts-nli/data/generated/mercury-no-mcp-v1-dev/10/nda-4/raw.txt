@@ -1,0 +1,49 @@
+```mdl
+@ Contract: CNDA – Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_10_nda_4
+
+open std.strings
+
+@ Parties defined in Article 1 – Definitions and Interpretation
+type Party =
+    | DisclosingParty(unit)
+    | ReceivingParty(unit)
+
+@ Confidential Information defined in Article 2 – Confidential Information
+type ConfidentialInformation = {
+    description: string,          // free‑form description of the information
+    is_marked_confidential: bool  // true if the document is clearly marked “Confidential”
+}
+
+@ Use of Confidential Information (implicit event) – not a clause but needed to model the hypothesis
+type Usage = {
+    party: Party,                 // the party performing the use
+    info: ConfidentialInformation, // the confidential item being used
+    purpose: string               // textual description of the purpose for the use
+}
+
+@ Entities – one stable object per domain concept
+@ Clause 2.01 – Confidential Information
+entity confidential_info: ConfidentialInformation
+
+@ Clause 2.04 – No Benefit, Restricted Use (the Receiving Party is the only party that may use the info)
+entity receiving_party: Party = Party.ReceivingParty()
+
+@ Clause 2.01 – Disclosing Party (the other side of the agreement)
+entity disclosing_party: Party = Party.DisclosingParty()
+
+@ Clause 2.05 – No Disclosure (the Receiving Party may use the info only for permitted purposes)
+entity usage: Usage
+
+@ Helper function – a very simple placeholder for “purposes stated in the Agreement”
+func permitted_purpose(purpose: string) -> bool:
+    -- The Agreement permits purposes that reference the Agreement itself.
+    purpose contains "Agreement"
+
+@ Clause 2.04 – Receiving Party shall not derive benefit or use Confidential Information for any purpose other than the purposes stated in the Agreement.
+rule O no_unpermitted_use_of_confidential_info:
+    let is_receiving = usage.party = receiving_party
+    let uses_confidential = usage.info = confidential_info
+    let purpose_allowed = permitted_purpose(usage.purpose)
+    (is_receiving and uses_confidential) implies purpose_allowed always
+```

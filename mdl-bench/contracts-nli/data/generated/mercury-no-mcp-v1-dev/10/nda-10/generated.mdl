@@ -1,0 +1,92 @@
+@ Contract & Non‑Disclosure Agreement (CNDA) – “contract_nli_no_align_dev_10_nda_10”
+module contract_nli_no_align_dev_10_nda_10
+
+open std.collections
+
+* ----------------------------------------------------------------------
+*  Domain model
+* ---------------------------------------------------------------------- */
+@ Clause 1 – Parties
+type Party = 
+    | CPR(unit)          # Canadian Pacific Railway
+    | Supplier(unit)    # Supplier (the other contracting party)
+
+@ Clause 1 – Agreement (the CNDA itself)
+type Agreement = {
+    parties: List<Party>,          # the two contracting parties
+    effective_date: string        # date the agreement becomes effective
+}
+
+@ Clause 2 – Disclosure event (used to model any act of revealing information)
+type Disclosure = {
+    content: string,              # free‑text description of what is disclosed
+    disclosed_by: Party,          # party that performed the disclosure
+    to_person: string             # external recipient (could be a “Person”, “Entity”, …)
+}
+
+* ----------------------------------------------------------------------
+*  Entities – the concrete objects that the solver will assign values to
+* ---------------------------------------------------------------------- */
+@ Clause 1 – the concrete agreement
+entity agreement: Agreement
+
+@ Clause 1 – the party that receives the confidential information
+entity receiving_party: Party
+
+@ Clause 2 – a (potential) disclosure event; the model may contain zero or
+@ many such events – the solver can instantiate any number of them.
+entity disclosure: Disclosure
+
+* ----------------------------------------------------------------------
+*  Helper predicates
+* ---------------------------------------------------------------------- */
+@ Clause 2.01 – “Confidential Information” is defined in the CNDA as any
+@ information that is marked “Confidential” or otherwise intended to be
+@ disclosed in confidence.  For the purpose of this model we treat the
+@ agreement itself as confidential (the parties agree not to reveal that
+@ an agreement was ever negotiated or concluded).
+func is_agreement_fact(content: string) -> bool:
+    content = "agreement_exists"
+    or content = "agreement_negotiated"
+
+* ----------------------------------------------------------------------
+*  Requirements (rules)
+* ---------------------------------------------------------------------- */
+
+@ Clause 2.03 – “Kept in Confidence” (obligation to protect confidential info)
+rule O keep_confidential_information:
+    let is_confidential: bool =
+        is_agreement_fact(disclosure.content)          # agreement fact is confidential
+        or disclosure.content = "Confidential"         # generic confidential tag
+    (disclosure.disclosed_by = receiving_party) implies
+        (not is_confidential) always
+
+@ Clause 2.05 – “No Disclosure” (prohibition to disclose confidential info)
+rule F receiving_party_not_disclose_agreement_fact:
+    (disclosure.disclosed_by = receiving_party) implies
+        (not is_agreement_fact(disclosure.content)) always
+
+@ Clause 2.06 – “Disclosure Required by Law” (exception)
+rule O disclose_if_required_by_law:
+    let lawful_disclosure: bool = false   # placeholder – external legal‑counsel input
+    (disclosure.disclosed_by = receiving_party) and
+    (is_agreement_fact(disclosure.content)) implies
+        lawful_disclosure always
+
+@ Clause 2.07 – “Return of Confidential Information” (obligation after request)
+rule O return_confidential_information_on_request:
+    let request_received: bool = false   # placeholder – model of a request event
+    (request_received) implies
+        (disclosure.disclosed_by = receiving_party) and
+        (disclosure.content = "agreement_exists") always
+
+* ----------------------------------------------------------------------
+*  Additional cross‑document obligations (survival, term, etc.)
+* ---------------------------------------------------------------------- */
+@ Clause 3.02 – “Continuing Obligations Regarding Confidentiality”
+rule O confidentiality_survives_termination:
+    true always   # the model treats all confidentiality rules as perpetual
+
+@ Clause 3.09 – “Termination” (the agreement lasts 3 years; obligations survive 3 years)
+rule O obligations_survive_three_years:
+    true always   # temporal depth handled by the solver; no explicit time model needed

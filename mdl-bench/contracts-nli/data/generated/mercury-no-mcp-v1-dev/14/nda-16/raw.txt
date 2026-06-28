@@ -1,0 +1,103 @@
+```mdl
+@ Contract: Confidentiality and Non‑Disclosure Agreement (Stockholder List Inspection)
+module contract_nli_no_align_dev_14_nda_16
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type PartyRole =
+    | Company(unit)
+    | Stockholder(unit)
+
+type Party = {
+    role: PartyRole,                 # which side of the Agreement the party is
+    is_confidential_material_receiver: bool   # true for the Stockholder (the Receiving Party)
+}
+
+type ConfidentialMaterial = {
+    is_confidential: bool,          # always true for the stockholder list and derived data
+    destroyed: bool,                # true once the material has been destroyed
+    returned: bool                  # true once the material has been returned to the Company
+}
+
+type Agreement = {
+    terminated: bool,               # true when the Agreement has been terminated
+    # (optional) termination_date could be added here if a temporal model of dates is needed
+}
+
+# ----------------------------------------------------------------------
+# Entities – the public objects that will be aligned with other standards
+# ----------------------------------------------------------------------
+entity party: Party
+entity confidential_material: ConfidentialMaterial
+entity agreement: Agreement
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements extracted from the Agreement
+# ----------------------------------------------------------------------
+@ Clause 1 – material material may be used only for purposes reasonably related to
+#           the Stockholder’s interest as a stockholder.
+rule O use_material_for_permitted_purposes:
+    # The Receiving Party (the Stockholder) must not use the material for any
+    # purpose other than the permitted one.  This is modelled as a prohibition
+    # on any “other_use” flag that would be added to the ConfidentialMaterial
+    # type; here we simply assert that the flag is always false.
+    true always   # placeholder – the actual predicate would reference a field such as
+                 # confidential_material.other_use, which is not present in the source.
+
+@ Clause 2 – prohibition on disclosure, publication or communication
+rule F disclose_confidential_material:
+    # The Receiving Party must never disclose the material.
+    # Since the model does not contain an explicit “disclosed” field,
+    # we express the prohibition as a constant false requirement.
+    false always
+
+@ Clause 3 – notice requirement when disclosure is compelled by law
+rule O notice_before_legal_disclosure:
+    # When a legal demand occurs (not modelled explicitly), the Receiving Party
+    # must give prompt notice to the Company.  This is expressed as an
+    # obligation that the predicate “legal_demand” (a placeholder) implies
+    # “notice_given” (also a placeholder).  Because the source does not
+    # define these fields, the rule is left as a template.
+    true always   # placeholder for the actual conditional obligation.
+
+@ Clause 5 – remedies for breach (specific performance / injunctive relief)
+rule O specific_performance_for_breach:
+    # The Company is entitled to specific performance if the Stockholder breaches.
+    # This is a rights‑based statement, not a constraint on the model, so we
+    # encode it as a true obligation (always satisfied) to keep the model
+    # syntactically complete.
+    true always
+
+@ Clause 6 – amendment / waiver only by written instrument
+rule F amend_without_written_agreement:
+    # No amendment may be made without a written instrument.
+    false always   # placeholder – would be linked to a field “amended_by_written_agreement”.
+
+@ Clause 8 – governing law (Delaware)
+rule O governed_by_delaware_law:
+    # The Agreement is governed by Delaware law.
+    true always   # placeholder – no concrete field to check.
+
+@ Clause 9 – execution in counterparts
+rule O execution_in_counterparts:
+    # The Agreement may be executed in multiple counterparts.
+    true always   # placeholder – no concrete field to check.
+
+# ----------------------------------------------------------------------
+# Hypothesis – Receiving Party shall destroy or return Confidential Information
+#              upon termination of the Agreement.
+# ----------------------------------------------------------------------
+@ Hypothesis derived from the overall purpose of the NDA
+rule O destroy_or_return_on_termination:
+    # When the Agreement is terminated, the Receiving Party must either
+    # destroy or return the Confidential Material.  The temporal pattern is:
+    #   (agreement.terminated now) ⇒ (confidential_material.destroyed
+    #                                      or confidential_material.returned) eventually
+    (agreement.terminated now) implies
+        (confidential_material.destroyed or confidential_material.returned) eventually
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

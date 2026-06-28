@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-13",
+  "created_at": "2026-06-26T00:20:41.008252+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-13",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_13",
+  "response": {
+    "background": false,
+    "completed_at": 1782433240.0,
+    "created_at": 1782433238.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433238-AHF9iJp4KmrEFnwp1WTp",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-13",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ CNDA – Confidentiality and Non‑Disclosure Agreement\nmodule contract_nli_no_align_dev_10_nda_13\n\n# ----------------------------------------------------------------------\n# Domain model\n# ----------------------------------------------------------------------\ntype Party =\n    | DisclosingParty()\n    | ReceivingParty()\n\ntype ConfidentialInfo = {\n    source: Party,               # who supplied the information\n    content: string,             # the actual data (abstracted)\n    marked_confidential: bool    # true if the document is clearly marked “Confidential”\n}\n\ntype ThirdPartyInfo = {\n    source: string,              # name of the third‑party source\n    content: string,             # the actual data (abstracted)\n    marked_confidential: bool    # true if the third‑party document is marked “Confidential”\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\nentity disclosing_party: Party = Party.DisclosingParty()\nentity receiving_party: Party = Party.ReceivingParty()\nentity confidential_info: ConfidentialInfo\nentity third_party_info: ThirdPartyInfo\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n# Determines whether a piece of information is “Confidential Information” as\n# defined in Article 2.01 of the CNDA.\nfunc is_confidential(info: ConfidentialInfo) -> bool:\n    info.marked_confidential or info.source = Party.DisclosingParty()\n\n# ----------------------------------------------------------------------\n# Requirements (deontic rules)\n# ----------------------------------------------------------------------\n# 2.03 – The Receiving Party must not disclose Confidential Information.\nrule F cannot_disclose_confidential:\n    is_confidential(confidential_info) always\n\n# 2.04 – The Receiving Party may acquire information that is *similar* to\n# Confidential Information from a third party, provided that such information\n# is not itself marked confidential.  This captures the hypothesis that\n# “Receiving Party may acquire information similar to Confidential Information\n# from a third party.”\nrule P acquire_third_party_info:\n    not third_party_info.marked_confidential always\n\n# 2.05 – The Receiving Party must not disclose third‑party information that\n# is marked confidential (i.e. it becomes Confidential Information under the\n# definition above).\nrule F cannot_disclose_third_party_confidential:\n    third_party_info.marked_confidential always\n\n# 2.07 – Upon request, the Receiving Party must return or destroy all\n# Confidential Information.  (Simplified to an obligation that the condition\n# holds at every step.)\nrule O return_confidential_on_request:\n    true always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_bpmc6lzim8",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00202348575,
+      "cost_details": {
+        "upstream_inference_cost": 0.002043925,
+        "upstream_inference_input_cost": 0.000753175,
+        "upstream_inference_output_cost": 0.00129075
+      },
+      "input_tokens": 8095,
+      "input_tokens_details": {
+        "cached_tokens": 5647
+      },
+      "is_byok": false,
+      "output_tokens": 1721,
+      "output_tokens_details": {
+        "reasoning_tokens": 1212
+      },
+      "total_tokens": 9816
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "6b30994d336bb05e440bed7732e63cd0805c3bb9f6113f8af708bb808722d8e4",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

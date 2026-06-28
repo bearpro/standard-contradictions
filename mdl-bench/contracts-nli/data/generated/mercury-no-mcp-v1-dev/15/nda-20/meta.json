@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-15-nda-20",
+  "created_at": "2026-06-26T00:24:35.739780+00:00",
+  "doc_id": 15,
+  "hypothesis_id": "nda-20",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_15_nda_20",
+  "response": {
+    "background": false,
+    "completed_at": 1782433475.0,
+    "created_at": 1782433472.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433472-MMceXWeuxLaXckIAH5W0",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-15-nda-20",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Non‑Disclosure Agreement (Two‑Way) – NDA 15‑20\nmodule contract_nli_no_align_dev_15_nda_20\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 1 – definition of confidential material\ntype ConfidentialInfo = {\n    id: int,                     -- stable identifier of the item\n    is_returned: bool,           -- true when the item has been returned to the disclosing party\n    is_destroyed: bool,          -- true when the item has been destroyed by the receiving party\n    is_retained: bool,           -- true when the receiving party still holds the item\n    is_marked_confidential: bool -- true when the item bears a “Confidential” label\n    source_party: Party,         -- the party that disclosed the information\n    receiving_party: Party       -- the party that received the information\n}\n\ntype Party = {\n    name: string,\n    address: string\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Clause 1 – the two parties to the agreement\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ Clause 1 – each piece of confidential information exchanged\nentity confidential_item: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Clause 3b – proper protection measures (placeholder for detailed checks)\nfunc proper_protection(item: ConfidentialInfo) -> bool:\n    -- The model does not capture the concrete security controls;\n    -- we assume the requirement is satisfied if the item is marked\n    -- and the receiving party acknowledges the source.\n    item.is_marked_confidential and (item.source_party.name != \"\")\n\n@ Clause 3c – permission to disclose to a third party\nfunc permission_to_disclose(item: ConfidentialInfo, third_party: Party) -> bool:\n    -- The NDA forbids any third‑party disclosure without written consent.\n    false\n\n@ Clause 3e – permission to copy or abstract\nfunc permission_to_copy(item: ConfidentialInfo) -> bool:\n    -- Copying is prohibited unless a written licence is obtained.\n    false\n\n# ----------------------------------------------------------------------\n# Rules (Deontic Requirements)\n# ----------------------------------------------------------------------\n@ Clause 3a – take reasonable measures to preserve confidentiality\nrule O take_proper_measures:\n    proper_protection(confidential_item) always\n\n@ Clause 3b – no commercial use without licence\nrule F use_for_commercial_purpose:\n    not (confidential_item.is_retained and\n         (confidential_item.is_returned or confidential_item.is_destroyed)) always\n\n@ Clause 3c – no disclosure to third parties without permission\nrule F disclose_to_third_party:\n    not permission_to_disclose(confidential_item, Party { name = \"\", address = \"\" }) always\n\n@ Clause 3d – disclose only to employees who need it and who are aware of confidentiality\nrule O disclose_to_employees:\n    -- The model abstracts employee access; we assume compliance if the item\n    -- is marked confidential and the receiving party acknowledges it.\n    confidential_item.is_marked_confidential always\n\n@ Clause 3e – no copying or abstracting without written permission\nrule F copy_or_abstract:\n    not permission_to_copy(confidential_item) always\n\n@ Clause 3f – acknowledge source and mark \"Confidential\"\nrule O acknowledge_and_mark:\n    confidential_item.is_marked_confidential always\n\n@ Clause 4 – exclusions (public domain, prior knowledge, etc.) – modeled as permission\nrule P retain_exempt_information:\n    -- If the information is already public or independently developed,\n    -- the receiving party may retain it.  This is a permission, not an obligation.\n    (confidential_item.is_retained and\n     (confidential_item.source_party.name = \"public_domain\" or\n      confidential_item.source_party.name = \"independently_developed\")) always\n\n@ Clause 5 – confidentiality period of ten years\nrule O maintain_confidentiality_for_ten_years:\n    -- The trace is assumed to represent the whole contractual period.\n    -- The rule requires that no disclosure occurs at any step.\n    not (confidential_item.is_retained and\n         (confidential_item.is_returned or confidential_item.is_destroyed)) always\n\n@ Clause 5 – return or destroy all confidential information on request\nrule O return_or_destroy_on_request:\n    (confidential_item.is_returned or confidential_item.is_destroyed) always\n\n# ----------------------------------------------------------------------\n# Hypothesis (for analysis only – not a contractual requirement)\n# ----------------------------------------------------------------------\n@ Hypothesis – the receiving party may retain some confidential information\n-- after it has been returned or destroyed.\n-- This hypothesis contradicts rule `F retain_after_return_or_destruction`.\nrule P retain_after_return_or_destruction:\n    confidential_item.is_retained and\n    (confidential_item.is_returned or confidential_item.is_destroyed) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_3oofs6rvpwx",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00176484825,
+      "cost_details": {
+        "upstream_inference_cost": 0.001782675,
+        "upstream_inference_input_cost": 0.000363675,
+        "upstream_inference_output_cost": 0.001419
+      },
+      "input_tokens": 6492,
+      "input_tokens_details": {
+        "cached_tokens": 5597
+      },
+      "is_byok": false,
+      "output_tokens": 1892,
+      "output_tokens_details": {
+        "reasoning_tokens": 912
+      },
+      "total_tokens": 8384
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "b1f62d0c5e0a926f8a78b890945a17a11552202b0c54a4789c23399668106973",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

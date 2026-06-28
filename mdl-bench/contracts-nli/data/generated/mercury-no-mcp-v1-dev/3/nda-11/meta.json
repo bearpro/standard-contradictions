@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-11",
+  "created_at": "2026-06-26T00:17:12.678739+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-11",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_11",
+  "response": {
+    "background": false,
+    "completed_at": 1782433032.0,
+    "created_at": 1782433030.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433030-wSbzLCbZs6laZqkPn0Pz",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-11",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: OISAIR Project – Two‑Way Confidentiality and Non‑Disclosure Agreement\n@ Module name: contract_nli_no_align_dev_3_nda_11\nmodule contract_nli_no_align_dev_3_nda_11\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\ntype Party = {\n    name: string,          # legal name of the party\n    role: string           # \"disclosing\" or \"receiving\"\n}\n\ntype ConfidentialInformation = {\n    description: string,  # short description of the confidential material\n    source: Party          # the party that originally disclosed the information\n}\n\n# ----------------------------------------------------------------------\n# Entities – public model objects that can be aligned across modules\n# ----------------------------------------------------------------------\nentity receiving_party: Party\nentity disclosing_party: Party\nentity confidential_information: ConfidentialInformation\n\n# ----------------------------------------------------------------------\n# Helper predicate (pure function) – models the act of reverse‑engineering\n# ----------------------------------------------------------------------\nfunc reverse_engineer(party: Party, info: ConfidentialInformation) -> bool:\n    # The solver will assign a truth value to this predicate.\n    # A value of `true` means the party has reverse‑engineered the information.\n    false\n\n# ----------------------------------------------------------------------\n# Rules – deontic requirements extracted from the Agreement\n# ----------------------------------------------------------------------\n# Clause 3 – “Not to alter, modify, disassemble, reverse engineer or decompile any Confidential Information.”\n@ Clause 3 – prohibition of reverse‑engineering\nrule F no_reverse_engineer_confidential_information:\n    reverse_engineer(receiving_party, confidential_information) now\n\n# ----------------------------------------------------------------------\n# (Optional) Additional consistency facts – not part of the final model\n# ----------------------------------------------------------------------\n# fact receiving_party.role = \"receiving\"\n# fact disclosing_party.role = \"disclosing\"\n# fact confidential_information.source = disclosing_party\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_atvmi5ncnh",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002804967,
+      "cost_details": {
+        "upstream_inference_cost": 0.0028333,
+        "upstream_inference_input_cost": 0.00188755,
+        "upstream_inference_output_cost": 0.00094575
+      },
+      "input_tokens": 7777,
+      "input_tokens_details": {
+        "cached_tokens": 252
+      },
+      "is_byok": false,
+      "output_tokens": 1261,
+      "output_tokens_details": {
+        "reasoning_tokens": 894
+      },
+      "total_tokens": 9038
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "593670c15b3bda270a42e9ad66dcba1ab701fe7770d90b01eff9c903271c30df",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

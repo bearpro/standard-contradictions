@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-15-nda-15",
+  "created_at": "2026-06-26T00:24:16.992399+00:00",
+  "doc_id": 15,
+  "hypothesis_id": "nda-15",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_15_nda_15",
+  "response": {
+    "background": false,
+    "completed_at": 1782433456.0,
+    "created_at": 1782433453.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433453-izTbKD04XOTi6XW5Xgj8",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-15-nda-15",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Agreement on the non‑disclosure of confidential information (two‑way NDA)\nmodule contract_nli_no_align_dev_15_nda_15\n\nopen std.strings\n\n-- ==============================================================\n--  Types\n-- ==============================================================\n\n@ Parties (disclosing and receiving)\ntype Party = {\n    name: string,\n    address: string,\n    -- The receiving party does **not** acquire any rights to the\n    -- confidential information under this agreement.\n    rights_to_confidential_info: bool\n}\n\n@ Confidential information that may be exchanged\ntype ConfidentialInfo = {\n    owner: Party,                     -- the disclosing party\n    content: string,                  -- abstract representation of the material\n    marked_confidential: bool,        -- must be marked “Confidential”\n    is_public: bool,                  -- public‑domain exception (Clause 4 a)\n    is_independently_developed: bool, -- independent‑development exception (Clause 4 b)\n    is_legal_disclosure: bool         -- legal‑process exception (Clause 4 e)\n}\n\n@ Agreement metadata\ntype Agreement = {\n    effective_year: int,   -- year of the effective date (Clause 5)\n    term_years: int         -- confidentiality period (Clause 5)\n}\n\n-- ==============================================================\n--  Entities\n-- ==============================================================\n\n@ Disclosing party (University of Bristol)\nentity disclosing_party: Party\n\n@ Receiving party (the other signatory)\nentity receiving_party: Party\n\n@ One instance of confidential information covered by the NDA\nentity confidential_info: ConfidentialInfo\n\n@ The NDA itself\nentity agreement: Agreement\n\n-- ==============================================================\n--  Functions (pure helpers)\n-- ==============================================================\n\n@ Returns true when the information is *not* covered by any exception\nfunc is_protected(info: ConfidentialInfo) -> bool:\n    not info.is_public and\n    not info.is_independently_developed and\n    not info.is_legal_disclosure\n\n-- ==============================================================\n--  Rules (deontic requirements)\n-- ==============================================================\n\n-- 1.  The receiving party must not acquire any rights to the\n--     confidential information (hypothesis / Clause 4).\nrule F receiving_party_has_no_right:\n    receiving_party.rights_to_confidential_info = false always\n\n-- 2.  The receiving party must take all proper and reasonable measures\n--     to maintain confidentiality (Clause 3 a).\nrule O maintain_confidentiality:\n    is_protected(confidential_info) implies true always\n\n-- 3.  The receiving party must not use the information for any\n--     commercial purpose without a licence (Clause 3 b).\nrule F use_without_license:\n    receiving_party.rights_to_confidential_info = false and\n    is_protected(confidential_info) always\n\n-- 4.  The receiving party must not disclose the information to any\n--     third party without written permission (Clause 3 c).\nrule F disclose_to_third_party:\n    is_protected(confidential_info) implies false always\n\n-- 5.  The receiving party may disclose only to employees who need the\n--     information and who are aware of its confidential nature\n--     (Clause 3 d).  This is modelled as a permission that is granted\n--     only when the employee is “authorised”.\nrule P disclose_to_authorised_employee:\n    is_protected(confidential_info) implies true always\n\n-- 6.  The receiving party must not make any copy or abstract without\n--     written permission (Clause 3 e).\nrule F copy_without_permission:\n    is_protected(confidential_info) implies false always\n\n-- 7.  The receiving party must acknowledge the source and mark the\n--     material “Confidential” (Clause 3 f).\nrule O acknowledge_and_mark:\n    confidential_info.marked_confidential = true always\n\n-- 8.  Confidentiality survives for ten (10) years from the effective\n--     date (Clause 5).\nrule O confidentiality_term:\n    agreement.term_years >= 10 always\n\n-- 9.  The agreement is governed by English law and the exclusive\n--     jurisdiction of the English courts (Clause 6).\nrule O governing_law:\n    true always   -- placeholder – the rule expresses the jurisdiction\n                    -- requirement; no further model data needed.\n\n-- ==============================================================\n--  End of module\n-- ==============================================================\n\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_fn81juuj5te",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00186068025,
+      "cost_details": {
+        "upstream_inference_cost": 0.001879475,
+        "upstream_inference_input_cost": 0.000371975,
+        "upstream_inference_output_cost": 0.0015075
+      },
+      "input_tokens": 6653,
+      "input_tokens_details": {
+        "cached_tokens": 5739
+      },
+      "is_byok": false,
+      "output_tokens": 2010,
+      "output_tokens_details": {
+        "reasoning_tokens": 1101
+      },
+      "total_tokens": 8663
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "6be7721909efa433003db3ecf3619394f153c9bdc49b36a335c51a9c0f80a4c7",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,54 @@
+```mdl
+@ Non‑Negotiable Confidentiality and Non‑Disclosure Agreement – Transportation Challenge 2017
+module contract_nli_no_align_dev_9_nda_4
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 2 – “Nondisclosure” – purpose of use of Confidential Information
+type Purpose = 
+    | AgreementPurpose(unit)   # use permitted only for the purposes set out in the Agreement
+    | OtherPurpose(unit)      # any use outside the Agreement
+
+@ Clause 1 – “Data Sharing” – the confidential data that is being exchanged
+type ConfidentialInfo = {
+    purpose: Purpose               # the purpose for which the data may be used
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The party that receives the data (BPS) – modeled for alignment with other standards
+entity bps: Party = {
+    name: string,
+    address: string,
+    role: string   # e.g. “Receiving Party”
+}
+
+@ The vendor that supplies the solution and is the “Disclosing Party”
+entity vendor: Party = {
+    name: string,
+    address: string,
+    role: string   # e.g. “Disclosing Party”
+}
+
+@ The confidential information that is the subject of the NDA
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Rules – deontic constraints derived from the Agreement
+# ----------------------------------------------------------------------
+@ Clause 2 – “Nondisclosure” – the Vendor may NOT use the data for any purpose
+# other than the purpose(s) expressly stated in the Agreement.
+rule F vendor_must_not_use_confidential_info_for_other_purposes:
+    confidential_info.purpose = Purpose.OtherPurpose() always
+
+@ Clause 2 – “Nondisclosure” – the Vendor SHALL use the data ONLY for the
+# purpose(s) expressly stated in the Agreement.
+rule O vendor_must_use_confidential_info_only_for_agreement:
+    confidential_info.purpose = Purpose.AgreementPurpose() always
+
+# ----------------------------------------------------------------------
+# Optional – auxiliary functions (none needed for this concise model)
+# ----------------------------------------------------------------------
+```

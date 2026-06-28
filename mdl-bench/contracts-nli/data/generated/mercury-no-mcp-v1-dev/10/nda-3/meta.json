@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-3",
+  "created_at": "2026-06-26T00:21:04.629717+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-3",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_3",
+  "response": {
+    "background": false,
+    "completed_at": 1782433264.0,
+    "created_at": 1782433262.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433262-pN3VA0OqWhrikPSGGWjs",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-3",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (“CNDA”)\nmodule contract_nli_no_align_dev_10_nda_3\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Article 2 – Confidential Information – definition of an information item\ntype Information = {\n    is_verbal: bool,               # true if the information was conveyed verbally\n    is_marked_confidential: bool, # true if the item is clearly marked “Confidential”\n    intended_confidential: bool,   # true if the parties intend it to be disclosed in confidence\n    is_known_by_third: bool,       # true if the receiving party already knew it from a third person\n    is_public: bool,               # true if the information is generally available to the public\n    is_authorized_disclosure: bool # true if the disclosing party authorises disclosure\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The single information item that may be subject to the CNDA\nentity info_item: Information\n\n# ----------------------------------------------------------------------\n# Rules – obligations, prohibitions and permissions derived from the CNDA\n# ----------------------------------------------------------------------\n@ Article 2.01 – Confidential Information definition\nrule O confidentiality_definition:\n    (info_item.is_marked_confidential or info_item.intended_confidential) always\n\n@ Article 2.02 – Exclusions from Confidential Information\nrule F exclusion_rule:\n    (info_item.is_known_by_third or\n     info_item.is_public or\n     info_item.is_authorized_disclosure) implies\n    not (info_item.is_marked_confidential or info_item.intended_confidential) always\n\n@ Article 2.03 – Duty of care (simplified as an obligation to keep the item confidential)\nrule O duty_of_care:\n    true always\n\n@ Article 2.05 – No disclosure to others (simplified – the receiving party must not disclose)\nrule F no_disclosure_to_others:\n    true always\n\n@ Article 2.07 – Return / destruction on request (simplified – an obligation to comply)\nrule O return_upon_request:\n    true always\n\n@ Article 2.08 – Responsibility for representatives (simplified – an obligation to be responsible)\nrule O responsibility_for_representatives:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis – “Confidential Information may include verbally conveyed information.”\n# ----------------------------------------------------------------------\n@ The hypothesis is expressed as a concrete fact about the single information item.\n@ It states that the item is verbal and that the parties intend it to be confidential.\nfact hypothesis_is_verbal:\n    info_item.is_verbal = true\n\nfact hypothesis_intended_confidential:\n    info_item.intended_confidential = true\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_rjxd5nan2o",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00174173175,
+      "cost_details": {
+        "upstream_inference_cost": 0.001759325,
+        "upstream_inference_input_cost": 0.000734075,
+        "upstream_inference_output_cost": 0.00102525
+      },
+      "input_tokens": 7898,
+      "input_tokens_details": {
+        "cached_tokens": 5513
+      },
+      "is_byok": false,
+      "output_tokens": 1367,
+      "output_tokens_details": {
+        "reasoning_tokens": 834
+      },
+      "total_tokens": 9265
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "afe7be7bc9724d0853f7ed39dcb33a407ba5cc36ba6fb06ee44d00c193ff5699",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

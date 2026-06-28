@@ -1,0 +1,130 @@
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT
+@ Transportation Challenge 2017
+module contract_nli_no_align_dev_9_nda_18
+
+# ----------------------------------------------------------------------
+# Standard library imports (implicit in most environments)
+# ----------------------------------------------------------------------
+open std.collections
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Parties (Vendor and BPS)
+type Party = Vendor | BPS
+
+@ Individual person (could be employee, representative, etc.)
+type Person = {
+    name: string,
+    role: string               # e.g., "employee", "representative"
+}
+
+@ Vendor (Receiving Party)
+type Vendor = {
+    name: string,
+    employees: List<Person>,
+    # Indicates whether the Vendor has ever solicited a BPS representative.
+    # This field is used only for the “no‑solicitation” prohibition.
+    has_solicited_bps_rep: bool
+}
+
+@ Boston Public Schools (Disclosing Party)
+type BPS = {
+    name: string,
+    representatives: List<Person>
+}
+
+@ Confidential information that is exchanged under the Agreement
+type ConfidentialInfo = {
+    routing_data: string,      # abstract placeholder for the data set
+    protected: bool            # must be true for any data that is covered
+}
+
+@ Secure database used by the Vendor to store ConfidentialInfo
+type Database = {
+    stored_info: List<ConfidentialInfo>,
+    # Security controls required by the Agreement (all must be true)
+    encryption_at_rest: bool,
+    encryption_in_transit: bool,
+    access_control: bool,
+    audit_logging: bool,
+    firewall_enabled: bool,
+    anti_virus_installed: bool
+}
+
+# ----------------------------------------------------------------------
+# Entities – the public objects that will be aligned across modules
+# ----------------------------------------------------------------------
+@ The Vendor (Receiving Party)
+entity vendor: Vendor
+
+@ The Boston Public Schools (Disclosing Party)
+entity bps: BPS
+
+@ The secure database maintained by the Vendor
+entity database: Database
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Checks whether a given Person is a BPS representative
+func is_bps_rep(person: Person, bps: BPS) -> bool:
+    list.contains(bps.representatives, person)
+
+@ Checks whether the Vendor has ever solicited a specific Person
+func vendor_solicited(v: Vendor, p: Person) -> bool:
+    v.has_solicited_bps_rep and is_bps_rep(p, bps)
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements extracted from the Agreement
+# ----------------------------------------------------------------------
+@ 1. Confidentiality – Vendor must keep all ConfidentialInfo protected
+rule O vendor_protects_confidential_info:
+    forall info in database.stored_info:
+        info.protected always
+
+@ 2. Security Controls – the Database must implement all required safeguards
+rule O database_security_controls:
+    database.encryption_at_rest and
+    database.encryption_in_transit and
+    database.access_control and
+    database.audit_logging and
+    database.firewall_enabled and
+    database.anti_virus_installed always
+
+@ 3. Nondisclosure – Vendor may use ConfidentialInfo only for the Challenge
+rule O vendor_use_limited_to_challenge:
+    forall info in database.stored_info:
+        info.protected implies true always   # placeholder – actual purpose check is external
+
+@ 4. Return/Destruction – Vendor must return or destroy all ConfidentialInfo on request
+rule F vendor_return_or_destroy_on_request:
+    (forall info in database.stored_info:
+        info.protected) implies
+        (info in database.stored_info = false) always
+
+@ 5. Publication – Vendor may not publish any material without BPS consent
+rule F vendor_no_unauthorized_publication:
+    not (exists info in database.stored_info:
+            info.protected and
+            /* publication flag would be modeled as a separate field;
+               here we treat any protected info as non‑publishable */
+            true) always
+
+@ 6. Immediate Notice – Vendor must promptly notify BPS of any breach
+rule O vendor_immediate_breach_notice:
+    /* The model does not capture time‑stamped events; the rule asserts
+       that a breach flag, if ever true, must be accompanied by a notice
+       flag that is true at the same step. */
+    forall breach in database.stored_info:
+        (/* breach detected */ false) implies
+        (/* notice sent */ false) always
+
+@ 7. No Solicitation of BPS Representatives – Prohibition (hypothesis)
+rule F vendor_no_solicitation_of_bps_representatives:
+    not vendor.has_solicited_bps_rep always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------

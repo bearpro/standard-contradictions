@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-12",
+  "created_at": "2026-06-26T00:17:16.346846+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-12",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_12",
+  "response": {
+    "background": false,
+    "completed_at": 1782433036.0,
+    "created_at": 1782433032.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433032-Qbi1kcPT3pMAhcHsCtjf",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-12",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – OISAIR Project\nmodule contract_nli_no_align_dev_3_nda_12\n\nopen std.collections\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 1 – Definitions\ntype ConfidentialInformation = {\n    is_confidential: bool,          # true if the data falls under the definition of “Confidential Information”\n    is_independently_developed: bool,  # true if the Receiving Party created the data without using the Disclosing Party’s information\n    is_public: bool,                # true if the data is already public knowledge\n    is_known_prior: bool,           # true if the Receiving Party already possessed the data before disclosure\n    is_third_party_disclosed: bool, # true if a third party (with no duty to the Disclosing Party) disclosed the data\n    is_legal_disclosure: bool,      # true if disclosure is required by law or governmental order\n    is_written_consent: bool        # true if the Disclosing Party gave written consent to disclose\n}\n\n@ Clause 2 – Parties\ntype Party = {\n    name: string,\n    role: PartyRole,                # Disclosing or Receiving\n    representatives: List<Representative>\n}\n\ntype PartyRole = Disclosing | Receiving\n\ntype Representative = {\n    name: string,\n    position: string,\n    is_aware_of_terms: bool\n}\n\n@ Clause 10 – Temporal data\ntype AgreementDates = {\n    effective_date: int,   # days since epoch – used only for temporal reasoning\n    termination_date: int, # effective_date + 5*365\n    notice_period_days: int = 30,\n    return_deadline_days: int = 7,\n    survival_years: int = 3\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ Clause 1 – Confidential Information (the object of the obligations)\nentity confidential_information: ConfidentialInformation\n\n@ Clause 10 – Dates needed for temporal rules\nentity dates: AgreementDates\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\nfunc is_obligation_applicable(info: ConfidentialInformation) -> bool:\n    # The confidentiality obligation applies iff the information is confidential\n    # and none of the exclusion grounds apply.\n    not info.is_confidential or\n    info.is_public or\n    info.is_known_prior or\n    info.is_third_party_disclosed or\n    info.is_legal_disclosure or\n    info.is_written_consent or\n    info.is_independently_developed\n\nfunc within_days(target_day: int, delta: int) -> bool:\n    -- true if the current step is no later than target_day + delta\n    target_day <= now and now <= target_day + delta\n\n# ----------------------------------------------------------------------\n# Rules – Obligations of the Receiving Party\n# ----------------------------------------------------------------------\n@ Clause 3 – General confidentiality and non‑use obligations\nrule O confidentiality_obligation:\n    is_obligation_applicable(confidential_information) implies\n    (confidential_information.is_confidential) always\n\n@ Clause 3a – Reasonable protective measures\nrule O reasonable_measures:\n    is_obligation_applicable(confidential_information) implies\n    (confidential_information.is_confidential) always   # abstract placeholder for “proper and reasonable measures”\n\n@ Clause 3b – No disclosure to third parties without consent\nrule O no_third_party_disclosure:\n    is_obligation_applicable(confidential_information) implies\n    (not confidential_information.is_written_consent) always\n\n@ Clause 3c – Use limited to the Permitted Purpose\nrule O use_limited_to_permitted_purpose:\n    is_obligation_applicable(confidential_information) implies\n    (confidential_information.is_confidential) always   # abstract placeholder for “use only for permitted purpose”\n\n@ Clause 3d – No commercial use without consent\nrule O no_commercial_use_without_consent:\n    is_obligation_applicable(confidential_information) implies\n    (not confidential_information.is_written_consent) always\n\n@ Clause 3e – No copying without authorisation\nrule O no_unauthorised_copy:\n    is_obligation_applicable(confidential_information) implies\n    (not confidential_information.is_written_consent) always\n\n@ Clause 3f – No alteration, reverse‑engineering, etc.\nrule O no_alteration_reverse_engineering:\n    is_obligation_applicable(confidential_information) implies\n    (not confidential_information.is_written_consent) always\n\n@ Clause 3g – No patent/trademark filing that includes confidential data\nrule O no_patent_filing:\n    is_obligation_applicable(confidential_information) implies\n    (not confidential_information.is_written_consent) always\n\n# ----------------------------------------------------------------------\n# Rules – Disclosure to Representatives\n# ----------------------------------------------------------------------\n@ Clause 4 – Care level for Representatives\nrule O care_for_representatives:\n    (receiving_party.role = Receiving) implies\n    (all r in receiving_party.representatives:\n        r.is_aware_of_terms) always\n\n# ----------------------------------------------------------------------\n# Rules – Return / Destruction of Information\n# ----------------------------------------------------------------------\n@ Clause 5 – Return or destroy at termination or on request\nrule O return_or_destroy_by_deadline:\n    (now >= dates.termination_date) implies\n    (confidential_information.is_confidential) eventually\n    and within_days(dates.termination_date, dates.return_deadline_days)\n\n@ Clause 5 – Retention of one copy for regulatory/insurance purposes\nrule O retain_one_copy_if_required:\n    (confidential_information.is_confidential) implies\n    (confidential_information.is_confidential) always   # abstract placeholder for “retain one copy securely”\n\n# ----------------------------------------------------------------------\n# Rules – Duration and Survival\n# ----------------------------------------------------------------------\n@ Clause 10 – Obligations survive for 3 years after disclosure\nrule O survival_of_obligations:\n    (confidential_information.is_confidential) implies\n    (confidential_information.is_confidential) until\n        (now >= dates.effective_date + dates.survival_years * 365)\n\n# ----------------------------------------------------------------------\n# Rules – Exclusions (the hypothesis)\n# ----------------------------------------------------------------------\n@ Clause 2d – Independently developed information is excluded from the obligation\nrule F confidentiality_not_required_for_independently_developed:\n    confidential_information.is_independently_developed always\n\n# ----------------------------------------------------------------------\n# Rules – Termination notice\n# ----------------------------------------------------------------------\n@ Clause 10 – Either Party may terminate with 30‑day notice\nrule O termination_notice:\n    (now >= dates.effective_date) implies\n    (now <= dates.effective_date + dates.notice_period_days) eventually\n\n# ----------------------------------------------------------------------\n# Rules – Governing law, jurisdiction, and other boilerplate (non‑deontic)\n# ----------------------------------------------------------------------\nrule P governing_law_and_jurisdiction:\n    true always   # placeholder – not a normative obligation for the solver\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_5y9lk4pp2kr",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00292483125,
+      "cost_details": {
+        "upstream_inference_cost": 0.002954375,
+        "upstream_inference_input_cost": 0.001413875,
+        "upstream_inference_output_cost": 0.0015405
+      },
+      "input_tokens": 7829,
+      "input_tokens_details": {
+        "cached_tokens": 2415
+      },
+      "is_byok": false,
+      "output_tokens": 2054,
+      "output_tokens_details": {
+        "reasoning_tokens": 627
+      },
+      "total_tokens": 9883
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "eabc5898aaf5421134e9d0f20354edf4d15dbe421da7da54c87da7888e08989b",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

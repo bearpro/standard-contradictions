@@ -1,0 +1,89 @@
+```mdl
+@ AGREEMENT ON THE NON‑DISCLOSURE OF CONFIDENTIAL INFORMATION (TWO‑WAY)
+@ Effective date: 200_   (placeholder)
+@ Parties: University of Bristol (disclosing) and __________________________ (receiving)
+module contract_nli_no_align_dev_15_nda_10
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type Party = {
+    name: string,
+    address: string,
+    # Boolean flags that capture the state of the receiving party
+    disclosed_agreement: bool,          # has the receiving party disclosed the *existence* of the agreement?
+    received_confidential_info: bool,   # has any confidential information been received?
+    took_reasonable_measures: bool,     # has the receiving party taken reasonable steps to protect the information?
+    used_confidential_info_commercially: bool,
+    disclosed_confidential_info: bool,  # disclosure to any third party (including employees) of the confidential content
+    made_copy_of_confidential_info: bool,
+    marked_confidential_info: bool,     # has the information been labeled “Confidential”?
+    employees_with_access: bool         # are there employees who have been granted access?
+}
+
+type ConfidentialInfo = {
+    description: string,   # e.g. “specifications”, “drawings”, “software”, …
+    content: string
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Disclosing party (University of Bristol)
+entity disclosing_party: Party
+
+@ Receiving party (the other signatory)
+entity receiving_party: Party
+
+@ A concrete piece of confidential information that may be exchanged
+entity confidential_item: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Functions (pure helpers)
+# ----------------------------------------------------------------------
+func is_properly_protected(rp: Party) -> bool:
+    rp.took_reasonable_measures and rp.marked_confidential_info
+
+func is_allowed_disclosure(rp: Party) -> bool:
+    # Disclosures are only allowed to employees who need to know
+    rp.employees_with_access and rp.disclosed_confidential_info
+
+# ----------------------------------------------------------------------
+# Rules – obligations (O) and prohibitions (F)
+# ----------------------------------------------------------------------
+@ Clause 2 – marking of confidential information
+rule O mark_confidential_information:
+    receiving_party.marked_confidential_info always
+
+@ Clause 3(a) – reasonable protective measures
+rule O take_reasonable_measures:
+    receiving_party.took_reasonable_measures always
+
+@ Clause 3(b) – prohibition on commercial use
+rule F use_confidential_information_commercially:
+    not receiving_party.used_confidential_info_commercially always
+
+@ Clause 3(c) – prohibition on disclosure to third parties
+rule F disclose_confidential_information_to_third_party:
+    not receiving_party.disclosed_confidential_info always
+
+@ Clause 3(d) – disclosure to employees only when necessary
+rule O disclose_to_employees_when_needed:
+    receiving_party.disclosed_confidential_info implies receiving_party.employees_with_access always
+
+@ Clause 3(e) – prohibition on copying/abstracting
+rule F copy_confidential_information:
+    not receiving_party.made_copy_of_confidential_info always
+
+@ Clause 3(f) – source acknowledgement (mark “Confidential”)
+rule O acknowledge_source_and_mark:
+    receiving_party.marked_confidential_info always
+
+@ Clause 5 – confidentiality period (10 years) – modelled as a perpetual obligation
+rule O maintain_confidentiality_for_ten_years:
+    not receiving_party.disclosed_confidential_info always
+
+@ **Hypothesis** – the receiving party must not disclose the *existence* of the agreement
+rule F disclose_agreement_existence:
+    not receiving_party.disclosed_agreement always
+```

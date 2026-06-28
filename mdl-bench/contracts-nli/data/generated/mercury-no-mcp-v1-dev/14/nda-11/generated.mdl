@@ -1,0 +1,120 @@
+@ Contract: Confidentiality and Non‑Disclosure Agreement Governing the Inspection of Stockholder List
+module contract_nli_no_align_dev_14_nda_11
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Clause 1 – purpose of the Confidential Material
+type PartyRole = | Company(unit) | Stockholder(unit)
+
+type Party = {
+    role: PartyRole,
+    name: string
+}
+
+type ConfidentialMaterial = {
+    produced_by: Party,          # the Party that supplies the material
+    purpose: string,             # textual description of the permitted purpose
+    contains_confidential_info: bool
+}
+
+type Object = {
+    description: string,
+    embodies_confidential_info: bool
+}
+
+type ReverseEngineeringEvent = {
+    obj: Object,
+    attempted: bool
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects
+# ----------------------------------------------------------------------
+@ Clause 0 – parties to the Agreement
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 0 – material that may be inspected
+entity confidential_material: ConfidentialMaterial
+
+@ Clause 0 – any object that could embody the confidential information
+entity object: Object
+
+@ Clause 0 – record of a reverse‑engineering attempt (if any)
+entity reverse_engineering_event: ReverseEngineeringEvent
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Clause 1 – check that the purpose is “reasonably related to Stockholder’s interests”
+func purpose_is_permitted(pur: string) -> bool:
+    pur == "reasonably related to Stockholder’s interests"
+
+@ Clause 4 – placeholder for the notification to the Company (pure function, always true when called)
+func notify_company() -> bool:
+    true
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements
+# ----------------------------------------------------------------------
+# 1. Use of Confidential Material is limited to the permitted purpose
+@ Clause 1
+rule O use_confidential_material_for_permitted_purpose:
+    purpose_is_permitted(confidential_material.purpose) always
+
+# 2. Receiving Party must not disclose, publish or communicate Confidential Material
+@ Clause 2
+rule F disclose_confidential_material:
+    confidential_material.contains_confidential_info always
+
+# 3. If disclosure is required by law, the Receiving Party must give prompt notice
+@ Clause 3
+rule O give_prompt_notice_when_legal_disclosure_required:
+    (confidential_material.contains_confidential_info implies notify_company()) always
+
+# 4. Receiving Party shall not reverse‑engineer any object that embodies Confidential Information
+@ Clause 1 (hypothesis)
+rule F reverse_engineer_prohibited:
+    reverse_engineering_event.obj.embodies_confidential_info
+    and reverse_engineering_event.attempted always
+
+# 5. Jurisdiction – parties submit to Delaware Court of Chancery
+@ Clause 4
+rule O submit_to_delaware_chancery_jurisdiction:
+    true always   # (the rule is a placeholder indicating the agreement’s jurisdiction)
+
+# 6. Remedy – breach causes irreparable harm; specific performance / injunctive relief applies
+@ Clause 5
+rule O specific_performance_and_injunctive_relief_available:
+    true always
+
+# 7. No amendment except a signed writing
+@ Clause 6
+rule O amendment_requires_written_agreement:
+    true always
+
+# 8. Agreement binds parties and their successors, assigns, etc.
+@ Clause 7
+rule O binding_on_successors_and_assigns:
+    true always
+
+# 9. Governing law – State of Delaware
+@ Clause 8
+rule O governed_by_delaware_law:
+    true always
+
+# 10. Execution in counterparts
+@ Clause 9
+rule O execution_in_multiple_counterparts:
+    true always
+
+# 11. Entire agreement clause
+@ Clause 10
+rule O entire_agreement_clause:
+    true always
+
+# 12. No construction against author
+@ Clause 11
+rule O no_construction_against_author:
+    true always

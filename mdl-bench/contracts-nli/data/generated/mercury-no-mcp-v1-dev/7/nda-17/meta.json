@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-17",
+  "created_at": "2026-06-26T00:19:15.050146+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-17",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_17",
+  "response": {
+    "background": false,
+    "completed_at": 1782433154.0,
+    "created_at": 1782433153.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433153-8OoCvrJvCK2kTuRwbHhj",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-17",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – model for copy‑creation of Confidential Information\nmodule contract_nli_no_align_dev_7_nda_17\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 2.1 – Parties to the agreement\ntype Party = Company | AHPL\n\n@ Clause 1.2(a) – Confidential Information (simplified)\ntype ConfidentialInfo = {\n    source : Party,          # who disclosed the information (Discloser)\n    content : string         # placeholder for the actual data\n}\n\n@ Clause 2.1(b) – Copy action performed by a party\ntype CopyAction = {\n    info               : ConfidentialInfo,   # the information being copied\n    made_by            : Party,              # party that creates the copy\n    necessary_for_purpose : bool              # true iff the copy is reasonably necessary for the Purpose\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Clause 2.1(b) – a concrete copy operation that may occur in a trace\nentity copy_action : CopyAction\n\n# ----------------------------------------------------------------------\n# Rules\n# ----------------------------------------------------------------------\n@ Clause 2.1(b) – Prohibition on copying unless it is reasonably necessary\nrule F copying_not_reasonable:\n    copy_action.made_by = Company and\n    not copy_action.necessary_for_purpose always\n\n@ Clause 2.1(b) – Permission to copy when it is reasonably necessary for the Purpose\nrule P copying_allowed:\n    copy_action.made_by = Company and\n    copy_action.necessary_for_purpose always\n\n# ----------------------------------------------------------------------\n# Helper (optional) – a predicate that determines whether a copy is allowed\n# ----------------------------------------------------------------------\nfunc is_copy_permitted(action: CopyAction) -> bool:\n    action.made_by = Company and action.necessary_for_purpose\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_vuxf1ex9ird",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002394513,
+      "cost_details": {
+        "upstream_inference_cost": 0.0024187,
+        "upstream_inference_input_cost": 0.00158845,
+        "upstream_inference_output_cost": 0.00083025
+      },
+      "input_tokens": 11464,
+      "input_tokens_details": {
+        "cached_tokens": 5678
+      },
+      "is_byok": false,
+      "output_tokens": 1107,
+      "output_tokens_details": {
+        "reasoning_tokens": 739
+      },
+      "total_tokens": 12571
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "8c090376868bb94b29c32cd4e41f797f9a15fff497c3c059c54b82d621a6996e",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

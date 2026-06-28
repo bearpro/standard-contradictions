@@ -1,0 +1,137 @@
+```mdl
+@ Confidentiality (Non‑Disclosure) Agreement – Model
+module contract_nli_no_align_dev_12_nda_1
+
+open std.collections
+
+/* ----------------------------------------------------------------------
+   Domain types
+   ---------------------------------------------------------------------- */
+@ Parties to the Agreement
+type Party =
+    | BROOKS(unit)
+    | CLIENT(unit)
+
+@ Types of exceptions that defeat the confidentiality obligation
+type ExceptionType =
+    | AlreadyPossesses(unit)
+    | IndependentlyDeveloped(unit)
+    | RightfulThirdParty(unit)
+    | Inadvertently(unit)
+    | ClientConsent(unit)
+    | ServicePerformance(unit)
+    | PubliclyAvailable(unit)
+
+/* ----------------------------------------------------------------------
+   Entity that represents a piece of Confidential Information
+   ---------------------------------------------------------------------- */
+@ Clause 1 – definition of “Confidential Information”
+type ConfidentialInfo = {
+    disclosed_by : Party,          -- the party that supplied the information
+    identified    : bool,          -- the information is expressly identified by the disclosing party
+    exception_type: ExceptionType option,   -- None means no exception applies
+    disclosed     : bool           -- true when BROOKS has actually disclosed the information
+}
+entity confidential_info : ConfidentialInfo
+
+/* ----------------------------------------------------------------------
+   Supporting entities for other obligations
+   ---------------------------------------------------------------------- */
+@ Event that a legal compulsion to disclose arises (Clause 4)
+type CompelledEvent = {
+    compelled          : bool,   -- true when a subpoena, court order, etc. is received
+    notified_client    : bool,   -- true when BROOKS has sent the required written notice
+    protective_order    : bool,   -- true when a protective order has been obtained
+    waiver_obtained     : bool    -- true when CLIENT waives the confidentiality provision
+}
+entity compelled_event : CompelledEvent
+
+@ Termination of the business relationship (Clause 5)
+entity termination_event : { occurred : bool }
+
+@ CLIENT’s written request for return of material (Clause 5)
+entity client_return_request : { requested : bool }
+
+@ Status of the material after termination (Clause 5)
+type MaterialStatus = {
+    returned        : bool,   -- true when material has been returned to CLIENT
+    retained_years  : int,    -- number of years material has been retained
+    disposed        : bool    -- true when material has been disposed
+}
+entity material_status : MaterialStatus
+
+/* ----------------------------------------------------------------------
+   Helper functions
+   ---------------------------------------------------------------------- */
+func has_exception(info : ConfidentialInfo) : bool =
+    match info.exception_type with
+        | Some(_) => true
+        | None    => false
+
+func exception_is_public(info : ConfidentialInfo) : bool =
+    match info.exception_type with
+        | Some(ExceptionType.PubliclyAvailable(_)) => true
+        | _                                      => false
+
+/* ----------------------------------------------------------------------
+   Rules – deontic constraints
+   ---------------------------------------------------------------------- */
+
+/* Hypothesis: All Confidential Information shall be expressly identified
+   by the Disclosing Party. */
+@ Clause 1 – identification requirement
+rule O identified_confidential_info:
+    confidential_info.identified always
+
+/* Obligation: BROOKS shall keep Confidential Information confidential
+   unless an exception applies. */
+@ Clause 1.2 – prohibition on disclosure
+rule F brooks_prohibit_disclosure:
+    confidential_info.disclosed_by = Party.CLIENT
+    and not (has_exception(confidential_info))
+    and confidential_info.disclosed always
+
+/* Permission: Disclosure is allowed when a valid exception applies. */
+@ Clause 3 – permitted disclosures
+rule P brooks_allowed_disclosure:
+    confidential_info.disclosed_by = Party.CLIENT
+    and has_exception(confidential_info)
+    implies confidential_info.disclosed always
+
+/* Obligation: If BROOKS is legally compelled to disclose, it must notify CLIENT. */
+@ Clause 4 – compelled disclosure notice
+rule O brooks_notify_if_compelled:
+    compelled_event.compelled implies compelled_event.notified_client always
+
+/* Obligation: BROOKS must use best efforts (at CLIENT’s expense) to obtain a protective
+   order or a waiver before any disclosure. */
+@ Clause 4 – best‑efforts for protective order
+rule O brooks_best_efforts_protective_order:
+    compelled_event.compelled and not compelled_event.protective_order
+    and not compelled_event.waiver_obtained
+    implies (compelled_event.protective_order or compelled_event.waiver_obtained) always
+
+/* Obligation: Upon termination, if CLIENT requests, BROOKS must return the material. */
+@ Clause 5 – return on request
+rule O brooks_return_on_request:
+    termination_event.occurred and client_return_request.requested
+    implies material_status.returned always
+
+/* Obligation: If CLIENT does not request return, BROOKS may retain material for three
+   years and then dispose of it. */
+@ Clause 5 – retain‑then‑dispose when no request
+rule O brooks_retain_then_dispose:
+    termination_event.occurred and not client_return_request.requested
+    implies (material_status.retained_years >= 3 implies material_status.disposed) always
+
+/* Prohibition: Public disclosure without an applicable exception is forbidden. */
+@ Clause 3.5 – public availability exception only
+rule F brooks_prohibit_public_disclosure:
+    confidential_info.disclosed_by = Party.CLIENT
+    and not (exception_is_public(confidential_info))
+    and confidential_info.disclosed always
+
+/* ----------------------------------------------------------------------
+   End of model
+   ---------------------------------------------------------------------- */
+```

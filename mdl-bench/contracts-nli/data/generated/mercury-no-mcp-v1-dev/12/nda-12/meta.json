@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-12",
+  "created_at": "2026-06-26T00:21:31.175567+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-12",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_12",
+  "response": {
+    "background": false,
+    "completed_at": 1782433291.0,
+    "created_at": 1782433287.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433287-vQAIICzmyTVMjabcC3K8",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-12",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality (Non‑Disclosure) Agreement\nmodule contract_nli_no_align_dev_12_nda_12\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties\ntype Party = { name: string }\n\n@ Information categories covered by the Agreement\ntype InfoCategory =\n    | Personal\n    | Financial\n    | Product\n    | Formulation\n    | ProcessingProcedure\n\n@ Confidential information that may be exchanged\ntype ConfidentialInfo = {\n    category: InfoCategory,\n    source: Party,\n    -- state flags (set by the environment or by other rules)\n    is_disclosed: bool,\n    is_already_possessed: bool,\n    is_developed_independently: bool,\n    received_from_third_party: bool,\n    inadvertent_with_reasonable_care: bool,\n    consent_obtained: bool,\n    necessary_for_service: bool,\n    is_publicly_available: bool\n}\n\n@ Agreement lifecycle state\ntype AgreementState = {\n    terminated: bool,\n    client_requested_return: bool\n}\n\n@ Compelled disclosure event (e.g., subpoena)\ntype CompelledDisclosure = { occurs: bool }\n\n@ Material return status\ntype MaterialReturn = { returned: bool }\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The two contracting parties\nentity brooks: Party\nentity client: Party\n\n@ The piece of confidential information under consideration\nentity info: ConfidentialInfo\n\n@ Current state of the agreement\nentity agreement: AgreementState\n\n@ Whether a legal compulsion to disclose has arisen\nentity compelled: CompelledDisclosure\n\n@ Whether the client has received the material back\nentity material_return: MaterialReturn\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n@ Determines whether an exception to confidentiality applies (Clause 3)\nfunc exception_applies(i: ConfidentialInfo) -> bool:\n    i.is_already_possessed or\n    i.is_developed_independently or\n    i.received_from_third_party or\n    i.inadvertent_with_reasonable_care or\n    i.consent_obtained or\n    i.necessary_for_service or\n    i.is_publicly_available\n\n# ----------------------------------------------------------------------\n# Rules – Obligations (O), Prohibitions (F) and Permissions (P)\n# ----------------------------------------------------------------------\n@ Clause 1.2 – Obligation to keep confidential information confidential\nrule O confidentiality_obligation:\n    (not info.is_disclosed) or exception_applies(info) always\n\n@ Clause 1.2 – Prohibition of unauthorized disclosure\nrule F unauthorized_disclosure:\n    info.is_disclosed and not exception_applies(info) always\n\n@ Clause 4 – Obligation to notify client when legally compelled to disclose\nrule O notify_client_when_compelled:\n    compelled.occurs implies true always   -- the “true” body represents the duty to notify\n\n@ Clause 4 – Obligation to use best efforts to obtain protective order\nrule O best_efforts_for_protective_order:\n    compelled.occurs implies true always   -- placeholder for the effort obligation\n\n@ Clause 5 – Return of material upon termination and client request\nrule O return_material_on_termination:\n    agreement.terminated and agreement.client_requested_return implies material_return.returned always\n\n@ Clause 5 – Retention of material when no return request (3‑year hold)\nrule O retain_material_when_no_return:\n    agreement.terminated and not agreement.client_requested_return implies true always   -- represents the right to retain\n\n@ Clause 7 – Survival of obligations for one year after termination\nrule O survival_term:\n    agreement.terminated implies true always   -- the “true” body captures that obligations survive; timing is external\n\n@ Clause 3.2 – Permission to independently develop information similar to confidential info\nrule P independent_development_allowed:\n    info.is_developed_independently always\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_29f80w8nz1",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00220089375,
+      "cost_details": {
+        "upstream_inference_cost": 0.002223125,
+        "upstream_inference_input_cost": 0.000500375,
+        "upstream_inference_output_cost": 0.00172275
+      },
+      "input_tokens": 6938,
+      "input_tokens_details": {
+        "cached_tokens": 5485
+      },
+      "is_byok": false,
+      "output_tokens": 2297,
+      "output_tokens_details": {
+        "reasoning_tokens": 1536
+      },
+      "total_tokens": 9235
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "20268e65bb5550578943b3855132672c69b07ff57556b50d865f615701177581",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

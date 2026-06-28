@@ -1,0 +1,83 @@
+**MDL module name:** `contract_nli_no_align_dev_13_nda_16`
+
+```mdl
+@ Non‑Disclosure Agreement (NDA) – 11 Aug 2015 (PJ M & Transmission Owner)
+module contract_nli_no_align_dev_13_nda_16
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties to the Agreement
+type Party = {
+    name: string,               # e.g. "PJM" or "Transmission Owner"
+    is_disclosing: bool,        # true if this Party supplies Confidential Information
+    is_receiving: bool          # true if this Party receives Confidential Information
+}
+
+@ Confidential Information that is exchanged under the NDA
+type ConfidentialInformation = {
+    id: int,                    # unique identifier for the piece of information
+    owner: Party,               # the Disclosing Party that supplied it
+    holder: Party,              # the Receiving Party that currently possesses it
+    is_returned: bool,          # true when the information has been returned
+    is_destroyed: bool          # true when the information has been destroyed
+}
+
+@ The NDA itself – we only need the termination flag for this model
+type Agreement = {
+    terminated: bool            # true when the Agreement has been terminated
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ The NDA that governs the relationship
+entity agreement: Agreement
+
+@ The Party that is receiving Confidential Information (the “Receiving Party”)
+entity receiving_party: Party
+
+@ A piece of Confidential Information that the Receiving Party holds
+entity confidential_info: ConfidentialInformation
+
+# ----------------------------------------------------------------------
+# Rules – deontic obligations extracted from the NDA
+# ----------------------------------------------------------------------
+@ Clause 8 – “Ownership and Use of Confidential Information”
+@ The Receiving Party must return or destroy Confidential Information
+@ when the Agreement is terminated.
+rule O return_or_destroy_on_termination:
+    (agreement.terminated implies
+        (confidential_info.is_returned or confidential_info.is_destroyed)) always
+
+@ Clause 2 – “Reviewing Representative”
+@ A Reviewing Representative (a member of the Receiving Party) may only
+@ have access if they have executed a Non‑Disclosure Certificate.
+rule O reviewing_rep_must_have_certificate:
+    receiving_party.is_receiving implies
+        (confidential_info.holder = receiving_party) always
+
+@ Clause 5 – “Non‑Disclosure to Third Parties”
+@ No Confidential Information may be disclosed to a third party
+@ unless the Disclosing Party gives prior written approval.
+rule F disclose_to_third_party_without_approval:
+    (confidential_info.is_returned or confidential_info.is_destroyed) implies
+        (confidential_info.holder.is_disclosing) always
+
+# ----------------------------------------------------------------------
+# Helper functions (optional – keep the rules readable)
+# ----------------------------------------------------------------------
+func is_terminated(a: Agreement) -> bool: a.terminated
+
+func is_returned_or_destroyed(ci: ConfidentialInformation) -> bool:
+    ci.is_returned or ci.is_destroyed
+```
+
+**Explanation of the hypothesis**
+
+The hypothesis *“Receiving Party shall destroy or return some Confidential Information upon the termination of Agreement.”* is captured by the rule `return_or_destroy_on_termination`.  
+- The antecedent `agreement.terminated` models the moment the Agreement ends.  
+- The consequent `confidential_info.is_returned or confidential_info.is_destroyed` expresses the obligation to either return **or** destroy the information.  
+- The `always` temporal operator makes the obligation hold at every step of the trace where the antecedent is true, i.e., from the point of termination onward.  
+
+If the solver finds a trace where `agreement.terminated` is true but both `confidential_info.is_returned` and `confidential_info.is_destroyed` are false, the rule will be violated and the model will be reported as **unsat**, confirming that the hypothesis is a required obligation under the NDA.

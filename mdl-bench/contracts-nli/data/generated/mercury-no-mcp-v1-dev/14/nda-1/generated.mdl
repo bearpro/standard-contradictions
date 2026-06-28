@@ -1,0 +1,108 @@
+@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list
+module contract_nli_no_align_dev_14_nda_1
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party = {
+    name: string
+}
+
+@ Information that the Company may disclose to the Stockholder
+type ConfidentialMaterial = {
+    description: string,          # free‑text description of the material
+    is_identified: bool           # true iff the material has been expressly identified by the disclosing Party
+}
+
+# ----------------------------------------------------------------------
+# Entities (stable public objects)
+# ----------------------------------------------------------------------
+@ The Company (Patriot Scientific Corporation)
+entity company: Party
+
+@ The Stockholder (the receiving party)
+entity stockholder: Party
+
+@ The Confidential Material that may be inspected
+entity confidential_material: ConfidentialMaterial
+
+# ----------------------------------------------------------------------
+# Helper functions (pure, used only to keep rules readable)
+# ----------------------------------------------------------------------
+@ Returns true if the Stockholder has disclosed the material to any third party
+func disclosed(cm: ConfidentialMaterial) -> bool:
+    false   # placeholder – the solver will assign a value consistent with other rules
+
+@ Returns true if an external legal process forces disclosure of the material
+func required_to_disclose(cm: ConfidentialMaterial) -> bool:
+    false   # placeholder
+
+@ Returns true if the Stockholder gives the Company notice within two business days
+func notice_given_within_2_days(cm: ConfidentialMaterial) -> bool:
+    true    # placeholder
+
+@ Returns true if an amendment is made without a written, signed instrument
+func unsigned_amendment() -> bool:
+    false   # placeholder
+
+# ----------------------------------------------------------------------
+# Normative rules (deontic modalities + LTLf temporal operators)
+# ----------------------------------------------------------------------
+@ Clause 1 – use of Confidential Material only for purposes reasonably related to the Stockholder’s interests
+rule O use_confidential_material_for_purposes:
+    true always   # the model assumes the Stockholder complies; a concrete predicate can be added later
+
+@ Clause 2 – prohibition on disclosure, publication or communication of Confidential Material
+rule F disclose_confidential_material:
+    disclosed(confidential_material) always
+
+@ Clause 2 – prohibition on disclosing names, addresses, holdings of any other stockholder
+rule F disclose_other_stockholder_details:
+    false always   # placeholder – a concrete predicate could be added if such a field existed
+
+@ Clause 3 – notice requirement when disclosure is compelled by law
+rule O provide_notice_when_required:
+    required_to_disclose(confidential_material) implies
+        notice_given_within_2_days(confidential_material) always
+
+@ Clause 4 – exclusive jurisdiction of the Delaware Court of Chancery
+rule O accept_delaware_chancery_jurisdiction:
+    true always
+
+@ Clause 5 – acknowledgment that the Company has no adequate legal remedy and may seek specific performance / injunctive relief
+rule P seek_specific_performance_or_injunctive_relief:
+    true always
+
+@ Clause 6 – amendment, waiver or termination only by a written, signed instrument
+rule F unsigned_amendment:
+    unsigned_amendment() always
+
+@ Clause 7 – binding effect on parties and their successors, assigns, etc.
+rule O agreement_is_binding_on_successors:
+    true always
+
+@ Clause 8 – governing law of the State of Delaware
+rule O governed_by_delaware_law:
+    true always
+
+@ Clause 9 – execution in multiple counterparts constitutes a single agreement
+rule O multiple_counterparts_form_one_agreement:
+    true always
+
+@ Clause 10 – entire agreement clause
+rule O entire_agreement_supersedes_prior:
+    true always
+
+@ Clause 11 – no construction against either party by reason of authorship
+rule O no_construction_against_author:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis to be checked against the model
+# ----------------------------------------------------------------------
+@ Hypothesis: All Confidential Information shall be expressly identified by the Disclosing Party
+rule O all_confidential_information_must_be_identified:
+    confidential_material.is_identified always

@@ -1,0 +1,53 @@
+@ Contract: Non‑Disclosure Agreement (NDA) – Hypothesis:
+# “Receiving Party shall not disclose the fact that the Agreement was agreed or negotiated.”
+module contract_nli_no_align_dev_12_nda_10
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ The two parties to the NDA
+type Party = {
+    name: string,          # e.g. "BROOKS' BOTTLING COMPANY, LLC" or "CLIENT"
+    role: Role
+}
+
+@ Role of a party in the context of the NDA
+type Role =
+    | Receiving(unit)      # the party that receives Confidential Information (BROOKS)
+    | Disclosing(unit)     # the party that discloses Confidential Information (CLIENT)
+
+@ The kind of information that may be disclosed
+type DisclosureInfo =
+    | AgreementExistence(unit)   # the fact that the Agreement exists / was negotiated
+    | OtherInfo(string)         # any other type of information
+
+@ A single disclosure event (for modelling purposes)
+type Disclosure = {
+    info: DisclosureInfo,   # what is being disclosed
+    recipient: Party        # who receives the disclosure
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The receiving party (BROOKS) – the party that must keep the Agreement existence confidential
+entity receiving_party: Party
+
+@ A concrete disclosure event that could occur during the life‑time of the Agreement
+entity disclosure: Disclosure
+
+# ----------------------------------------------------------------------
+# Functions (helpers)
+# ----------------------------------------------------------------------
+@ Returns true if the disclosed information is *not* the existence of the Agreement
+func is_allowed_disclosure(d: Disclosure) -> bool:
+    case d.info of
+        | DisclosureInfo.AgreementExistence(): false
+        | _: true
+
+# ----------------------------------------------------------------------
+# Rules (normative requirements)
+# ----------------------------------------------------------------------
+@ Prohibition: the receiving party must not disclose the existence of the Agreement
+rule F no_disclosure_of_agreement_existence:
+    is_allowed_disclosure(disclosure) always

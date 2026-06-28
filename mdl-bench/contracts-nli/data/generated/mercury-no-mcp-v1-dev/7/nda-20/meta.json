@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-20",
+  "created_at": "2026-06-26T00:19:25.589368+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-20",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_20",
+  "response": {
+    "background": false,
+    "completed_at": 1782433165.0,
+    "created_at": 1782433163.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433163-Ja9MtBoPg63UlwWwhu6j",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-20",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – Singapore (2025)\nmodule contract_nli_no_align_dev_7_nda_20\n\nopen std.collections\n\n@ Clause 2.1 – handling of Confidential Information\ntype ConfidentialInfo = {\n    id: string,                 # unique identifier of the item of information\n    is_returned: bool,          # true when the item has been returned to the Discloser\n    is_destroyed: bool,         # true when the item has been destroyed as required\n    is_retained: bool           # true when the Receiving Party still holds a copy\n}\n\n@ The Receiving Party (the Company) that receives the information\nentity receiving_party: {\n    info: List<ConfidentialInfo>\n}\n\n@ Helper predicate – a piece of information must not be retained after it has been\n@ returned or destroyed.\nfunc not_retained_after_return_or_destroy(info: ConfidentialInfo) -> bool:\n    (info.is_returned or info.is_destroyed) implies not info.is_retained\n\n@ Clause 2.1(c) – prohibition on retaining Confidential Information after return\n@ The Receiving Party is prohibited from keeping any copy once it has been\n@ returned or destroyed.\nrule F retain_after_return_or_destroy:\n    forall i in receiving_party.info:\n        not_retained_after_return_or_destroy(i) always\n\n@ Clause 2.1(e) – obligation to apply at least the same security measures as for\n@ its own confidential information.  This is modeled as an obligation that the\n@ Receiving Party’s security level for each item is at least “adequate”.\ntype SecurityLevel = Low | Adequate | High\n\nentity security_policy: {\n    level: SecurityLevel\n}\n\nentity info_security: {\n    info_id: string,\n    level: SecurityLevel\n}\n\nrule O security_not_lower_than_adequate:\n    forall s in receiving_party.info:\n        let sec = info_security { info_id = s.id, level = Adequate } in\n        sec.level >= Adequate always\n\n@ Clause 3 – return of Confidential Information\n@ The Receiving Party must return all documents and copies within one month.\nrule O return_within_one_month:\n    forall i in receiving_party.info:\n        (i.is_returned) always\n\n@ Clause 4 – data protection (integrity, loss, corruption)\n@ The Receiving Party must preserve integrity of the data.\nrule O preserve_integrity:\n    forall i in receiving_party.info:\n        (i.is_destroyed or i.is_returned) implies not i.is_retained always\n\n@ Clause 5 – no licence granted\nrule F licence_granted:\n    true always   # placeholder – the agreement explicitly states no licence is granted\n\n@ Clause 7 – equitable relief for breach\nrule O seek_equitable_relief_on_breach:\n    true always   # placeholder – the right to seek injunctions is an obligation of the Discloser\n\n@ Clause 15 – dispute resolution (mediation before arbitration)\nrule O mediation_before_arbitration:\n    true always   # placeholder – parties must attempt mediation first\n\n@ End of model\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_ay322c3h1b",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00248106375,
+      "cost_details": {
+        "upstream_inference_cost": 0.002506125,
+        "upstream_inference_input_cost": 0.001560375,
+        "upstream_inference_output_cost": 0.00094575
+      },
+      "input_tokens": 11259,
+      "input_tokens_details": {
+        "cached_tokens": 5575
+      },
+      "is_byok": false,
+      "output_tokens": 1261,
+      "output_tokens_details": {
+        "reasoning_tokens": 640
+      },
+      "total_tokens": 12520
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "17b30ca1461dfa77ec9a24e2ea2526e91906bcc7b7989fd18992ef825653f0f0",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

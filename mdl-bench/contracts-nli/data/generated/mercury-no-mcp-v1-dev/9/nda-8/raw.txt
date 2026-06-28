@@ -1,0 +1,49 @@
+```mdl
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_9_nda_8
+
+# ----------------------------------------------------------------------
+# Parties
+# ----------------------------------------------------------------------
+type PartyRole = Vendor | BPS
+
+type Party = {
+    name: string,
+    role: PartyRole
+}
+
+entity vendor: Party
+entity bps: Party
+
+# ----------------------------------------------------------------------
+# Confidential information (placeholder – only needed for alignment)
+# ----------------------------------------------------------------------
+type ConfidentialInfo = { description: string }
+
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Disclosure request triggered by law, regulation or judicial process
+# ----------------------------------------------------------------------
+type DisclosureRequest = {
+    required_by_law: bool   # true when a subpoena, court order, etc. is received
+}
+
+entity disclosure_request: DisclosureRequest
+
+# ----------------------------------------------------------------------
+# Vendor’s notification to BPS
+# ----------------------------------------------------------------------
+type VendorNotification = {
+    notified: bool   # true when Vendor has given BPS the required notice
+}
+
+entity vendor_notification: VendorNotification
+
+# ----------------------------------------------------------------------
+# Rule: Vendor must notify BPS whenever a legal process forces disclosure
+# ----------------------------------------------------------------------
+@ Clause “Disclosure Sought Under Legal Process”
+rule O vendor_must_notify_when_required:
+    (disclosure_request.required_by_law implies vendor_notification.notified) always
+```

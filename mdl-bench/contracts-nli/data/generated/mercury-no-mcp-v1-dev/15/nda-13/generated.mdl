@@ -1,0 +1,140 @@
+@ Agreement on the non‑disclosure of confidential information (two‑way)
+module contract_nli_no_align_dev_15_nda_13
+
+# ----------------------------------------------------------------------
+# Standard library imports (used for collections and strings)
+# ----------------------------------------------------------------------
+open std.collections
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party = {
+    name: string,
+    address: string
+}
+
+@ Information that is subject to the NDA
+type ConfidentialInfo = {
+    source: Party,                     # the disclosing party
+    description: string,               # short description of the material
+    is_marked_confidential: bool,      # must be marked as “Confidential”
+    is_public_domain: bool,            # excluded by clause 4‑a
+    is_independently_developed: bool,  # excluded by clause 4‑b
+    is_required_by_law: bool           # excluded by clause 4‑e
+}
+
+@ Documents that may be loaned under the schedule (clause 1)
+type Document = {
+    title: string,
+    is_marked_confidential: bool
+}
+
+# ----------------------------------------------------------------------
+# Model entities (stable public anchors)
+# ----------------------------------------------------------------------
+@ The university – the disclosing party
+entity disclosing_party: Party
+
+@ The other signatory – the receiving party
+entity receiving_party: Party
+
+@ The set of confidential items exchanged under the agreement
+entity confidential_items: List<ConfidentialInfo>
+
+@ Schedule of loaned documents (clause 1)
+entity loaned_documents: List<Document>
+
+# ----------------------------------------------------------------------
+# Helper functions (pure, for readability)
+# ----------------------------------------------------------------------
+func is_exempt(info: ConfidentialInfo) -> bool:
+    info.is_public_domain
+    or info.is_independently_developed
+    or info.is_required_by_law
+
+func must_be_protected(info: ConfidentialInfo) -> bool:
+    not (is_exempt(info))
+
+# ----------------------------------------------------------------------
+# Obligations of the Receiving Party (deontic modality O)
+# ----------------------------------------------------------------------
+@ Clause 2 – mark or designate confidential information
+rule O mark_confidential:
+    forall i in confidential_items:
+        i.is_marked_confidential always
+
+@ Clause 3a – take proper and reasonable measures to maintain confidentiality
+rule O maintain_confidentiality:
+    forall i in confidential_items:
+        must_be_protected(i) implies
+            (receiving_party_has_proper_measures) always
+
+@ Clause 3b – no use for commercial purpose without licence
+rule F use_for_commercial_without_licence:
+    forall i in confidential_items:
+        must_be_protected(i) implies
+            (receiving_party_uses_for_commercial(i) = false) always
+
+@ Clause 3c – no disclosure to third parties without written permission
+rule F disclose_to_third_without_permission:
+    forall i in confidential_items:
+        must_be_protected(i) implies
+            (receiving_party_discloses_to_third(i) = false) always
+
+@ Clause 3d – disclosure only to employees who need to know
+rule O disclose_to_employees_only_when_needed:
+    forall i in confidential_items:
+        must_be_protected(i) implies
+            (receiving_party_discloses_to_employee(i) = true) always
+
+@ Clause 3e – no copying or abstracting without written permission
+rule F copy_without_permission:
+    forall i in confidential_items:
+        must_be_protected(i) implies
+            (receiving_party_copies(i) = false) always
+
+@ Clause 3f – acknowledge source and label “Confidential”
+rule O acknowledge_and_label:
+    forall i in confidential_items:
+        must_be_protected(i) implies
+            (receiving_party_acknowledges_source(i) = true) and
+            (i.is_marked_confidential = true) always
+
+@ Clause 1 – return loaned documents on request
+rule O return_loaned_documents_on_request:
+    forall d in loaned_documents:
+        (receiving_party_requested_return(d) implies
+            receiving_party_returns(d)) always
+
+@ Clause 5 – confidentiality period of ten (10) years
+rule O confidentiality_duration:
+    forall i in confidential_items:
+        must_be_protected(i) implies
+            (confidentiality_ends_at(i) = effective_date + 10 years) always
+
+# ----------------------------------------------------------------------
+# Permissions (deontic modality P)
+# ----------------------------------------------------------------------
+@ Hypothesis – receiving party may acquire information similar to confidential
+@ information from a third party (not prohibited by the NDA)
+rule P acquire_similar_info_from_third_party:
+    true always
+
+# ----------------------------------------------------------------------
+# Placeholder boolean fields (to be instantiated by the solver / external data)
+# ----------------------------------------------------------------------
+# In a concrete deployment these would be supplied by the environment
+# (e.g., a compliance system) or by additional facts.
+fact receiving_party_has_proper_measures = true
+fact receiving_party_uses_for_commercial(i: ConfidentialInfo) = false
+fact receiving_party_discloses_to_third(i: ConfidentialInfo) = false
+fact receiving_party_discloses_to_employee(i: ConfidentialInfo) = true
+fact receiving_party_copies(i: ConfidentialInfo) = false
+fact receiving_party_acknowledges_source(i: ConfidentialInfo) = true
+fact receiving_party_requested_return(d: Document) = false
+fact receiving_party_returns(d: Document) = false
+fact effective_date = 2000-01-01   # placeholder for the actual effective date
+fact confidentiality_ends_at(i: ConfidentialInfo) = effective_date + 10 years

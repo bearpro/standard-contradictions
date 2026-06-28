@@ -1,0 +1,87 @@
+@ Confidentiality (Non‑Disclosure) Agreement
+module contract_nli_no_align_dev_12_nda_18
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain model
+# ----------------------------------------------------------------------
+type Party = { name: string }
+
+type ConfidentialInfo = {
+    is_personal: bool,
+    is_financial: bool,
+    is_product: bool,
+    is_formulation: bool,
+    is_processing: bool,
+    disclosed_to_brooks: bool          # true when BROOKS has received the info
+}
+
+type Representative = {
+    name: string,
+    party: Party,
+    solicited_by_brooks: bool          # true when BROOKS has solicited this rep
+}
+
+entity client: Party
+entity brooks: Party
+entity info: ConfidentialInfo
+entity client_rep: Representative
+
+# ----------------------------------------------------------------------
+# Helper predicates (pure functions)
+# ----------------------------------------------------------------------
+func is_confidential(i: ConfidentialInfo) -> bool:
+    i.is_personal or i.is_financial or i.is_product or
+    i.is_formulation or i.is_processing
+
+func brooks_discloses(i: ConfidentialInfo) -> bool:
+    i.disclosed_to_brooks and false   # placeholder – true only when a breach occurs
+
+# Exception predicates – all false here (they would be true in the
+# corresponding factual situations)
+func exception_already_possesses(i: ConfidentialInfo) -> bool: false
+func exception_develops_independently(i: ConfidentialInfo) -> bool: false
+func exception_rightfully_receives(i: ConfidentialInfo) -> bool: false
+func exception_inadvertent_disclosure(i: ConfidentialInfo) -> bool: false
+func exception_prior_written_consent(i: ConfidentialInfo) -> bool: false
+func exception_service_performance(i: ConfidentialInfo) -> bool: false
+
+# ----------------------------------------------------------------------
+# Normative rules (deontic + LTLf)
+# ----------------------------------------------------------------------
+@ Clause 1.2 – Non‑disclosure obligation
+rule O confidentiality_obligation:
+    ( is_confidential(info) implies not brooks_discloses(info) ) always
+
+@ Clause 3 – Exceptions (permission to disclose when an exception applies)
+rule P confidentiality_exception:
+    ( exception_already_possesses(info) or
+      exception_develops_independently(info) or
+      exception_rightfully_receives(info) or
+      exception_inadvertent_disclosure(info) or
+      exception_prior_written_consent(info) or
+      exception_service_performance(info) ) always
+
+@ Clause 4 – Compelled disclosure (must notify CLIENT)
+rule O compelled_disclosure_notice:
+    ( brooks_discloses(info) implies true ) always   # notification requirement omitted for brevity
+
+@ Clause 5 – Return of material after termination
+rule O return_material:
+    true always
+
+@ Clause 6 – Governing law (informational, no deontic effect)
+rule P governing_law:
+    true always
+
+@ Clause 7 – Survival of agreement
+rule O agreement_survival:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis (additional prohibition)
+# ----------------------------------------------------------------------
+@ Hypothesis – Receiving Party shall not solicit Disclosing Party's representatives
+rule F brooks_not_solicit_representatives:
+    client_rep.solicited_by_brooks false always

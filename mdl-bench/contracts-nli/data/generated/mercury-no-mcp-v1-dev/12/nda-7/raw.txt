@@ -1,0 +1,104 @@
+```mdl
+@ Confidentiality (Non‑Disclosure) Agreement
+module contract_nli_no_align_dev_12_nda_7
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties
+type Party = { name: string }
+
+@ Confidential information (Section 1)
+type ConfidentialInfo = {
+    is_consent_given: bool,
+    is_needed_for_performance: bool,
+    is_publicly_available: bool,
+    is_already_possessed_by_receiving: bool,
+    is_developed_independently: bool,
+    is_rightfully_received_from_third_party: bool
+}
+
+@ Third‑party roles that may receive information (Section 3.6)
+type ThirdPartyRole =
+    | Consultant(unit)
+    | Agent(unit)
+    | ProfessionalAdvisor(unit)
+    | Other(unit)
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+entity client: Party
+entity brooks: Party
+entity info: ConfidentialInfo
+
+@ A disclosure event – the act of sharing a piece of confidential information
+entity disclosure_event: {
+    info: ConfidentialInfo,
+    receiver: Party,
+    role: ThirdPartyRole
+}
+
+@ Compelled‑disclosure flag (Section 4)
+entity compelled_disclosure: bool
+entity client_notified: bool
+
+# ----------------------------------------------------------------------
+# Functions
+# ----------------------------------------------------------------------
+@ Determines whether a particular disclosure is allowed under any
+@ of the exceptions listed in Section 3.
+func allowed_exceptions(info: ConfidentialInfo, role: ThirdPartyRole) -> bool:
+    let consent      = info.is_consent_given
+    let performance  = info.is_needed_for_performance
+    let public       = info.is_publicly_available
+    let already      = info.is_already_possessed_by_receiving
+    let independent  = info.is_developed_independently
+    let third_party  = info.is_rightfully_received_from_third_party
+    case role:
+        | Consultant():        consent or performance or public or already or independent or third_party
+        | Agent():              consent or performance or public or already or independent or third_party
+        | ProfessionalAdvisor(): consent or performance or public or already or independent or third_party
+        | Other():              consent or public or already or independent or third_party
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+@ Section 1 – The information must fall under at least one exception to be
+@ considered “confidential” for the purpose of this agreement.
+rule O receive_confidential_info:
+    info.is_consent_given or
+    info.is_needed_for_performance or
+    info.is_publicly_available or
+    info.is_already_possessed_by_receiving or
+    info.is_developed_independently or
+    info.is_rightfully_received_from_third_party always
+
+@ Section 2.1 – Prohibit any disclosure that does not satisfy an exception.
+rule F unauthorized_disclosure:
+    (disclosure_event.info = info) and
+    not allowed_exceptions(info, disclosure_event.role) always
+
+@ Section 3.6 – Permit sharing with consultants, agents, or professional
+@ advisors when the client has given consent or the disclosure is needed for
+@ performance of the services.
+rule P share_with_consultants_agents_advisors:
+    (disclosure_event.role = Consultant() or
+     disclosure_event.role = Agent() or
+     disclosure_event.role = ProfessionalAdvisor()) and
+    (info.is_consent_given or info.is_needed_for_performance) always
+
+@ Section 4 – If BROOKS is legally compelled to disclose, it must notify
+@ the client in writing.
+rule O notify_client_on_compelled:
+    compelled_disclosure implies client_notified always
+
+@ Section 5 – Return of material (simplified placeholder; actual return logic
+@ is outside the scope of this model).
+rule O return_material_on_termination:
+    true always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

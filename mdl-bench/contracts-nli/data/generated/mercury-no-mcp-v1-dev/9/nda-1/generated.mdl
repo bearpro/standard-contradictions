@@ -1,0 +1,57 @@
+@ Contract: NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT
+@ Document: Transportation Challenge 2017
+@ Hypothesis: All Confidential Information shall be expressly identified by the Disclosing Party.
+module contract_nli_no_align_dev_9_nda_1
+
+# ----------------------------------------------------------------------
+# Standard library imports (for list handling)
+# ----------------------------------------------------------------------
+open std.collections
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Definition of a Party (the entity that discloses information)
+type Party = {
+    name: string
+    contact_email: string
+}
+
+@ Definition of a piece of Confidential Information
+type ConfidentialInformation = {
+    id: string,                 # Stable identifier for the information item
+    description: string,        # Human‑readable description
+    is_identified: bool         # True when the Disclosing Party has expressly identified it
+}
+
+# ----------------------------------------------------------------------
+# Model Entities
+# ----------------------------------------------------------------------
+@ The party that discloses the data (BPS in this agreement)
+entity disclosing_party: Party
+
+@ The set of all Confidential Information items that may be shared
+entity confidential_information_set: List<ConfidentialInformation>
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Recursively check that every element of a list of ConfidentialInformation
+@ has the flag `is_identified` set to true.
+func all_identified(lst: List<ConfidentialInformation>) -> bool:
+    case lst:
+        | Empty(_): true
+        | Cons(ci, rest):
+            ci.is_identified and all_identified(rest)
+
+# ----------------------------------------------------------------------
+# Requirements (Rules)
+# ----------------------------------------------------------------------
+@ Clause: “All Confidential Information shall be expressly identified by the Disclosing Party.”
+rule O confidential_information_must_be_identified:
+    all_identified(confidential_information_set) always
+
+@ Clause: The Disclosing Party must be a recognised BPS entity (ensures alignment with other standards)
+rule O disclosing_party_must_be_bps:
+    disclosing_party.name = "Boston Public Schools" and
+    disclosing_party.contact_email = "weger@bostonpublicschools.org" always

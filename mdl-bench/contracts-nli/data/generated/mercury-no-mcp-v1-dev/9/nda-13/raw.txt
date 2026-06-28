@@ -1,0 +1,80 @@
+```mdl
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (Transportation Challenge 2017)
+module contract_nli_no_align_dev_9_nda_13
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Definition of the two parties to the agreement
+type Party = 
+    | BPS(unit)          # Boston Public Schools
+    | Vendor(unit)       # The contracted vendor
+
+@ Information that is subject to the confidentiality obligations
+type ConfidentialInfo = {
+    category: string,      # e.g., "student routing"
+    description: string    # free‑form description of the data
+}
+
+@ Vendor‑specific responsibilities and security controls
+type VendorInfo = {
+    protects_confidentiality: bool,            # must employ reasonable safeguards
+    discloses_confidential_info: bool,         # must NOT disclose to unauthorized parties
+    notifies_bps_of_legal_process: bool,       # must inform BPS of subpoenas, court orders, etc.
+    returns_or_destroys_confidential_info: bool, # must return or destroy after use
+    uses_info_for_purpose: bool,               # must use only for the Challenge purpose
+    may_acquire_similar_info_from_third_party: bool # optional – not prohibited by the NDA
+}
+
+@ BPS‑specific permissions
+type BPSInfo = {
+    may_acquire_similar_info: bool   # permission to obtain similar data from third parties
+}
+
+# ----------------------------------------------------------------------
+# Entities (stable public objects)
+# ----------------------------------------------------------------------
+@ The vendor that signs the NDA
+entity vendor: VendorInfo
+
+@ The Boston Public Schools (BPS) party
+entity bps: BPSInfo
+
+# ----------------------------------------------------------------------
+# Rules – deontic constraints derived from the agreement
+# ----------------------------------------------------------------------
+@ 2.1 – Reasonable security precautions (obligation)
+rule O vendor_must_protect_confidentiality:
+    vendor.protects_confidentiality always
+
+@ 2.2 – Nondisclosure (prohibition)
+rule F vendor_must_not_disclose:
+    vendor.discloses_confidential_info = false always
+
+@ 2.4 – Disclosure sought under legal process (obligation)
+rule O vendor_must_notify_legal_process:
+    vendor.notifies_bps_of_legal_process always
+
+@ 2.6 – Return or destruction of materials (obligation)
+rule O vendor_must_return_or_destroy:
+    vendor.returns_or_destroys_confidential_info always
+
+@ 2.2 – Use of Confidential Information only for the Challenge purpose (prohibition)
+rule F vendor_must_use_only_for_challenge:
+    vendor.uses_info_for_purpose always
+
+@ 5 – BPS may acquire information that is similar to the Confidential Information
+#    from a third party (permission). The NDA does not forbid BPS from doing so.
+rule P bps_may_acquire_similar_info:
+    bps.may_acquire_similar_info always
+
+# ----------------------------------------------------------------------
+# Optional helper functions (pure, for readability)
+# ----------------------------------------------------------------------
+func is_confidential(info: ConfidentialInfo) -> bool:
+    true   -- the agreement treats all listed data as confidential
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

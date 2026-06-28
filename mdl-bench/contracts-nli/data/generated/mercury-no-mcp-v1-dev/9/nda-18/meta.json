@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-18",
+  "created_at": "2026-06-26T00:20:03.543027+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-18",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_18",
+  "response": {
+    "background": false,
+    "completed_at": 1782433203.0,
+    "created_at": 1782433201.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433201-AfKxHTpIne0kBFBWqPk0",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-18",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT\n@ Transportation Challenge 2017\nmodule contract_nli_no_align_dev_9_nda_18\n\n# ----------------------------------------------------------------------\n# Standard library imports (implicit in most environments)\n# ----------------------------------------------------------------------\nopen std.collections\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\n@ Parties (Vendor and BPS)\ntype Party = Vendor | BPS\n\n@ Individual person (could be employee, representative, etc.)\ntype Person = {\n    name: string,\n    role: string               # e.g., \"employee\", \"representative\"\n}\n\n@ Vendor (Receiving Party)\ntype Vendor = {\n    name: string,\n    employees: List<Person>,\n    # Indicates whether the Vendor has ever solicited a BPS representative.\n    # This field is used only for the “no‑solicitation” prohibition.\n    has_solicited_bps_rep: bool\n}\n\n@ Boston Public Schools (Disclosing Party)\ntype BPS = {\n    name: string,\n    representatives: List<Person>\n}\n\n@ Confidential information that is exchanged under the Agreement\ntype ConfidentialInfo = {\n    routing_data: string,      # abstract placeholder for the data set\n    protected: bool            # must be true for any data that is covered\n}\n\n@ Secure database used by the Vendor to store ConfidentialInfo\ntype Database = {\n    stored_info: List<ConfidentialInfo>,\n    # Security controls required by the Agreement (all must be true)\n    encryption_at_rest: bool,\n    encryption_in_transit: bool,\n    access_control: bool,\n    audit_logging: bool,\n    firewall_enabled: bool,\n    anti_virus_installed: bool\n}\n\n# ----------------------------------------------------------------------\n# Entities – the public objects that will be aligned across modules\n# ----------------------------------------------------------------------\n@ The Vendor (Receiving Party)\nentity vendor: Vendor\n\n@ The Boston Public Schools (Disclosing Party)\nentity bps: BPS\n\n@ The secure database maintained by the Vendor\nentity database: Database\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Checks whether a given Person is a BPS representative\nfunc is_bps_rep(person: Person, bps: BPS) -> bool:\n    list.contains(bps.representatives, person)\n\n@ Checks whether the Vendor has ever solicited a specific Person\nfunc vendor_solicited(v: Vendor, p: Person) -> bool:\n    v.has_solicited_bps_rep and is_bps_rep(p, bps)\n\n# ----------------------------------------------------------------------\n# Rules – deontic requirements extracted from the Agreement\n# ----------------------------------------------------------------------\n@ 1. Confidentiality – Vendor must keep all ConfidentialInfo protected\nrule O vendor_protects_confidential_info:\n    forall info in database.stored_info:\n        info.protected always\n\n@ 2. Security Controls – the Database must implement all required safeguards\nrule O database_security_controls:\n    database.encryption_at_rest and\n    database.encryption_in_transit and\n    database.access_control and\n    database.audit_logging and\n    database.firewall_enabled and\n    database.anti_virus_installed always\n\n@ 3. Nondisclosure – Vendor may use ConfidentialInfo only for the Challenge\nrule O vendor_use_limited_to_challenge:\n    forall info in database.stored_info:\n        info.protected implies true always   # placeholder – actual purpose check is external\n\n@ 4. Return/Destruction – Vendor must return or destroy all ConfidentialInfo on request\nrule F vendor_return_or_destroy_on_request:\n    (forall info in database.stored_info:\n        info.protected) implies\n        (info in database.stored_info = false) always\n\n@ 5. Publication – Vendor may not publish any material without BPS consent\nrule F vendor_no_unauthorized_publication:\n    not (exists info in database.stored_info:\n            info.protected and\n            /* publication flag would be modeled as a separate field;\n               here we treat any protected info as non‑publishable */\n            true) always\n\n@ 6. Immediate Notice – Vendor must promptly notify BPS of any breach\nrule O vendor_immediate_breach_notice:\n    /* The model does not capture time‑stamped events; the rule asserts\n       that a breach flag, if ever true, must be accompanied by a notice\n       flag that is true at the same step. */\n    forall breach in database.stored_info:\n        (/* breach detected */ false) implies\n        (/* notice sent */ false) always\n\n@ 7. No Solicitation of BPS Representatives – Prohibition (hypothesis)\nrule F vendor_no_solicitation_of_bps_representatives:\n    not vendor.has_solicited_bps_rep always\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_emfezjqir6d",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00204798825,
+      "cost_details": {
+        "upstream_inference_cost": 0.002068675,
+        "upstream_inference_input_cost": 0.000931675,
+        "upstream_inference_output_cost": 0.001137
+      },
+      "input_tokens": 8665,
+      "input_tokens_details": {
+        "cached_tokens": 5487
+      },
+      "is_byok": false,
+      "output_tokens": 1516,
+      "output_tokens_details": {
+        "reasoning_tokens": 580
+      },
+      "total_tokens": 10181
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "e947437676b5ce2dd9ca0b886239dd6222b647c748f567c0da64a479fda27ada",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

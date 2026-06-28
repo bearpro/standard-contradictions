@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-4",
+  "created_at": "2026-06-26T00:21:07.293244+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-4",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_4",
+  "response": {
+    "background": false,
+    "completed_at": 1782433267.0,
+    "created_at": 1782433265.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433265-KXe8Brjuq29aQDyEuz2T",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-4",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: CNDA – Confidentiality and Non‑Disclosure Agreement\nmodule contract_nli_no_align_dev_10_nda_4\n\nopen std.strings\n\n@ Parties defined in Article 1 – Definitions and Interpretation\ntype Party =\n    | DisclosingParty(unit)\n    | ReceivingParty(unit)\n\n@ Confidential Information defined in Article 2 – Confidential Information\ntype ConfidentialInformation = {\n    description: string,          // free‑form description of the information\n    is_marked_confidential: bool  // true if the document is clearly marked “Confidential”\n}\n\n@ Use of Confidential Information (implicit event) – not a clause but needed to model the hypothesis\ntype Usage = {\n    party: Party,                 // the party performing the use\n    info: ConfidentialInformation, // the confidential item being used\n    purpose: string               // textual description of the purpose for the use\n}\n\n@ Entities – one stable object per domain concept\n@ Clause 2.01 – Confidential Information\nentity confidential_info: ConfidentialInformation\n\n@ Clause 2.04 – No Benefit, Restricted Use (the Receiving Party is the only party that may use the info)\nentity receiving_party: Party = Party.ReceivingParty()\n\n@ Clause 2.01 – Disclosing Party (the other side of the agreement)\nentity disclosing_party: Party = Party.DisclosingParty()\n\n@ Clause 2.05 – No Disclosure (the Receiving Party may use the info only for permitted purposes)\nentity usage: Usage\n\n@ Helper function – a very simple placeholder for “purposes stated in the Agreement”\nfunc permitted_purpose(purpose: string) -> bool:\n    -- The Agreement permits purposes that reference the Agreement itself.\n    purpose contains \"Agreement\"\n\n@ Clause 2.04 – Receiving Party shall not derive benefit or use Confidential Information for any purpose other than the purposes stated in the Agreement.\nrule O no_unpermitted_use_of_confidential_info:\n    let is_receiving = usage.party = receiving_party\n    let uses_confidential = usage.info = confidential_info\n    let purpose_allowed = permitted_purpose(usage.purpose)\n    (is_receiving and uses_confidential) implies purpose_allowed always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_odnej4522o",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.001687158,
+      "cost_details": {
+        "upstream_inference_cost": 0.0017042,
+        "upstream_inference_input_cost": 0.0007532,
+        "upstream_inference_output_cost": 0.000951
+      },
+      "input_tokens": 8087,
+      "input_tokens_details": {
+        "cached_tokens": 5638
+      },
+      "is_byok": false,
+      "output_tokens": 1268,
+      "output_tokens_details": {
+        "reasoning_tokens": 828
+      },
+      "total_tokens": 9355
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "0073010e9d7eda2662063f37590af23b23d3de98f6b846988922fcae01582cbb",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

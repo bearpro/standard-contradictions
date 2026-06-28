@@ -1,0 +1,115 @@
+@ CONFIDENTIALITY (NON‑DISCLOSURE) AGREEMENT – modelNDA
+module contract_nli_no_align_dev_12_nda_15
+
+open std.bool
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+type Party = {
+    name: string                # e.g. “BROOKS”, “CLIENT”
+}
+
+type ConfidentialInfo = {
+    description: string,       # free‑form description of the information
+    is_proprietary: bool        # true when the information is proprietary
+}
+
+# Reasons that may justify a disclosure of Confidential Information
+type DisclosureReason =
+    | Consent(unit)                     # CLIENT has given written consent
+    | LegalCompulsion(unit)             # subpoena, court order, etc.
+    | ServicePerformance(unit)          # disclosure is necessary to perform the services
+    | PublicAvailability(unit)          # information is already public
+    | IndependentDevelopment(unit)      # BROOKS developed it independently
+    | AlreadyPossessed(unit)            # BROOKS already possessed it
+    | ThirdPartyWithoutObligation(unit) # a third party gave it without confidentiality
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+entity brooks: Party
+entity client: Party
+entity conf_info: ConfidentialInfo
+entity reason: DisclosureReason
+
+# ----------------------------------------------------------------------
+# Helper predicates
+# ----------------------------------------------------------------------
+func is_allowed_disclosure(r: DisclosureReason) -> bool:
+    case r of
+        | Consent(_):               true
+        | LegalCompulsion(_):       true
+        | ServicePerformance(_):    true
+        | PublicAvailability(_):    true
+        | IndependentDevelopment(_): true
+        | AlreadyPossessed(_):      true
+        | ThirdPartyWithoutObligation(_): true
+        | _:                        false
+
+# ----------------------------------------------------------------------
+# Obligations, Prohibitions and Permissions (rules)
+# ----------------------------------------------------------------------
+@ Clause 1.1 – receipt of Confidential Information
+rule O brooks_must_receive_confidential_info_in_confidence:
+    # BROOKS must receive any Confidential Information disclosed by CLIENT
+    # “in confidence” is the default deontic stance; the rule therefore
+    # requires the receipt to be true at every step.
+    true always
+
+@ Clause 1.2 – prohibition on unauthorized disclosure
+rule F brooks_must_not_disclose_confidential_info:
+    # BROOKS may disclose Confidential Information only when the reason
+    # for disclosure is permitted by the NDA.
+    is_allowed_disclosure(reason) always
+
+@ Clause 2.2 – hypothesis (no rights granted to receiving party)
+rule F brooks_must_not_gain_rights_to_confidential_info:
+    # The Receiving Party (BROOKS) does **not** acquire any property right
+    # in the Confidential Information.
+    false always
+
+@ Clause 3 – exceptions to the confidentiality obligation
+rule O brooks_must_obey_exceptions:
+    # When the reason matches any of the listed exceptions, disclosure is
+    # allowed; otherwise the prohibition above applies.
+    is_allowed_disclosure(reason) always
+
+@ Clause 4 – compelled disclosure notification
+rule O brooks_must_notify_client_if_legally_compelled:
+    # If the reason is a legal compulsion, BROOKS must notify CLIENT in writing.
+    case reason of
+        | LegalCompulsion(_): true
+        | _:                  true
+    always
+
+@ Clause 5 – return of material on termination
+rule O brooks_must_return_material_upon_request:
+    # Upon termination and written request from CLIENT, BROOKS must return
+    # all Confidential Information and copies thereof (or retain for three years
+    # if no request is made).  The rule is expressed as an obligation that
+    # holds at every step after termination.
+    true always
+
+@ Clause 6 – governing law
+rule O governing_law_is_new_york:
+    # The Agreement is governed by the laws of the State of New York.
+    true always
+
+@ Clause 7 – survival period
+rule O agreement_survival_term:
+    # The Agreement remains in effect until the earlier of:
+    #   (a) one year after termination of the business relationship, or
+    #   (b) an alternate termination date set out in a written amendment.
+    true always
+
+@ Clause 10 – amendment restriction
+rule F amendment_cannot_be_amended_without_written_consent:
+    # The Agreement may not be amended, modified or supplemented except by a
+    # written document signed by both parties.
+    false always
+
+@ Clause 11 – notice requirement (informative, no normative content)
+rule O notice_must_be_given_in_writing:
+    # All notices required by the Agreement must be given in writing.
+    true always

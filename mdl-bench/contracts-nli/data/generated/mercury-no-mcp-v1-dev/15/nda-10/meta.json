@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-15-nda-10",
+  "created_at": "2026-06-26T00:24:04.392091+00:00",
+  "doc_id": 15,
+  "hypothesis_id": "nda-10",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_15_nda_10",
+  "response": {
+    "background": false,
+    "completed_at": 1782433444.0,
+    "created_at": 1782433441.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433441-c5d8MlytJKUYmxgDY7Rg",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-15-nda-10",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ AGREEMENT ON THE NON‑DISCLOSURE OF CONFIDENTIAL INFORMATION (TWO‑WAY)\n@ Effective date: 200_   (placeholder)\n@ Parties: University of Bristol (disclosing) and __________________________ (receiving)\nmodule contract_nli_no_align_dev_15_nda_10\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\ntype Party = {\n    name: string,\n    address: string,\n    # Boolean flags that capture the state of the receiving party\n    disclosed_agreement: bool,          # has the receiving party disclosed the *existence* of the agreement?\n    received_confidential_info: bool,   # has any confidential information been received?\n    took_reasonable_measures: bool,     # has the receiving party taken reasonable steps to protect the information?\n    used_confidential_info_commercially: bool,\n    disclosed_confidential_info: bool,  # disclosure to any third party (including employees) of the confidential content\n    made_copy_of_confidential_info: bool,\n    marked_confidential_info: bool,     # has the information been labeled “Confidential”?\n    employees_with_access: bool         # are there employees who have been granted access?\n}\n\ntype ConfidentialInfo = {\n    description: string,   # e.g. “specifications”, “drawings”, “software”, …\n    content: string\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Disclosing party (University of Bristol)\nentity disclosing_party: Party\n\n@ Receiving party (the other signatory)\nentity receiving_party: Party\n\n@ A concrete piece of confidential information that may be exchanged\nentity confidential_item: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Functions (pure helpers)\n# ----------------------------------------------------------------------\nfunc is_properly_protected(rp: Party) -> bool:\n    rp.took_reasonable_measures and rp.marked_confidential_info\n\nfunc is_allowed_disclosure(rp: Party) -> bool:\n    # Disclosures are only allowed to employees who need to know\n    rp.employees_with_access and rp.disclosed_confidential_info\n\n# ----------------------------------------------------------------------\n# Rules – obligations (O) and prohibitions (F)\n# ----------------------------------------------------------------------\n@ Clause 2 – marking of confidential information\nrule O mark_confidential_information:\n    receiving_party.marked_confidential_info always\n\n@ Clause 3(a) – reasonable protective measures\nrule O take_reasonable_measures:\n    receiving_party.took_reasonable_measures always\n\n@ Clause 3(b) – prohibition on commercial use\nrule F use_confidential_information_commercially:\n    not receiving_party.used_confidential_info_commercially always\n\n@ Clause 3(c) – prohibition on disclosure to third parties\nrule F disclose_confidential_information_to_third_party:\n    not receiving_party.disclosed_confidential_info always\n\n@ Clause 3(d) – disclosure to employees only when necessary\nrule O disclose_to_employees_when_needed:\n    receiving_party.disclosed_confidential_info implies receiving_party.employees_with_access always\n\n@ Clause 3(e) – prohibition on copying/abstracting\nrule F copy_confidential_information:\n    not receiving_party.made_copy_of_confidential_info always\n\n@ Clause 3(f) – source acknowledgement (mark “Confidential”)\nrule O acknowledge_source_and_mark:\n    receiving_party.marked_confidential_info always\n\n@ Clause 5 – confidentiality period (10 years) – modelled as a perpetual obligation\nrule O maintain_confidentiality_for_ten_years:\n    not receiving_party.disclosed_confidential_info always\n\n@ **Hypothesis** – the receiving party must not disclose the *existence* of the agreement\nrule F disclose_agreement_existence:\n    not receiving_party.disclosed_agreement always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_wg6azfasjc8",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00170752725,
+      "cost_details": {
+        "upstream_inference_cost": 0.001724775,
+        "upstream_inference_input_cost": 0.000366525,
+        "upstream_inference_output_cost": 0.00135825
+      },
+      "input_tokens": 6552,
+      "input_tokens_details": {
+        "cached_tokens": 5651
+      },
+      "is_byok": false,
+      "output_tokens": 1811,
+      "output_tokens_details": {
+        "reasoning_tokens": 1061
+      },
+      "total_tokens": 8363
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "de590bf8bfb09ead4c51d9879def345b785224090afa37dc57fa6add2149dae4",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

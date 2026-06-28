@@ -1,0 +1,32 @@
+@ Non‑Disclosure Agreement for the Exchange of Energy Management System Model Data
+module contract_nli_no_align_dev_13_nda_8
+
+-- ----------------------------------------------------------------------
+-- Types
+-- ----------------------------------------------------------------------
+type Party = {
+    name: string
+}
+
+type ReceivingParty = {
+    name: string,
+    -- True when the Receiving Party is compelled by law, regulation or a
+    -- judicial process to disclose Confidential Information.
+    required_by_law: bool,
+    -- True when the Receiving Party has already notified the Disclosing Party
+    -- of that legal requirement.
+    notified_disclosing_party: bool
+}
+
+-- ----------------------------------------------------------------------
+-- Entities (public model objects)
+-- ----------------------------------------------------------------------
+entity disclosing_party: Party
+entity receiving_party: ReceivingParty
+
+-- ----------------------------------------------------------------------
+-- Rules (deontic requirements)
+-- ----------------------------------------------------------------------
+@ Clause 6 – Defend Against Third Party Requests
+rule O notify_disclosing_party_when_required:
+    (receiving_party.required_by_law implies receiving_party.notified_disclosing_party) always

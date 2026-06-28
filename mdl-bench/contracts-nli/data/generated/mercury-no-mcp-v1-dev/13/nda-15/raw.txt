@@ -1,0 +1,142 @@
+```mdl
+@ Non‑Disclosure Agreement (NDA) – PJM Energy Management System Model Data
+@ Document: NON‑DISCLOSURE AGREEMENT FOR THE EXCHANGE OF ENERGY MANAGEMENT SYSTEM MODEL DATA
+@ Hypothesis: “Agreement shall not grant Receiving Party any right to Confidential Information.”
+module contract_nli_no_align_dev_13_nda_15
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties to the Agreement (PJM and a Transmission Owner)
+type Party = {
+    name: string,               # e.g. "PJM Interconnection" or "Transmission Owner"
+    is_disclosing: bool         # true for the Disclosing Party, false for the Receiving Party
+}
+
+@ The confidential data that is exchanged
+type ConfidentialInformation = {
+    owner: Party,               # the Disclosing Party that supplied the data
+    data: string                # opaque representation of the model data
+}
+
+@ An employee or agent who may view the confidential data
+type ReviewingRepresentative = {
+    name: string,
+    party: Party,                # the Party the representative belongs to
+    has_certificate: bool,      # true when a signed Non‑Disclosure Certificate has been submitted
+    duties: List<string>        # e.g. ["TransmissionFunctions", "CompetitiveDuties"]
+}
+
+@ The signed certificate that a Reviewing Representative must provide
+type NonDisclosureCertificate = {
+    representative: ReviewingRepresentative,
+    signed: bool,
+    date_signed: string
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ Disclosing Party (PJM)
+entity disclosing_party: Party
+
+@ Receiving Party (Transmission Owner)
+entity receiving_party: Party
+
+@ The confidential information that is exchanged
+entity confidential_information: ConfidentialInformation
+
+@ A representative of a Party who may need access
+entity reviewing_rep: ReviewingRepresentative
+
+@ The certificate proving the representative’s understanding of the NDA
+entity certificate: NonDisclosureCertificate
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+# Returns true if the representative’s duties include a competitive duty
+func has_competitive_duty(rep: ReviewingRepresentative) -> bool:
+    list.contains(rep.duties, "CompetitiveDuties")
+
+# Placeholder for a legal‑requirement check (e.g. subpoena, court order)
+# In a real model this would be supplied by an external fact base.
+func required_by_law(party: Party) -> bool:
+    false   # default to false; can be overridden by a fact in a concrete instance
+
+# ----------------------------------------------------------------------
+# Rules – deontic constraints derived from the NDA
+# ----------------------------------------------------------------------
+@ 2.1 – A Reviewing Representative must have executed a Non‑Disclosure Certificate
+rule O rep_must_have_certificate:
+    reviewing_rep.has_certificate always
+
+@ 2.2 – A Reviewing Representative may only access Confidential Information
+#          when the information is needed to perform Transmission Functions
+rule O rep_access_allowed_by_duty:
+    (reviewing_rep.duties.contains("TransmissionFunctions")) always
+
+@ 2.3 – The Receiving Party does NOT obtain ownership of the Confidential Information
+rule F receiving_party_no_ownership:
+    confidential_information.owner = disclosing_party always
+
+@ 2.4 – Prohibit disclosure of Confidential Information to any third party
+#          without prior written approval from the Disclosing Party
+rule F disclose_to_third_party_without_approval:
+    (confidential_information.owner = disclosing_party) and
+    (reviewing_rep.party = receiving_party) and
+    (not reviewing_rep.has_certificate) and
+    (not required_by_law(receiving_party)) always
+
+@ 2.5 – Permit disclosure when required by law or an Authority,
+#          provided the Disclosing Party is notified and a protective order is sought
+rule P disclose_by_law:
+    required_by_law(receiving_party) implies
+        (confidential_information.owner = disclosing_party) and
+        reviewing_rep.has_certificate always
+
+@ 2.6 – When a Reviewing Representative ceases to be employed or acquires
+#          competitive duties, access must be terminated and the information
+#          must be returned or destroyed
+rule F terminate_access_on_employment_change:
+    (has_competitive_duty(reviewing_rep) or not reviewing_rep.has_certificate) implies
+        (confidential_information.owner = disclosing_party) and
+        (not reviewing_rep.party = receiving_party) always
+
+@ 2.7 – The Receiving Party must return or destroy Confidential Information
+#          once it is no longer needed for Transmission Functions
+rule O return_or_destroy_when_not_needed:
+    (not reviewing_rep.duties.contains("TransmissionFunctions")) implies
+        (confidential_information.owner = disclosing_party) and
+        (reviewing_rep.has_certificate = false) always
+
+# ----------------------------------------------------------------------
+# Facts (can be used to instantiate a concrete scenario)
+# ----------------------------------------------------------------------
+# Example fact: the Disclosing Party is PJM
+fact disclosing_party = { name = "PJM Interconnection", is_disclosing = true }
+
+# Example fact: the Receiving Party is a Transmission Owner
+fact receiving_party = { name = "Transmission Owner", is_disclosing = false }
+
+# Example fact: a representative of the Receiving Party has signed the certificate
+fact certificate = {
+    representative = {
+        name = "Alice Smith",
+        party = receiving_party,
+        has_certificate = true,
+        duties = ["TransmissionFunctions"]
+    },
+    signed = true,
+    date_signed = "2015-08-11"
+}
+
+# Bind the certificate to the representative entity
+fact reviewing_rep = certificate.representative
+
+# Confidential information owned by the Disclosing Party
+fact confidential_information = {
+    owner = disclosing_party,
+    data = "energy_management_model_data_blob"
+}
+```

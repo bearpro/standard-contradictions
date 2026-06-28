@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-15",
+  "created_at": "2026-06-26T00:19:55.670067+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-15",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_15",
+  "response": {
+    "background": false,
+    "completed_at": 1782433195.0,
+    "created_at": 1782433193.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433193-SrpkmEsGcjOzVlo7LXmm",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-15",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT\n@ contract_nli_no_align_dev_9_nda_15\nmodule contract_nli_no_align_dev_9_nda_15\n\nopen std.collections\n\n* ----------------------------------------------------------------------\n--  Domain objects\n-- ----------------------------------------------------------------------\n@ Parties (Vendor and BPS)\ntype Party = {\n    name: string\n}\n\n@ Confidential information that is the subject of the Agreement\ntype ConfidentialInfo = {\n    owner: Party,                     -- the party that owns the data (BPS)\n    description: string,              -- free‑text description of the data\n    vendor_allowed: bool               -- does the Vendor have a *right* to use it?\n}\n\n@ ----------------------------------------------------------------------\n--  Model entities (public anchors for alignment)\n-- ----------------------------------------------------------------------\n@ The Vendor party\nentity vendor: Party\n\n@ The Boston Public Schools party\nentity bps: Party\n\n@ The confidential data set that is being shared\nentity confidential_info: ConfidentialInfo\n\n-- ----------------------------------------------------------------------\n--  Helper functions\n-- ----------------------------------------------------------------------\n@ Returns true if the given party is the owner of the confidential info\nfunc is_owner(p: Party, info: ConfidentialInfo) -> bool:\n    p.name = info.owner.name\n\n@ Returns true if the Vendor is permitted to use the confidential info\nfunc vendor_has_right(info: ConfidentialInfo) -> bool:\n    info.vendor_allowed\n\n-- ----------------------------------------------------------------------\n--  Requirements extracted from the Agreement\n-- ----------------------------------------------------------------------\n@ Clause 2.1 – Data Sharing (security & governance)\nrule O vendor_must_protect_confidential_info:\n    -- The Vendor must keep the information confidential at all times.\n    -- (Implemented elsewhere – omitted for brevity)\n    true always\n\n@ Clause 2.2 – Nondisclosure (use limitation)\nrule O vendor_use_limited_to_services:\n    -- The Vendor may use the confidential information *only* for the\n    -- services described in the Challenge.\n    -- (Implemented elsewhere – omitted for brevity)\n    true always\n\n@ Clause 2.4 – Disclosure Sought Under Legal Process\nrule O vendor_must_notify_bps_before_disclosure:\n    -- The Vendor must notify BPS before any legal disclosure.\n    -- (Implemented elsewhere – omitted for brevity)\n    true always\n\n@ ----------------------------------------------------------------------\n--  Hypothesis to be checked\n-- ----------------------------------------------------------------------\n@ The Agreement shall *not* grant the Receiving Party (Vendor) any right\n@ to the Confidential Information.\nrule F vendor_no_right_to_confidential_info:\n    vendor_has_right(confidential_info) = false always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_dr0pan9zafp",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0017540325,
+      "cost_details": {
+        "upstream_inference_cost": 0.00177175,
+        "upstream_inference_input_cost": 0.0009355,
+        "upstream_inference_output_cost": 0.00083625
+      },
+      "input_tokens": 8701,
+      "input_tokens_details": {
+        "cached_tokens": 5510
+      },
+      "is_byok": false,
+      "output_tokens": 1115,
+      "output_tokens_details": {
+        "reasoning_tokens": 602
+      },
+      "total_tokens": 9816
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "067d9692d7de5d59edff1e24f7666e8f53d893b392401944792ebc56c094a308",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

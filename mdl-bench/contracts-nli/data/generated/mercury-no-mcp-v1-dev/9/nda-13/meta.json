@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-13",
+  "created_at": "2026-06-26T00:19:52.965986+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-13",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_13",
+  "response": {
+    "background": false,
+    "completed_at": 1782433192.0,
+    "created_at": 1782433190.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433190-2glThxPINEBMgfASZG11",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-13",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (Transportation Challenge 2017)\nmodule contract_nli_no_align_dev_9_nda_13\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Definition of the two parties to the agreement\ntype Party = \n    | BPS(unit)          # Boston Public Schools\n    | Vendor(unit)       # The contracted vendor\n\n@ Information that is subject to the confidentiality obligations\ntype ConfidentialInfo = {\n    category: string,      # e.g., \"student routing\"\n    description: string    # free‑form description of the data\n}\n\n@ Vendor‑specific responsibilities and security controls\ntype VendorInfo = {\n    protects_confidentiality: bool,            # must employ reasonable safeguards\n    discloses_confidential_info: bool,         # must NOT disclose to unauthorized parties\n    notifies_bps_of_legal_process: bool,       # must inform BPS of subpoenas, court orders, etc.\n    returns_or_destroys_confidential_info: bool, # must return or destroy after use\n    uses_info_for_purpose: bool,               # must use only for the Challenge purpose\n    may_acquire_similar_info_from_third_party: bool # optional – not prohibited by the NDA\n}\n\n@ BPS‑specific permissions\ntype BPSInfo = {\n    may_acquire_similar_info: bool   # permission to obtain similar data from third parties\n}\n\n# ----------------------------------------------------------------------\n# Entities (stable public objects)\n# ----------------------------------------------------------------------\n@ The vendor that signs the NDA\nentity vendor: VendorInfo\n\n@ The Boston Public Schools (BPS) party\nentity bps: BPSInfo\n\n# ----------------------------------------------------------------------\n# Rules – deontic constraints derived from the agreement\n# ----------------------------------------------------------------------\n@ 2.1 – Reasonable security precautions (obligation)\nrule O vendor_must_protect_confidentiality:\n    vendor.protects_confidentiality always\n\n@ 2.2 – Nondisclosure (prohibition)\nrule F vendor_must_not_disclose:\n    vendor.discloses_confidential_info = false always\n\n@ 2.4 – Disclosure sought under legal process (obligation)\nrule O vendor_must_notify_legal_process:\n    vendor.notifies_bps_of_legal_process always\n\n@ 2.6 – Return or destruction of materials (obligation)\nrule O vendor_must_return_or_destroy:\n    vendor.returns_or_destroys_confidential_info always\n\n@ 2.2 – Use of Confidential Information only for the Challenge purpose (prohibition)\nrule F vendor_must_use_only_for_challenge:\n    vendor.uses_info_for_purpose always\n\n@ 5 – BPS may acquire information that is similar to the Confidential Information\n#    from a third party (permission). The NDA does not forbid BPS from doing so.\nrule P bps_may_acquire_similar_info:\n    bps.may_acquire_similar_info always\n\n# ----------------------------------------------------------------------\n# Optional helper functions (pure, for readability)\n# ----------------------------------------------------------------------\nfunc is_confidential(info: ConfidentialInfo) -> bool:\n    true   -- the agreement treats all listed data as confidential\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_y2zq67b8f3",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00199977525,
+      "cost_details": {
+        "upstream_inference_cost": 0.002019975,
+        "upstream_inference_input_cost": 0.000939225,
+        "upstream_inference_output_cost": 0.00108075
+      },
+      "input_tokens": 8733,
+      "input_tokens_details": {
+        "cached_tokens": 5529
+      },
+      "is_byok": false,
+      "output_tokens": 1441,
+      "output_tokens_details": {
+        "reasoning_tokens": 801
+      },
+      "total_tokens": 10174
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "4c556edb2e1736f6497940458d7689a20c1b60f5e26260db8d77473a08e80727",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

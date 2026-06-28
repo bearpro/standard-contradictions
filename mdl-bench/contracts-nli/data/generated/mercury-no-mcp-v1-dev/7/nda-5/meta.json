@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-5",
+  "created_at": "2026-06-26T00:19:32.786942+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-5",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_5",
+  "response": {
+    "background": false,
+    "completed_at": 1782433172.0,
+    "created_at": 1782433171.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433171-c13DD4kvv4J4EEA9LKDy",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-5",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – Model for Clause 2.1(c) (Sharing with Employees)\nmodule contract_nli_no_align_dev_7_nda_5\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties to the Agreement\ntype Party = { name: string }\n\n@ Information that is designated as Confidential\ntype ConfidentialInfo = {\n    is_confidential: bool          # true for all information covered by the NDA\n    source_party: Party             # party that originated the information\n    purpose: string                # purpose of the disclosure (Clause 1.1)\n}\n\n@ Employees, agents, etc. of a receiving party who may need to know the data\ntype Employee = {\n    needs_to_know: bool            # true if the employee must access the data for the Purpose\n    bound_by_confidentiality: bool # true if the employee is contractually obliged not to disclose\n    employer: Party                # the party that employs the employee\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The party that receives Confidential Information (the “Recipient”)\nentity recipient: Party\n\n@ The party that discloses Confidential Information (the “Discloser”)\nentity discloser: Party\n\n@ A piece of Confidential Information exchanged under the Agreement\nentity confidential_info: ConfidentialInfo\n\n@ An employee of the recipient who may be granted access\nentity employee: Employee\n\n# ----------------------------------------------------------------------\n# Rules\n# ----------------------------------------------------------------------\n@ Clause 2.1(c) – The Recipient may disclose Confidential Information to its\n@ employees, agents, etc. provided they need to know it and are bound\n@ by confidentiality obligations.\nrule P share_confidential_with_employee:\n    (employee.employer = recipient) and\n    employee.needs_to_know and\n    employee.bound_by_confidentiality and\n    confidential_info.is_confidential always\n\n@ Clause 2.1(b) – The Recipient must not copy or reproduce Confidential\n@ Information except as reasonably necessary for the Purpose.\nrule O prohibit_unnecessary_copy:\n    not (confidential_info.is_confidential and\n         (confidential_info.source_party = discloser) and\n         (confidential_info.purpose != \"Purpose\")) always\n\n@ Clause 3 – Return of Confidential Information after the Purpose is completed.\nrule O return_on_completion:\n    (confidential_info.is_confidential) implies\n    (confidential_info.purpose = \"Purpose\") eventually\n\n@ Clause 4.6 – Compliance with the Personal Data Protection Act 2012.\nrule O comply_pdp_act:\n    true always   # placeholder – compliance is assumed external to the model\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_d7lij5sqwmq",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00220178475,
+      "cost_details": {
+        "upstream_inference_cost": 0.002224025,
+        "upstream_inference_input_cost": 0.001584275,
+        "upstream_inference_output_cost": 0.00063975
+      },
+      "input_tokens": 11432,
+      "input_tokens_details": {
+        "cached_tokens": 5661
+      },
+      "is_byok": false,
+      "output_tokens": 853,
+      "output_tokens_details": {
+        "reasoning_tokens": 321
+      },
+      "total_tokens": 12285
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "5f5dfaac314f458cd6930336362f08fd117aa0d1315ca26100b5ee14da96cbbe",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

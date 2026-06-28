@@ -1,0 +1,66 @@
+@ Non‑Disclosure Agreement – Model for contract_nli_no_align_dev_13_nda_5
+module contract_nli_no_align_dev_13_nda_5
+
+# ----------------------------------------------------------------------
+# Imports
+# ----------------------------------------------------------------------
+open std.strings   # for possible future string handling (not used here)
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = 
+    | PJM(unit)               # PJM Interconnection, L.L.C.
+    | TransmissionOwner(unit) # Undersigned Transmission Owner
+
+@ Clause 5.4 – Confidential Information
+type ConfidentialInfo = {
+    owner: Party,               # Party that supplied the information
+    marked_confidential: bool   # true when the material is marked “Confidential”
+}
+
+@ Clause 2 – Reviewing Representative
+type Person = {
+    is_employee_of_receiving_party: bool,   # true for any employee of the Receiving Party
+    is_reviewing_rep: bool,                 # true if the person is a designated Reviewing Representative
+    has_executed_certificate: bool          # true when a Non‑Disclosure Certificate has been signed
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects
+# ----------------------------------------------------------------------
+@ Clause 5.4 – the Confidential Information that may be exchanged
+entity confidential_info: ConfidentialInfo
+
+@ Clause 2 – the individual who may (or may not) receive the information
+entity person: Person
+
+@ Clause 1 – the party that receives the information (the “Receiving Party”)
+entity receiving_party: Party
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (deontic modalities)
+# ----------------------------------------------------------------------
+@ Clause 2 – a Reviewing Representative must have executed a certificate
+rule O reviewing_rep_must_have_certificate:
+    person.is_reviewing_rep implies person.has_executed_certificate always
+
+@ Clause 2 – only a Reviewing Representative may access Confidential Information
+rule O only_reviewing_rep_can_access:
+    (person.is_reviewing_rep and person.has_executed_certificate) always
+
+@ Clause 2 – employees who are NOT Reviewing Representatives may NOT receive Confidential Information
+rule F employee_cannot_receive_confidential_info:
+    (person.is_employee_of_receiving_party and not person.is_reviewing_rep) always
+
+@ Clause 5.4 – Confidential Information must be marked “Confidential” when disclosed
+rule O confidential_info_must_be_marked:
+    confidential_info.marked_confidential always
+
+# ----------------------------------------------------------------------
+# Hypothesis (to be tested for consistency)
+# ----------------------------------------------------------------------
+@ Hypothesis – “Receiving Party may share some Confidential Information with some of Receiving Party's employees.”
+rule O hypothesis_sharing_with_employee:
+    person.is_employee_of_receiving_party always

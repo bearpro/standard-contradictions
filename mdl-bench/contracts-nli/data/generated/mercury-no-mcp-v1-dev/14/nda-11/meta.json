@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-11",
+  "created_at": "2026-06-26T00:23:16.333712+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-11",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_11",
+  "response": {
+    "background": false,
+    "completed_at": 1782433396.0,
+    "created_at": 1782433393.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433393-bILqVpazTHD3PGBqONm4",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-11",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality and Non‑Disclosure Agreement Governing the Inspection of Stockholder List\nmodule contract_nli_no_align_dev_14_nda_11\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\n@ Clause 1 – purpose of the Confidential Material\ntype PartyRole = | Company(unit) | Stockholder(unit)\n\ntype Party = {\n    role: PartyRole,\n    name: string\n}\n\ntype ConfidentialMaterial = {\n    produced_by: Party,          # the Party that supplies the material\n    purpose: string,             # textual description of the permitted purpose\n    contains_confidential_info: bool\n}\n\ntype Object = {\n    description: string,\n    embodies_confidential_info: bool\n}\n\ntype ReverseEngineeringEvent = {\n    obj: Object,\n    attempted: bool\n}\n\n# ----------------------------------------------------------------------\n# Entities – public model objects\n# ----------------------------------------------------------------------\n@ Clause 0 – parties to the Agreement\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ Clause 0 – material that may be inspected\nentity confidential_material: ConfidentialMaterial\n\n@ Clause 0 – any object that could embody the confidential information\nentity object: Object\n\n@ Clause 0 – record of a reverse‑engineering attempt (if any)\nentity reverse_engineering_event: ReverseEngineeringEvent\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Clause 1 – check that the purpose is “reasonably related to Stockholder’s interests”\nfunc purpose_is_permitted(pur: string) -> bool:\n    pur == \"reasonably related to Stockholder’s interests\"\n\n@ Clause 4 – placeholder for the notification to the Company (pure function, always true when called)\nfunc notify_company() -> bool:\n    true\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements\n# ----------------------------------------------------------------------\n# 1. Use of Confidential Material is limited to the permitted purpose\n@ Clause 1\nrule O use_confidential_material_for_permitted_purpose:\n    purpose_is_permitted(confidential_material.purpose) always\n\n# 2. Receiving Party must not disclose, publish or communicate Confidential Material\n@ Clause 2\nrule F disclose_confidential_material:\n    confidential_material.contains_confidential_info always\n\n# 3. If disclosure is required by law, the Receiving Party must give prompt notice\n@ Clause 3\nrule O give_prompt_notice_when_legal_disclosure_required:\n    (confidential_material.contains_confidential_info implies notify_company()) always\n\n# 4. Receiving Party shall not reverse‑engineer any object that embodies Confidential Information\n@ Clause 1 (hypothesis)\nrule F reverse_engineer_prohibited:\n    reverse_engineering_event.obj.embodies_confidential_info\n    and reverse_engineering_event.attempted always\n\n# 5. Jurisdiction – parties submit to Delaware Court of Chancery\n@ Clause 4\nrule O submit_to_delaware_chancery_jurisdiction:\n    true always   # (the rule is a placeholder indicating the agreement’s jurisdiction)\n\n# 6. Remedy – breach causes irreparable harm; specific performance / injunctive relief applies\n@ Clause 5\nrule O specific_performance_and_injunctive_relief_available:\n    true always\n\n# 7. No amendment except a signed writing\n@ Clause 6\nrule O amendment_requires_written_agreement:\n    true always\n\n# 8. Agreement binds parties and their successors, assigns, etc.\n@ Clause 7\nrule O binding_on_successors_and_assigns:\n    true always\n\n# 9. Governing law – State of Delaware\n@ Clause 8\nrule O governed_by_delaware_law:\n    true always\n\n# 10. Execution in counterparts\n@ Clause 9\nrule O execution_in_multiple_counterparts:\n    true always\n\n# 11. Entire agreement clause\n@ Clause 10\nrule O entire_agreement_clause:\n    true always\n\n# 12. No construction against author\n@ Clause 11\nrule O no_construction_against_author:\n    true always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_awpfum7fyo",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00160837875,
+      "cost_details": {
+        "upstream_inference_cost": 0.001624625,
+        "upstream_inference_input_cost": 0.000399875,
+        "upstream_inference_output_cost": 0.00122475
+      },
+      "input_tokens": 6536,
+      "input_tokens_details": {
+        "cached_tokens": 5485
+      },
+      "is_byok": false,
+      "output_tokens": 1633,
+      "output_tokens_details": {
+        "reasoning_tokens": 853
+      },
+      "total_tokens": 8169
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "3998f0bc0b3ba3aed1b736bd8cadaa6bfb465460c6fcb95428b1856c7c3ef876",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

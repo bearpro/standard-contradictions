@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-19",
+  "created_at": "2026-06-26T00:19:19.703530+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-19",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_19",
+  "response": {
+    "background": false,
+    "completed_at": 1782433159.0,
+    "created_at": 1782433157.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433157-L6VwPSLhHcekp7dWdpSp",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-19",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – Model for surviving obligations\nmodule contract_nli_no_align_dev_7_nda_19\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\ntype Agreement = {\n    is_terminated : bool          # true once the agreement has been terminated\n}\n\ntype ConfidentialInfo = {\n    is_confidential          : bool   # true if the information is confidential\n    confidentiality_maintained : bool   # true while the recipient keeps it confidential\n    is_returned               : bool   # true when all copies have been returned\n    is_erased                 : bool   # true when the data has been erased from all systems\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Clause 11 – Termination\nentity agreement : Agreement\n\n@ Clause 2 – Handling of Confidential Information\nentity confidential_info : ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Rules – obligations that survive termination\n# ----------------------------------------------------------------------\n@ Clause 11 – “the provision of Clauses 1‑8, 11‑15 and 17‑21 shall survive any such termination.”\nrule O obligations_survive_termination:\n    agreement.is_terminated implies true always\n\n@ Clause 2.1(a) – confidentiality must be maintained for the Purpose\nrule O confidentiality_maintained_after_termination:\n    agreement.is_terminated implies\n        (confidential_info.is_confidential implies confidential_info.confidentiality_maintained) always\n\n@ Clause 3.1(a) – return of all documents and copies\nrule O return_obligation_survives:\n    agreement.is_terminated implies\n        (confidential_info.is_returned = false) always\n\n@ Clause 4.3 – erasure of data on termination\nrule O erase_data_obligation_survives:\n    agreement.is_terminated implies\n        confidential_info.is_erased eventually\n\n# ----------------------------------------------------------------------\n# Supporting facts (optional – can be removed in a production model)\n# ----------------------------------------------------------------------\n# fact agreement.is_terminated = false\n# fact confidential_info.is_confidential = true\n# fact confidential_info.confidentiality_maintained = true\n# fact confidential_info.is_returned = false\n# fact confidential_info.is_erased = false\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_o2nca11npaa",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00249720075,
+      "cost_details": {
+        "upstream_inference_cost": 0.002522425,
+        "upstream_inference_input_cost": 0.001581925,
+        "upstream_inference_output_cost": 0.0009405
+      },
+      "input_tokens": 11419,
+      "input_tokens_details": {
+        "cached_tokens": 5657
+      },
+      "is_byok": false,
+      "output_tokens": 1254,
+      "output_tokens_details": {
+        "reasoning_tokens": 815
+      },
+      "total_tokens": 12673
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "b1120cb9711db307b008a14d17d80b28cb64ec7d12dda5cc1c7388840caf49aa",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

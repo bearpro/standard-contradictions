@@ -1,0 +1,118 @@
+@ Confidentiality (Non‑Disclosure) Agreement – Model for NDA #12‑17
+module contract_nli_no_align_dev_12_nda_17
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties to the Agreement
+type Party = 
+    | Broker(unit)      # BROOKS’ BOTTLING COMPANY, LLC
+    | Client(unit)      # CLIENT (the other party)
+
+@ Information that is subject to the confidentiality obligations
+type ConfidentialInfo = {
+    owner: Party,                     # who originally owns the information (Client)
+    content: string,                  # free‑form description (not used in logic)
+    received_by_brooks: bool,         # true when BROOKS has obtained the info
+    # Exception flags (see Section 3)
+    already_possessed: bool,           # 3.1 – BROOKS already possessed it
+    developed_independently: bool,    # 3.2 – BROOKS developed it independently
+    rightfully_received: bool,        # 3.3 – received from a third party without duty
+    inadvertent_disclosure: bool,     # 3.4 – disclosed inadvertently
+    client_consent: bool,             # 3.5 – CLIENT gave prior written consent
+    service_disclosure: bool,         # 3.6 – disclosure necessary to perform services
+    publicly_available: bool          # disclosed by law or public domain
+}
+
+@ A copy of confidential information that may be created by the receiving party
+type ConfidentialCopy = {
+    original: ConfidentialInfo,
+    created_by: Party,
+    created_at: string                # timestamp placeholder (not used in logic)
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The two parties to the NDA
+entity broker: Party      @ BROOKS
+entity client: Party      @ CLIENT
+
+@ The set of confidential items exchanged under the Agreement
+entity ci: ConfidentialInfo
+
+@ Optional copy that may be produced by the broker
+entity copy: ConfidentialCopy
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Determine whether any of the Section‑3 exceptions apply to a piece of info
+func exception_applies(info: ConfidentialInfo) -> bool:
+    info.already_possessed
+    or info.developed_independently
+    or info.rightfully_received
+    or info.inadvertent_disclosure
+    or info.client_consent
+    or info.service_disclosure
+    or info.publicly_available
+
+@ Determine whether the broker is legally compelled to disclose the info
+func legally_compelled(info: ConfidentialInfo) -> bool:
+    # The model does not capture the external legal trigger; it is a placeholder
+    false   # (to be instantiated by an external fact when testing)
+
+# ----------------------------------------------------------------------
+# Rules – Deontic constraints (O = obligation, F = prohibition, P = permission)
+# ----------------------------------------------------------------------
+@ Section 1.1 – Confidential information must be received in confidence
+rule O receive_in_confidence:
+    ci.owner = client
+    implies (ci.received_by_brooks) (not exception_applies(ci)) always
+
+@ Section 1.2 – Prohibit unauthorized disclosure
+rule F disclose_without_consent:
+    ci.received_by_brooks
+    and not exception_applies(ci)
+    implies (not (ci.owner = client and broker = broker)) always
+
+@ Section 2.2 – Injunctive relief (modelled as a prohibition of breach)
+rule F breach_causes_irreparable_harm:
+    ci.received_by_brooks
+    and not exception_applies(ci)
+    implies (not (ci.owner = client and broker = broker)) always
+
+@ Section 3 – Exceptions (modelled as permissions to copy/disclose)
+rule P copy_allowed_under_exception:
+    ci.received_by_brooks
+    and exception_applies(ci)
+    implies (exists copy: ConfidentialCopy . copy.original = ci and copy.created_by = broker) always
+
+@ Section 4 – Compelled disclosure – must notify client first
+rule O notify_before_compelled_disclosure:
+    legally_compelled(ci)
+    implies (ci.owner = client and broker = broker) always
+
+@ Section 5 – Return or retention of material after termination
+rule O return_or_retain_material:
+    # The rule is abstracted: if client requests return, broker must return;
+    # otherwise broker may retain for 3 years then dispose after 10 days.
+    true always   # (implementation detail omitted – handled by external process)
+
+@ Section 6 – Governing law (no operational effect, kept for traceability)
+rule O governed_by_new_york_law:
+    true always
+
+@ Section 7 – Survival period (no operational effect, kept for traceability)
+rule O agreement_survives_until_earliest_event:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis – “Receiving Party may create a copy of some Confidential Information in some circumstances.”
+# ----------------------------------------------------------------------
+@ The hypothesis is captured by the permission rule above (copy_allowed_under_exception).
+@ It is explicitly restated here for testing purposes.
+rule P hypothesis_create_copy:
+    ci.received_by_brooks
+    and exception_applies(ci)
+    implies (exists copy: ConfidentialCopy . copy.original = ci and copy.created_by = broker) always

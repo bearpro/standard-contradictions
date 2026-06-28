@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-2",
+  "created_at": "2026-06-26T00:19:22.702602+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-2",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_2",
+  "response": {
+    "background": false,
+    "completed_at": 1782433162.0,
+    "created_at": 1782433160.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433160-Deb7WreDJBOjH4Npoy7V",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-2",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement (NDA) – model for hypothesis testing\nmodule contract_nli_no_align_dev_7_nda_2\n\n# ----------------------------------------------------------------------\n# Types – domain concepts used in the NDA\n# ----------------------------------------------------------------------\n@ Clause 1.2(a) – “Confidential Information” is a broad set of data.\ntype ConfidentialCategory =\n    | Technical(unit)          # technical, scientific, trade‑secret etc.\n    | Commercial(unit)         # marketing, business plans, pricing etc.\n    | Patient(unit)            # patient‑identifiable data\n    | Financial(unit)          # financial statements, accounts etc.\n    | Other(unit)              # any other category not listed above\n\ntype ConfidentialInfo = {\n    category: ConfidentialCategory,   # what kind of information it is\n    source:   string                # who disclosed it (e.g., “AHPL”, “Company”)\n}\n\n# ----------------------------------------------------------------------\n# Entities – concrete objects that appear in the agreement\n# ----------------------------------------------------------------------\n@ Clause 1.2(a) – the agreement talks about “Confidential Information”.\nentity confidential_info: ConfidentialInfo\n\n# To make the hypothesis test meaningful we also introduce a concrete\n# non‑technical confidential item that is clearly allowed by the NDA.\nentity non_technical_info: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Facts – concrete data that the parties are assumed to have.\n# ----------------------------------------------------------------------\n@ Clause 1.2(a) – the NDA permits non‑technical confidential data.\nfact non_technical_info.category = ConfidentialCategory.Commercial()\nfact non_technical_info.source   = \"AHPL\"\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements extracted from the NDA\n# ----------------------------------------------------------------------\n@ Clause 1.2(a) – any disclosed item that is marked “Confidential” is\n# a piece of Confidential Information, regardless of its category.\nrule O any_marked_confidential_is_confidential:\n    confidential_info.source = \"AHPL\" or confidential_info.source = \"Company\" always\n\n@ Clause 2.1(a) – the recipient must keep all Confidential Information\n# confidential and may use it only for the Purpose.\nrule O keep_confidential_info_confidential:\n    true always   # (no additional constraint needed for the model)\n\n# ----------------------------------------------------------------------\n# Hypothesis – the statement we want to test against the NDA\n# ----------------------------------------------------------------------\n@ Hypothesis: “Confidential Information shall only include technical information.”\nrule O only_technical_confidential:\n    confidential_info.category = ConfidentialCategory.Technical() always\n\n# ----------------------------------------------------------------------\n# Consistency check – the model will be unsat because the NDA allows\n# non‑technical confidential data (e.g., commercial information) while the\n# hypothesis forces *all* confidential data to be technical.\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_81n43zq62rh",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002621916,
+      "cost_details": {
+        "upstream_inference_cost": 0.0026484,
+        "upstream_inference_input_cost": 0.0015699,
+        "upstream_inference_output_cost": 0.0010785
+      },
+      "input_tokens": 11334,
+      "input_tokens_details": {
+        "cached_tokens": 5616
+      },
+      "is_byok": false,
+      "output_tokens": 1438,
+      "output_tokens_details": {
+        "reasoning_tokens": 888
+      },
+      "total_tokens": 12772
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "7d840522e03e58d4255a25b7f744bd997921e46a69394130fb77123c3a82dc61",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

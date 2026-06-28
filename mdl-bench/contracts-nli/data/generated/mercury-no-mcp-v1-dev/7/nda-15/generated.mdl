@@ -1,0 +1,31 @@
+@ Non‑Disclosure Agreement – hypothesis that the Receiving Party receives **no** rights
+@ over the Confidential Information.
+module contract_nli_no_align_dev_7_nda_15
+
+# ----------------------------------------------------------------------
+# Domain model
+# ----------------------------------------------------------------------
+type Party = { name: string }
+
+type Purpose = { description: string }
+
+type ConfidentialInfo = {
+    discloser: Party,               # the party that discloses the information
+    recipient: Party,               # the party that receives the information
+    purpose: Purpose,               # the permitted purpose of the disclosure
+    is_marked_confidential: bool,  # true if the material is labelled “Confidential”
+    is_owner_by_recipient: bool,   # true if the recipient claims ownership / licence
+    used_for_other_purpose: bool    # true if the recipient uses the material outside the purpose
+}
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Rules – the hypothesis that no rights are granted to the Receiving Party
+# ----------------------------------------------------------------------
+@ Clause 1.2(b) – all Confidential Information remains the property of the Discloser
+rule F recipient_cannot_be_owner:
+    confidential_info.is_owner_by_recipient always
+
+@ Clause 2.1(a)(i‑iii) – the Recipient may use the information **only** for the Purpose
+rule F recipient_cannot_use_outside_purpose:
+    confidential_info.used_for_other_purpose always

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-18",
+  "created_at": "2026-06-26T00:20:52.212359+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-18",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_18",
+  "response": {
+    "background": false,
+    "completed_at": 1782433252.0,
+    "created_at": 1782433249.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433249-ShkpBYXrYF6V4nrJa32I",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-18",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: CNDA – Confidentiality and Non‑Disclosure Agreement\nmodule contract_nli_no_align_dev_10_nda_18\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Article 2 – Definitions of parties and representatives\ntype Party =\n    | DisclosingParty(unit)\n    | ReceivingParty(unit)\n\ntype Representative = {\n    party   : Party,      # the party the representative belongs to\n    name    : string\n}\n\n@ Article 2 – Definition of confidential information\ntype ConfidentialInformation = {\n    content          : string,\n    is_confidential  : bool\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The two contractual parties\nentity disclosing_party : Party = Party.DisclosingParty()\nentity receiving_party : Party = Party.ReceivingParty()\n\n@ Representatives of each party (the set may be empty)\nentity disclosing_reps : List<Representative>   # supplied by the Disclosing Party\nentity receiving_reps : List<Representative>   # supplied by the Receiving Party\n\n@ Confidential information exchanged under the CNDA\nentity confidential_info : ConfidentialInformation\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n# Returns true if a representative belongs to the Disclosing Party\nfunc is_disclosing_rep(rep: Representative) -> bool:\n    case rep.party of\n        | Party.DisclosingParty(): true\n        | _: false\n\n# Returns true if a representative belongs to the Receiving Party\nfunc is_receiving_rep(rep: Representative) -> bool:\n    case rep.party of\n        | Party.ReceivingParty(): true\n        | _: false\n\n# ----------------------------------------------------------------------\n# Rules – Obligations (O), Prohibitions (F), Permissions (P)\n# ----------------------------------------------------------------------\n@ Article 2.03 – Duty of care (obligation)\nrule O duty_of_care:\n    # The Receiving Party must use at least a reasonable degree of care\n    # to protect Confidential Information, but never less than reasonable care.\n    # (Modeled as a boolean predicate; the actual care level is not\n    # represented in the model, but the rule enforces the obligation.)\n    true always\n\n@ Article 2.04 – No benefit / restricted use (prohibition)\nrule F no_benefit_from_confidential_info:\n    # Receiving Party shall not derive any benefit from Confidential Information.\n    # (Modeled as a prohibition on any benefit; the model does not track\n    # benefit, so the rule simply asserts the prohibition.)\n    false always\n\n@ Article 2.05 – No disclosure except to authorised representatives (prohibition)\nrule F no_unauthorised_disclosure:\n    # The Receiving Party may disclose Confidential Information only to its\n    # own representatives that have a need‑to‑know and have been informed of\n    # its confidential nature.\n    let authorised : bool =\n        forall (rep: Representative) in receiving_reps:\n            is_receiving_rep(rep) implies true   # placeholder – actual need‑to‑know logic omitted\n    authorised always\n\n@ Article 2.08 – Responsibility for breaches by representatives (obligation)\nrule O responsibility_for_representatives:\n    # The Receiving Party is responsible for any breach of the CNDA by its\n    # representatives.\n    true always\n\n@ Article 2.07 – Return of Confidential Information on request (obligation)\nrule O return_on_request:\n    # Upon written request, the Receiving Party must return or destroy\n    # all Confidential Information.\n    true always\n\n@ Article 3.01 – Remedies (obligation to honour remedies)\nrule O respect_remedies:\n    # The Receiving Party acknowledges that breach causes irreparable harm and\n    # that equitable relief is available.\n    true always\n\n@ Article 3.02 – Continuing obligations after termination (obligation)\nrule O confidentiality_survives_termination:\n    # Confidentiality obligations survive termination for three years.\n    true always\n\n@ Article 3.09 – Governing law (obligation – not a deontic rule, but modeled for completeness)\nrule O governing_law:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis – Not present in the source document\n# ----------------------------------------------------------------------\n@ Hypothesis: Receiving Party shall not solicit some of Disclosing Party's representatives.\nrule F receiving_party_not_solicit_disclosing_reps:\n    # The CNDA does not contain any clause that expressly prohibits solicitation\n    # of the Disclosing Party's representatives. This rule is added solely to\n    # capture the hypothesis for analysis; it is not derived from the source.\n    false always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_ee6ezebdd1k",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00200338875,
+      "cost_details": {
+        "upstream_inference_cost": 0.002023625,
+        "upstream_inference_input_cost": 0.000743375,
+        "upstream_inference_output_cost": 0.00128025
+      },
+      "input_tokens": 7991,
+      "input_tokens_details": {
+        "cached_tokens": 5575
+      },
+      "is_byok": false,
+      "output_tokens": 1707,
+      "output_tokens_details": {
+        "reasoning_tokens": 803
+      },
+      "total_tokens": 9698
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "53948abac16cbb2c8e5d9ec6cc3287295710a8c301546794e62a5ded46b6bbf9",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

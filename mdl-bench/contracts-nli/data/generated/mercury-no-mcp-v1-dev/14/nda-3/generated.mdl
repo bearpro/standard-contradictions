@@ -1,0 +1,93 @@
+@ Contract: Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list
+module contract_nli_no_align_dev_14_nda_3
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = {
+    name: string,
+    agrees_to_delaware_jurisdiction: bool,
+    acknowledges_irreparable_harm: bool
+}
+
+@ Clause 2 – Confidential Material
+type ConfidentialMaterial = {
+    description: string,
+    is_stockholder_list: bool,
+    includes_analyses: bool,
+    includes_verbal: bool          # hypothesis: may include verbally conveyed information
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Clause 1 – The two parties to the agreement
+entity company: Party
+entity stockholder: Party
+
+@ Clause 2 – The material that is subject to confidentiality
+entity confidential_material: ConfidentialMaterial
+
+# ----------------------------------------------------------------------
+# Fields used in rules (modeling state)
+# ----------------------------------------------------------------------
+@ Clause 1 – Stockholder’s use of the material
+entity stockholder_use: {
+    used_for_other_purposes: bool,
+    has_disclosed: bool,
+    notice_given_within_2_days: bool,
+    unauthorized_amendment_attempted: bool
+}
+
+# ----------------------------------------------------------------------
+# Functions (optional helpers)
+# ----------------------------------------------------------------------
+func is_prohibited_use(use: stockholder_use) -> bool:
+    use.used_for_other_purposes
+
+func is_prohibited_disclosure(use: stockholder_use) -> bool:
+    use.has_disclosed
+
+func is_notice_timely(use: stockholder_use) -> bool:
+    use.notice_given_within_2_days
+
+func is_unauthorized_amendment(use: stockholder_use) -> bool:
+    use.unauthorized_amendment_attempted
+
+# ----------------------------------------------------------------------
+# Rules – Obligations, Prohibitions, Permissions
+# ----------------------------------------------------------------------
+@ Clause 1 – Use of Confidential Material only for permitted purposes
+rule F stockholder_use_for_other_purposes:
+    is_prohibited_use(stockholder_use) always
+
+@ Clause 2 – No disclosure, publication or communication of Confidential Material
+rule F stockholder_disclose_confidential_material:
+    is_prohibited_disclosure(stockholder_use) always
+
+@ Clause 3 – Prompt notice when disclosure is legally required
+rule O stockholder_provide_notice:
+    is_notice_timely(stockholder_use) always
+
+@ Clause 4 – Jurisdiction of the Delaware Court of Chancery
+rule O party_agrees_to_delaware_jurisdiction:
+    company.agrees_to_delaware_jurisdiction and
+    stockholder.agrees_to_delaware_jurisdiction always
+
+@ Clause 5 – Recognition of irreparable harm and entitlement to injunctive relief
+rule O party_recognizes_irreparable_harm:
+    company.acknowledges_irreparable_harm and
+    stockholder.acknowledges_irreparable_harm always
+
+@ Clause 6 – Amendments must be in writing and signed
+rule F unauthorized_amendment:
+    is_unauthorized_amendment(stockholder_use) always
+
+@ Clause 8 – Governing law of the State of Delaware
+rule O governing_law_is_delaware:
+    true always   # implicit – the rule encodes the choice of law
+
+@ Clause 2 – Hypothesis: Confidential Information may include verbally conveyed information
+rule P confidential_material_may_include_verbal:
+    confidential_material.includes_verbal always

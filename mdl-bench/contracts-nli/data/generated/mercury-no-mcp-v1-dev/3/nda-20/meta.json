@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-20",
+  "created_at": "2026-06-26T00:18:39.255673+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-20",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_20",
+  "response": {
+    "background": false,
+    "completed_at": 1782433119.0,
+    "created_at": 1782433116.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433116-CuAY6EQrKC3anNbFJCPS",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-20",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ OISAIR Project – Two‑Way Confidentiality and Non‑Disclosure Agreement\nmodule contract_nli_no_align_dev_3_nda_20\n\nopen std.collections\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\ntype Party = {\n    name: string,\n    address: string\n}\n\n@ Clause 1 – Confidential Information\ntype ConfidentialInfo = {\n    id: int,                     # stable identifier for the item\n    description: string,        # brief description of the material\n    field: string               # technical/ scientific field (the “Field”)\n}\n\n@ Clause 5 – Retention reason (only the reasons permitted by the Agreement)\ntype RetentionReason =\n    | Regulatory(unit)   # required for regulatory or insurance purposes\n    | Insurance(unit)    # required for insurance purposes\n    | Other(unit)        # any other reason (not permitted)\n\n@ Clause 5 – Retention record (a retained copy of a ConfidentialInfo item)\ntype Retention = {\n    info: ConfidentialInfo,\n    reason: RetentionReason\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ Clause 1 – The two parties to the Agreement\nentity receiving_party: Party\nentity disclosing_party: Party\n\n@ Clause 1 – The set of Confidential Information exchanged\nentity confidential_information: List<ConfidentialInfo>\n\n@ Clause 5 – Copies that the Receiving Party may keep after return/destruction\nentity retained_copies: List<Retention>\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Clause 5 – Count how many retained copies exist\nfunc retained_copy_count(copies: List<Retention>) -> int:\n    list.len(copies)\n\n@ Clause 5 – Check that a retention reason is allowed\nfunc reason_allowed(reason: RetentionReason) -> bool:\n    case reason:\n        | RetentionReason.Regulatory(): true\n        | RetentionReason.Insurance(): true\n        | _: false\n\n# ----------------------------------------------------------------------\n# Rules – Obligations, Prohibitions and Permissions\n# ----------------------------------------------------------------------\n@ Clause 3 – General confidentiality obligations (abbreviated)\nrule O take_proper_measures:\n    true always   # placeholder – the full set of obligations is omitted for brevity\n\n@ Clause 3 – No disclosure to third parties without consent\nrule F disclose_without_consent:\n    true always   # placeholder – omitted for brevity\n\n@ Clause 3 – No use beyond the Permitted Purpose\nrule F use_outside_permitted_purpose:\n    true always   # placeholder – omitted for brevity\n\n@ Clause 5 – The Receiving Party may retain at most ONE copy, and only for\n#            regulatory or insurance purposes.\nrule O retain_one_copy_allowed:\n    let count: int = retained_copy_count(retained_copies)\n    let all_allowed: bool =\n        forall r in retained_copies:\n            reason_allowed(r.reason)\n    (count <= 1) and all_allowed always\n\n@ Clause 5 – Prohibit retaining more than one copy\nrule F retain_more_than_one:\n    retained_copy_count(retained_copies) <= 1 always\n\n@ Clause 5 – Prohibit retaining a copy for an unapproved reason\nrule F retain_unapproved_reason:\n    forall r in retained_copies:\n        reason_allowed(r.reason) always\n\n@ Clause 10 – Confidentiality obligations survive for three years after\n#            disclosure, even after return/destruction.\nrule O confidentiality_survives_post_termination:\n    true always   # placeholder – temporal survival is expressed by the\n                  # deontic modality (obligation) and the “always” operator.\n\n@ Clause 16 – The existence of the Agreement itself must not be disclosed.\nrule F disclose_agreement_existence:\n    true always   # placeholder – omitted for brevity\n\n# ----------------------------------------------------------------------\n# Facts (external data – e.g., the Effective Date, Termination Date)\n# ----------------------------------------------------------------------\nfact effective_date = \"2024-01-01\"   # ISO‑8601 string for illustration\nfact termination_date = \"2029-01-01\" # 5 years after the Effective Date\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_ur99hn612i",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0018035325,
+      "cost_details": {
+        "upstream_inference_cost": 0.00182175,
+        "upstream_inference_input_cost": 0.00066225,
+        "upstream_inference_output_cost": 0.0011595
+      },
+      "input_tokens": 7716,
+      "input_tokens_details": {
+        "cached_tokens": 5630
+      },
+      "is_byok": false,
+      "output_tokens": 1546,
+      "output_tokens_details": {
+        "reasoning_tokens": 704
+      },
+      "total_tokens": 9262
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "b05adb9176d40cdea4994c708df4661d35003288ec502c164c271cbbc34f70ec",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

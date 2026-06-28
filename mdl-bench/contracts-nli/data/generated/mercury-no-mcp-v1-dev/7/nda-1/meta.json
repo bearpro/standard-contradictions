@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-1",
+  "created_at": "2026-06-26T00:18:56.695479+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-1",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_1",
+  "response": {
+    "background": false,
+    "completed_at": 1782433136.0,
+    "created_at": 1782433134.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433134-pnQfqfblQ5mIGzFQuvVt",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-1",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – Model for contract_nli_no_align_dev_7_nda_1\nmodule contract_nli_no_align_dev_7_nda_1\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties to the Agreement\ntype Party =\n    | Company(unit)          # the “Company” side of the NDA\n    | AHPL(unit)             # ALEXANDRA HEALTH PTE LTD\n\n@ Information that may be exchanged under the NDA\ntype ConfidentialInfo = {\n    content   : string,      # the actual data or description\n    labeled   : bool,        # true iff the Discloser has marked it\n    source    : Party,       # the Discloser of the information\n    purpose   : string       # the purpose for which it may be used\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The piece of information that is being protected\nentity confidential_info: ConfidentialInfo\n\n@ The party that receives the information (the “Recipient”)\nentity recipient: Party\n\n@ The party that discloses the information (the “Discloser”)\nentity discloser: Party\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Returns true when the given party is the recipient of the current info\nfunc is_recipient(p: Party) -> bool:\n    p = recipient\n\n@ Returns true when the given party is the discloser of the current info\nfunc is_discloser(p: Party) -> bool:\n    p = discloser\n\n# ----------------------------------------------------------------------\n# Obligations (O) – deontic requirements\n# ----------------------------------------------------------------------\n@ Clause 1.2(a) – Confidential information must be expressly identified\nrule O confidential_info_must_be_labeled:\n    confidential_info.labeled always\n\n@ Clause 2.1(a) – Use only for the defined purpose\nrule O use_only_for_purpose:\n    let purpose_match: bool =\n        confidential_info.purpose = purpose\n    purpose_match always\n\n@ Clause 2.1(a)(i) – No commercial use of the confidential information\nrule O no_commercial_use:\n    let not_commercial: bool = not (confidential_info.content contains \"commercial\")\n    not_commercial always\n\n@ Clause 2.1(c) – No disclosure to third parties without consent\nrule O no_unauthorised_third_party_disclosure:\n    let authorised: bool =\n        // only persons who need to know may receive it\n        // we model this by requiring the recipient to be the Discloser\n        // or a permitted agent (not modelled explicitly here)\n        is_recipient(discloser) or is_recipient(recipient)\n    authorised always\n\n@ Clause 2.1(e) – Apply at least the same security measures as for own data\nrule O apply_adequate_security_measures:\n    // abstract security level – true means “adequate”\n    let adequate_security: bool = true\n    adequate_security always\n\n@ Clause 3 – Return or destroy confidential information on termination\nrule O return_or_destroy_on_termination:\n    // The rule is satisfied if the information is either returned or destroyed\n    // within one month after termination (modelled abstractly as a boolean)\n    let returned_or_destroyed: bool = true\n    returned_or_destroyed always\n\n@ Clause 4.2 – Take reasonable precautions to preserve data integrity\nrule O reasonable_precautions_for_data_integrity:\n    let precautions_taken: bool = true\n    precautions_taken always\n\n@ Clause 4.3 – Erase all data when directed by the Discloser\nrule O erase_data_on_directive:\n    let erased: bool = true\n    erased always\n\n@ Clause 4.5 – Comply with the Personal Data Protection Act 2012\nrule O comply_with_pdpa:\n    let pdpa_compliant: bool = true\n    pdpa_compliant always\n\n@ Clause 6 – Keep the existence and terms of the Agreement confidential\nrule O keep_agreement_confidential:\n    let agreement_confidential: bool = true\n    agreement_confidential always\n\n# ----------------------------------------------------------------------\n# Prohibitions (F) – forbidden behaviours\n# ----------------------------------------------------------------------\n@ Clause 2.1(b) – No copying beyond what is reasonably necessary\nrule F prohibit_unnecessary_copying:\n    // Modelled abstractly: any copy must be “reasonable”\n    let copy_is_reasonable: bool = true\n    copy_is_reasonable always\n\n@ Clause 2.1(c)(i) – Recipients must enforce confidentiality on their agents\nrule F failure_to_enforce_on_agents:\n    // Abstractly require that all agents are bound by the same obligations\n    let agents_bound: bool = true\n    agents_bound always\n\n# ----------------------------------------------------------------------\n# Permissions (P) – optional permissions (none needed for this NDA)\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_wbhoavbz46",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00275465025,
+      "cost_details": {
+        "upstream_inference_cost": 0.002782475,
+        "upstream_inference_input_cost": 0.001571975,
+        "upstream_inference_output_cost": 0.0012105
+      },
+      "input_tokens": 11345,
+      "input_tokens_details": {
+        "cached_tokens": 5619
+      },
+      "is_byok": false,
+      "output_tokens": 1614,
+      "output_tokens_details": {
+        "reasoning_tokens": 639
+      },
+      "total_tokens": 12959
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "40fe39d34c076249cf8e7861161eff4bd2d243d39645de79926a98b9b6047731",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

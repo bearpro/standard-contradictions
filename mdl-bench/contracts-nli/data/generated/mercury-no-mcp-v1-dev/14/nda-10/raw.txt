@@ -1,0 +1,80 @@
+```mdl
+@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list
+module contract_nli_no_align_dev_14_nda_10
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = {
+    name: string,                     # e.g. "Patriot Scientific Corporation" or "Stockholder"
+    is_company: bool,                 # true for the Company, false for the Stockholder
+    disclosed_confidential_material: bool,   # has the party disclosed any Confidential Material?
+    disclosed_agreement_existence: bool,     # has the party disclosed that the Agreement exists?
+    required_to_disclose: bool,               # is the party legally required to disclose Confidential Material?
+    notified_company_within_2_days: bool,     # has the party notified the Company within 2 business days?
+    used_for_reasonable_purposes: bool,       # is the Confidential Material used only for permissible purposes?
+    amendment_written: bool                   # is any amendment to the Agreement in writing and signed?
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Clause 1 – The two parties to the Agreement
+entity company: Party
+entity stockholder: Party
+
+# ----------------------------------------------------------------------
+# Rules – Obligations, Prohibitions and Permissions
+# ----------------------------------------------------------------------
+@ Clause 1 – Use of Confidential Material only for permissible purposes
+rule O stockholder_use_for_reasonable_purposes:
+    stockholder.used_for_reasonable_purposes always
+
+@ Clause 2 – Prohibit disclosure of Confidential Material (any form)
+rule F stockholder_disclose_confidential_material:
+    not stockholder.disclosed_confidential_material always
+
+@ Clause 3 – If disclosure is legally required, notify the Company promptly
+rule O stockholder_notify_company_if_required:
+    (stockholder.required_to_disclose implies stockholder.notified_company_within_2_days) always
+
+@ Clause 4 – Exclusive jurisdiction of the Delaware Court of Chancery
+rule O exclusive_jurisdiction_delaware:
+    true always   # (jurisdiction is a factual assumption of the model; no field needed)
+
+@ Clause 5 – Remedies for breach (specific performance / injunctive relief)
+rule O company_irreparable_harm:
+    true always   # placeholder – no concrete field needed for consistency checking
+
+@ Clause 6 – Amendments must be in writing and signed by the other Party
+rule F amendment_without_written:
+    not (company.amendment_written and stockholder.amendment_written) always
+
+@ Clause 7 – Agreement binds successors and assigns (no explicit field required)
+rule O binding_to_successors:
+    true always
+
+@ Clause 8 – Governing law is Delaware (no explicit field required)
+rule O governing_law_delaware:
+    true always
+
+@ Clause 9 – Multiple counterparts constitute a single agreement (no explicit field required)
+rule O multiple_counterparts_one_agreement:
+    true always
+
+@ Clause 10 – Entire agreement clause (no explicit field required)
+rule O entire_agreement_supersedes_prior:
+    true always
+
+@ Clause 11 – No construction against either party due to authorship (no explicit field required)
+rule O no_authorship_construction:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis – Receiving Party shall not disclose that the Agreement was agreed or negotiated
+# ----------------------------------------------------------------------
+@ Hypothesis
+rule F receiving_party_disclose_agreement_existence:
+    (company.disclosed_agreement_existence or stockholder.disclosed_agreement_existence) = false always
+```

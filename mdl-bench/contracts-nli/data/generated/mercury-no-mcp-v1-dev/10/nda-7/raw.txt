@@ -1,0 +1,77 @@
+```mdl
+@ Confidentiality and Non‑Disclosure Agreement (CNDA)
+module contract_nli_no_align_dev_10_nda_7
+
+open std.collections
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Parties (the two contracting entities)
+type Party = { name: string }
+
+@ Confidential information as in Article 2
+type ConfidentialInfo = {
+    id: int,
+    description: string,
+    is_marked_confidential: bool
+}
+
+@ A Representative is a person or entity that the Receiving Party may
+  disclose Confidential Information to (Article 2.05)
+type Representative = {
+    party: Party,
+    need_to_know: bool
+}
+
+@ A Disclosure event records that a piece of Confidential Information is
+  sent to a recipient (used to formulate the deontic rules)
+type Disclosure = {
+    recipient: Party,
+    info: ConfidentialInfo
+}
+
+# ----------------------------------------------------------------------
+# Entities – the concrete objects that the solver will assign values to
+# ----------------------------------------------------------------------
+@ The party that receives the Confidential Information (the “Receiving Party”)
+entity receiving_party: Party
+
+@ The party that provides the Confidential Information (the “Disclosing Party”)
+entity disclosing_party: Party
+
+@ The piece of Confidential Information that is the subject of the agreement
+entity confidential_info: ConfidentialInfo
+
+@ The person or entity that is authorized to receive the Confidential Information
+entity representative: Representative
+
+@ The actual act of disclosing Confidential Information (used in the rules)
+entity disclosure: Disclosure
+
+# ----------------------------------------------------------------------
+# Rules – normative statements (deontic modalities) derived from the CNDA
+# ----------------------------------------------------------------------
+@ Article 2.03 – Obligation to keep the information in confidence
+rule O keep_confidentiality:
+    true always
+
+@ Article 2.05 – Prohibition of disclosure to anyone who is **not** an
+  authorized Representative
+rule F unauthorized_disclosure:
+    disclosure.recipient = representative.party always
+
+@ Article 2.06 – Exception for disclosures required by law (permission)
+rule P legal_disclosure:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis to The Receiving Party may share Confidential Information with
+# third‑parties such as consultants, agents or professional advisors.
+# This is modeled as a permission that directly conflicts with the
+# prohibition above, allowing a solver to detect the contradiction.
+# ----------------------------------------------------------------------
+@ Hypothesis – Permission to share with third‑parties
+rule P share_with_third_party:
+    true always
+```

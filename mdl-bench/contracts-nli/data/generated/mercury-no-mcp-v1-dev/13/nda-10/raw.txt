@@ -1,0 +1,91 @@
+```mdl
+@ Non‑Disclosure Agreement – PJM (2015) – Module for cross‑module alignment
+module contract_nli_no_align_dev_13_nda_10
+
+open std.collections
+
+-- ----------------------------------------------------------------------
+-- Types
+-- ----------------------------------------------------------------------
+@ Parties to the Agreement
+type Party = {
+    name:                 string,
+    is_transmission_owner: bool,
+    -- True if the Party has ever disclosed that the Agreement exists or was negotiated
+    has_disclosed_agreement: bool
+}
+
+@ Certificate signed by a Reviewing Representative
+type NonDisclosureCertificate = {
+    signed_by: Party,
+    date:      string
+}
+
+@ A person who may access Confidential Information
+type ReviewingRepresentative = {
+    person_name:                     string,
+    party:                           Party,
+    -- True when the Representative has executed a Non‑Disclosure Certificate
+    has_executed_certificate:        bool,
+    -- True when the Representative has duties that are “Competitive Duties”
+    has_competitive_duties:          bool,
+    -- True while the Representative is employed/engaged by the Party
+    is_employed:                     bool,
+    -- True if the Representative has used Confidential Information to give a
+    -- competitive or commercial advantage to any Party
+    used_confidential_for_competitive_advantage: bool,
+    -- True while the Representative still has access to Confidential Information
+    has_access:                      bool
+}
+
+-- ----------------------------------------------------------------------
+-- Entities (public model objects)
+-- ----------------------------------------------------------------------
+@ The Party that provides Confidential Information
+entity disclosing_party: Party
+
+@ The Party that receives Confidential Information
+entity receiving_party: Party
+
+@ A Representative of a Party who may view Confidential Information
+entity reviewing_rep: ReviewingRepresentative
+
+@ The signed Non‑Disclosure Certificate attached to a Representative
+entity nd_certificate: NonDisclosureCertificate
+
+-- ----------------------------------------------------------------------
+-- Rules (deontic requirements)
+-- ----------------------------------------------------------------------
+@ Clause 2 – Reviewing Representative must have executed a certificate
+rule O reviewing_rep_must_have_certificate:
+    reviewing_rep.has_executed_certificate always
+
+@ Clause 2 – Representative may not use Confidential Information for competitive advantage
+rule F reviewing_rep_use_competitive_advantage:
+    reviewing_rep.used_confidential_for_competitive_advantage = false always
+
+@ Clause 2 – When employment ends, access must be terminated
+rule O terminate_access_on_employment_end:
+    (not reviewing_rep.is_employed) implies (reviewing_rep.has_access = false) always
+
+@ Clause 5 – No disclosure to third parties without written approval
+rule F disclose_to_third_party_without_approval:
+    -- Modelled by a Boolean field on the disclosing Party; the field must stay false
+    disclosing_party.has_disclosed_agreement = false always
+
+@ Hypothesis – Receiving Party shall not disclose the fact that the Agreement was
+--            agreed or negotiated.
+rule O receiving_party_not_disclose_agreement_fact:
+    receiving_party.has_disclosed_agreement = false always
+
+-- ----------------------------------------------------------------------
+-- Helper Functions (optional, for readability)
+-- ----------------------------------------------------------------------
+func is_disclosing(p: Party) -> bool:
+    p = disclosing_party
+
+func is_receiving(p: Party) -> bool:
+    p = receiving_party
+
+-- End of module
+```

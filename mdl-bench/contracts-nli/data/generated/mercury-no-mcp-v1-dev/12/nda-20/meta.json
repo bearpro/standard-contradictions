@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-20",
+  "created_at": "2026-06-26T00:22:00.691642+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-20",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_20",
+  "response": {
+    "background": false,
+    "completed_at": 1782433320.0,
+    "created_at": 1782433317.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433317-Nc9mpPnfDl5mqliSSscO",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-20",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality (Non‑Disclosure) Agreement\n@ Document ID: contract_nli_no_align_dev_12_nda_20\nmodule contract_nli_no_align_dev_12_nda_20\n\nopen std.collections   # for List<T>\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party =\n    | BROOKS(unit)\n    | CLIENT(unit)\n\n@ Categories of confidential information (as described in §1)\ntype ConfidentialCategory =\n    | Personal(unit)\n    | Financial(unit)\n    | Product(unit)\n    | Formulation(unit)\n    | ProcessingProcedure(unit)\n\n@ A single piece of confidential information\ntype ConfidentialInfo = {\n    category: ConfidentialCategory,      # e.g. Formulation\n    content: string,                     # free‑text description\n    is_exception: bool,                  # true when an exception in §3 applies\n    is_retained: bool                    # true when the receiving party keeps it after return\n}\n\n@ Reasons that make information an exception to confidentiality (§3)\ntype ExceptionReason =\n    | AlreadyPossesses(unit)\n    | IndependentlyDeveloped(unit)\n    | ReceivedFromThirdParty(unit)\n    | InadvertentlyDisclosed(unit)\n    | ConsentGiven(unit)\n    | ServicePerformance(unit)\n\n@ Information about a legally compelled disclosure (§4)\ntype CompelledDisclosure = {\n    legal_request: string,   # description of subpoena, court order, etc.\n    notified_client: bool    # true when BROOKS has notified CLIENT in writing\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ The two parties to the agreement\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ All confidential information that may be exchanged\nentity confidential_info: ConfidentialInfo\n\n@ A record of a compelled disclosure, if any\nentity compelled_disclosure: CompelledDisclosure\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Determines whether a piece of information falls under an exception\nfunc is_exception(info: ConfidentialInfo) -> bool:\n    info.is_exception\n\n@ Determines whether a piece of information is a formulation or processing procedure\nfunc is_proprietary(info: ConfidentialInfo) -> bool:\n    case info.category:\n        | ConfidentialCategory.Formulation(): true\n        | ConfidentialCategory.ProcessingProcedure(): true\n        | _: false\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements (deontic modalities)\n# ----------------------------------------------------------------------\n@ Clause 1.2 – Receiving party must keep all confidential information in confidence\nrule F disclose_confidential_info:\n    not is_exception(confidential_info) always\n\n@ Clause 1.2 – Obligation to keep information confidential (positive formulation)\nrule O keep_confidential_info:\n    not is_exception(confidential_info) always\n\n@ Clause 2.2 – Breach causes irreparable harm; injunctive relief is permitted\nrule O injunctive_relief_allowed:\n    true always   # placeholder – the existence of this rule marks the legal consequence\n\n@ Clause 3 – Exceptions (permission to disclose)\nrule P disclose_under_exception:\n    is_exception(confidential_info) always\n\n@ Clause 4 – Compelled disclosure notification\nrule O notify_client_of_compelled_disclosure:\n    compelled_disclosure.notified_client always\n\n@ Clause 4 – Use best efforts to obtain protective order (at CLIENT’s expense)\nrule O best_efforts_for_protective_order:\n    true always   # placeholder – the requirement is captured by the modality\n\n@ Clause 5 – Return of material upon termination or written request\nrule O return_confidential_material:\n    not is_exception(confidential_info) always\n\n@ Clause 5 – Retention period when no return request is made (3 years)\nrule O retain_for_three_years_if_no_request:\n    not is_exception(confidential_info) always\n\n# ----------------------------------------------------------------------\n# Hypothesis (not a contractual requirement, but a scenario to test)\n# ----------------------------------------------------------------------\n@ Hypothesis: Receiving party may retain some Confidential Information after return or destruction\nrule P retain_after_return_hypothesis:\n    confidential_info.is_retained eventually\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_xleojlc5faq",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00191993175,
+      "cost_details": {
+        "upstream_inference_cost": 0.001939325,
+        "upstream_inference_input_cost": 0.000511325,
+        "upstream_inference_output_cost": 0.001428
+      },
+      "input_tokens": 7079,
+      "input_tokens_details": {
+        "cached_tokens": 5593
+      },
+      "is_byok": false,
+      "output_tokens": 1904,
+      "output_tokens_details": {
+        "reasoning_tokens": 1092
+      },
+      "total_tokens": 8983
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "5041f305eb82363588cd4bb607ff585110f0ae35f9ad099d42a65c5a8a81dd13",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

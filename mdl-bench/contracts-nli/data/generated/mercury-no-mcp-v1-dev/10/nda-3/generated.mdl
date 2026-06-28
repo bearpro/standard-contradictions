@@ -1,0 +1,62 @@
+@ CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (“CNDA”)
+module contract_nli_no_align_dev_10_nda_3
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Article 2 – Confidential Information – definition of an information item
+type Information = {
+    is_verbal: bool,               # true if the information was conveyed verbally
+    is_marked_confidential: bool, # true if the item is clearly marked “Confidential”
+    intended_confidential: bool,   # true if the parties intend it to be disclosed in confidence
+    is_known_by_third: bool,       # true if the receiving party already knew it from a third person
+    is_public: bool,               # true if the information is generally available to the public
+    is_authorized_disclosure: bool # true if the disclosing party authorises disclosure
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The single information item that may be subject to the CNDA
+entity info_item: Information
+
+# ----------------------------------------------------------------------
+# Rules – obligations, prohibitions and permissions derived from the CNDA
+# ----------------------------------------------------------------------
+@ Article 2.01 – Confidential Information definition
+rule O confidentiality_definition:
+    (info_item.is_marked_confidential or info_item.intended_confidential) always
+
+@ Article 2.02 – Exclusions from Confidential Information
+rule F exclusion_rule:
+    (info_item.is_known_by_third or
+     info_item.is_public or
+     info_item.is_authorized_disclosure) implies
+    not (info_item.is_marked_confidential or info_item.intended_confidential) always
+
+@ Article 2.03 – Duty of care (simplified as an obligation to keep the item confidential)
+rule O duty_of_care:
+    true always
+
+@ Article 2.05 – No disclosure to others (simplified – the receiving party must not disclose)
+rule F no_disclosure_to_others:
+    true always
+
+@ Article 2.07 – Return / destruction on request (simplified – an obligation to comply)
+rule O return_upon_request:
+    true always
+
+@ Article 2.08 – Responsibility for representatives (simplified – an obligation to be responsible)
+rule O responsibility_for_representatives:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis – “Confidential Information may include verbally conveyed information.”
+# ----------------------------------------------------------------------
+@ The hypothesis is expressed as a concrete fact about the single information item.
+@ It states that the item is verbal and that the parties intend it to be confidential.
+fact hypothesis_is_verbal:
+    info_item.is_verbal = true
+
+fact hypothesis_intended_confidential:
+    info_item.intended_confidential = true

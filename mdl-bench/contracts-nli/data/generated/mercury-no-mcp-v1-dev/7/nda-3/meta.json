@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-3",
+  "created_at": "2026-06-26T00:19:27.972933+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-3",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_3",
+  "response": {
+    "background": false,
+    "completed_at": 1782433167.0,
+    "created_at": 1782433166.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433166-oP2VYxNIKf4ViQTVI9P3",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-3",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – Model for hypothesis “Confidential Information may include verbally conveyed information.”\nmodule contract_nli_no_align_dev_7_nda_3\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 1.2(a) – definition of Confidential Information (including oral)\ntype InfoMedium = \n    | Written(unit)          # information disclosed in writing\n    | Oral(unit)             # information disclosed verbally\n    | Other(unit)            # any other means of disclosure\n\n@ Clause 1.2(a) – confirmation of oral disclosures\ntype Confirmation = \n    | Confirmed(unit)        # oral disclosure confirmed in writing within 15 days\n    | Unconfirmed(unit)      # oral disclosure not confirmed\n\n@ Clause 1.2(a) – parties to the agreement\ntype Party = \n    | Company(unit)          # “the Company”\n    | AHPL(unit)             # “ALEXANDRA HEALTH PTE LTD”\n\n# ----------------------------------------------------------------------\n# Entity\n# ----------------------------------------------------------------------\n@ Clause 1.2(a) – each piece of information exchanged\nentity confidential_info: {\n    medium: InfoMedium,\n    confirmation: Confirmation,   # relevant only when medium = Oral\n    disclosing_party: Party,\n    receiving_party: Party,\n    is_confidential: bool\n}\n\n# ----------------------------------------------------------------------\n# Rules\n# ----------------------------------------------------------------------\n@ Clause 1.2(a) – written information is always confidential\nrule O written_information_is_confidential:\n    (confidential_info.medium = InfoMedium.Written(())) implies\n    confidential_info.is_confidential always\n\n@ Clause 1.2(a) – orally disclosed information becomes confidential\n@     if it is confirmed in writing within fifteen (15) days\nrule O oral_information_confidential_when_confirmed:\n    (confidential_info.medium = InfoMedium.Oral(()) and\n     confidential_info.confirmation = Confirmation.Confirmed(())) implies\n    confidential_info.is_confidential always\n\n@ Clause 1.2(a) – oral information not confirmed is NOT automatically confidential\nrule F oral_information_not_confidential_without_confirmation:\n    (confidential_info.medium = InfoMedium.Oral(()) and\n     confidential_info.confirmation = Confirmation.Unconfirmed(())) implies\n    not confidential_info.is_confidential always\n\n@ Clause 1.2(a) – other means of disclosure are treated as confidential\nrule O other_information_is_confidential:\n    (confidential_info.medium = InfoMedium.Other(())) implies\n    confidential_info.is_confidential always\n\n# ----------------------------------------------------------------------\n# Hypothesis check (expressed as a permission – it may be true)\n# ----------------------------------------------------------------------\n@ Hypothesis: “Confidential Information may include verbally conveyed information.”\nrule P hypothesis_oral_can_be_confidential:\n    true always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_3b0pu37oaav",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00243022725,
+      "cost_details": {
+        "upstream_inference_cost": 0.002454775,
+        "upstream_inference_input_cost": 0.001585525,
+        "upstream_inference_output_cost": 0.00086925
+      },
+      "input_tokens": 11446,
+      "input_tokens_details": {
+        "cached_tokens": 5671
+      },
+      "is_byok": false,
+      "output_tokens": 1159,
+      "output_tokens_details": {
+        "reasoning_tokens": 602
+      },
+      "total_tokens": 12605
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "38b937d07a5157d66c340f2ecef5fcbb14092f2ceea0d9f4fdc5f540ab706b51",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

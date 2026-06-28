@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-13-nda-13",
+  "created_at": "2026-06-26T00:22:34.067760+00:00",
+  "doc_id": 13,
+  "hypothesis_id": "nda-13",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_13_nda_13",
+  "response": {
+    "background": false,
+    "completed_at": 1782433353.0,
+    "created_at": 1782433351.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433351-LjGd8VIQtMcyzp8zEFXL",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-13-nda-13",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement for the Exchange of Energy Management System Model Data\nmodule contract_nli_no_align_dev_13_nda_13\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\ntype Party = {\n    name: string,\n    is_pjm: bool                # true for PJM, false for the Transmission Owner\n}\n\n@ Clause 2 – Reviewing Representative\ntype ReviewingRepresentative = {\n    name: string,\n    title: string,\n    party: Party,\n    has_certificate: bool,      # true when a signed Non‑Disclosure Certificate has been delivered\n    has_competitive_duties: bool\n}\n\n@ Clause 4 – Confidential Information\ntype ConfidentialInformation = {\n    description: string,\n    is_marked_confidential: bool,\n    source_party: Party\n}\n\n@ Clause 7 – Third‑Party Request\ntype ThirdPartyRequest = {\n    requestor: string,\n    reason: string\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Clause 1 – each Party (PJM and the Transmission Owner)\nentity party: Party\n\n@ Clause 2 – each Reviewing Representative who signs a certificate\nentity reviewing_rep: ReviewingRepresentative\n\n@ Clause 4 – a piece of Confidential Information exchanged under the Agreement\nentity conf_info: ConfidentialInformation\n\n@ Clause 7 – a request from a third party for disclosure\nentity third_party_req: ThirdPartyRequest\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Clause 2 – a Reviewing Representative must have a signed certificate before\n#           accessing Confidential Information.\nfunc can_access_confidential(rep: ReviewingRepresentative) -> bool:\n    rep.has_certificate\n\n@ Clause 5 – a Party may disclose Confidential Information to a third party\n#           only if it has obtained prior written approval from the Disclosing Party.\nfunc has_written_approval(conf: ConfidentialInformation) -> bool:\n    -- In a real model this would be linked to an approval record.\n    -- For the purpose of the logical model we assume no approval by default.\n    false\n\n# ----------------------------------------------------------------------\n# Rules (Deontic constraints)\n# ----------------------------------------------------------------------\n@ Clause 2 – Obligation to deliver a signed Non‑Disclosure Certificate\nrule O deliver_certificate:\n    reviewing_rep.has_certificate always\n\n@ Clause 2 – Obligation: only a Reviewing Representative with a certificate\n#           may access Confidential Information.\nrule O only_certified_rep_may_access:\n    (conf_info.is_marked_confidential implies can_access_confidential(reviewing_rep)) always\n\n@ Clause 5 – Prohibition: disclose Confidential Information to a third party\n#           without prior written approval.\nrule F disclose_confidential_to_third_party_without_approval:\n    (conf_info.is_marked_confidential and not has_written_approval(conf_info)) always\n\n@ Clause 5 – Obligation: Parties shall not disclose Confidential Information\n#           to any third party without prior written approval.\nrule O no_unauthorized_third_party_disclosure:\n    (conf_info.is_marked_confidential and not has_written_approval(conf_info)) always\n\n@ Clause 8 – Obligation: return or destroy Confidential Information when it\n#           is no longer needed for Transmission Functions.\nrule O return_or_destroy_when_not_needed:\n    -- The model does not track the “need” state; we express the obligation\n    -- as a generic requirement that the information must eventually be\n    -- returned or destroyed.\n    (conf_info.is_marked_confidential) eventually\n\n@ Clause 9 – Permission: acquire information that is *not* marked confidential\n#           from a third party (i.e., “similar” information that is not confidential).\nrule P acquire_nonconfidential_info_from_third_party:\n    (not conf_info.is_marked_confidential) always\n\n@ Clause 9 – Prohibition: acquire confidential information from a third party\n#           without approval (reinforces the prohibition above).\nrule F acquire_confidential_info_from_third_party_without_approval:\n    (conf_info.is_marked_confidential and not has_written_approval(conf_info)) always\n\n# ----------------------------------------------------------------------\n# Hypothesis (for verification)\n# ----------------------------------------------------------------------\n@ The hypothesis to be checked against the model:\n#   “Receiving Party may acquire information similar to Confidential Information\n#    from a third party.”\n#   This is expressed by the permission rule above (acquire_nonconfidential_info_from_third_party).\n#   If a verifier finds a conflict with rule F acquire_confidential_info_from_third_party_without_approval,\n#   the hypothesis would be false for confidential material.\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_b26pkoearg",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002458269,
+      "cost_details": {
+        "upstream_inference_cost": 0.0024831,
+        "upstream_inference_input_cost": 0.00112185,
+        "upstream_inference_output_cost": 0.00136125
+      },
+      "input_tokens": 9513,
+      "input_tokens_details": {
+        "cached_tokens": 5584
+      },
+      "is_byok": false,
+      "output_tokens": 1815,
+      "output_tokens_details": {
+        "reasoning_tokens": 907
+      },
+      "total_tokens": 11328
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "a6724c2ab807510418c71ba6b2ffe26076b406230561abce65dc5f78b2487545",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

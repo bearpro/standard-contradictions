@@ -1,0 +1,35 @@
+```mdl
+@ CNDA – Confidentiality and Non‑Disclosure Agreement
+@ Module: contract_nli_no_align_dev_10_nda_1
+module contract_nli_no_align_dev_10_nda_1
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 2.01 – Definition of Confidential Information
+type Party = Disclosing(unit) | Receiving(unit)
+
+type ConfidentialInfo = {
+    source: Party,                     # who supplied the information
+    is_marked: bool,                   # clearly marked “Confidential”
+    is_intended_confidential: bool     # clearly intended to be disclosed in confidence
+}
+
+# ----------------------------------------------------------------------
+# Entity
+# ----------------------------------------------------------------------
+@ The piece of information that may be subject to the CNDA
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+@ Clause 2.01 – Confidential Information must be expressly identified
+rule O confidential_info_must_be_identified:
+    case confidential_info.source of
+        | Party.Disclosing():
+            confidential_info.is_marked or confidential_info.is_intended_confidential
+        | Party.Receiving():
+            true
+    always
+```

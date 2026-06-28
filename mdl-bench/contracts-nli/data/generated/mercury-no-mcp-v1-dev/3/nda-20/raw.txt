@@ -1,0 +1,111 @@
+```mdl
+@ OISAIR Project – Two‑Way Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_3_nda_20
+
+open std.collections
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = {
+    name: string,
+    address: string
+}
+
+@ Clause 1 – Confidential Information
+type ConfidentialInfo = {
+    id: int,                     # stable identifier for the item
+    description: string,        # brief description of the material
+    field: string               # technical/ scientific field (the “Field”)
+}
+
+@ Clause 5 – Retention reason (only the reasons permitted by the Agreement)
+type RetentionReason =
+    | Regulatory(unit)   # required for regulatory or insurance purposes
+    | Insurance(unit)    # required for insurance purposes
+    | Other(unit)        # any other reason (not permitted)
+
+@ Clause 5 – Retention record (a retained copy of a ConfidentialInfo item)
+type Retention = {
+    info: ConfidentialInfo,
+    reason: RetentionReason
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ Clause 1 – The two parties to the Agreement
+entity receiving_party: Party
+entity disclosing_party: Party
+
+@ Clause 1 – The set of Confidential Information exchanged
+entity confidential_information: List<ConfidentialInfo>
+
+@ Clause 5 – Copies that the Receiving Party may keep after return/destruction
+entity retained_copies: List<Retention>
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Clause 5 – Count how many retained copies exist
+func retained_copy_count(copies: List<Retention>) -> int:
+    list.len(copies)
+
+@ Clause 5 – Check that a retention reason is allowed
+func reason_allowed(reason: RetentionReason) -> bool:
+    case reason:
+        | RetentionReason.Regulatory(): true
+        | RetentionReason.Insurance(): true
+        | _: false
+
+# ----------------------------------------------------------------------
+# Rules – Obligations, Prohibitions and Permissions
+# ----------------------------------------------------------------------
+@ Clause 3 – General confidentiality obligations (abbreviated)
+rule O take_proper_measures:
+    true always   # placeholder – the full set of obligations is omitted for brevity
+
+@ Clause 3 – No disclosure to third parties without consent
+rule F disclose_without_consent:
+    true always   # placeholder – omitted for brevity
+
+@ Clause 3 – No use beyond the Permitted Purpose
+rule F use_outside_permitted_purpose:
+    true always   # placeholder – omitted for brevity
+
+@ Clause 5 – The Receiving Party may retain at most ONE copy, and only for
+#            regulatory or insurance purposes.
+rule O retain_one_copy_allowed:
+    let count: int = retained_copy_count(retained_copies)
+    let all_allowed: bool =
+        forall r in retained_copies:
+            reason_allowed(r.reason)
+    (count <= 1) and all_allowed always
+
+@ Clause 5 – Prohibit retaining more than one copy
+rule F retain_more_than_one:
+    retained_copy_count(retained_copies) <= 1 always
+
+@ Clause 5 – Prohibit retaining a copy for an unapproved reason
+rule F retain_unapproved_reason:
+    forall r in retained_copies:
+        reason_allowed(r.reason) always
+
+@ Clause 10 – Confidentiality obligations survive for three years after
+#            disclosure, even after return/destruction.
+rule O confidentiality_survives_post_termination:
+    true always   # placeholder – temporal survival is expressed by the
+                  # deontic modality (obligation) and the “always” operator.
+
+@ Clause 16 – The existence of the Agreement itself must not be disclosed.
+rule F disclose_agreement_existence:
+    true always   # placeholder – omitted for brevity
+
+# ----------------------------------------------------------------------
+# Facts (external data – e.g., the Effective Date, Termination Date)
+# ----------------------------------------------------------------------
+fact effective_date = "2024-01-01"   # ISO‑8601 string for illustration
+fact termination_date = "2029-01-01" # 5 years after the Effective Date
+```

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-3",
+  "created_at": "2026-06-26T00:22:03.626915+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-3",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_3",
+  "response": {
+    "background": false,
+    "completed_at": 1782433323.0,
+    "created_at": 1782433321.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433321-7CaJzTK55zwlIAqorBFe",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-3",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality (Non‑Disclosure) Agreement – NDA model\nmodule contract_nli_no_align_dev_12_nda_3\n\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\n@ Parties (BROOKS and CLIENT)\ntype Party = {\n    name: string,\n    is_brooks: bool,      -- true for BROOKS, false for CLIENT\n    is_client: bool       -- true for CLIENT, false for BROOKS\n}\n\n@ Confidential Information (the subject of the NDA)\ntype ConfidentialInformation = {\n    is_written: bool,          -- disclosed in writing (e.g., documents)\n    is_verbal: bool,           -- disclosed orally or by other non‑written means\n    is_product_info: bool,     -- product‑related data\n    is_financial_info: bool,   -- personal/financial data\n    is_formulation_info: bool  -- formulations & processing procedures\n}\n\n# ----------------------------------------------------------------------\n# Entities – public model objects that can be aligned across standards\n# ----------------------------------------------------------------------\n@ The two contracting parties\nentity brooks: Party\nentity client: Party\n\n@ The set of information that may be exchanged under the Agreement\nentity confidential_info: ConfidentialInformation\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Determine whether a piece of information is “Confidential Information”\nfunc is_confidential(info: ConfidentialInformation) -> bool:\n    info.is_written or info.is_verbal or\n    info.is_product_info or info.is_financial_info or\n    info.is_formulation_info\n\n# ----------------------------------------------------------------------\n# Obligations (O), Prohibitions (F) and Permissions (P)\n# ----------------------------------------------------------------------\n@ Clause 1.2 – BROOKS must keep Confidential Information confidential\nrule O brooks_must_keep_confidential:\n    is_confidential(confidential_info) implies\n    (brooks.is_brooks and client.is_client) always\n\n@ Clause 1.2 – BROOKS may not disclose Confidential Information except with CLIENT consent\nrule F brooks_must_not_disclose_without_consent:\n    is_confidential(confidential_info) and\n    not client_consent_given() always\n\n@ Clause 2.2 – Breach by BROOKS causes irreparable harm; enforceable by injunction\nrule O brooks_breach_causes_irreparable_harm:\n    (is_confidential(confidential_info) and\n     brooks_fails_obligation()) implies\n    injunctive_relief_available() always\n\n@ Clause 2.3 – BROOKS shall not approach CLIENT’s Private Label Condiment Customers\nrule F brooks_must_not_approach_private_label_customers:\n    brooks_attempts_to_contact_private_label_customers() always\n\n@ Clause 3 – Exceptions (Disclosure is permitted under the listed circumstances)\nrule P brooks_may_disclose_under_exception:\n    (confidential_info_already_possessed() or\n     confidential_info_developed_independently() or\n     confidential_info_received_from_third_party() or\n     confidential_info_inadvertently_disclosed() or\n     confidential_info_disclosed_with_client_consent() or\n     confidential_info_disclosed_to_perform_service()) always\n\n@ Clause 4 – Compelled Disclosure (legal process)\nrule O brooks_must_notify_client_of_compelled_disclosure:\n    brooks_is_legally_compelled() implies\n    notify_client_in_writing() always\n\nrule P brooks_may_disclose_compelled_portion:\n    (brooks_is_legally_compelled() and\n     client_has_protective_order_or_waiver()) implies\n    disclose_only_compelled_portion() always\n\n@ Clause 5 – Return of Material\nrule O brooks_must_return_or_destroy_material_on_termination:\n    agreement_terminated() implies\n    (client_requests_return() or\n     retain_material_for_three_years()) always\n\n@ Clause 6 – Governing Law (NY)\nrule O agreement_governed_by_new_york_law:\n    governing_law = \"New York\" always\n\n@ Clause 7 – Survival (term of the Agreement)\nrule O agreement_survives_until_earliest_event:\n    (one_year_after_termination() or\n     alternate_termination_date_specified()) always\n\n@ Clause 10 – Amendment only by written instrument\nrule F agreement_cannot_be_amended_without_written_document:\n    amendment_attempted() and not amendment_is_written() always\n\n# ----------------------------------------------------------------------\n# Hypothesis – “Confidential Information may include verbally conveyed information.”\n# ----------------------------------------------------------------------\n@ The hypothesis is modeled as a permission that verbal information can be\n# considered Confidential Information.\nrule P confidential_info_may_be_verbal:\n    confidential_info.is_verbal always\n\n# ----------------------------------------------------------------------\n# Placeholder predicates used in the rules above.\n# In a full model these would be defined by additional functions or\n# supplied by the environment (e.g., external data, other modules).\n# ----------------------------------------------------------------------\nfunc client_consent_given() -> bool: true\nfunc brooks_fails_obligation() -> bool: false\nfunc injunctive_relief_available() -> bool: true\nfunc brooks_attempts_to_contact_private_label_customers() -> bool: false\nfunc confidential_info_already_possessed() -> bool: false\nfunc confidential_info_developed_independently() -> bool: false\nfunc confidential_info_received_from_third_party() -> bool: false\nfunc confidential_info_inadvertently_disclosed() -> bool: false\nfunc confidential_info_disclosed_with_client_consent() -> bool: false\nfunc confidential_info_disclosed_to_perform_service() -> bool: false\nfunc brooks_is_legally_compelled() -> bool: false\nfunc notify_client_in_writing() -> bool: true\nfunc client_has_protective_order_or_waiver() -> bool: false\nfunc disclose_only_compelled_portion() -> bool: true\nfunc agreement_terminated() -> bool: false\nfunc client_requests_return() -> bool: false\nfunc retain_material_for_three_years() -> bool: true\nfunc one_year_after_termination() -> bool: false\nfunc alternate_termination_date_specified() -> bool: false\nfunc amendment_attempted() -> bool: false\nfunc amendment_is_written() -> bool: false\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_xroec7n9eb",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.001738341,
+      "cost_details": {
+        "upstream_inference_cost": 0.0017559,
+        "upstream_inference_input_cost": 0.0005154,
+        "upstream_inference_output_cost": 0.0012405
+      },
+      "input_tokens": 7152,
+      "input_tokens_details": {
+        "cached_tokens": 5656
+      },
+      "is_byok": false,
+      "output_tokens": 1654,
+      "output_tokens_details": {
+        "reasoning_tokens": 384
+      },
+      "total_tokens": 8806
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "019a4d8eacf49e395432d4a5ebe597376579629811712994842f2641f99d886e",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

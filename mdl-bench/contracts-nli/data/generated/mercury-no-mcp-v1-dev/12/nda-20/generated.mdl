@@ -1,0 +1,113 @@
+@ Contract: Confidentiality (Non‑Disclosure) Agreement
+@ Document ID: contract_nli_no_align_dev_12_nda_20
+module contract_nli_no_align_dev_12_nda_20
+
+open std.collections   # for List<T>
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party =
+    | BROOKS(unit)
+    | CLIENT(unit)
+
+@ Categories of confidential information (as described in §1)
+type ConfidentialCategory =
+    | Personal(unit)
+    | Financial(unit)
+    | Product(unit)
+    | Formulation(unit)
+    | ProcessingProcedure(unit)
+
+@ A single piece of confidential information
+type ConfidentialInfo = {
+    category: ConfidentialCategory,      # e.g. Formulation
+    content: string,                     # free‑text description
+    is_exception: bool,                  # true when an exception in §3 applies
+    is_retained: bool                    # true when the receiving party keeps it after return
+}
+
+@ Reasons that make information an exception to confidentiality (§3)
+type ExceptionReason =
+    | AlreadyPossesses(unit)
+    | IndependentlyDeveloped(unit)
+    | ReceivedFromThirdParty(unit)
+    | InadvertentlyDisclosed(unit)
+    | ConsentGiven(unit)
+    | ServicePerformance(unit)
+
+@ Information about a legally compelled disclosure (§4)
+type CompelledDisclosure = {
+    legal_request: string,   # description of subpoena, court order, etc.
+    notified_client: bool    # true when BROOKS has notified CLIENT in writing
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ The two parties to the agreement
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ All confidential information that may be exchanged
+entity confidential_info: ConfidentialInfo
+
+@ A record of a compelled disclosure, if any
+entity compelled_disclosure: CompelledDisclosure
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Determines whether a piece of information falls under an exception
+func is_exception(info: ConfidentialInfo) -> bool:
+    info.is_exception
+
+@ Determines whether a piece of information is a formulation or processing procedure
+func is_proprietary(info: ConfidentialInfo) -> bool:
+    case info.category:
+        | ConfidentialCategory.Formulation(): true
+        | ConfidentialCategory.ProcessingProcedure(): true
+        | _: false
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (deontic modalities)
+# ----------------------------------------------------------------------
+@ Clause 1.2 – Receiving party must keep all confidential information in confidence
+rule F disclose_confidential_info:
+    not is_exception(confidential_info) always
+
+@ Clause 1.2 – Obligation to keep information confidential (positive formulation)
+rule O keep_confidential_info:
+    not is_exception(confidential_info) always
+
+@ Clause 2.2 – Breach causes irreparable harm; injunctive relief is permitted
+rule O injunctive_relief_allowed:
+    true always   # placeholder – the existence of this rule marks the legal consequence
+
+@ Clause 3 – Exceptions (permission to disclose)
+rule P disclose_under_exception:
+    is_exception(confidential_info) always
+
+@ Clause 4 – Compelled disclosure notification
+rule O notify_client_of_compelled_disclosure:
+    compelled_disclosure.notified_client always
+
+@ Clause 4 – Use best efforts to obtain protective order (at CLIENT’s expense)
+rule O best_efforts_for_protective_order:
+    true always   # placeholder – the requirement is captured by the modality
+
+@ Clause 5 – Return of material upon termination or written request
+rule O return_confidential_material:
+    not is_exception(confidential_info) always
+
+@ Clause 5 – Retention period when no return request is made (3 years)
+rule O retain_for_three_years_if_no_request:
+    not is_exception(confidential_info) always
+
+# ----------------------------------------------------------------------
+# Hypothesis (not a contractual requirement, but a scenario to test)
+# ----------------------------------------------------------------------
+@ Hypothesis: Receiving party may retain some Confidential Information after return or destruction
+rule P retain_after_return_hypothesis:
+    confidential_info.is_retained eventually

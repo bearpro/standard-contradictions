@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-12",
+  "created_at": "2026-06-26T00:19:50.264474+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-12",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_12",
+  "response": {
+    "background": false,
+    "completed_at": 1782433190.0,
+    "created_at": 1782433187.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433187-MfoevnVSvkK1zYQhbwZL",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-12",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT – TRANSPORTATION CHALLENGE 2017\nmodule contract_nli_no_align_dev_9_nda_12\n\nopen std.collections\n\n-- ----------------------------------------------------------------------\n-- Types that capture the domain objects described in the Agreement\n-- ----------------------------------------------------------------------\n@ Definition of a person (used for contacts and representatives)\ntype Person = {\n    name: string,\n    email: string,\n    phone: string\n}\n\n@ BPS contact person (the “notified” representative)\ntype BPSContact = Person\n\n@ Vendor representative (employee, subcontractor, etc.)\ntype Representative = Person\n\n@ Vendor entity – the “Receiving Party”\ntype Vendor = {\n    name: string,\n    representatives: List<Representative>,\n    -- purpose for which confidential data may be used\n    purpose: string,                         -- e.g. \"BPS_service\"\n    -- flags that are set by the vendor to satisfy obligations\n    disclosed_to_third_party: bool,\n    notified_bps_of_legal_process: bool,\n    returned_or_destroyed_confidential_info: bool,\n    background_check_conducted: bool,\n    may_develop_similar_info: bool           -- permission to develop independent data\n}\n\n@ BPS entity – the “Disclosing Party”\ntype BPS = {\n    name: string,\n    address: string,\n    contact: BPSContact\n}\n\n@ Confidential information that is subject to the NDA\ntype ConfidentialInfo = {\n    student_home_address: string,\n    latitude: rat,\n    longitude: rat,\n    school_assignment: string,\n    ridership_status: string,   -- corner stop, D2D, wheelchair, …\n    grade: int,\n    bus_stop_intersection: string,\n    bus_stop_lat: rat,\n    bus_stop_long: rat,\n    survey_data: string\n}\n\n@ Database used by the vendor to store and process the confidential data\ntype Database = {\n    encryption_at_rest: bool,\n    encryption_in_transit: bool,\n    access_control: bool,\n    audit_log_enabled: bool,\n    firewall_enabled: bool,\n    antivirus_installed: bool\n}\n\n-- ----------------------------------------------------------------------\n-- Entities – the stable public anchors for alignment with other standards\n-- ----------------------------------------------------------------------\n@ Party definitions (the two “Parties” to the Agreement)\nentity vendor: Vendor\nentity bps: BPS\n\n@ The confidential data set that the vendor receives\nentity confidential_info: ConfidentialInfo\n\n@ The secure database that the vendor must maintain\nentity database: Database\n\n-- ----------------------------------------------------------------------\n-- Helper functions (pure, no side‑effects)\n-- ----------------------------------------------------------------------\n@ Check that the vendor’s declared purpose matches the allowed purpose\nfunc purpose_is_allowed(purpose: string) -> bool:\n    purpose = \"BPS_service\"\n\n@ Check that the database satisfies the required security controls\nfunc db_meets_security(db: Database) -> bool:\n    db.encryption_at_rest and\n    db.encryption_in_transit and\n    db.access_control and\n    db.audit_log_enabled and\n    db.firewall_enabled and\n    db.antivirus_installed\n\n-- ----------------------------------------------------------------------\n-- Obligations (O), Prohibitions (F) and Permissions (P)\n-- ----------------------------------------------------------------------\n@ Clause B.1 – Data Sharing – security obligations\nrule O vendor_maintains_secure_database:\n    db_meets_security(database) always\n\n@ Clause B.2 – Nondisclosure – purpose limitation\nrule O vendor_uses_data_only_for_allowed_purpose:\n    purpose_is_allowed(vendor.purpose) always\n\n@ Clause B.2 – Nondisclosure – prohibition on unauthorized disclosure\nrule F vendor_may_not_disclose_without_consent:\n    not vendor.disclosed_to_third_party always\n\n@ Clause B.3 – Background Checks\nrule O vendor_conducts_background_checks:\n    vendor.background_check_conducted always\n\n@ Clause B.4 – Disclosure Sought Under Legal Process – notification obligation\nrule O vendor_notifies_bps_of_legal_process:\n    vendor.notified_bps_of_legal_process always\n\n@ Clause B.6 – Return or Destruction of Materials\nrule O vendor_returns_or_destroys_confidential_info:\n    vendor.returned_or_destroyed_confidential_info always\n\n@ Clause B.9 – Injunctive Relief – implied prohibition on breach (modelled as a prohibition)\nrule F vendor_may_not_breach_obligations:\n    not (\n        vendor.disclosed_to_third_party or\n        not vendor.notified_bps_of_legal_process or\n        not vendor.returned_or_destroyed_confidential_info\n    ) always\n\n@ Clause B.10 – Immediate Notice – same as notification rule (already covered)\n\n@ Clause B.12 – Termination – obligations survive termination (modelled as always)\nrule O vendor_obligations_survive_termination:\n    purpose_is_allowed(vendor.purpose) and\n    db_meets_security(database) and\n    not vendor.disclosed_to_third_party and\n    vendor.notified_bps_of_legal_process and\n    vendor.returned_or_destroyed_confidential_info and\n    vendor.background_check_conducted always\n\n@ Hypothesis – Receiving Party may independently develop information similar to Confidential Information\nrule P vendor_may_develop_similar_information:\n    vendor.may_develop_similar_info always\n\n-- ----------------------------------------------------------------------\n-- End of module\n-- ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_czs1df5niye",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00230152725,
+      "cost_details": {
+        "upstream_inference_cost": 0.002324775,
+        "upstream_inference_input_cost": 0.000972525,
+        "upstream_inference_output_cost": 0.00135225
+      },
+      "input_tokens": 9048,
+      "input_tokens_details": {
+        "cached_tokens": 5731
+      },
+      "is_byok": false,
+      "output_tokens": 1803,
+      "output_tokens_details": {
+        "reasoning_tokens": 702
+      },
+      "total_tokens": 10851
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "c1deb7e6dd9ab2057d9725336bc37735c2ed3f3fbe130dd9aa9687c3e65fefff",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,156 @@
+@ AGREEMENT ON THE NON‑DISCLOSURE OF CONFIDENTIAL INFORMATION (TWO‑WAY)
+module contract_nli_no_align_dev_15_nda_18
+
+# ----------------------------------------------------------------------
+# Standard library imports
+# ----------------------------------------------------------------------
+open std.collections
+open std.strings
+open std.datetime   # for date arithmetic (if needed)
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+@ Parties to the Agreement
+type PartyRole = Disclosing | Receiving
+
+@ Basic information about a party
+type Party = {
+    name: string,
+    address: string,
+    role: PartyRole
+}
+
+@ Classification of confidential information (as defined in the Agreement)
+type ConfidentialClassification =
+    | Proprietary(materials: string)          # generic catch‑all
+    | Specification(details: string)        # e.g. drawings, designs
+    | Software(code: string)                # computer software
+    | KnowHow(details: string)              # technical know‑how
+    | Other(description: string)            # any other material
+
+@ A piece of confidential information
+type ConfidentialInformation = {
+    classification: ConfidentialClassification,
+    description: string,
+    received_by: Party,          # the party that receives it
+    disclosed_by: Party          # the party that discloses it
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ The university of Bristol – the disclosing party
+entity disclosing_party: Party
+
+@ The counter‑party – the receiving party
+entity receiving_party: Party
+
+@ The effective date of the Agreement
+entity effective_date: date
+
+@ A generic container for confidential items exchanged under the Agreement
+entity confidential_items: List<ConfidentialInformation>
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Returns true when the given party is the receiving party
+func is_receiving(p: Party) -> bool:
+    p.role = PartyRole.Receiving
+
+@ Returns true when the given party is the disclosing party
+func is_disclosing(p: Party) -> bool:
+    p.role = PartyRole.Disclosing
+
+@ Calculates the number of full years between two dates
+func years_between(start: date, end: date) -> int:
+    let diff: int = (end - start).days / 365
+    diff
+
+# ----------------------------------------------------------------------
+# Rules – obligations, prohibitions and permissions (deontic modalities)
+# ----------------------------------------------------------------------
+@ Clause 2 – mark or designate confidential information
+rule O mark_confidential_information:
+    forall ci in confidential_items:
+        ci.classification != ConfidentialClassification.Other("")
+    always
+
+@ Clause 3 a – take reasonable measures to keep information confidential
+rule O take_reasonable_measures:
+    forall ci in confidential_items:
+        is_receiving(ci.received_by) implies
+            (ci.classification = ConfidentialClassification.Proprietary(_)
+          or ci.classification = ConfidentialClassification.Specification(_)
+          or ci.classification = ConfidentialClassification.Software(_)
+          or ci.classification = ConfidentialClassification.KnowHow(_))
+    always
+
+@ Clause 3 b – do not use the information for any commercial purpose without licence
+rule F use_for_commercial_purpose_without_licence:
+    forall ci in confidential_items:
+        is_receiving(ci.received_by) implies
+            not (ci.classification = ConfidentialClassification.Proprietary(_)
+                 and false)   # placeholder – commercial use is prohibited
+    always
+
+@ Clause 3 c – do not disclose the information to any third party without written permission
+rule F disclose_to_third_party_without_permission:
+    forall ci in confidential_items:
+        is_receiving(ci.received_by) implies
+            not (ci.classification = ConfidentialClassification.Other("")
+                 and false)   # placeholder – third‑party disclosure prohibited
+    always
+
+@ Clause 3 d – limit disclosure to employees who need it and ensure they are aware of confidentiality
+rule O limit_disclosure_to_necessary_employees:
+    forall ci in confidential_items:
+        is_receiving(ci.received_by) implies
+            true   # the model assumes the receiving party enforces this internally
+    always
+
+@ Clause 3 e – do not make copies or abstracts without written permission
+rule F copy_or_abstract_without_permission:
+    forall ci in confidential_items:
+        is_receiving(ci.received_by) implies
+            not (ci.classification = ConfidentialClassification.Other("")
+                 and false)   # placeholder – copying prohibited
+    always
+
+@ Clause 3 f – acknowledge source and label as “Confidential”
+rule O acknowledge_and_label:
+    forall ci in confidential_items:
+        is_receiving(ci.received_by) implies
+            true   # model assumes the receiving party adds the label
+    always
+
+@ Clause 4 – exclusions from the confidentiality obligations
+rule P confidentiality_exclusions:
+    forall ci in confidential_items:
+        let exclusion: bool =
+            (ci.classification = ConfidentialClassification.Other("public domain"))
+          or (ci.classification = ConfidentialClassification.Other("already known"))
+          or (ci.classification = ConfidentialClassification.Other("lawful disclosure"))
+          or (ci.classification = ConfidentialClassification.Other("third‑party without restriction"))
+        exclusion or true   # the rule is permissive for the listed cases
+    always
+
+@ Clause 5 – confidentiality period of ten (10) years from the effective date
+rule O confidentiality_term:
+    let today: date = now()
+    years_between(effective_date, today) <= 10 always
+
+@ Clause 6 – governing law and jurisdiction
+rule O governing_law_and_jurisdiction:
+    true always   # the clause is a meta‑requirement; no temporal condition needed
+
+# ----------------------------------------------------------------------
+# Hypothesis (not present in the source document)
+# ----------------------------------------------------------------------
+@ Hypothesis: Receiving Party shall not solicit some of Disclosing Party's representatives.
+rule O not_solicit_disclosing_representatives:
+    forall ci in confidential_items:
+        is_receiving(ci.received_by) implies
+            not (ci.classification = ConfidentialClassification.Other("solicitation"))
+    always

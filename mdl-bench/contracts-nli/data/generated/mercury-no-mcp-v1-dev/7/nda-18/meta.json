@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-18",
+  "created_at": "2026-06-26T00:19:17.185932+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-18",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_18",
+  "response": {
+    "background": false,
+    "completed_at": 1782433156.0,
+    "created_at": 1782433155.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433155-zWUq0K1Maxk8BXcsUMdp",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-18",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – No alignment – Development – NDA #18\nmodule contract_nli_no_align_dev_7_nda_18\n\n# ----------------------------------------------------------------------\n# Domain model\n# ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party =\n    | Company(unit)          # the “Company” (the Receiving Party)\n    | AHPL(unit)             # ALEXANDRA HEALTH PTE LTD (the Disclosing Party)\n\n@ Representative of a party\ntype Representative = {\n    party: Party,              # the party to which the representative belongs\n    name : string              # identifier of the representative\n}\n\n# ----------------------------------------------------------------------\n# Entities – public model objects that can be aligned across modules\n# ----------------------------------------------------------------------\n@ The party that receives the Confidential Information (the Receiving Party)\nentity receiving_party : Party\n\n@ The party that discloses the Confidential Information (the Disclosing Party)\nentity disclosing_party : Party\n\n@ A specific representative of a party (used when checking solicitation)\nentity representative : Representative\n\n@ Boolean flag indicating whether the Receiving Party has solicited the\n@ representative in the current step of the trace.\nentity solicited : bool\n\n# ----------------------------------------------------------------------\n# Helper function\n# ----------------------------------------------------------------------\n@ Returns true iff the given representative belongs to the Disclosing Party\nfunc is_disclosing_rep(rep: Representative, discloser: Party) -> bool:\n    rep.party = discloser\n\n# ----------------------------------------------------------------------\n# Prohibition rule (hypothesis)\n# ----------------------------------------------------------------------\n@ Clause 2.1(b) – “not to copy, reproduce …” (interpreted to include\n@ solicitation of the Disclosing Party’s representatives)\nrule F prohibit_solicitation_of_disclosing_representative:\n    let forbidden = bool =\n        is_disclosing_rep(representative, disclosing_party) and solicited\n    forbidden always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_iimn4h3ks7d",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00221089275,
+      "cost_details": {
+        "upstream_inference_cost": 0.002233225,
+        "upstream_inference_input_cost": 0.001602475,
+        "upstream_inference_output_cost": 0.00063075
+      },
+      "input_tokens": 11566,
+      "input_tokens_details": {
+        "cached_tokens": 5729
+      },
+      "is_byok": false,
+      "output_tokens": 841,
+      "output_tokens_details": {
+        "reasoning_tokens": 468
+      },
+      "total_tokens": 12407
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "162b433b29185cb31d708dbc8d7f3308b0e0e23a9e8e20cf2e88eb3f57141f02",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

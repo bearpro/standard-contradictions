@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-2",
+  "created_at": "2026-06-26T00:21:57.049998+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-2",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_2",
+  "response": {
+    "background": false,
+    "completed_at": 1782433316.0,
+    "created_at": 1782433313.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433313-cBsRe33ztxWi1VkCiBP4",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-2",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality (Non‑Disclosure) Agreement\nmodule contract_nli_no_align_dev_12_nda_2\n\nopen std.bool\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\ntype ConfidentialInfo = {\n    includes_personal:   bool,\n    includes_financial: bool,\n    includes_product:    bool,\n    includes_technical:  bool\n}\n\ntype Party = {\n    name: string\n}\n\n# ----------------------------------------------------------------------\n# Domain entities (public model objects)\n# ----------------------------------------------------------------------\nentity brooks: Party\nentity client: Party\nentity confidential_info: ConfidentialInfo\n\n# Boolean flags used by several rules\nentity brooks_disclosed_outside: bool   # true if BROOKS has disclosed to an outside party\nentity exception_applies: bool          # true if an exception from §3 applies\n\n# Legal‑compulsion information (§4)\nentity legal_compel: {\n    is_compelled:   bool,\n    notified_client: bool\n}\n\n# Material‑return information (§5)\nentity material: {\n    request_received: bool,\n    returned:          bool\n}\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements from the agreement\n# ----------------------------------------------------------------------\n@ Clause 1.1 – definition of “Confidential Information”\nrule O confidential_info_definition:\n    confidential_info.includes_personal   and\n    confidential_info.includes_financial and\n    confidential_info.includes_product    and\n    confidential_info.includes_technical always\n\n@ Clause 1.2 – BROOKS must not disclose Confidential Information\nrule O brooks_no_disclosure:\n    not brooks_disclosed_outside or exception_applies always\n\n@ Clause 3 – Exceptions (simplified placeholder)\nrule O exception_applies_rule:\n    exception_applies always   # detailed logic omitted for brevity\n\n@ Clause 4 – Compelled disclosure notification\nrule O brooks_notify_on_compel:\n    not legal_compel.is_compelled or legal_compel.notified_client always\n\n@ Clause 5 – Return of material after termination\nrule O material_return_upon_request:\n    not material.request_received or material.returned always\n\n# ----------------------------------------------------------------------\n# Hypothesis – to be checked against the model\n# ----------------------------------------------------------------------\nfact hypothesis_confidential_info_only_technical:\n    confidential_info.includes_technical  = true  and\n    confidential_info.includes_personal   = false and\n    confidential_info.includes_financial = false and\n    confidential_info.includes_product    = false\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_r9d9peh1qj9",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00211402125,
+      "cost_details": {
+        "upstream_inference_cost": 0.002135375,
+        "upstream_inference_input_cost": 0.000507875,
+        "upstream_inference_output_cost": 0.0016275
+      },
+      "input_tokens": 7049,
+      "input_tokens_details": {
+        "cached_tokens": 5575
+      },
+      "is_byok": false,
+      "output_tokens": 2170,
+      "output_tokens_details": {
+        "reasoning_tokens": 1691
+      },
+      "total_tokens": 9219
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "0ed6eefa40ef1ef208d5627d59d6b69f0de49cb9484f0d62ef90c2404b960052",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

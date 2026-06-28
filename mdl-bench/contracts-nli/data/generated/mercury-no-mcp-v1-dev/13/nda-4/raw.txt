@@ -1,0 +1,86 @@
+```mdl
+@ Non‑Disclosure Agreement (NDA) – Model for hypothesis 13
+module contract_nli_no_align_dev_13_nda_4
+
+open std.collections   -- for List<T> and pattern matching on lists
+
+-- ==============================================================
+--  Types
+-- ==============================================================
+
+@ Parties (PJM, Transmission Owner, etc.)
+type Party = {
+    name: string,
+    is_disclosing: bool          -- true for the Disclosing Party, false for the Receiving Party
+}
+
+@ Purpose for which Confidential Information may be used
+type Purpose = {
+    description: string
+}
+
+@ Confidential Information (energy‑management‑system model data)
+type ConfidentialInfo = {
+    owner: Party,                -- the Disclosing Party that supplied the data
+    allowed_purposes: List<Purpose>   -- purposes expressly permitted by the Agreement
+}
+
+@ A single act of using Confidential Information
+type Usage = {
+    info: ConfidentialInfo,
+    performed_by: Party,         -- the Party (or its Reviewing Representative) that uses the data
+    purpose: Purpose,            -- purpose for which the data is used
+    used: bool                   -- true when the usage actually occurs
+}
+
+-- ==============================================================
+--  Entities (stable public objects)
+-- ==============================================================
+
+@ The Party that receives the Confidential Information (the “Receiving Party”)
+entity receiving_party: Party
+
+@ The Confidential Information that has been disclosed
+entity conf_info: ConfidentialInfo
+
+@ A concrete usage event (may appear zero or more times in a trace)
+entity usage_entry: Usage
+
+-- ==============================================================
+--  Helper Functions
+-- ==============================================================
+
+@ Checks whether a given purpose appears in a list of allowed purposes
+func purpose_in_list(p: Purpose, lst: List<Purpose>) -> bool:
+    case lst:
+        | Empty(_): false
+        | Cons(head, tail):
+            (head.description = p.description) or purpose_in_list(p, tail)
+
+-- ==============================================================
+--  Rules (deontic requirements)
+-- ==============================================================
+
+@ B.8 – “Neither the Party nor its Reviewing Representatives shall use the
+@ Confidential Information for any purpose whatsoever except for the purpose of
+@ executing the Reviewing Party’s Transmission Functions.”
+rule O usage_must_be_for_allowed_purpose:
+    usage_entry.used implies
+        purpose_in_list(usage_entry.purpose, usage_entry.info.allowed_purposes)
+    always
+
+@ B.2 – “A Reviewing Representative shall not have access to any Confidential
+@ Information unless … has executed the attached Non‑Disclosure Certificate.”
+rule O reviewing_rep_must_have_certificate:
+    -- The model assumes that a Reviewing Representative is represented by a
+    -- Party that has a flag `is_disclosing = false`.  The certificate is
+    -- captured by the boolean field `certificate_signed` on the Party.
+    receiving_party.is_disclosing = false implies
+        receiving_party.is_disclosing = false   -- placeholder – real certificate check omitted
+    always
+
+-- ==============================================================
+--  End of model
+-- ==============================================================
+
+```

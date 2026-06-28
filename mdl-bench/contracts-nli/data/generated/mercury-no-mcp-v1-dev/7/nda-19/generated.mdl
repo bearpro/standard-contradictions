@@ -1,0 +1,56 @@
+@ Non‑Disclosure Agreement – Model for surviving obligations
+module contract_nli_no_align_dev_7_nda_19
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type Agreement = {
+    is_terminated : bool          # true once the agreement has been terminated
+}
+
+type ConfidentialInfo = {
+    is_confidential          : bool   # true if the information is confidential
+    confidentiality_maintained : bool   # true while the recipient keeps it confidential
+    is_returned               : bool   # true when all copies have been returned
+    is_erased                 : bool   # true when the data has been erased from all systems
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Clause 11 – Termination
+entity agreement : Agreement
+
+@ Clause 2 – Handling of Confidential Information
+entity confidential_info : ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Rules – obligations that survive termination
+# ----------------------------------------------------------------------
+@ Clause 11 – “the provision of Clauses 1‑8, 11‑15 and 17‑21 shall survive any such termination.”
+rule O obligations_survive_termination:
+    agreement.is_terminated implies true always
+
+@ Clause 2.1(a) – confidentiality must be maintained for the Purpose
+rule O confidentiality_maintained_after_termination:
+    agreement.is_terminated implies
+        (confidential_info.is_confidential implies confidential_info.confidentiality_maintained) always
+
+@ Clause 3.1(a) – return of all documents and copies
+rule O return_obligation_survives:
+    agreement.is_terminated implies
+        (confidential_info.is_returned = false) always
+
+@ Clause 4.3 – erasure of data on termination
+rule O erase_data_obligation_survives:
+    agreement.is_terminated implies
+        confidential_info.is_erased eventually
+
+# ----------------------------------------------------------------------
+# Supporting facts (optional – can be removed in a production model)
+# ----------------------------------------------------------------------
+# fact agreement.is_terminated = false
+# fact confidential_info.is_confidential = true
+# fact confidential_info.confidentiality_maintained = true
+# fact confidential_info.is_returned = false
+# fact confidential_info.is_erased = false

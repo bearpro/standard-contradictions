@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-13-nda-12",
+  "created_at": "2026-06-26T00:22:30.520596+00:00",
+  "doc_id": 13,
+  "hypothesis_id": "nda-12",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_13_nda_12",
+  "response": {
+    "background": false,
+    "completed_at": 1782433350.0,
+    "created_at": 1782433347.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433347-X6kBxbmzoVE2lElruzO2",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-13-nda-12",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – PJM Energy Management System Model Data\nmodule contract_nli_no_align_dev_13_nda_12\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party = {\n    name: string,\n    is_transmission_owner: bool\n}\n\n@ Information that may be exchanged under the Agreement\ntype Information = {\n    is_confidential: bool,                 # true when the data is marked “Confidential”\n    is_independently_developed: bool       # true when the same or similar data was created without using the Confidential Information\n}\n\n@ Reviewing Representative (the person who signs the Non‑Disclosure Certificate)\ntype ReviewingRepresentative = {\n    name: string,\n    has_certificate: bool,                 # true when a signed Non‑Disclosure Certificate has been delivered to PJM\n    employed_by: Party\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The Party that receives the Confidential Information (the “Receiving Party”)\nentity receiving_party: Party\n\n@ The Party that provides the Confidential Information (the “Disclosing Party”)\nentity disclosing_party: Party\n\n@ A piece of information that may be exchanged\nentity info: Information\n\n@ A person who may access the Confidential Information after signing the certificate\nentity rep: ReviewingRepresentative\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Determines whether the Receiving Party is allowed to use a given piece of information\nfunc may_use(info: Information) -> bool:\n    # The Agreement permits use if the information is either\n    #   a) not confidential, or\n    #   b) independently developed (i.e., not derived from the Confidential Information)\n    info.is_confidential = false or info.is_independently_developed = true\n\n# ----------------------------------------------------------------------\n# Rules (normative requirements)\n# ----------------------------------------------------------------------\n@ Clause 2 – Reviewing Representative must have executed a Non‑Disclosure Certificate\nrule O rep_must_have_certificate:\n    rep.has_certificate always\n\n@ Clause 2 – Access to Confidential Information is limited to Reviewing Representatives\nrule O only_rep_may_access_confidential:\n    (info.is_confidential implies rep.has_certificate) always\n\n@ Clause 5 – Parties shall not disclose Confidential Information to a third party\nrule F no_third_party_disclosure:\n    (info.is_confidential and not info.is_independently_developed) always\n\n@ Clause 7 – Independent development is permitted (the hypothesis)\nrule P independent_development_allowed:\n    info.is_independently_developed always\n\n@ Clause 7 – Use of information that is not independently developed is prohibited\nrule F use_without_permission:\n    (info.is_confidential and not info.is_independently_developed) always\n\n@ Clause 8 – Use of information is allowed only for Transmission Functions\nrule O use_only_for_transmission_functions:\n    (may_use(info) and rep.employed_by.is_transmission_owner) always\n\n@ Clause 9 – Confidential Information must be marked “Confidential” when disclosed\nrule O confidentiality_marking:\n    (info.is_confidential implies true) always   # placeholder – marking is a factual condition, not a deontic one\n\n# ----------------------------------------------------------------------\n# End of model\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_mzdv07ksiy",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00217955925,
+      "cost_details": {
+        "upstream_inference_cost": 0.002201575,
+        "upstream_inference_input_cost": 0.001153075,
+        "upstream_inference_output_cost": 0.0010485
+      },
+      "input_tokens": 9781,
+      "input_tokens_details": {
+        "cached_tokens": 5743
+      },
+      "is_byok": false,
+      "output_tokens": 1398,
+      "output_tokens_details": {
+        "reasoning_tokens": 741
+      },
+      "total_tokens": 11179
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "59781b79816e5a70f2ad711d473aabf8f0a481f2c95902f5fe9de3b8b8daaad5",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-5",
+  "created_at": "2026-06-26T00:18:48.348671+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-5",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_5",
+  "response": {
+    "background": false,
+    "completed_at": 1782433128.0,
+    "created_at": 1782433124.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433124-Y9jiZvFVE1GlXfV9MrMd",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-5",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ OISAIR PROJECT – TWO‑WAY CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT\nmodule contract_nli_no_align_dev_3_nda_5\n\nopen std.collections\n\n/* ----------------------------------------------------------------------\n   Domain model – parties, representatives and confidential information\n   ---------------------------------------------------------------------- */\n\n@ Parties (the two contracting entities)\ntype Party = {\n    name: string,\n    is_disclosing: bool,   -- true for the Disclosing Party\n    is_receiving: bool    -- true for the Receiving Party\n}\n\n@ Representatives of a party (employees, advisors, etc.)\ntype Representative = {\n    party: Party,                                 -- the party the person belongs to\n    is_employee: bool,                            -- true for employees, false for other reps\n    needs_access_for_permitted_purpose: bool,    -- true if the rep must know the info to fulfil the purpose\n    aware_of_terms: bool                          -- true if the rep has been told the NDA terms\n}\n\n@ Confidential information that is the subject of the agreement\ntype ConfidentialInfo = {\n    is_confidential: bool,   -- true for information that falls under the definition\n    content: string,         -- opaque payload (not used in the model)\n    owner: Party              -- the Disclosing Party\n}\n\n/* ----------------------------------------------------------------------\n   Model entities – one instance of each domain object\n   ---------------------------------------------------------------------- */\n\nentity disclosing_party: Party\nentity receiving_party: Party\nentity confidential_info: ConfidentialInfo\nentity representative: Representative\n\n/* ----------------------------------------------------------------------\n   Helper functions\n   ---------------------------------------------------------------------- */\n\n@ Returns true when a representative is allowed to receive confidential info\nfunc can_share_to_rep(rep: Representative) -> bool:\n    rep.is_employee and\n    rep.needs_access_for_permitted_purpose and\n    rep.aware_of_terms\n\n/* ----------------------------------------------------------------------\n   Normative rules – derived from the clauses of the NDA\n   ---------------------------------------------------------------------- */\n\n@ Clause 3 – General confidentiality and non‑use obligations\nrule O take_reasonable_measures:\n    receiving_party.is_receiving always\n\nrule O not_disclose_to_third_party:\n    not (\n        confidential_info.is_confidential and\n        representative.party = receiving_party and\n        not can_share_to_rep(representative)\n    ) always\n\nrule O not_use_outside_permitted_purpose:\n    not (\n        confidential_info.is_confidential and\n        receiving_party.is_receiving and\n        not representative.needs_access_for_permitted_purpose\n    ) always\n\n@ Clause 4 – Disclosure to representatives (employees, advisors, …)\n@ Permission: sharing with an employee that satisfies the NDA conditions\nrule P share_with_employee:\n    confidential_info.is_confidential and\n    representative.party = receiving_party and\n    can_share_to_rep(representative) always\n\n@ Prohibition: sharing with a person that does **not** satisfy the conditions\nrule F share_with_non_employee:\n    confidential_info.is_confidential and\n    representative.party = receiving_party and\n    not can_share_to_rep(representative) always\n\n@ Clause 5 – Return or destruction of confidential information\nrule O return_or_destroy_after_termination:\n    (termination_date now) implies eventually (confidential_info.is_confidential = false)\n\n@ Clause 10 – Survival of confidentiality obligations after termination\nrule O confidentiality_survives_three_years:\n    (confidential_info.is_confidential and disclosure_date now) implies\n    eventually (confidential_info.is_confidential = false) within 3 years\n\n@ Clause 8 – Injunction on breach (prohibition of breach without court order)\nrule F breach_without_injunction:\n    (confidential_info.is_confidential and\n     receiving_party.is_receiving and\n     not can_share_to_rep(representative)) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_upnfamumjur",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00248131125,
+      "cost_details": {
+        "upstream_inference_cost": 0.002506375,
+        "upstream_inference_input_cost": 0.000653125,
+        "upstream_inference_output_cost": 0.00185325
+      },
+      "input_tokens": 7612,
+      "input_tokens_details": {
+        "cached_tokens": 5555
+      },
+      "is_byok": false,
+      "output_tokens": 2471,
+      "output_tokens_details": {
+        "reasoning_tokens": 1727
+      },
+      "total_tokens": 10083
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "e3f669f3a1c5bcce8c85b103c3cc335b8f62da42cfbdef2de31dbcb82cc2fb8c",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,40 @@
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (Transportation Challenge 2017)
+module contract_nli_no_align_dev_9_nda_16
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Definition of the vendor party (the receiving party)
+type Vendor = {
+    -- Has the vendor returned the confidential information after termination?
+    has_returned_confidential_info: bool,
+    -- Has the vendor destroyed the confidential information after termination?
+    has_destroyed_confidential_info: bool,
+    -- Has the agreement been terminated?
+    termination_occurred: bool
+}
+
+@ Definition of the BPS party (the disclosing party)
+type BPS = {
+    -- No specific fields required for this hypothesis
+    dummy: unit
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The two contractual parties
+entity vendor: Vendor
+entity bps: BPS
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+@ Clause 6 – “Return or Destruction of Materials” (termination obligation)
+rule O vendor_must_return_or_destroy_confidential_info_on_termination:
+    vendor.termination_occurred implies
+        (vendor.has_returned_confidential_info or vendor.has_destroyed_confidential_info) always
+
+# ----------------------------------------------------------------------
+# Optional helper functions (none needed for this simple rule)
+# ----------------------------------------------------------------------

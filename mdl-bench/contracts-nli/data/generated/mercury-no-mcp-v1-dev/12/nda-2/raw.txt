@@ -1,0 +1,78 @@
+```mdl
+@ Confidentiality (Non‑Disclosure) Agreement
+module contract_nli_no_align_dev_12_nda_2
+
+open std.bool
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type ConfidentialInfo = {
+    includes_personal:   bool,
+    includes_financial: bool,
+    includes_product:    bool,
+    includes_technical:  bool
+}
+
+type Party = {
+    name: string
+}
+
+# ----------------------------------------------------------------------
+# Domain entities (public model objects)
+# ----------------------------------------------------------------------
+entity brooks: Party
+entity client: Party
+entity confidential_info: ConfidentialInfo
+
+# Boolean flags used by several rules
+entity brooks_disclosed_outside: bool   # true if BROOKS has disclosed to an outside party
+entity exception_applies: bool          # true if an exception from §3 applies
+
+# Legal‑compulsion information (§4)
+entity legal_compel: {
+    is_compelled:   bool,
+    notified_client: bool
+}
+
+# Material‑return information (§5)
+entity material: {
+    request_received: bool,
+    returned:          bool
+}
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements from the agreement
+# ----------------------------------------------------------------------
+@ Clause 1.1 – definition of “Confidential Information”
+rule O confidential_info_definition:
+    confidential_info.includes_personal   and
+    confidential_info.includes_financial and
+    confidential_info.includes_product    and
+    confidential_info.includes_technical always
+
+@ Clause 1.2 – BROOKS must not disclose Confidential Information
+rule O brooks_no_disclosure:
+    not brooks_disclosed_outside or exception_applies always
+
+@ Clause 3 – Exceptions (simplified placeholder)
+rule O exception_applies_rule:
+    exception_applies always   # detailed logic omitted for brevity
+
+@ Clause 4 – Compelled disclosure notification
+rule O brooks_notify_on_compel:
+    not legal_compel.is_compelled or legal_compel.notified_client always
+
+@ Clause 5 – Return of material after termination
+rule O material_return_upon_request:
+    not material.request_received or material.returned always
+
+# ----------------------------------------------------------------------
+# Hypothesis – to be checked against the model
+# ----------------------------------------------------------------------
+fact hypothesis_confidential_info_only_technical:
+    confidential_info.includes_technical  = true  and
+    confidential_info.includes_personal   = false and
+    confidential_info.includes_financial = false and
+    confidential_info.includes_product    = false
+```

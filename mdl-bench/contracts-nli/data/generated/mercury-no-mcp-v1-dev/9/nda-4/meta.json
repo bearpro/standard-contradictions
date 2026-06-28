@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-4",
+  "created_at": "2026-06-26T00:20:18.286859+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-4",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_4",
+  "response": {
+    "background": false,
+    "completed_at": 1782433218.0,
+    "created_at": 1782433216.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433216-5Kx3v41n7bke7w1xw5VJ",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-4",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Negotiable Confidentiality and Non‑Disclosure Agreement – Transportation Challenge 2017\nmodule contract_nli_no_align_dev_9_nda_4\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 2 – “Nondisclosure” – purpose of use of Confidential Information\ntype Purpose = \n    | AgreementPurpose(unit)   # use permitted only for the purposes set out in the Agreement\n    | OtherPurpose(unit)      # any use outside the Agreement\n\n@ Clause 1 – “Data Sharing” – the confidential data that is being exchanged\ntype ConfidentialInfo = {\n    purpose: Purpose               # the purpose for which the data may be used\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The party that receives the data (BPS) – modeled for alignment with other standards\nentity bps: Party = {\n    name: string,\n    address: string,\n    role: string   # e.g. “Receiving Party”\n}\n\n@ The vendor that supplies the solution and is the “Disclosing Party”\nentity vendor: Party = {\n    name: string,\n    address: string,\n    role: string   # e.g. “Disclosing Party”\n}\n\n@ The confidential information that is the subject of the NDA\nentity confidential_info: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Rules – deontic constraints derived from the Agreement\n# ----------------------------------------------------------------------\n@ Clause 2 – “Nondisclosure” – the Vendor may NOT use the data for any purpose\n# other than the purpose(s) expressly stated in the Agreement.\nrule F vendor_must_not_use_confidential_info_for_other_purposes:\n    confidential_info.purpose = Purpose.OtherPurpose() always\n\n@ Clause 2 – “Nondisclosure” – the Vendor SHALL use the data ONLY for the\n# purpose(s) expressly stated in the Agreement.\nrule O vendor_must_use_confidential_info_only_for_agreement:\n    confidential_info.purpose = Purpose.AgreementPurpose() always\n\n# ----------------------------------------------------------------------\n# Optional – auxiliary functions (none needed for this concise model)\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_9urzv4h24r",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00173950425,
+      "cost_details": {
+        "upstream_inference_cost": 0.001757075,
+        "upstream_inference_input_cost": 0.000973325,
+        "upstream_inference_output_cost": 0.00078375
+      },
+      "input_tokens": 9044,
+      "input_tokens_details": {
+        "cached_tokens": 5723
+      },
+      "is_byok": false,
+      "output_tokens": 1045,
+      "output_tokens_details": {
+        "reasoning_tokens": 617
+      },
+      "total_tokens": 10089
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "48aa249e2178fdec05c224805f4d9d8434901d3392c885488b106b8918fe1c22",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,78 @@
+```mdl
+@ Non‑Disclosure Agreement – PJM Energy Management System Model Data
+module contract_nli_no_align_dev_13_nda_11
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties and roles
+type PartyRole = Disclosing(unit) | Receiving(unit)
+
+@ Clause 1 – Party definition
+type Party = {
+    name: string,
+    role: PartyRole,
+    termination: bool               # true when the Party has terminated the Agreement
+}
+
+@ Clause 2 – Confidential Information
+type ConfidentialInfo = {
+    owner: Party,                    # the Disclosing Party that supplied the data
+    description: string,
+    marked_confidential: bool,      # must be marked “Confidential” when disclosed
+    is_disclosed_to_third: bool,     # true if disclosed to a non‑Party third party
+    is_reverse_engineered: bool,     # true if the information has been reverse‑engineered
+    used_for_transmission_functions: bool,   # true only when used for Transmission Functions
+    returned_or_destroyed: bool      # true when the data has been returned or destroyed
+}
+
+@ Clause 2 – Reviewing Representative
+type ReviewingRepresentative = {
+    person_name: string,
+    party: Party,                    # the Party the Representative belongs to
+    has_certificate: bool,           # true when a signed Non‑Disclosure Certificate is on file
+    duties_include_competitive: bool # true when the Representative has Competitive Duties
+}
+
+# ----------------------------------------------------------------------
+# Entities – stable public model objects
+# ----------------------------------------------------------------------
+entity disclosing_party: Party
+entity receiving_party: Party
+entity confidential_info: ConfidentialInfo
+entity reviewing_rep: ReviewingRepresentative
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements (O = obligation, F = prohibition)
+# ----------------------------------------------------------------------
+@ Clause 2.2 – Access limited to Reviewing Representatives with a certificate
+rule O reviewing_rep_must_have_certificate:
+    reviewing_rep.has_certificate always
+
+@ Clause 2.2 – Confidential Information must be marked “Confidential”
+rule O confidential_info_must_be_marked:
+    confidential_info.marked_confidential always
+
+@ Clause 2.2 – Confidential Information may be disclosed only to Parties,
+# never to a third party without prior written approval
+rule F disclose_to_third_party:
+    not confidential_info.is_disclosed_to_third always
+
+@ Clause 2.2 – Confidential Information may be used only for Transmission Functions
+rule O use_only_for_transmission_functions:
+    confidential_info.used_for_transmission_functions always
+
+@ Clause 2.2 – Prohibition of reverse engineering of Confidential Information
+rule F reverse_engineer:
+    not confidential_info.is_reverse_engineered always
+
+@ Clause 2.2 – When a Party terminates the Agreement, the Confidential
+# Information must be returned or destroyed
+rule O return_or_destroy_on_termination:
+    receiving_party.termination implies confidential_info.returned_or_destroyed eventually
+
+@ Clause 2.2 – Reviewing Representatives with Competitive Duties must not
+# retain access to Confidential Information (treated as a prohibition)
+rule F competitive_duties_no_access:
+    not reviewing_rep.duties_include_competitive always
+```

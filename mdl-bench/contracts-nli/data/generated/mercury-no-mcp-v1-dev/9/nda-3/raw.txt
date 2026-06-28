@@ -1,0 +1,104 @@
+```mdl
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT – TRANSPORTATION CHALLENGE 2017
+module contract_nli_no_align_dev_9_nda_3
+
+open std.strings
+
+-- ----------------------------------------------------------------------
+-- Types
+-- ----------------------------------------------------------------------
+@ Clause “A. DEFINITIONS – Confidential Information”
+type ConfidentialInfo = {
+    includes_directory: bool,          -- directory data (address, lat/long)
+    includes_routing: bool,            -- routing data (stops, lat/long)
+    includes_student_characteristics: bool, -- grade, ridership status, etc.
+    is_verbal: bool                    -- information conveyed verbally
+}
+
+@ Clause “A. DEFINITIONS – Vendor”
+type Vendor = {
+    name: string,
+    has_signed_nda: bool,
+    has_background_check: bool,
+    database_secure: bool,
+    notified_bps_of_legal_process: bool,
+    returned_or_destroyed: bool,
+    used_info_only_for_challenge: bool,
+    authorized_to_disclose: bool       -- true only when BPS gives written consent
+}
+
+@ Clause “B. TERMS OF AGREEMENT – BPS Contact”
+type BPS = {
+    contact_name: string,
+    contact_email: string,
+    contact_phone: string
+}
+
+-- ----------------------------------------------------------------------
+-- Entities (public model objects)
+-- ----------------------------------------------------------------------
+@ Clause “A. DEFINITIONS – Confidential Information”
+entity confidential_information: ConfidentialInfo
+
+@ Clause “A. DEFINITIONS – Vendor”
+entity vendor: Vendor
+
+@ Clause “B. TERMS OF AGREEMENT – BPS”
+entity bps: BPS
+
+-- ----------------------------------------------------------------------
+-- Functions (pure helpers)
+-- ----------------------------------------------------------------------
+func vendor_is_authorized_to_use(v: Vendor, ci: ConfidentialInfo) -> bool:
+    -- the vendor may use the information only if BPS has given written consent
+    v.authorized_to_disclose
+
+func vendor_has_proper_security(v: Vendor) -> bool:
+    v.database_secure and
+    v.has_background_check and
+    v.has_signed_nda
+
+-- ----------------------------------------------------------------------
+-- Rules (deontic requirements)
+-- ----------------------------------------------------------------------
+@ Clause “B. TERMS OF AGREEMENT – 1. Data Sharing – security obligations”
+rule O vendor_must_maintain_secure_database:
+    vendor_has_proper_security(vendor) always
+
+@ Clause “B. TERMS OF AGREEMENT – 2. Nondisclosure”
+rule F vendor_prohibited_from_disclosing_confidential_information:
+    not vendor.authorized_to_disclose always
+
+@ Clause “B. TERMS OF AGREEMENT – 2. Nondisclosure – purpose limitation”
+rule O vendor_must_use_information_only_for_challenge:
+    vendor.used_info_only_for_challenge always
+
+@ Clause “B. TERMS OF AGREEMENT – 3. Background Checks”
+rule O vendor_must_have_background_check:
+    vendor.has_background_check always
+
+@ Clause “B. TERMS OF AGREEMENT – 4. Disclosure Sought Under Legal Process”
+rule O vendor_must_notify_bps_of_legal_process:
+    vendor.notified_bps_of_legal_process always
+
+@ Clause “B. TERMS OF AGREEMENT – 6. Return or Destruction of Materials”
+rule O vendor_must_return_or_destroy_on_request:
+    vendor.returned_or_destroyed always
+
+@ Clause “B. TERMS OF AGREEMENT – 9. Injunctive Relief – breach consequences”
+rule F vendor_breach_causes_irreparable_harm:
+    false always   -- prohibition of breach (modelled as a prohibition)
+
+@ Clause “B. TERMS OF AGREEMENT – 10. Immediate Notice of Unauthorized Use”
+rule O vendor_must_give_immediate_notice_of_unauthorized_use:
+    true always   -- placeholder to capture the obligation; detailed
+                    -- implementation would depend on an event model
+
+@ Clause “Hypothesis – Confidential Information may include verbally conveyed information”
+rule P confidential_information_may_be_verbal:
+    confidential_information.is_verbal always
+
+-- ----------------------------------------------------------------------
+-- End of module
+-- ----------------------------------------------------------------------
+```

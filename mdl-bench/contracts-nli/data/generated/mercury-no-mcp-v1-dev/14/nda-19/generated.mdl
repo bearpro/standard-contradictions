@@ -1,0 +1,93 @@
+@ Contract: Confidentiality and Non‑Disclosure Agreement Governing the Inspection of Stockholder List
+module contract_nli_no_align_dev_14_nda_19
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type PartyRole = 
+    | Company(unit)
+    | Stockholder(unit)
+
+type Party = {
+    role: PartyRole,
+    name: string,
+    # Boolean flags that capture specific duties of a Party
+    gave_notice: bool,                     # true when the Party has given the required notice
+    agrees_to_jurisdiction: bool,          # true when the Party accepts exclusive Delaware Chancery jurisdiction
+    accepts_specific_performance: bool,    # true when the Party acknowledges the Company’s right to specific performance
+    can_be_amended_by_written_instrument: bool,   # true when the Party recognises the amendment clause
+    is_binding: bool,                      # true when the Party recognises the Agreement as binding
+    is_mutually_prepared: bool            # true when the Party recognises the mutual‑preparation clause
+}
+
+type ConfidentialMaterial = {
+    is_disclosed: bool,    # true when the material has been disclosed to any third party
+    is_used: bool,         # true when the material has been used for a purpose other than the permitted inspection
+    is_terminated: bool,   # true when the Agreement has been terminated
+}
+
+# ----------------------------------------------------------------------
+# Entities – stable public objects that can be aligned across standards
+# ----------------------------------------------------------------------
+@ Parties to the Agreement
+entity company: Party
+entity stockholder: Party
+
+@ The confidential information that is the subject of the Agreement
+entity confidential_material: ConfidentialMaterial
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements (O = obligation, F = prohibition, P = permission)
+# ----------------------------------------------------------------------
+@ Clause 1 – material Confidential Material may be used only for purposes reasonably related to the Stockholder’s interests
+rule O use_confidential_material:
+    not_material.is_used = false always
+
+@ Clause 2 – the Stockholder shall not disclose, publish, or communicate Confidential Material
+rule O not_disclose:
+    confidential_material.is_disclosed = false always
+
+@ Clause 3 – if disclosure is required by law, the Stockholder must give the Company prompt notice
+rule O give_notice_before_disclosure:
+    (confidential_material.is_disclosed implies stockholder.gave_notice) always
+
+@ Clause 4 – each Party submits to the exclusive jurisdiction of the Delaware Court of Chancery
+rule O jurisdiction:
+    (company.agrees_to_jurisdiction and stockholder.agrees_to_jurisdiction) always
+
+@ Clause 5 – the Company may seek specific performance/injunctive relief in case of breach
+rule O specific_performance_right:
+    (company.accepts_specific_performance and stockholder.accepts_specific_performance) always
+
+@ Clause 6 – the Agreement may be amended only by a written instrument signed by the affected Party
+rule O amendment_by_written_instrument:
+    (company.can_be_amended_by_written_instrument and stockholder.can_be_amended_by_written_instrument) always
+
+@ Clause 7 – the Agreement is binding upon the Parties and their successors
+rule O binding_agreement:
+    (company.is_binding and stockholder.is_binding) always
+
+@ Clause 8 – the Agreement is governed by Delaware law
+rule O governing_law_delaware:
+    true   # (the law is external to the model; the rule records the intent)
+
+@ Clause 9 – the Agreement may be executed in multiple counterparts
+rule O multiple_counterparts_allowed:
+    true   # (no specific state to model; the rule records the intent)
+
+@ Clause 10 – the Agreement constitutes the entire agreement between the Parties
+rule O entire_agreement:
+    true   # (no specific state to model; the rule records the intent)
+
+@ Clause 11 – the Agreement is mutually prepared
+rule O mutual_preparation:
+    (company.is_mutually_prepared and stockholder.is_mutually_prepared) always
+
+# ----------------------------------------------------------------------
+# Survival of obligations after termination
+# ----------------------------------------------------------------------
+@ Hypothesis – some obligations survive termination of the Agreement
+rule O obligations_survive_termination:
+    (confidential_material.is_terminated implies
+        (confidential_material.is_disclosed = false always and
+         confidential_material.is_used = false always))

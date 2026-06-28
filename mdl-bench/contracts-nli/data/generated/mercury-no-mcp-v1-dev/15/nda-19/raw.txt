@@ -1,0 +1,126 @@
+```mdl
+@ Non‑Disclosure Agreement (Two‑Way) – University of Bristol
+module contract_nli_no_align_dev_15_nda_19
+
+# ----------------------------------------------------------------------
+# Standard library imports (implicit in most environments)
+# ----------------------------------------------------------------------
+open std.collections
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties to the agreement
+type Party = {
+    name: string,
+    address: string
+}
+
+@ Clause 2 – Confidential information as defined in the agreement
+type ConfidentialInformation = {
+    -- The information is marked as confidential by the disclosing party
+    marked_confidential: bool,
+    -- Source of the information (the disclosing party)
+    source: Party,
+    -- Whether the information is already in the public domain
+    is_public_domain: bool,
+    -- Whether the receiving party already possessed the information
+    is_preexisting: bool,
+    -- Whether the information was independently developed by the receiving party
+    is_independently_developed: bool,
+    -- Whether the information was received from a third party without a similar restriction
+    is_third_party_unrestricted: bool,
+    -- Whether disclosure is required by law / regulatory authority
+    is_required_by_law: bool
+}
+
+@ Clause 5 – Temporal context (effective date expressed as an integer “years since effective”)
+type TemporalContext = {
+    years_since_effective: int   -- 0 at the effective date, increments each year
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ Clause 1 – The two parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 2 – The confidential material that may be exchanged
+entity confidential_information: ConfidentialInformation
+
+@ Clause 5 – Time tracking for the 10‑year non‑disclosure period
+entity temporal_context: TemporalContext
+
+# ----------------------------------------------------------------------
+# Helper Functions (pure, used in rules)
+# ----------------------------------------------------------------------
+func is_exception(info: ConfidentialInformation) -> bool:
+    -- The statutory exceptions listed in Clause 4
+    info.is_public_domain
+    or info.is_preexisting
+    or info.is_independently_developed
+    or info.is_third_party_unrestricted
+    or info.is_required_by_law
+
+func within_10_years(ctx: TemporalContext) -> bool:
+    ctx.years_since_effective <= 10
+
+# ----------------------------------------------------------------------
+# Obligations, Prohibitions and Permissions (deontic rules)
+# ----------------------------------------------------------------------
+@ Clause 3a – Reasonable measures to protect confidentiality
+rule O take_reasonable_measures:
+    -- The receiving party must maintain confidentiality at all times
+    true always
+
+@ Clause 3b – No commercial use without licence
+rule F use_for_commercial_purpose:
+    -- The receiving party must not use the information for commercial purposes
+    true always
+
+@ Clause 3c – No disclosure to third parties without permission
+rule F disclose_to_third_party:
+    -- Prohibition applies unless an exception (Clause 4) holds
+    not is_exception(confidential_information) always
+
+@ Clause 3d – Disclosure only to employees who need to know
+rule O disclose_to_employees:
+    -- Employees may receive the information only if they are bound by the same confidentiality
+    true always
+
+@ Clause 3e – No copying or abstracting without permission
+rule F make_copy_or_abstract:
+    -- Prohibited unless an exception (Clause 4) holds
+    not is_exception(confidential_information) always
+
+@ Clause 3f – Acknowledge source and mark as “Confidential”
+rule O acknowledge_and_mark:
+    -- The receiving party must label the material appropriately
+    true always
+
+@ Clause 1 – Return of loaned documents on request
+rule O return_documents_on_request:
+    -- The receiving party must return all supplied material when asked
+    true always
+
+@ Clause 4 – No transfer of ownership
+rule O no_transfer_of_ownership:
+    -- Ownership remains with the disclosing party
+    true always
+
+@ Clause 5 – Ten‑year non‑disclosure period (survives termination)
+rule O non_disclosure_10_years:
+    -- For the first ten years after the effective date the receiving party must not disclose
+    within_10_years(temporal_context) implies not is_exception(confidential_information) always
+
+@ Clause 5 – Survival of core obligations beyond the ten‑year term
+rule O obligations_survive_termination:
+    -- Certain obligations (e.g., no transfer of ownership, source acknowledgement) persist indefinitely
+    true always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

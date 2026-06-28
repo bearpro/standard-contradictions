@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-5",
+  "created_at": "2026-06-26T00:23:54.136015+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-5",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_5",
+  "response": {
+    "background": false,
+    "completed_at": 1782433433.0,
+    "created_at": 1782433431.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433431-8qZ5YZ51ffayveWbJ2qv",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-5",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality and Non‑Disclosure Agreement governing the inspection of Stockholder List\nmodule contract_nli_no_align_dev_14_nda_5\n\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\ntype PartyRole = \n    | Company(unit)\n    | Stockholder(unit)\n\ntype Party = {\n    name: string,\n    role: PartyRole\n}\n\ntype ConfidentialMaterial = {\n    description: string\n}\n\ntype Person = {\n    name: string\n}\n\ntype Employee = {\n    person: Person,\n    employer: Party\n}\n\n# ----------------------------------------------------------------------\n# Entities – stable public anchors for alignment\n# ----------------------------------------------------------------------\n@ The Company (the disclosing party)\nentity company: Party\n\n@ The Stockholder (the receiving party)\nentity stockholder: Party\n\n@ The material that is deemed confidential under the Agreement\nentity confidential_material: ConfidentialMaterial\n\n@ An employee of the receiving party (used for the hypothesis)\nentity employee: Employee\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements (deontic modality + LTLf)\n# ----------------------------------------------------------------------\n@ Clause 1 – purpose limitation\nrule O use_confidential_only_for_purposes:\n    true always\n\n@ Clause 2 – blanket prohibition on disclosure\nrule F disclose_confidential_to_any_person:\n    true always\n\n@ Clause 2 – prohibition on disclosing other stockholder’s identifying data\nrule F disclose_other_stockholder_info:\n    true always\n\n@ Clause 3 – notice requirement when compelled to disclose\nrule O provide_prompt_notice_when_required:\n    true always\n\n@ Clause 4 – exclusive jurisdiction\nrule O jurisdiction_delaware_chancery:\n    true always\n\n@ Clause 5 – entitlement to specific performance / injunctive relief\nrule O specific_performance_and_injunctive_relief:\n    true always\n\n@ Clause 6 – amendment only by written instrument signed by the affected party\nrule F amendment_without_written_agreement:\n    true always\n\n@ Clause 7 – binding effect on successors and assigns\nrule O binding_to_successors_and_assigns:\n    true always\n\n@ Clause 8 – governing law\nrule O governed_by_delaware_law:\n    true always\n\n@ Clause 9 – execution in counterparts\nrule O execution_in_counterparts:\n    true always\n\n@ Clause 10 – entire agreement clause\nrule O entire_agreement:\n    true always\n\n@ Clause 11 – no construction against either party\nrule O no_construction_against_authorship:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis – “Receiving Party may share some Confidential Information with\n# some of Receiving Party's employees.”\n# ----------------------------------------------------------------------\n@ Hypothesis derived from the analysis of the Agreement\nrule F share_confidential_with_employees:\n    true always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_0nsi13t656b",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00166505625,
+      "cost_details": {
+        "upstream_inference_cost": 0.001681875,
+        "upstream_inference_input_cost": 0.000400875,
+        "upstream_inference_output_cost": 0.001281
+      },
+      "input_tokens": 6558,
+      "input_tokens_details": {
+        "cached_tokens": 5505
+      },
+      "is_byok": false,
+      "output_tokens": 1708,
+      "output_tokens_details": {
+        "reasoning_tokens": 1170
+      },
+      "total_tokens": 8266
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "50af846adb3ac1bf84f12b4ef9629997860d861e71e1a099cef4f474bb276b7b",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,41 @@
+@ Contract: OISAIR PROJECT – Two‑Way Confidentiality and Non‑Disclosure Agreement
+@ Module: contract_nli_no_align_dev_3_nda_4
+module contract_nli_no_align_dev_3_nda_4
+
+# ----------------------------------------------------------------------
+# Types – domain concepts that appear in the Agreement
+# ----------------------------------------------------------------------
+type Party = {
+    name: string,
+    address: string
+}
+
+type Purpose = { description: string }
+
+type ConfidentialInfo = {
+    description: string,          -- what the information is about
+    purpose: Purpose,             -- purpose for which the Disclosing Party
+                                 -- permits the Receiving Party to use it
+    used: bool,                   -- true when the Receiving Party has used it
+    purpose_used: Purpose         -- purpose for which it was actually used
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects that can be aligned across standards
+# ----------------------------------------------------------------------
+@ Parties (Disclosing Party and Receiving Party)
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ The confidential information that is exchanged
+entity confidential_info: ConfidentialInfo
+
+@ The purpose that the Agreement explicitly permits
+entity permitted_purpose: Purpose
+
+# ----------------------------------------------------------------------
+# Rules – normative obligations (deontic modality O = obligation)
+# ----------------------------------------------------------------------
+@ Clause 3 – Obligations of confidentiality and non‑use
+rule O use_confidential_info_only_for_permitted_purpose:
+    (confidential_info.used implies confidential_info.purpose_used = permitted_purpose) always

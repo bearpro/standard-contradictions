@@ -1,0 +1,114 @@
+@ Contract: OISAIR PROJECT – Two‑Way Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_3_nda_17
+
+# -------------------------------------------------------------------------
+# Types
+# -------------------------------------------------------------------------
+
+@ Parties (Section 1)
+type Party = {
+    name: string,                # legal name of the party
+    is_disclosing: bool,         # true for the Disclosing Party
+    is_receiving: bool           # true for the Receiving Party
+}
+
+@ Confidential information (Section 1, “Confidential Information” definition)
+type ConfidentialInfo = {
+    is_marked_confidential: bool,   # true when the information is marked as confidential
+    is_oral: bool,                  # true when disclosed orally/visually
+    disclosed_by: Party,            # the Disclosing Party
+    received_by: Party              # the Receiving Party
+}
+
+@ Purpose of the disclosure (Section 1, “Permitted Purpose”)
+type Purpose = {
+    permitted: bool,    # true when the use is for the permitted purpose
+    regulatory: bool    # true when the copy is retained for regulatory/insurance reasons
+}
+
+# -------------------------------------------------------------------------
+# Entities – stable public objects that can be aligned across modules
+# -------------------------------------------------------------------------
+
+@ The two contracting parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ The confidential material that is exchanged
+entity confidential_info: ConfidentialInfo
+
+@ The purpose for which the confidential information may be used
+entity purpose: Purpose
+
+@ State variables needed for the copying rules
+entity copy_made: bool               # true when a copy of the confidential information exists
+entity prior_authorization: bool     # true when the Disclosing Party gave written consent
+entity retained_copy: bool           # true when a single copy is retained for regulatory/insurance purposes
+
+# -------------------------------------------------------------------------
+# Rules – deontic constraints (obligations O, prohibitions F, permissions P)
+# -------------------------------------------------------------------------
+
+# 3a – Reasonable security measures (obligation, always)
+@ Clause 3a
+rule O take_reasonable_measures:
+    true always
+
+# 3b – No disclosure to third parties without written consent (prohibition)
+@ Clause 3b
+rule F no_third_party_disclosure:
+    not (copy_made and not prior_authorization) always
+
+# 3c – No use outside the permitted purpose (prohibition)
+@ Clause 3c
+rule F use_outside_permitted_purpose:
+    not (confidential_info.received_by.is_receiving and not purpose.permitted) always
+
+# 3d – No commercial use without consent (prohibition)
+@ Clause 3d
+rule F commercial_use_without_consent:
+    not (confidential_info.received_by.is_receiving and not prior_authorization) always
+
+# 3e – No copying without prior written authorisation (prohibition)
+@ Clause 3e
+rule F copy_without_authorisation:
+    not (copy_made and not prior_authorization) always
+
+# 3f – No alteration, reverse‑engineering, etc. (prohibition)
+@ Clause 3f
+rule F alteration_prohibited:
+    true always   # (placeholder – actual alteration predicates would be added here)
+
+# 3g – No patent/trademark filing that includes confidential information (prohibition)
+@ Clause 3g
+rule F patent_filing_prohibited:
+    true always   # (placeholder – actual filing predicates would be added here)
+
+# -------------------------------------------------------------------------
+# Permissions / Exceptions concerning copying
+# -------------------------------------------------------------------------
+
+# The Receiving Party may retain ONE copy for regulatory/insurance purposes
+# (Clause 5, “retain one (1) copy … for regulatory or insurance purposes”)
+@ Clause 5
+rule P regulatory_copy_permission:
+    retained_copy implies (purpose.regulatory and prior_authorization) always
+
+# If a copy exists, it must be either authorised or kept for regulatory reasons
+@ Clause 5 (implicit)
+rule P copy_allowed_if_authorised_or_regulatory:
+    copy_made implies (prior_authorization or purpose.regulatory) always
+
+# The retained copy is, by definition, a copy
+@ Clause 5 (implicit)
+rule O retained_copy_is_a_copy:
+    retained_copy implies copy_made always
+
+# The retained copy is, by definition, authorised
+@ Clause 5 (implicit)
+rule O retained_copy_is_authorised:
+    retained_copy implies prior_authorization always
+
+# -------------------------------------------------------------------------
+# End of model
+# -------------------------------------------------------------------------

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-15-nda-2",
+  "created_at": "2026-06-26T00:24:32.344627+00:00",
+  "doc_id": 15,
+  "hypothesis_id": "nda-2",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_15_nda_2",
+  "response": {
+    "background": false,
+    "completed_at": 1782433472.0,
+    "created_at": 1782433470.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433470-dcF3deGyyE7BgmxQ8XbE",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-15-nda-2",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Agreement on the non‑disclosure of confidential information (two‑way)\nmodule contract_nli_no_align_dev_15_nda_2\n\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Types – domain concepts\n# ----------------------------------------------------------------------\n@ Clause 1 – definition of “confidential information”\ntype InfoCategory = Technical | NonTechnical\n\ntype ConfidentialInfo = {\n    category : InfoCategory,          -- technical vs. non‑technical\n    description : string              -- free‑text description\n}\n\n@ Clause 1 – parties to the agreement\ntype DisclosingParty = {\n    name    : string,\n    address : string\n}\n\ntype ReceivingParty = {\n    name    : string,\n    address : string,\n    -- obligations of the receiving party (boolean flags)\n    has_taken_measures          : bool,   -- a) reasonable measures\n    uses_for_commercial         : bool,   -- b) commercial use\n    discloses_to_third_party    : bool,   -- c) disclosure to third parties\n    makes_copy                  : bool,   -- e) copying/abstracting\n    acknowledges_source        : bool,   -- f) source acknowledgment\n    retained_for_ten_years     : bool    -- 5) 10‑year retention period\n}\n\n# ----------------------------------------------------------------------\n# Entities – public model objects (stable, singular, noun‑phrases)\n# ----------------------------------------------------------------------\n@ Clause 1 – the disclosing party\nentity disclosing_party : DisclosingParty\n\n@ Clause 1 – the receiving party\nentity receiving_party : ReceivingParty\n\n@ Clause 1 – a piece of confidential information covered by the agreement\nentity confidential_item : ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Helper functions – pure, reusable predicates\n# ----------------------------------------------------------------------\n@ Clause 1 – technical‑information predicate\nfunc is_technical(info : ConfidentialInfo) -> bool:\n    info.category = InfoCategory.Technical\n\n# ----------------------------------------------------------------------\n# Rules – deontic requirements (O = obligation, F = prohibition)\n# ----------------------------------------------------------------------\n@ Clause 1 – hypothesis: “Confidential Information shall only include technical information.”\nrule O confidential_info_is_technical:\n    is_technical(confidential_item) always\n\n@ Clause 3a – reasonable measures to keep confidentiality\nrule O receiving_party_take_measures:\n    receiving_party.has_taken_measures always\n\n@ Clause 3b – prohibition on commercial use without licence\nrule F receiving_party_use_for_commercial:\n    not receiving_party.uses_for_commercial always\n\n@ Clause 3c – prohibition on disclosure to third parties without permission\nrule F receiving_party_disclose_to_third:\n    not receiving_party.discloses_to_third_party always\n\n@ Clause 3e – prohibition on copying/abstracting without permission\nrule F receiving_party_make_copy:\n    not receiving_party.makes_copy always\n\n@ Clause 3f – obligation to acknowledge source and mark “Confidential”\nrule O receiving_party_acknowledge_source:\n    receiving_party.acknowledges_source always\n\n@ Clause 5 – ten‑year confidentiality period\nrule O retention_period:\n    receiving_party.retained_for_ten_years always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_dq55z4xe17f",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00158946975,
+      "cost_details": {
+        "upstream_inference_cost": 0.001605525,
+        "upstream_inference_input_cost": 0.000371775,
+        "upstream_inference_output_cost": 0.00123375
+      },
+      "input_tokens": 6663,
+      "input_tokens_details": {
+        "cached_tokens": 5751
+      },
+      "is_byok": false,
+      "output_tokens": 1645,
+      "output_tokens_details": {
+        "reasoning_tokens": 1002
+      },
+      "total_tokens": 8308
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "66a865f6e7c57b23ed311d65b8ec24bf239dba844971f69a58bf9cc1f51bd361",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,32 @@
+@ Non‑Negotiable Confidentiality and Non‑Disclosure Agreement (Transportation Challenge 2017)
+module contract_nli_no_align_dev_9_nda_20
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Record describing the vendor’s handling of confidential information
+type Vendor = {
+    retains_confidential: bool   # true if any confidential information is still held
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The party that receives the confidential information
+entity vendor: Vendor
+
+# ----------------------------------------------------------------------
+# Rules (obligations / prohibitions)
+# ----------------------------------------------------------------------
+@ Clause 6 – Return or Destruction of Materials
+@ The vendor must not retain any confidential information after BPS has
+@ requested return or destruction, and also after the services are completed.
+rule O vendor_must_not_retain_confidential:
+    not vendor.retains_confidential always
+
+# ----------------------------------------------------------------------
+# Hypothesis (to be checked for consistency)
+# ----------------------------------------------------------------------
+@ Hypothesis: Receiving Party may retain some Confidential Information even after
+@ the return or destruction of Confidential Information.
+fact vendor.retains_confidential = true

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-4",
+  "created_at": "2026-06-26T00:23:51.225706+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-4",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_4",
+  "response": {
+    "background": false,
+    "completed_at": 1782433431.0,
+    "created_at": 1782433429.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433429-ssVr1Pq8jHqSMHiv0SgP",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-4",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the Stockholder List\nmodule contract_nli_no_align_dev_14_nda_4\n\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain model\n# ----------------------------------------------------------------------\n@ Party – any of the two Parties to the Agreement\ntype Party = {\n    name: string,\n    role: PartyRole\n}\n\n@ PartyRole – the two possible roles in this contract\ntype PartyRole = Company | Stockholder\n\n@ ConfidentialMaterial – the information that may be inspected\ntype ConfidentialMaterial = {\n    description: string\n}\n\n@ ConfidentialUse – an event where a Party uses the ConfidentialMaterial for a purpose\ntype ConfidentialUse = {\n    party: Party,\n    material: ConfidentialMaterial,\n    purpose: string\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\nentity receiving_party: Party\nentity confidential_material: ConfidentialMaterial\nentity confidential_use: ConfidentialUse\n\n# ----------------------------------------------------------------------\n# Helper function\n# ----------------------------------------------------------------------\n@ Determines whether a purpose is permitted by the Agreement.\n# The Agreement permits purposes “reasonably related to Stockholder’s interests as a stockholder of the Company”.\n# For modeling purposes we treat any purpose that mentions “interest” (case‑insensitive) as permitted.\nfunc is_permitted_purpose(p: string) -> bool:\n    contains(to_lower(p), \"interest\")\n\n# ----------------------------------------------------------------------\n# Requirement (hypothesis) – a prohibition\n# ----------------------------------------------------------------------\n@ Receiving Party shall not use any Confidential Information for any purpose other than the purposes stated in the Agreement.\nrule F use_confidential_material_unpermitted:\n    let permitted = is_permitted_purpose(confidential_use.purpose) in\n    not permitted always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_bf1lxbn5uwt",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.001389267,
+      "cost_details": {
+        "upstream_inference_cost": 0.0014033,
+        "upstream_inference_input_cost": 0.0004163,
+        "upstream_inference_output_cost": 0.000987
+      },
+      "input_tokens": 6797,
+      "input_tokens_details": {
+        "cached_tokens": 5702
+      },
+      "is_byok": false,
+      "output_tokens": 1316,
+      "output_tokens_details": {
+        "reasoning_tokens": 969
+      },
+      "total_tokens": 8113
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "d5493b3b5553790dabe8e009dae0e5a98c3bd69f4a7bb662d19cd42ee3f793cd",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

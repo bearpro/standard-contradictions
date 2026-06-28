@@ -1,0 +1,75 @@
+```mdl
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT
+@ contract_nli_no_align_dev_9_nda_15
+module contract_nli_no_align_dev_9_nda_15
+
+open std.collections
+
+* ----------------------------------------------------------------------
+--  Domain objects
+-- ----------------------------------------------------------------------
+@ Parties (Vendor and BPS)
+type Party = {
+    name: string
+}
+
+@ Confidential information that is the subject of the Agreement
+type ConfidentialInfo = {
+    owner: Party,                     -- the party that owns the data (BPS)
+    description: string,              -- free‑text description of the data
+    vendor_allowed: bool               -- does the Vendor have a *right* to use it?
+}
+
+@ ----------------------------------------------------------------------
+--  Model entities (public anchors for alignment)
+-- ----------------------------------------------------------------------
+@ The Vendor party
+entity vendor: Party
+
+@ The Boston Public Schools party
+entity bps: Party
+
+@ The confidential data set that is being shared
+entity confidential_info: ConfidentialInfo
+
+-- ----------------------------------------------------------------------
+--  Helper functions
+-- ----------------------------------------------------------------------
+@ Returns true if the given party is the owner of the confidential info
+func is_owner(p: Party, info: ConfidentialInfo) -> bool:
+    p.name = info.owner.name
+
+@ Returns true if the Vendor is permitted to use the confidential info
+func vendor_has_right(info: ConfidentialInfo) -> bool:
+    info.vendor_allowed
+
+-- ----------------------------------------------------------------------
+--  Requirements extracted from the Agreement
+-- ----------------------------------------------------------------------
+@ Clause 2.1 – Data Sharing (security & governance)
+rule O vendor_must_protect_confidential_info:
+    -- The Vendor must keep the information confidential at all times.
+    -- (Implemented elsewhere – omitted for brevity)
+    true always
+
+@ Clause 2.2 – Nondisclosure (use limitation)
+rule O vendor_use_limited_to_services:
+    -- The Vendor may use the confidential information *only* for the
+    -- services described in the Challenge.
+    -- (Implemented elsewhere – omitted for brevity)
+    true always
+
+@ Clause 2.4 – Disclosure Sought Under Legal Process
+rule O vendor_must_notify_bps_before_disclosure:
+    -- The Vendor must notify BPS before any legal disclosure.
+    -- (Implemented elsewhere – omitted for brevity)
+    true always
+
+@ ----------------------------------------------------------------------
+--  Hypothesis to be checked
+-- ----------------------------------------------------------------------
+@ The Agreement shall *not* grant the Receiving Party (Vendor) any right
+@ to the Confidential Information.
+rule F vendor_no_right_to_confidential_info:
+    vendor_has_right(confidential_info) = false always
+```

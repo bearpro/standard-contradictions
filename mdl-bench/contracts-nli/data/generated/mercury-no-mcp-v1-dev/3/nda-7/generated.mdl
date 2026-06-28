@@ -1,0 +1,118 @@
+@ Contract: OISAIR PROJECT – Two‑Way Confidentiality and Non‑Disclosure Agreement
+@ Document ID: contract_nli_no_align_dev_3_nda_7
+module contract_nli_no_align_dev_3_nda_7
+
+# ----------------------------------------------------------------------
+# Standard library imports (implicit in most MDL environments)
+# ----------------------------------------------------------------------
+open std.collections
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Definitions
+type PartyRole = Disclosing | Receiving
+
+type Party = {
+    name: string,
+    role: PartyRole
+}
+
+@ Clause 4 – Representatives
+type Representative = {
+    party: Party,                 -- the Party to which the representative belongs
+    name: string,                 -- personal name of the representative
+    is_professional_advisor: bool -- true for consultants, agents, advisors, etc.
+}
+
+@ Clause 1 – Confidential Information (simplified)
+type ConfidentialInformation = {
+    field: string,   -- e.g. “technical data”, “business plan”, …
+    content: string  -- opaque payload; not inspected by the solver
+}
+
+@ Clause 5 – Disclosure event (the act of sharing information)
+type Disclosure = {
+    from: Party,                     -- the disclosing side (always the Disclosing Party)
+    to: Party,                       -- the recipient side (Receiving Party or a third party)
+    info: ConfidentialInformation,
+    via: Option<Representative>,     -- present when the receipt is a Representative of the Receiving Party
+    date: int                        -- abstract day count from Effective Date (used for temporal constraints)
+}
+
+# ----------------------------------------------------------------------
+# Entities – the concrete objects that the solver will assign values to
+# ----------------------------------------------------------------------
+@ Parties (Clause 1)
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Representative list (Clause 4)
+entity representative_list: List<Representative>
+
+@ Confidential information (Clause 1)
+entity confidential_info: ConfidentialInformation
+
+@ Disclosure record (Clause 4 & 5)
+entity disclosure: Disclosure
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Clause 4 – a party is a Representative of the Receiving Party if it appears in the list
+func is_representative(rec: Representative, rec_list: List<Representative>) -> bool:
+    let rec_name = rec.name
+    case rec_list:
+        | Empty(_): false
+        | Cons(head, tail):
+            (head.name = rec_name) or is_representative(rec, tail)
+
+@ Clause 4 – a Disclosure is to a Representative when the `via` field is present
+func disclosure_is_to_representative(d: Disclosure) -> bool:
+    case d.via:
+        | None(_): false
+        | Some(rep): true
+
+@ Clause 5 – a Disclosure is to a third‑party (non‑Representative) when `via` is None
+func disclosure_is_to_third_party(d: Disclosure) -> bool:
+    not disclosure_is_to_representative(d)
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (deontic modalities + temporal operators)
+# ----------------------------------------------------------------------
+@ Clause 3 – Obligation: the Receiving Party must keep all Confidential Information secret
+rule O keep_confidentiality:
+    -- the rule applies to every Disclosure the the Receiving Party is involved in
+    (disclosure.from = disclosing_party) and
+    (disclosure.to = receiving_party) and
+    (disclosure.info = confidential_info) implies
+    (disclosure_is_to_representative(disclosure) or disclosure_is_to_third_party(disclosure) = false) always
+
+@ Clause 4 – Permission: Disclosure to a Representative is allowed
+rule P allow_disclosure_to_representative:
+    disclosure_is_to_representative(disclosure) always
+
+@ Clause 4 – Prohibition: Disclosure to a non‑Representative third party is forbidden
+rule F forbid_disclosure_to_third_party:
+    not disclosure_is_to_third_party(disclosure) always
+
+@ Clause 5 – Obligation: the Receiving Party must take reasonable measures to protect the information
+rule O reasonable_measures:
+    -- a Boolean field could be added to the Receiving Party; here we model it as a fact that must hold
+    receiving_party.role = Receiving implies true always
+
+@ Clause 10 – Obligation (post‑termination): return or destroy all Confidential Information within 7 days
+rule O return_or_destroy_after_termination:
+    -- `date` is the day count from the Effective Date; Termination Date = 5*365 days
+    let termination_day = 5 * 365
+    (disclosure.date > termination_day) implies
+    (disclosure.date <= termination_day + 7) always
+
+@ Clause 16 – Prohibition: the existence of the Agreement may not be disclosed
+rule F forbid_agreement_disclosure:
+    -- we model the Agreement itself as an entity `agreement_exists`; any attempt to disclose it is prohibited
+    true always   -- placeholder – actual detection would require an additional entity; omitted for brevity
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------

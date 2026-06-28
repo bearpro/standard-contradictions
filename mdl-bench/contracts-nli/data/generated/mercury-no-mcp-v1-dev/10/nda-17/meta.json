@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-17",
+  "created_at": "2026-06-26T00:20:49.002275+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-17",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_17",
+  "response": {
+    "background": false,
+    "completed_at": 1782433248.0,
+    "created_at": 1782433245.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433245-lceXegvN5rbQdsosAS7C",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-17",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality and Non‑Disclosure Agreement (CNDA)\n@ Module name required by the user\nmodule contract_nli_no_align_dev_10_nda_17\n\n# ------------------------------------------------------------\n# Imports\n# ------------------------------------------------------------\nopen std.collections   # for List<T>\n\n# ------------------------------------------------------------\n# Types – domain concepts appearing in the CNDA\n# ------------------------------------------------------------\n\n@ Parties to the agreement\ntype Party = {\n    name: string               # e.g. \"Canadian Pacific Railway\", \"Supplier\"\n}\n\n@ Information that is identified as confidential\ntype ConfidentialInfo = {\n    marked_confidential: bool  # true when the information is labelled “Confidential”\n    source: Party              # the Disclosing Party that supplied the information\n    is_disclosed: bool         # true if the Receiving Party has disclosed it to a third‑party\n    is_returned: bool          # true if the information has been returned/destroyed on request\n}\n\n@ Information that may be retained in the unaided memory of a person\ntype ResidualInfo = {\n    description: string        # free‑form description of the residual knowledge\n}\n\n# ------------------------------------------------------------\n# Entities – stable public objects that can be aligned across modules\n# ------------------------------------------------------------\n\n@ The whole CNDA agreement (the “contract”)\nentity cnda: {\n    disclosing_party: Party,\n    receiving_party: Party,\n    confidential_infos: List<ConfidentialInfo>,\n    residual_infos: List<ResidualInfo>,\n    termination_date: string,        # ISO‑date of termination (if any)\n    request_return: bool            # true when the Disclosing Party has asked for return\n}\n\n# ------------------------------------------------------------\n# Helper functions – keep rules readable\n# ------------------------------------------------------------\n\n@ True whether a piece of information is confidential\nfunc is_confidential(info: ConfidentialInfo) -> bool:\n    info.marked_confidential\n\n@ True when a piece of confidential information has been disclosed\nfunc has_been_disclosed(info: ConfidentialInfo) -> bool:\n    info.is_disclosed\n\n@ True when a piece of confidential information has been returned/destroyed\nfunc has_been_returned(info: ConfidentialInfo) -> bool:\n    info.is_returned\n\n@ True when a piece of residual information exists\nfunc residual_exists(c: { residual_infos: List<ResidualInfo> }) -> bool:\n    list.len(c.residual_infos) > 0\n\n# ------------------------------------------------------------\n# Rules – deontic constraints derived from the CNDA text\n# ------------------------------------------------------------\n\n# Article 2.03 – “Kept in Confidence”\n@ 2.03 Kept in Confidence\nrule O keep_confidential_information:\n    # The Receiving Party must keep every confidential item with at least\n    # a reasonable degree of care (the rule is an obligation; the exact\n    # quantitative care level is not modelled here).\n    true always\n\n# Article 2.05 – “No Disclosure”\n@ 2.05 No Disclosure\nrule F disclose_confidential_information:\n    let any_disclosed: bool =\n        exists i: ConfidentialInfo in cnda.confidential_infos where\n            is_confidential(i) and has_been_disclosed(i)\n    any_disclosed false always\n\n# Article 2.07 – “Return of Confidential Information”\n@ 2.07 Return of Confidential Information\nrule O return_confidential_on_request:\n    let any_not_returned: bool =\n        exists i: ConfidentialInfo in cnda.confidential_infos where\n            cnda.request_return and not has_been_returned(i)\n    any_not_returned false always\n\n# Article 2.08 – “Responsibility for Others”\n@ 2.08 Responsibility for Others\nrule O responsibility_for_representatives:\n    # The Receiving Party is responsible for any breach caused by its\n    # Representatives.  This is modelled as an obligation that must hold\n    # at all times.\n    true always\n\n# Article 3.02 – “Continuing Obligations Regarding Confidentiality”\n@ 3.02 Continuing Obligations\nrule O obligations_survive_three_years:\n    # The confidentiality obligations survive three years after termination.\n    # We model the survival as an obligation that is active while the\n    # current date is within three years of the termination date.\n    # (The actual date arithmetic is omitted – the rule simply states\n    # the intent that the obligation is perpetual for the required period.)\n    true always\n\n# Article 3.11 – “Residuals”\n@ 3.11 Residual Information\nrule P use_residual_information:\n    # The Receiving Party may use residual information “during and after the term”.\n    # This is a permission that is always available (the clause does not\n    # impose any further condition).\n    residual_exists(cnda) always\n\n# ------------------------------------------------------------\n# Hypothesis – “Receiving Party may create a copy of some Confidential\n# Information in some circumstances.”\n# ------------------------------------------------------------\n@ This rule captures the hypothesis that a copy (i.e., a residual\n@ representation) may be created.  The permission granted by clause 3.11\n@ allows the Receiving Party to retain such a copy in its unaided memory.\nrule P create_copy_of_residual_information:\n    # The permission is granted whenever residual information exists.\n    residual_exists(cnda) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_szacrm4c5og",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00253660275,
+      "cost_details": {
+        "upstream_inference_cost": 0.002562225,
+        "upstream_inference_input_cost": 0.000741225,
+        "upstream_inference_output_cost": 0.001821
+      },
+      "input_tokens": 7968,
+      "input_tokens_details": {
+        "cached_tokens": 5559
+      },
+      "is_byok": false,
+      "output_tokens": 2428,
+      "output_tokens_details": {
+        "reasoning_tokens": 1379
+      },
+      "total_tokens": 10396
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "7002d6cecb922e1ca46be4f8f9db66c2216fcde60cf7672e49053e8c50bc42fe",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

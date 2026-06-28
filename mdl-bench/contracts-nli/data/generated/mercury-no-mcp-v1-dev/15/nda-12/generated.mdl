@@ -1,0 +1,94 @@
+@ AGREEMENT ON THE NON-DISCLOSURE OF CONFIDENTIAL INFORMATION (TWO‑WAY)
+module contract_nli_no_align_dev_15_nda_12
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+/* Clause 1 – Parties */
+type Party = {
+    name: string,
+    address: string
+}
+
+/* Clause 1 – Confidential information (the “information” that is subject to the NDA) */
+type ConfidentialInfo = {
+    description: string          /* free‑form description of the material */
+}
+
+/* ----------------------------------------------------------------------
+# Entities – the stable public objects that can be aligned with other standards
+# ----------------------------------------------------------------------
+/* Disclosing party (the University of Bristol) */
+entity disclosing_party: Party
+
+/* Receiving party (the other signatory) */
+entity receiving_party: Party
+
+/* The confidential material that is exchanged */
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Helper function – used to express the “independent development” exception
+# ----------------------------------------------------------------------
+/* Clause 4 – exception for independently developed information */
+func is_independently_developed(info: ConfidentialInfo, party: Party) -> bool:
+    /* In a concrete model this would be linked to evidence (e.g. dates,
+       source documents).  For the purpose of the logical model we leave it
+       abstract – the solver may assign true/false as needed. */
+    true
+
+# ----------------------------------------------------------------------
+# Obligations (O) – what the Receiving Party must do
+# ----------------------------------------------------------------------
+/* Clause 3a – take reasonable measures to keep the information confidential */
+rule O maintain_confidentiality:
+    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always
+
+/* Clause 3f – acknowledge the source and mark the material “Confidential” */
+rule O acknowledge_and_mark:
+    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always
+
+/* Clause 5 – confidentiality period of ten (10) years from the effective date */
+rule O confidentiality_period:
+    true always   /* temporal scope is handled by the trace length (≤ 10 years) */
+
+/* Clause 6 – English law governs the agreement */
+rule O governed_by_english_law:
+    true always
+
+# ----------------------------------------------------------------------
+# Prohibitions (F) – what the Receiving Party must not do
+# ----------------------------------------------------------------------
+/* Clause 3b – do not use the information for any commercial purpose without a licence */
+rule F use_for_commercial_purpose:
+    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always
+
+/* Clause 3c – do not disclose the information to any third party without written permission */
+rule F disclose_to_third_party:
+    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always
+
+/* Clause 3d – do not disclose to employees except those who need it */
+rule F disclose_to_employees_except_needed:
+    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always
+
+/* Clause 3e – do not make any copy or abstract without specific written permission */
+rule F make_copy_without_permission:
+    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always
+
+# ----------------------------------------------------------------------
+# Permissions (P) – what the Receiving Party is allowed to do
+# ----------------------------------------------------------------------
+/* Clause 4 – independently developed information is exempt from the obligations */
+rule P independent_development:
+    is_independently_developed(confidential_info, receiving_party) always
+
+# ----------------------------------------------------------------------
+# Facts – external data that can be supplied to the solver (e.g. effective date)
+# ----------------------------------------------------------------------
+/* Effective date of the agreement (year is intentionally left as a placeholder) */
+fact effective_year = 2000   /* replace with the actual year when the model is instantiated */
+
+/* The ten‑year confidentiality horizon expressed as a simple bound on the trace length */
+fact max_confidentiality_years = 10

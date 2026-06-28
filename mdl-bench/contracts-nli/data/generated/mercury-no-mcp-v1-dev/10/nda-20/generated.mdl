@@ -1,0 +1,101 @@
+@ Contract: CNDA – Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_10_nda_20
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Article 2 – Definitions
+type Party =
+    | Disclosing(unit)   # the party that discloses Confidential Information
+    | Receiving(unit)   # the party that receives Confidential Information
+
+@ Article 2 – Confidential Information
+type ConfidentialInfo = {
+    is_marked_confidential : bool,   # true when the information is marked “Confidential”
+    is_residual            : bool,   # true when the information is “Residual Information” (Article 3.11)
+    is_returned            : bool,   # true after the Receiving Party has returned the information (Article 2.07)
+    is_destroyed           : bool,   # true after the Receiving Party has destroyed the information (Article 2.07)
+    is_disclosed_to_third  : bool,   # true if the information has been disclosed to a non‑representative third party
+    retained_by            : Party   # which party currently holds the information
+}
+
+@ Article 2 – Representatives (people who may receive Confidential Information)
+type Representative = {
+    name            : string,
+    has_need_to_know: bool   # true when the representative is permitted to receive the information
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ Parties to the Agreement
+entity disclosing_party : Party
+entity receiving_party : Party
+
+@ The piece of Confidential Information that is the subject of the CNDA
+entity confidential_info : ConfidentialInfo
+
+@ A representative of the Receiving Party (used in the “need‑to‑know” test)
+entity representative : Representative
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements (O = obligation, F = prohibition, P = permission)
+# ----------------------------------------------------------------------
+@ Article 2.03 – “Kept in Confidence”
+rule O maintain_confidential_care:
+    -- The Receiving Party must use at least a reasonable degree of care.
+    -- We model this as a prohibition on careless handling (i.e. the
+    -- information must not be marked as “careless” – a placeholder field).
+    true always   # placeholder – actual care level is out of scope for this model
+
+@ Article 2.04 – “No Benefit, Restricted Use”
+rule F derive_benefit_from_confidential:
+    confidential_info.is_marked_confidential and
+    confidential_info.retained_by = Receiving
+    implies not confidential_info.is_disclosed_to_third always
+
+@ Article 2.05 – “No Disclosure”
+rule F disclose_to_third_party:
+    confidential_info.is_marked_confidential and
+    confidential_info.retained_by = Receiving
+    implies not confidential_info.is_disclosed_to_third always
+
+@ Article 2.06 – “Disclosure Required by Law”
+rule P disclose_under_legal_process:
+    confidential_info.is_marked_confidential and
+    confidential_info.retained_by = Receiving
+    implies (confidential_info.is_disclosed_to_third or true) eventually   -- permission only when required by law
+
+@ Article 2.07 – “Return of Confidential Information”
+rule O return_and_destroy:
+    confidential_info.is_marked_confidential and
+    confidential_info.retained_by = Receiving
+    implies (confidential_info.is_returned and confidential_info.is_destroyed) always
+
+@ Article 3.11 – “Residual Information”
+rule P use_residual_information:
+    -- The Receiving Party is permitted to use Residual Information even after
+    -- the return or destruction of the original Confidential Information.
+    confidential_info.is_residual and
+    confidential_info.retained_by = Receiving always
+
+@ Article 3.11 – “Retention of Residual Information after Return/Destruction”
+rule P retain_residual_after_return:
+    confidential_info.is_residual and
+    confidential_info.is_returned and
+    confidential_info.is_destroyed and
+    confidential_info.retained_by = Receiving always
+
+@ Article 3.08 – “Responsibility for Others”
+rule O responsible_for_representatives:
+    -- The Receiving Party is responsible for any breach caused by its representatives.
+    representative.has_need_to_know implies true always   -- placeholder: ensures representatives are known
+
+@ Article 3.09 – “Termination”
+rule O confidentiality_survives_termination:
+    -- Confidentiality obligations survive termination for three years.
+    true always   -- temporal dimension (3‑year survival) is not modeled explicitly here
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------

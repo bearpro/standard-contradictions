@@ -1,0 +1,48 @@
+```mdl
+@ Contract: OISAIR Project – Two‑Way Confidentiality and Non‑Disclosure Agreement
+@ Module: contract_nli_no_align_dev_3_nda_8
+module contract_nli_no_align_dev_3_nda_8
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type Party = {
+    name: string
+}
+
+type ConfidentialInfo = {
+    description: string
+}
+
+# ----------------------------------------------------------------------
+# Entities (stable domain objects)
+# ----------------------------------------------------------------------
+@ The two parties to the agreement
+entity receiving_party: Party
+entity disclosing_party: Party
+
+@ The confidential information that may be subject to a legal disclosure
+entity confidential_information: ConfidentialInfo
+
+@ Runtime flags used by the solver to capture the state of the agreement
+entity legal_disclosure_required: bool   # true when a law, regulation or court order forces disclosure
+entity notified_disclosing_party: bool  # true when the Receiving Party has sent the required notice
+
+# ----------------------------------------------------------------------
+# Rules – obligations, permissions, prohibitions
+# ----------------------------------------------------------------------
+@ Hypothesis: Receiving Party shall notify Disclosing Party if required by law
+@ to any Confidential Information.
+rule O notify_when_legal_disclosure:
+    (legal_disclosure_required) implies (notified_disclosing_party) now
+
+# ----------------------------------------------------------------------
+# Optional auxiliary rules (not required for the hypothesis but useful for
+# completeness of the model)
+# ----------------------------------------------------------------------
+@ The Receiving Party must keep the Confidential Information confidential
+rule O keep_confidentiality:
+    not notified_disclosing_party implies true always   # placeholder – actual confidentiality rules are defined elsewhere
+
+# End of module
+```

@@ -1,0 +1,93 @@
+@ Confidentiality and Non‑Disclosure Agreement (CNDA) – Model
+module contract_nli_no_align_dev_10_nda_19
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Article 2 – Confidential Information
+type ConfidentialInfo = {
+    is_confidential: bool          # true when the datum is marked “Confidential”
+}
+
+@ Article 3 – Contract state (used for temporal reasoning)
+type ContractState = {
+    terminated: bool               # true once the CNDA has been terminated
+    years_since_termination: int   # whole years elapsed after termination (0 while not terminated)
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The parties of the agreement – only the Receiving Party (the party that
+# receives Confidential Information) has obligations that must be modelled.
+entity receiving_party: {
+    # The Receiving Party must keep any ConfidentialInfo it obtains
+    # confidential and must not disclose it except as permitted.
+    confidentiality_obligation: bool
+    # The Receiving Party must return or destroy Confidential Information
+    # upon request after termination.
+    return_obligation: bool
+}
+
+@ Global contract state – used to express obligations that survive termination.
+entity contract_state: ContractState
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Returns true while the confidentiality obligation is still in force.
+func confidentiality_in_force(cs: ContractState) -> bool:
+    not cs.terminated
+    or (cs.terminated and cs.years_since_termination <= 3)
+
+@ Returns true while the return/destroy obligation is still in force.
+func return_in_force(cs: ContractState) -> bool:
+    not cs.terminated
+    or (cs.terminated and cs.years_since_termination <= 3)
+
+# ----------------------------------------------------------------------
+# Rules – obligations (O), prohibitions (F) and permissions (P)
+# ----------------------------------------------------------------------
+@ Article 2.03 – “Kept in Confidence”
+rule O confidentiality_obligation_is_kept:
+    receiving_party.confidentiality_obligation = true
+    and confidentiality_in_force(contract_state) always
+
+@ Article 2.05 – “No Disclosure”
+rule F disclose_confidential_information:
+    receiving_party.confidentiality_obligation = false
+    and confidentiality_in_force(contract_state) always
+
+@ Article 2.07 – “Return of Confidential Information”
+rule O return_confidential_information_on_request:
+    receiving_party.return_obligation = true
+    and return_in_force(contract_state) always
+
+@ Article 3.02 – “Continuing Obligations Regarding Confidentiality”
+rule O confidentiality_obligation_survives_termination:
+    confidentiality_in_force(contract_state) always
+
+@ Article 3.09 – “Termination” (obligations survive 3 years after termination)
+rule O confidentiality_obligation_survival_period:
+    (contract_state.terminated -> contract_state.years_since_termination <= 3) always
+
+rule O return_obligation_survival_period:
+    (contract_state.terminated -> contract_state.years_since_termination <= 3) always
+
+# ----------------------------------------------------------------------
+# Temporal evolution of the contract state (for illustration only)
+# ----------------------------------------------------------------------
+# In a real‑world model the values of `contract_state.terminated` and
+# `contract_state.years_since_termination` would be supplied by the
+# surrounding system (e.g., a contract‑management tool).  The following
+# auxiliary rules show how the year counter could be updated when the
+# contract is terminated, but they are not required for the core
+# contradiction‑detection task.
+func increment_years(cs: ContractState) -> ContractState:
+    if cs.terminated then
+        { terminated = true, years_since_termination = cs.years_since_termination + 1 }
+    else
+        cs
+
+rule update_year_counter:
+    let _ = increment_years(contract_state) in true always

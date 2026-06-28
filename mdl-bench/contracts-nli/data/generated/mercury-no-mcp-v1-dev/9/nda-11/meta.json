@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-11",
+  "created_at": "2026-06-26T00:19:47.177574+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-11",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_11",
+  "response": {
+    "background": false,
+    "completed_at": 1782433187.0,
+    "created_at": 1782433184.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433184-cO8caxXHjQFkz5O89hbM",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-11",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON-NEGOTIABLE CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT – TRANSPORTATION CHALLENGE 2017\nmodule contract_nli_no_align_dev_9_nda_11\n\nopen std.collections\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Party – generic participant in the agreement\ntype Party = {\n    name: string,\n    address: string,\n    contact_email: string\n}\n\n@ Confidential information that is shared between the parties\ntype ConfidentialInfo = {\n    data_type: string,          # e.g. \"student routing data\"\n    description: string\n}\n\n@ Security measures that must be present in the Vendor's database\ntype SecurityMeasure = {\n    name: string                 # e.g. \"encryption\", \"firewall\", \"anti-virus\"\n}\n\n@ Database used by the Vendor to store Confidential Information\ntype Database = {\n    security_measures: List<SecurityMeasure>\n}\n\n@ Vendor – the receiving party (the “Receiving Party”)\ntype Vendor = {\n    name: string,\n    # Boolean flags that capture the Vendor's compliance state\n    has_disclosed_confidential: bool,\n    has_reverse_engineered: bool,\n    has_returned_confidential: bool,\n    has_notified_breach: bool,\n    has_signed_nda: bool\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The Boston Public Schools (the “Disclosing Party”)\nentity bps: Party\n\n@ The Vendor (the “Receiving Party”)\nentity vendor: Vendor\n\n@ The set of Confidential Information covered by the Agreement\nentity confidential_info: ConfidentialInfo\n\n@ The Vendor's secure database\nentity database: Database\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n@ Checks whether a given security measure is present in the database\nfunc has_security_measure(db: Database, measure_name: string) -> bool:\n    case db.security_measures:\n        | Cons(m, rest) =>\n            if m.name = measure_name then true\n            else has_security_measure({ security_measures = rest }, measure_name)\n        | Empty(_) => false\n\n# ----------------------------------------------------------------------\n# Rules – Obligations (O), Prohibitions (F), Permissions (P)\n# ----------------------------------------------------------------------\n@ Clause 2.1 – Vendor must keep Confidential Information secret\nrule F vendor_must_not_disclose_confidential:\n    vendor.has_disclosed_confidential always\n\n@ Clause 2.1 – Vendor shall not reverse‑engineer any objects embodying Confidential Information\nrule F vendor_must_not_reverse_engineer:\n    vendor.has_reverse_engineered always\n\n@ Clause 2.6 – Vendor must return or destroy Confidential Information when requested\nrule O vendor_must_return_or_destroy_confidential:\n    vendor.has_returned_confidential always\n\n@ Clause 2.4 – Vendor must give BPS immediate notice of any unauthorized use or breach\nrule O vendor_must_notify_breach_immediately:\n    vendor.has_notified_breach always\n\n@ Clause 2.1 – Vendor must have signed the NDA before accessing data\nrule O vendor_must_have_signed_nda:\n    vendor.has_signed_nda always\n\n@ Clause 2.1 – Database must include required security safeguards\nrule O database_must_include_required_security_measures:\n    has_security_measure(database, \"encryption\") and\n    has_security_measure(database, \"firewall\") and\n    has_security_measure(database, \"anti-virus\") and\n    has_security_measure(database, \"access-authentication\") always\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_jfm0gx7iiad",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00236726325,
+      "cost_details": {
+        "upstream_inference_cost": 0.002391175,
+        "upstream_inference_input_cost": 0.000942925,
+        "upstream_inference_output_cost": 0.00144825
+      },
+      "input_tokens": 8764,
+      "input_tokens_details": {
+        "cached_tokens": 5547
+      },
+      "is_byok": false,
+      "output_tokens": 1931,
+      "output_tokens_details": {
+        "reasoning_tokens": 1229
+      },
+      "total_tokens": 10695
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "3be49c142a1bcdd760a84ad76d9ab6ffc9f477029a852c54ab0bd6eb9ae2678b",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

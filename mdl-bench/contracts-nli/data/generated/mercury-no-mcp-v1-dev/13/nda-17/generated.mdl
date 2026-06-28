@@ -1,0 +1,88 @@
+@ Non‑Disclosure Agreement – Model for “contract_nli_no_align_dev_13_nda_17”
+module contract_nli_no_align_dev_13_nda_17
+
+# ----------------------------------------------------------------------
+# Types – domain concepts that appear in the NDA
+# ----------------------------------------------------------------------
+type Party =
+    | PJM(unit)
+    | TransmissionOwner(unit)
+    | OtherParty(string)
+
+type ConfidentialInformation = {
+    owner: Party,
+    marked_confidential: bool,
+    used_for_transmission_functions: bool
+}
+
+type ReviewingRepresentative = {
+    name: string,
+    title: string,
+    party: Party,
+    has_certificate: bool,
+          has_competitive_duties: bool,
+    is_employed: bool
+}
+
+type NonDisclosureCertificate = {
+    signed_by: ReviewingRepresentative,
+    date: string
+}
+
+type Note = {
+    content: string,
+    is_copy: bool,
+    created_by: ReviewingRepresentative
+}
+
+type ThirdPartyRequest = {
+    requestor: string,
+    purpose: string,
+    legal_basis: bool,
+    prior_written_approval: bool
+}
+
+# ----------------------------------------------------------------------
+# Entities – stable public objects that can be aligned across modules
+# ----------------------------------------------------------------------
+entity party: Party
+entity confidential_information: ConfidentialInformation
+entity reviewing_representative: ReviewingRepresentative
+entity non_disclosure_certificate: NonDisclosureCertificate
+entity note: Note
+entity third_party_request: ThirdPartyRequest
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (deontic modality + LTLf)
+# ----------------------------------------------------------------------
+@ Clause 2.2 – Access to Confidential Information requires a signed certificate
+rule O access_requires_certificate:
+    reviewing_representative.has_certificate always
+
+@ Clause 2.2 – Confidential Information may be used only for Transmission Functions
+rule O only_use_for_transmission_functions:
+    confidential_information.used_for_transmission_functions always
+
+@ Clause 2.2 – A Reviewing Representative may make a copy (Note) of Confidential
+# Information only when the Representative holds a certificate and has no
+# competitive duties.
+rule O allowed_copy:
+    reviewing_representative.has_certificate and
+    not reviewing_representative.has_competitive_duties and
+    note.is_copy and
+    note.created_by = reviewing_representative always
+
+@ Clause 2.2 – Prohibit copying without a certificate
+rule F prohibited_copy_without_certificate:
+    not reviewing_representative.has_certificate and
+    note.is_copy always
+
+@ Clause 2.2 – Prohibit copying when the Representative has competitive duties
+rule F prohibited_copy_if_competitive:
+    reviewing_representative.has_competitive_duties and
+    note.is_copy always
+
+@ Clause 2.2 – Disclosure to a third party is forbidden without prior written
+# approval from the Disclosing Party
+rule F disclose_to_third_party_without_approval:
+    not third_party_request.prior_written_approval always

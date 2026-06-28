@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-2",
+  "created_at": "2026-06-26T00:20:10.417386+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-2",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_2",
+  "response": {
+    "background": false,
+    "completed_at": 1782433210.0,
+    "created_at": 1782433207.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433207-w8tn5tfGyObeOPaQujs4",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-2",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (BPS – Vendor)\nmodule contract_nli_no_align_dev_9_nda_2\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party = {\n    name: string,\n    address: string\n}\n\n@ Individual person (e.g., BPS contact, vendor employee)\ntype Person = {\n    name: string,\n    title: string,\n    email: string,\n    phone: string\n}\n\n@ The categories of data that may be disclosed under the Agreement\ntype ConfidentialInfo = {\n    directory_info: bool,   # address, latitude/longitude of student home\n    routing_info: bool,     # bus‑stop locations, routes, grades, etc.\n    student_info: bool,     # ridership status, school assignment, etc.\n    technical_info: bool    # any purely technical data (e.g., algorithmic results)\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ The Boston Public Schools (BPS) – the data owner\nentity bps: Party\n\n@ The vendor (company or individual) that receives the data\nentity vendor: Party\n\n@ The BPS representative who must be notified of incidents\nentity bps_contact: Person\n\n@ The set of Confidential Information that BPS may share with the vendor\nentity confidential_info: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Rules – deontic requirements (O = obligation, F = prohibition, P = permission)\n# ----------------------------------------------------------------------\n@ Clause A – definition of “Confidential Information”\nrule O confidential_info_definition:\n    confidential_info.directory_info and\n    confidential_info.routing_info and\n    confidential_info.student_info and\n    not confidential_info.technical_info always\n\n@ Clause B.1 – vendor must maintain a secure database\nrule O secure_database:\n    true always   # placeholder – actual security controls are procedural\n\n@ Clause B.2 – vendor may use Confidential Information only for the Challenge\nrule O use_limited_to_challenge:\n    true always   # procedural; enforced by policy outside the model\n\n@ Clause B.3 – vendor must not disclose Confidential Information except as permitted\nrule F unauthorized_disclosure:\n    not (confidential_info.directory_info or\n         confidential_info.routing_info or\n         confidential_info.student_info) always\n\n@ Clause B.4 – vendor must notify BPS of any legal process seeking disclosure\nrule O legal_process_notice:\n    true always   # procedural; modeled as an obligation\n\n@ Clause B.5 – BPS contact information (for notices)\nrule O bps_contact_defined:\n    bps_contact.email != \"\" and\n    bps_contact.phone != \"\" always\n\n@ Clause B.6 – return or destroy Confidential Information on request\nrule O return_or_destroy:\n    true always   # procedural; modeled as an obligation\n\n@ Clause B.7 – vendor may not publish reports without BPS consent\nrule F publish_without_consent:\n    not (confidential_info.directory_info or\n         confidential_info.routing_info or\n         confidential_info.student_info) always\n\n@ Clause B.8 – breach leads to penalties (modeled as a prohibition of breach)\nrule F breach_of_confidentiality:\n    not (confidential_info.directory_info or\n         confidential_info.routing_info or\n         confidential_info.student_info) always\n\n@ Clause B.9 – injunctive relief (modeled as an obligation to avoid breach)\nrule O avoid_irreparable_harm:\n    true always   # procedural\n\n@ Clause B.10 – immediate notice of unauthorized use\nrule O immediate_notice:\n    true always   # procedural\n\n@ Clause B.11 – venue (no operational effect on data)\nrule O venue_massachusetts:\n    true always\n\n@ Clause B.12 – termination notice (procedural)\nrule O termination_notice:\n    true always\n\n@ Clause B.13 – indemnification (procedural)\nrule O indemnification:\n    true always\n\n@ Clause B.14 – relationship of parties (no agency)\nrule O no_agency:\n    true always\n\n@ Clause B.15 – conflict of interest (procedural)\nrule O conflict_of_interest:\n    true always\n\n@ Clause B.16 – assurances of compliance\nrule O compliance_assurances:\n    true always\n\n@ Clause B.17 – survivability of obligations after termination\nrule O survivable_obligations:\n    true always\n\n@ Clause B.18 – severability (no operational effect)\nrule O severability:\n    true always\n\n@ Clause B.19 – entire agreement / amendment (procedural)\nrule O amendment_requires_written_agreement:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis (to be checked for consistency)\n# ----------------------------------------------------------------------\n@ Hypothesis: “Confidential Information shall only include technical information.”\nrule F hypothesis_non_technical_confidential_info:\n    (confidential_info.directory_info or\n     confidential_info.routing_info or\n     confidential_info.student_info) always\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_dj4w1m6mxmd",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002316006,
+      "cost_details": {
+        "upstream_inference_cost": 0.0023394,
+        "upstream_inference_input_cost": 0.00096465,
+        "upstream_inference_output_cost": 0.00137475
+      },
+      "input_tokens": 8976,
+      "input_tokens_details": {
+        "cached_tokens": 5686
+      },
+      "is_byok": false,
+      "output_tokens": 1833,
+      "output_tokens_details": {
+        "reasoning_tokens": 790
+      },
+      "total_tokens": 10809
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "f4b209778d8e156ef9ac5a7d318f7c23d18ed954d53a26050ea3fd90e0000f89",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

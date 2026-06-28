@@ -1,0 +1,101 @@
+@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list
+module contract_nli_no_align_dev_14_nda_15
+
+open std.strings
+
+-- ----------------------------------------------------------------------
+-- Domain Types
+-- ----------------------------------------------------------------------
+@ Party definitions (Company and Stockholder)
+type Party =
+    | Company { name: string }
+    | Stockholder {
+        name: string,
+        -- Boolean flags used by the rules below
+        has_right_to_confidential_material: bool,
+        discloses_confidential_material: bool,
+        notifies_company_if_required: bool,
+        accepts_delaware_chancery_jurisdiction: bool
+    }
+
+@ Confidential material that may be inspected
+type ConfidentialMaterial = {
+    description: string
+}
+
+-- ----------------------------------------------------------------------
+-- Entities (public model objects)
+-- ----------------------------------------------------------------------
+@ The two parties to the agreement
+entity company: Party = Company { name = "Patriot Scientific Corporation" }
+entity stockholder: Party = Stockholder {
+    name = "Stockholder",
+    has_right_to_confidential_material = false,
+    discloses_confidential_material = false,
+    notifies_company_if_required = false,
+    accepts_delaware_chancery_jurisdiction = false
+}
+
+@ The material that is subject to the confidentiality obligations
+entity confidential_material: ConfidentialMaterial = {
+    description = "Stockholder list and any analyses derived therefrom"
+}
+
+-- ----------------------------------------------------------------------
+-- Rules (normative requirements)
+-- ----------------------------------------------------------------------
+@ Clause 1 – Use of confidential material only for purposes reasonably related to stockholder interests
+rule O use_confidential_material_for_reasonable_purposes:
+    (* The model does not capture the purpose directly; we enforce that the stockholder
+       must not have a right to use the material for any other purpose. *)
+    not stockholder.has_right_to_confidential_material always
+
+@ Clause 2 – Prohibition on disclosure, publication or communication of confidential material
+rule F stockholder_may_not_disclose:
+    stockholder.discloses_confidential_material always
+
+@ Clause 3 – Obligation to give prompt notice to the company if disclosure is required by law
+rule O stockholder_must_notify_company_if_required:
+    stockholder.notifies_company_if_required always
+
+@ Clause 4 – Jurisdiction of the Delaware Court of Chancery
+rule O parties_accept_delaware_chancery_jurisdiction:
+    stockholder.accepts_delaware_chancery_jurisdiction and
+    company.accepts_delaware_chancery_jurisdiction always
+
+@ Clause 5 – Remedies for breach (specific performance / injunctive relief)
+rule O company_entitled_to_specific_performance_and_injunctive_relief:
+    true always   -- placeholder: the agreement gives the company these remedies; no
+                  -- additional state is needed for consistency checking
+
+@ Clause 6 – Amendment only by written instrument signed by the other party
+rule O amendment_requires_written_signed_instrument:
+    true always   -- placeholder: the rule is captured by the modality of the agreement,
+                  -- not by a concrete field
+
+@ Clause 7 – Binding effect on successors and assigns
+rule O agreement_binds_successors_and_assigns:
+    true always   -- placeholder: no additional state required
+
+@ Clause 8 – Governing law of the State of Delaware
+rule O agreement_governed_by_delaware_law:
+    true always   -- placeholder: no additional state required
+
+@ Clause 9 – Execution in multiple counterparts
+rule O agreement_may_be_executed_in_multiple_counterparts:
+    true always   -- placeholder: no additional state required
+
+@ Clause 10 – Entire agreement clause
+rule O agreement_is_entire_agreement:
+    true always   -- placeholder: no additional state required
+
+@ Clause 11 – No construction against either party because of authorship
+rule O agreement_not_construed_against_any_party_due_to_authorship:
+    true always   -- placeholder: no additional state required
+
+-- ----------------------------------------------------------------------
+-- Hypothesis (to be checked by the solver)
+-- ----------------------------------------------------------------------
+@ Hypothesis: the agreement does NOT grant the receiving party any right to the confidential material
+rule F hypothesis_no_right_granted_to_stockholder:
+    stockholder.has_right_to_confidential_material always

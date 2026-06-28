@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-11",
+  "created_at": "2026-06-26T00:20:34.532872+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-11",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_11",
+  "response": {
+    "background": false,
+    "completed_at": 1782433234.0,
+    "created_at": 1782433231.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433231-4kJWT86dNvCQ5QnXmoa9",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-11",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (“CNDA”) – Model for contract_nli_no_align_dev_10_nda_11\nmodule contract_nli_no_align_dev_10_nda_11\n\nopen std.collections\n\n-- -------------------------------------------------------------------------\n-- Types\n-- -------------------------------------------------------------------------\n\n@ Parties to the CNDA\ntype Party = \n    | DisclosingParty(unit)\n    | ReceivingParty(unit)\n\n@ Representative of a party (e.g., employee, contractor)\ntype Representative = {\n    name: string,\n    is_authorized: bool\n}\n\n@ Information that may be subject to the confidentiality obligations\ntype ConfidentialInfo = {\n    description: string,                     -- free‑text description\n    is_marked_confidential: bool,            -- “Confidential” label present\n    source_party: Party,                     -- who supplied the information\n    is_residual: bool                        -- residual information (Article 3.11)\n}\n\n@ Information about a party that is relevant for the CNDA\ntype PartyInfo = {\n    name: string,\n    address: string,\n    representatives: List<Representative>,\n    -- behavioural flags used by the rules\n    complies_with_care: bool,                -- Article 2.03 (reasonable care)\n    discloses_confidential: bool,            -- Article 2.05 (prohibited disclosure)\n    reverse_engineers: bool,                 -- hypothesis / Article 2.04 (benefit/use)\n    returns_confidential: bool,              -- Article 2.07 (return on request)\n    destroys_confidential: bool,             -- Article 2.07 (destruction)\n    may_use_residual: bool                   -- Article 3.11 (residual use)\n}\n\n-- -------------------------------------------------------------------------\n-- Entities\n-- -------------------------------------------------------------------------\n\n@ The party that supplies the confidential information (CPR)\nentity disclosing_party: PartyInfo\n\n@ The party that receives the confidential information (Supplier)\nentity receiving_party: PartyInfo\n\n@ A concrete piece of confidential information referenced in the agreement\nentity confidential_info: ConfidentialInfo\n\n-- -------------------------------------------------------------------------\n-- Helper Functions\n-- -------------------------------------------------------------------------\n\n@ Determine whether a given ConfidentialInfo instance is truly confidential\nfunc is_confidential(info: ConfidentialInfo) -> bool:\n    info.is_marked_confidential or\n    case info.source_party:\n        | Party.DisclosingParty(): true\n        | _: false\n\n-- -------------------------------------------------------------------------\n-- Rules (Deontic constraints)\n-- -------------------------------------------------------------------------\n\n@ Article 2.03 – The Receiving Party shall use at least a reasonable degree of care\nrule O care_obligation:\n    receiving_party.complies_with_care always\n\n@ Article 2.05 – The Receiving Party shall not disclose Confidential Information\nrule F disclose_confidential:\n    receiving_party.discloses_confidential = false always\n\n@ Article 2.04 – The Receiving Party shall not derive benefit or exploit the\n@ Confidential Information (including reverse engineering)\nrule F reverse_engineer:\n    receiving_party.reverse_engineers = false always\n\n@ Article 2.07 – Upon request, the Receiving Party shall return or destroy the\n@ Confidential Information\nrule O return_confidential:\n    receiving_party.returns_confidential always\n\nrule O destroy_confidential:\n    receiving_party.destroys_confidential always\n\n@ Article 3.11 – Residual information may be used after the term\nrule O residual_use:\n    receiving_party.may_use_residual always\n\n-- -------------------------------------------------------------------------\n-- Hypothesis (to be checked by the solver)\n-- -------------------------------------------------------------------------\n\n@ Hypothesis: Receiving Party shall not reverse engineer any objects which embody\n@ Disclosing Party's Confidential Information.\nrule F hypothesis_reverse_engineer:\n    let applies = is_confidential(confidential_info) and\n                 confidential_info.source_party = Party.DisclosingParty()\n    (applies implies (receiving_party.reverse_engineers = false)) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_m7ggd2usz7o",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00209313225,
+      "cost_details": {
+        "upstream_inference_cost": 0.002114275,
+        "upstream_inference_input_cost": 0.000742525,
+        "upstream_inference_output_cost": 0.00137175
+      },
+      "input_tokens": 7975,
+      "input_tokens_details": {
+        "cached_tokens": 5561
+      },
+      "is_byok": false,
+      "output_tokens": 1829,
+      "output_tokens_details": {
+        "reasoning_tokens": 1068
+      },
+      "total_tokens": 9804
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "d3bf3ff72aabc4b3c8de075851c8895ae14b56d7929b655f7319159be818b653",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

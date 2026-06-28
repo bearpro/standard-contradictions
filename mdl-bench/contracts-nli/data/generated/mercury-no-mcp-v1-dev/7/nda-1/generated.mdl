@@ -1,0 +1,120 @@
+@ Non‑Disclosure Agreement – Model for contract_nli_no_align_dev_7_nda_1
+module contract_nli_no_align_dev_7_nda_1
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties to the Agreement
+type Party =
+    | Company(unit)          # the “Company” side of the NDA
+    | AHPL(unit)             # ALEXANDRA HEALTH PTE LTD
+
+@ Information that may be exchanged under the NDA
+type ConfidentialInfo = {
+    content   : string,      # the actual data or description
+    labeled   : bool,        # true iff the Discloser has marked it
+    source    : Party,       # the Discloser of the information
+    purpose   : string       # the purpose for which it may be used
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The piece of information that is being protected
+entity confidential_info: ConfidentialInfo
+
+@ The party that receives the information (the “Recipient”)
+entity recipient: Party
+
+@ The party that discloses the information (the “Discloser”)
+entity discloser: Party
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Returns true when the given party is the recipient of the current info
+func is_recipient(p: Party) -> bool:
+    p = recipient
+
+@ Returns true when the given party is the discloser of the current info
+func is_discloser(p: Party) -> bool:
+    p = discloser
+
+# ----------------------------------------------------------------------
+# Obligations (O) – deontic requirements
+# ----------------------------------------------------------------------
+@ Clause 1.2(a) – Confidential information must be expressly identified
+rule O confidential_info_must_be_labeled:
+    confidential_info.labeled always
+
+@ Clause 2.1(a) – Use only for the defined purpose
+rule O use_only_for_purpose:
+    let purpose_match: bool =
+        confidential_info.purpose = purpose
+    purpose_match always
+
+@ Clause 2.1(a)(i) – No commercial use of the confidential information
+rule O no_commercial_use:
+    let not_commercial: bool = not (confidential_info.content contains "commercial")
+    not_commercial always
+
+@ Clause 2.1(c) – No disclosure to third parties without consent
+rule O no_unauthorised_third_party_disclosure:
+    let authorised: bool =
+        // only persons who need to know may receive it
+        // we model this by requiring the recipient to be the Discloser
+        // or a permitted agent (not modelled explicitly here)
+        is_recipient(discloser) or is_recipient(recipient)
+    authorised always
+
+@ Clause 2.1(e) – Apply at least the same security measures as for own data
+rule O apply_adequate_security_measures:
+    // abstract security level – true means “adequate”
+    let adequate_security: bool = true
+    adequate_security always
+
+@ Clause 3 – Return or destroy confidential information on termination
+rule O return_or_destroy_on_termination:
+    // The rule is satisfied if the information is either returned or destroyed
+    // within one month after termination (modelled abstractly as a boolean)
+    let returned_or_destroyed: bool = true
+    returned_or_destroyed always
+
+@ Clause 4.2 – Take reasonable precautions to preserve data integrity
+rule O reasonable_precautions_for_data_integrity:
+    let precautions_taken: bool = true
+    precautions_taken always
+
+@ Clause 4.3 – Erase all data when directed by the Discloser
+rule O erase_data_on_directive:
+    let erased: bool = true
+    erased always
+
+@ Clause 4.5 – Comply with the Personal Data Protection Act 2012
+rule O comply_with_pdpa:
+    let pdpa_compliant: bool = true
+    pdpa_compliant always
+
+@ Clause 6 – Keep the existence and terms of the Agreement confidential
+rule O keep_agreement_confidential:
+    let agreement_confidential: bool = true
+    agreement_confidential always
+
+# ----------------------------------------------------------------------
+# Prohibitions (F) – forbidden behaviours
+# ----------------------------------------------------------------------
+@ Clause 2.1(b) – No copying beyond what is reasonably necessary
+rule F prohibit_unnecessary_copying:
+    // Modelled abstractly: any copy must be “reasonable”
+    let copy_is_reasonable: bool = true
+    copy_is_reasonable always
+
+@ Clause 2.1(c)(i) – Recipients must enforce confidentiality on their agents
+rule F failure_to_enforce_on_agents:
+    // Abstractly require that all agents are bound by the same obligations
+    let agents_bound: bool = true
+    agents_bound always
+
+# ----------------------------------------------------------------------
+# Permissions (P) – optional permissions (none needed for this NDA)
+# ----------------------------------------------------------------------

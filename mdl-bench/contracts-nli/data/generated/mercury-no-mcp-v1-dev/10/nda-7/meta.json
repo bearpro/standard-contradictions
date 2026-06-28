@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-7",
+  "created_at": "2026-06-26T00:21:14.652594+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-7",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_7",
+  "response": {
+    "background": false,
+    "completed_at": 1782433274.0,
+    "created_at": 1782433271.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433271-nfitCpWV02OUZTx3NOwt",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-7",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement (CNDA)\nmodule contract_nli_no_align_dev_10_nda_7\n\nopen std.collections\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\n@ Parties (the two contracting entities)\ntype Party = { name: string }\n\n@ Confidential information as in Article 2\ntype ConfidentialInfo = {\n    id: int,\n    description: string,\n    is_marked_confidential: bool\n}\n\n@ A Representative is a person or entity that the Receiving Party may\n  disclose Confidential Information to (Article 2.05)\ntype Representative = {\n    party: Party,\n    need_to_know: bool\n}\n\n@ A Disclosure event records that a piece of Confidential Information is\n  sent to a recipient (used to formulate the deontic rules)\ntype Disclosure = {\n    recipient: Party,\n    info: ConfidentialInfo\n}\n\n# ----------------------------------------------------------------------\n# Entities – the concrete objects that the solver will assign values to\n# ----------------------------------------------------------------------\n@ The party that receives the Confidential Information (the “Receiving Party”)\nentity receiving_party: Party\n\n@ The party that provides the Confidential Information (the “Disclosing Party”)\nentity disclosing_party: Party\n\n@ The piece of Confidential Information that is the subject of the agreement\nentity confidential_info: ConfidentialInfo\n\n@ The person or entity that is authorized to receive the Confidential Information\nentity representative: Representative\n\n@ The actual act of disclosing Confidential Information (used in the rules)\nentity disclosure: Disclosure\n\n# ----------------------------------------------------------------------\n# Rules – normative statements (deontic modalities) derived from the CNDA\n# ----------------------------------------------------------------------\n@ Article 2.03 – Obligation to keep the information in confidence\nrule O keep_confidentiality:\n    true always\n\n@ Article 2.05 – Prohibition of disclosure to anyone who is **not** an\n  authorized Representative\nrule F unauthorized_disclosure:\n    disclosure.recipient = representative.party always\n\n@ Article 2.06 – Exception for disclosures required by law (permission)\nrule P legal_disclosure:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis to The Receiving Party may share Confidential Information with\n# third‑parties such as consultants, agents or professional advisors.\n# This is modeled as a permission that directly conflicts with the\n# prohibition above, allowing a solver to detect the contradiction.\n# ----------------------------------------------------------------------\n@ Hypothesis – Permission to share with third‑parties\nrule P share_with_third_party:\n    true always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_z9cao7xyo1b",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00231731775,
+      "cost_details": {
+        "upstream_inference_cost": 0.002340725,
+        "upstream_inference_input_cost": 0.000737975,
+        "upstream_inference_output_cost": 0.00160275
+      },
+      "input_tokens": 7919,
+      "input_tokens_details": {
+        "cached_tokens": 5519
+      },
+      "is_byok": false,
+      "output_tokens": 2137,
+      "output_tokens_details": {
+        "reasoning_tokens": 1653
+      },
+      "total_tokens": 10056
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "1efe7a126b7711922d35bd3cbcf7532eea38a1bf01b3f6952b7139ed292b8cf6",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

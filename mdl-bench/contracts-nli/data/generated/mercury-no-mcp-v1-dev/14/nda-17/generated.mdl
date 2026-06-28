@@ -1,0 +1,54 @@
+@ Contract: Confidentiality and Non‑Disclosure Agreement (Stockholder List)
+module contract_nli_no_align_dev_14_nda_17
+
+# ----------------------------------------------------------------------
+# Types – domain concepts described in the Agreement
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = {
+    name: string               # e.g. "Patriot Scientific Corporation" or "Stockholder"
+}
+
+@ Clause 2 – Confidential Material
+type ConfidentialMaterial = {
+    description: string       # generic placeholder for the stockholder list
+   # ----------------------------------------------------------------------
+# Entities – the concrete objects to which the rules apply
+# ----------------------------------------------------------------------
+@ Clause 3 – The two parties to the Agreement
+entity receiving_party: Party      # the Stockholder (the party receiving Confidential Material)
+entity disclosing_party: Party     # the Company (the party disclosing Confidential Material)
+
+@ Clause 2 – The material that is subject to confidentiality
+entity confidential_material: ConfidentialMaterial
+
+# ----------------------------------------------------------------------
+# Helper function – determines whether a legal‑process exception applies
+# ----------------------------------------------------------------------
+@ Clause 3 – Legal‑process exception (interrogatory, subpoena, etc.)
+func is_legal_process_required(): bool =
+    # In a concrete trace the solver will assign a value to this fact.
+    # The default (false) models the normal situation where no legal demand exists.
+    false
+
+# ----------------------------------------------------------------------
+# Rules – deontic constraints derived from the Agreement
+# ----------------------------------------------------------------------
+@ Clause 1 – General prohibition on using Confidential Material for any other purpose
+rule F prohibit_use_for_other_purposes:
+    not (receiving_party = receiving_party) always   # placeholder – the real prohibition is captured by the following rules
+
+@ Clause 2 – Prohibition on copying Confidential Material unless a legal‑process exception applies
+rule F prohibit_copy_of_confidential_material:
+    not (is_legal_process_required()) always
+
+@ Clause 3 – Permission to copy Confidential Material when a legal‑process exception applies
+rule P permit_copy_of_confidential_material_when_legal_process:
+    is_legal_process_required() always
+
+# ----------------------------------------------------------------------
+# Hypothesis – “Receiving Party may create a copy of some Confidential Information in some circumstances.”
+# ----------------------------------------------------------------------
+@ Hypothesis
+rule P hypothesis_copy_allowed_in_circumstances:
+    is_legal_process_required() always

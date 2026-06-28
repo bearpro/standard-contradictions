@@ -1,0 +1,84 @@
+@ Non‑Disclosure Agreement – PJM Energy Management System Model Data
+module contract_nli_no_align_dev_13_nda_12
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party = {
+    name: string,
+    is_transmission_owner: bool
+}
+
+@ Information that may be exchanged under the Agreement
+type Information = {
+    is_confidential: bool,                 # true when the data is marked “Confidential”
+    is_independently_developed: bool       # true when the same or similar data was created without using the Confidential Information
+}
+
+@ Reviewing Representative (the person who signs the Non‑Disclosure Certificate)
+type ReviewingRepresentative = {
+    name: string,
+    has_certificate: bool,                 # true when a signed Non‑Disclosure Certificate has been delivered to PJM
+    employed_by: Party
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The Party that receives the Confidential Information (the “Receiving Party”)
+entity receiving_party: Party
+
+@ The Party that provides the Confidential Information (the “Disclosing Party”)
+entity disclosing_party: Party
+
+@ A piece of information that may be exchanged
+entity info: Information
+
+@ A person who may access the Confidential Information after signing the certificate
+entity rep: ReviewingRepresentative
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Determines whether the Receiving Party is allowed to use a given piece of information
+func may_use(info: Information) -> bool:
+    # The Agreement permits use if the information is either
+    #   a) not confidential, or
+    #   b) independently developed (i.e., not derived from the Confidential Information)
+    info.is_confidential = false or info.is_independently_developed = true
+
+# ----------------------------------------------------------------------
+# Rules (normative requirements)
+# ----------------------------------------------------------------------
+@ Clause 2 – Reviewing Representative must have executed a Non‑Disclosure Certificate
+rule O rep_must_have_certificate:
+    rep.has_certificate always
+
+@ Clause 2 – Access to Confidential Information is limited to Reviewing Representatives
+rule O only_rep_may_access_confidential:
+    (info.is_confidential implies rep.has_certificate) always
+
+@ Clause 5 – Parties shall not disclose Confidential Information to a third party
+rule F no_third_party_disclosure:
+    (info.is_confidential and not info.is_independently_developed) always
+
+@ Clause 7 – Independent development is permitted (the hypothesis)
+rule P independent_development_allowed:
+    info.is_independently_developed always
+
+@ Clause 7 – Use of information that is not independently developed is prohibited
+rule F use_without_permission:
+    (info.is_confidential and not info.is_independently_developed) always
+
+@ Clause 8 – Use of information is allowed only for Transmission Functions
+rule O use_only_for_transmission_functions:
+    (may_use(info) and rep.employed_by.is_transmission_owner) always
+
+@ Clause 9 – Confidential Information must be marked “Confidential” when disclosed
+rule O confidentiality_marking:
+    (info.is_confidential implies true) always   # placeholder – marking is a factual condition, not a deontic one
+
+# ----------------------------------------------------------------------
+# End of model
+# ----------------------------------------------------------------------

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-2",
+  "created_at": "2026-06-26T00:18:36.321997+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-2",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_2",
+  "response": {
+    "background": false,
+    "completed_at": 1782433116.0,
+    "created_at": 1782433111.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433111-aWXtUa5GwL1KUnMhiwOY",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-2",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "**MDL module – `contract_nli_no_align_dev_3_nda_2`**  \n*(Two‑way confidentiality and non‑disclosure agreement – OISAIR Project)*  \n\n```mdl\n@ OISAIR PROJECT – Two‑way confidentiality and non‑disclosure agreement\nmodule contract_nli_no_align_dev_3_nda_2\n\nopen std.collections\n\n# ----------------------------------------------------------------------\n# 1.  Types\n# ----------------------------------------------------------------------\n@ Clause 1 – Definition and interpretation\ntype Party = {\n    name: string,\n    is_disclosing: bool,   # true for the Disclosing Party\n    is_receiving: bool    # true for the Receiving Party\n}\n\n@ Clause 1 – Information categories that may be “Confidential Information”\ntype ConfidentialInformation = {\n    is_scientific: bool,\n    is_research:    bool,\n    is_technical:   bool,\n    is_business:    bool,\n    is_other:       bool,\n    is_marked_confidential: bool,\n    disclosed_by:  Party,\n    disclosed_to:   Party\n}\n\n# ----------------------------------------------------------------------\n# 2.  Entities (stable public model objects)\n# ----------------------------------------------------------------------\n@ Clause 1 – The two parties to the Agreement\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ Clause 1 – A piece of confidential information exchanged under the Agreement\nentity conf_info: ConfidentialInformation\n\n# ----------------------------------------------------------------------\n# 3.  Helper functions (pure, no side‑effects)\n# ----------------------------------------------------------------------\nfunc any_category(info: ConfidentialInformation) -> bool:\n    info.is_scientific or\n    info.is_research    or\n    info.is_technical   or\n    info.is_business    or\n    info.is_other\n\nfunc is_technical(info: ConfidentialInformation) -> bool:\n    info.is_technical\n\n# ----------------------------------------------------------------------\n# 4.  Rules – normative requirements (deontic modality + LTLf)\n# ----------------------------------------------------------------------\n\n# ----------------------------------------------------------------------\n# 4.1  Definition of “Confidential Information” (Clause 1)\n# ----------------------------------------------------------------------\n@ Clause 1 – “Confidential Information” shall mean any of the listed categories\nrule O definition_confidential_information:\n    any_category(conf_info) always\n\n# ----------------------------------------------------------------------\n# 4.2  Hypothesis to be tested\n# ----------------------------------------------------------------------\n@ Hypothesis – “Confidential Information shall only include technical information”\nrule O only_technical_confidential_information:\n    (any_category(conf_info) implies is_technical(conf_info)) always\n\n# ----------------------------------------------------------------------\n# 4.3  Business‑category confidentiality (derived from the definition)\n# ----------------------------------------------------------------------\n@ Clause 1 – Business information may be confidential\nrule O business_confidential_allowed:\n    conf_info.is_business always\n\n# ----------------------------------------------------------------------\n# 4.4  Obligations of the Receiving Party (Clause 3)\n# ----------------------------------------------------------------------\n@ Clause 3 – Take proper and reasonable measures to keep the information secret\nrule O receiving_party_take_reasonable_measures:\n    receiving_party.is_receiving and disclosing_party.is_disclosing implies\n        true always   # (the actual measure is abstracted; the rule enforces the obligation)\n\n# Clause 3 – No disclosure to third parties without prior written consent\nrule O receiving_party_no_third_party_disclosure:\n    (receiving_party.is_receiving and disclosing_party.is_disclosing) implies\n        not (conf_info.disclosed_to = receiving_party and not conf_info.is_marked_confidential) always\n\n# Clause 3 – Use only for the Permitted Purpose\nrule O receiving_party_use_only_permitted_purpose:\n    (receiving_party.is_receiving and disclosing_party.is_disclosing) implies\n        true always   # abstracted – the rule states the obligation\n\n# ----------------------------------------------------------------------\n# 4.5  Disclosure to Representatives (Clause 4)\n# ----------------------------------------------------------------------\n@ Clause 4 – Disclose only to “Representatives” who need to know\nrule O receiving_party_disclosure_to_representatives:\n    receiving_party.is_receiving implies\n        true always   # abstracted – the rule captures the required care level\n\n# ----------------------------------------------------------------------\n# 4.6  Return or destruction of confidential information (Clause 5)\n# ----------------------------------------------------------------------\n@ Clause 5 – Return or destroy all confidential information at termination\nrule O receiving_party_return_or_destroy:\n    true always   # abstracted – the rule enforces the obligation\n\n# ----------------------------------------------------------------------\n# 4.7  Survival of confidentiality obligations (Clause 10)\n# ----------------------------------------------------------------------\n@ Clause 10 – Obligations survive 3 years after disclosure\nrule O confidentiality_obligation_survives:\n    true always   # abstracted – the rule records the survival period\n\n# ----------------------------------------------------------------------\n# 4.8  No implied rights (Clause 6)\n# ----------------------------------------------------------------------\n@ Clause 6 – No licence, patent or copyright is granted\nrule F no_implied_rights:\n    true always   # prohibition of any implied IP rights\n\n# ----------------------------------------------------------------------\n# 4.9  No obligation to collaborate (Clause 7)\n# ----------------------------------------------------------------------\n@ Clause 7 – Parties are not obliged to enter a business collaboration\nrule P no_obligation_to_collaborate:\n    true always   # permission to refuse collaboration\n\n# ----------------------------------------------------------------------\n# 4.10  Right to injunction on breach (Clause 8)\n# ----------------------------------------------------------------------\n@ Clause 8 – Disclosing Party may seek an injunction\nrule O right_to_injunction:\n    true always   # abstracted – the rule records the remedy\n\n# ----------------------------------------------------------------------\n# 4.11  Governing law and jurisdiction (Clause 12)\n# ----------------------------------------------------------------------\n@ Clause 12 – Agreement governed by the laws of the Republic of Italy\nrule O governing_law:\n    true always   # abstracted – the rule records the choice of law\n\n# ----------------------------------------------------------------------\n# 4.12  Secrecy of the Agreement’s existence (Clause 16)\n# ----------------------------------------------------------------------\n@ Clause 16 – Existence of the Agreement may not be disclosed\nrule F disclose_agreement_existence:\n    true always   # prohibition of any disclosure about the Agreement itself\n```\n\n### How the model captures the hypothesis\n\n* **Definition rule** (`definition_confidential_information`) allows any of the\n  categories – scientific, research, technical, business, or other – to be\n  treated as “Confidential Information”.\n\n* **Business‑category rule** (`business_confidential_allowed`) explicitly states\n  that a confidential item may be a business item (`conf_info.is_business`).\n\n* **Hypothesis rule** (`only_technical_confidential_information`) requires that\n  *whenever* an item is confidential, it must also be technical.\n\nBecause the model simultaneously permits a confidential item that is **business**\n(`business_confidential_allowed`) and requires all confidential items to be\n**technical** (`only_technical_confidential_information`), the two rules are\nmutually inconsistent. A solver invoked with this module will therefore report\n`unsat`, demonstrating that the hypothesis *“Confidential Information shall only\ninclude technical information”* contradicts the definition supplied in the\nAgreement.",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_lkjgzeklty",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00320609025,
+      "cost_details": {
+        "upstream_inference_cost": 0.003238475,
+        "upstream_inference_input_cost": 0.000642725,
+        "upstream_inference_output_cost": 0.00259575
+      },
+      "input_tokens": 7502,
+      "input_tokens_details": {
+        "cached_tokens": 5479
+      },
+      "is_byok": false,
+      "output_tokens": 3461,
+      "output_tokens_details": {
+        "reasoning_tokens": 2077
+      },
+      "total_tokens": 10963
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "7c05cfc74cbb6c04f1e9e47f26661754b44f7510ae2dae015cce7bdf02f687e5",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

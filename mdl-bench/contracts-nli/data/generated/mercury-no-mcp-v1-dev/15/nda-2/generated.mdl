@@ -1,0 +1,83 @@
+@ Agreement on the non‑disclosure of confidential information (two‑way)
+module contract_nli_no_align_dev_15_nda_2
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Types – domain concepts
+# ----------------------------------------------------------------------
+@ Clause 1 – definition of “confidential information”
+type InfoCategory = Technical | NonTechnical
+
+type ConfidentialInfo = {
+    category : InfoCategory,          -- technical vs. non‑technical
+    description : string              -- free‑text description
+}
+
+@ Clause 1 – parties to the agreement
+type DisclosingParty = {
+    name    : string,
+    address : string
+}
+
+type ReceivingParty = {
+    name    : string,
+    address : string,
+    -- obligations of the receiving party (boolean flags)
+    has_taken_measures          : bool,   -- a) reasonable measures
+    uses_for_commercial         : bool,   -- b) commercial use
+    discloses_to_third_party    : bool,   -- c) disclosure to third parties
+    makes_copy                  : bool,   -- e) copying/abstracting
+    acknowledges_source        : bool,   -- f) source acknowledgment
+    retained_for_ten_years     : bool    -- 5) 10‑year retention period
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects (stable, singular, noun‑phrases)
+# ----------------------------------------------------------------------
+@ Clause 1 – the disclosing party
+entity disclosing_party : DisclosingParty
+
+@ Clause 1 – the receiving party
+entity receiving_party : ReceivingParty
+
+@ Clause 1 – a piece of confidential information covered by the agreement
+entity confidential_item : ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Helper functions – pure, reusable predicates
+# ----------------------------------------------------------------------
+@ Clause 1 – technical‑information predicate
+func is_technical(info : ConfidentialInfo) -> bool:
+    info.category = InfoCategory.Technical
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements (O = obligation, F = prohibition)
+# ----------------------------------------------------------------------
+@ Clause 1 – hypothesis: “Confidential Information shall only include technical information.”
+rule O confidential_info_is_technical:
+    is_technical(confidential_item) always
+
+@ Clause 3a – reasonable measures to keep confidentiality
+rule O receiving_party_take_measures:
+    receiving_party.has_taken_measures always
+
+@ Clause 3b – prohibition on commercial use without licence
+rule F receiving_party_use_for_commercial:
+    not receiving_party.uses_for_commercial always
+
+@ Clause 3c – prohibition on disclosure to third parties without permission
+rule F receiving_party_disclose_to_third:
+    not receiving_party.discloses_to_third_party always
+
+@ Clause 3e – prohibition on copying/abstracting without permission
+rule F receiving_party_make_copy:
+    not receiving_party.makes_copy always
+
+@ Clause 3f – obligation to acknowledge source and mark “Confidential”
+rule O receiving_party_acknowledge_source:
+    receiving_party.acknowledges_source always
+
+@ Clause 5 – ten‑year confidentiality period
+rule O retention_period:
+    receiving_party.retained_for_ten_years always

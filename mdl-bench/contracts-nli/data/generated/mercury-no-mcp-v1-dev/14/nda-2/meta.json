@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-2",
+  "created_at": "2026-06-26T00:23:42.282856+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-2",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_2",
+  "response": {
+    "background": false,
+    "completed_at": 1782433422.0,
+    "created_at": 1782433419.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433419-D4F3asKEWwkc9DJDH7Ar",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-2",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement governing inspection of stockholder list\nmodule contract_nli_no_align_dev_14_nda_2\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n# The two parties to the agreement\ntype Party = {\n    name: string,\n    is_company: bool          # true = Company, false = Stockholder\n}\n\n# The material that the Stockholder may inspect\ntype ConfidentialMaterial = {\n    is_technical: bool        # hypothesis: only technical information\n    is_confidential: bool\n}\n\n# The way the Stockholder intends to use the material\ntype Usage = {\n    related_to_stockholder_interests: bool   # true if purpose is reasonably related\n}\n\n# A request for disclosure that may arise from legal process\ntype DisclosureRequest = {\n    is_by_law: bool\n    received: bool\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\nentity company: Party\nentity stockholder: Party\nentity confidential_material: ConfidentialMaterial\nentity usage: Usage\nentity disclosure_request: DisclosureRequest\n\n# ----------------------------------------------------------------------\n# Functions (pure helpers)\n# ----------------------------------------------------------------------\nfunc is_allowed_use(u: Usage) -> bool:\n    u.related_to_stockholder_interests\n\nfunc notice_due(r: DisclosureRequest) -> bool:\n    r.is_by_law and r.received\n\n# ----------------------------------------------------------------------\n# Rules – obligations (O), prohibitions (F) and permissions (P)\n# ----------------------------------------------------------------------\n# 1. Stockholder may use Confidential Material only for purposes reasonably\n#    related to Stockholder’s interests.\nrule O use_confidential_material_only_for_allowed_purposes:\n    is_allowed_use(usage) always\n\n# 2. Stockholder must not disclose, publish or communicate Confidential Material\n#    to any person or entity, except as permitted by law.\nrule F disclose_confidential_material:\n    not (confidential_material.is_confidential) always\n\n# 3. If a legal disclosure request is received, Stockholder must give the\n#    Company prompt notice (within 2 business days) before any disclosure.\nrule O give_prompt_notice_to_company_when_required:\n    notice_due(disclosure_request) implies true always   # the “true” is a placeholder for the act of giving notice\n\n# 4. Each Party submits to the exclusive jurisdiction of the Delaware Court of\n#    Chancery.\nrule O accept_delaware_chancery_jurisdiction:\n    true always\n\n# 5. The Agreement may be amended only by a written instrument signed by the\n#    Party against whom enforcement is sought.\nrule F amend_without_written_agreement:\n    not (confidential_material.is_confidential) always   # placeholder – actual amendment logic would be modeled elsewhere\n\n# 6. The Agreement is binding upon the Parties and their successors, assigns,\n#    heirs, etc.\nrule O agreement_is_binding_on_successors:\n    true always\n\n# 7. The Agreement is governed by the laws of the State of Delaware.\nrule O governed_by_delaware_law:\n    true always\n\n# 8. Hypothesis – Confidential Material shall only include technical information.\nrule O confidential_material_is_technical:\n    confidential_material.is_technical always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_niownbkucm",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0016308765,
+      "cost_details": {
+        "upstream_inference_cost": 0.00164735,
+        "upstream_inference_input_cost": 0.00039785,
+        "upstream_inference_output_cost": 0.0012495
+      },
+      "input_tokens": 6527,
+      "input_tokens_details": {
+        "cached_tokens": 5484
+      },
+      "is_byok": false,
+      "output_tokens": 1666,
+      "output_tokens_details": {
+        "reasoning_tokens": 1040
+      },
+      "total_tokens": 8193
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "ccf63dea6e9ebb1bab23adb139a8c543c3f35e9c615f512247f61eee1958007c",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

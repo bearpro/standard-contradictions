@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-13-nda-3",
+  "created_at": "2026-06-26T00:22:55.833588+00:00",
+  "doc_id": 13,
+  "hypothesis_id": "nda-3",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_13_nda_3",
+  "response": {
+    "background": false,
+    "completed_at": 1782433375.0,
+    "created_at": 1782433373.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433373-U1iQfDDNp06yWVxvgyCh",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-13-nda-3",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement (NDA) – PJM Interconnection – 11 August 2015\nmodule contract_nli_no_align_dev_13_nda_3\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 9 – Identification of Confidential Information\ntype DisclosureMode =\n    | Written(unit)   # information provided in writing or other tangible form\n    | Oral(unit)      # information conveyed verbally\n\ntype ConfidentialInformation = {\n    mode: DisclosureMode,                     # how the information was disclosed\n    is_marked_confidential: bool,             # true if written info is marked “Confidential”\n    announced: bool,                          # true if oral info was announced as confidential\n    written_summary_provided: bool,           # true if a written summary was supplied\n    days_since_disclosure: int                # days elapsed since the oral disclosure\n}\n\n# ----------------------------------------------------------------------\n# Entity\n# ----------------------------------------------------------------------\n@ Clause 9 – each piece of information that may be subject to the NDA\nentity confidential_info: ConfidentialInformation\n\n# ----------------------------------------------------------------------\n# Helper function\n# ----------------------------------------------------------------------\n@ Clause 9 – determines whether a given piece of information qualifies as\n# “Confidential Information” under the NDA\nfunc is_confidential(info: ConfidentialInformation) -> bool:\n    case info.mode:\n        | DisclosureMode.Written():\n            info.is_marked_confidential\n        | DisclosureMode.Oral():\n            info.announced\n            and info.written_summary_provided\n            and info.days_since_disclosure <= 10\n        | _: false   # unreachable – for completeness\n\n# ----------------------------------------------------------------------\n# Rules\n# ----------------------------------------------------------------------\n@ Clause 9 – Oral information may be confidential only if the required\n# conditions are satisfied\nrule O oral_information_confidentiality:\n    (confidential_info.mode = DisclosureMode.Oral())\n    implies (\n        confidential_info.announced\n        and confidential_info.written_summary_provided\n        and confidential_info.days_since_disclosure <= 10\n    ) always\n\n@ Clause 9 – Written information is confidential when it is marked “Confidential”\nrule O written_information_confidentiality:\n    (confidential_info.mode = DisclosureMode.Written())\n    implies confidential_info.is_marked_confidential always\n\n# ----------------------------------------------------------------------\n# Global requirement – every piece of information that the NDA treats as\n# “Confidential Information” must satisfy the definition above\n# ----------------------------------------------------------------------\n@ Clause 9 – Overall confidentiality predicate must hold for any confidential_info\nrule O confidentiality_definition_must_hold:\n    is_confidential(confidential_info) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_3jrqnjvrj42",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002026134,
+      "cost_details": {
+        "upstream_inference_cost": 0.0020466,
+        "upstream_inference_input_cost": 0.0011406,
+        "upstream_inference_output_cost": 0.000906
+      },
+      "input_tokens": 9678,
+      "input_tokens_details": {
+        "cached_tokens": 5684
+      },
+      "is_byok": false,
+      "output_tokens": 1208,
+      "output_tokens_details": {
+        "reasoning_tokens": 690
+      },
+      "total_tokens": 10886
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "0d82472dbea6a2dc4f02fd08011dfc5b7c0bf42283f004ab23f877eff7f78f30",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

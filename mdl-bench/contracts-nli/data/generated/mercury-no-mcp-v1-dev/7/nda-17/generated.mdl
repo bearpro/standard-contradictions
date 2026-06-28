@@ -1,0 +1,46 @@
+@ Non‑Disclosure Agreement – model for copy‑creation of Confidential Information
+module contract_nli_no_align_dev_7_nda_17
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 2.1 – Parties to the agreement
+type Party = Company | AHPL
+
+@ Clause 1.2(a) – Confidential Information (simplified)
+type ConfidentialInfo = {
+    source : Party,          # who disclosed the information (Discloser)
+    content : string         # placeholder for the actual data
+}
+
+@ Clause 2.1(b) – Copy action performed by a party
+type CopyAction = {
+    info               : ConfidentialInfo,   # the information being copied
+    made_by            : Party,              # party that creates the copy
+    necessary_for_purpose : bool              # true iff the copy is reasonably necessary for the Purpose
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Clause 2.1(b) – a concrete copy operation that may occur in a trace
+entity copy_action : CopyAction
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+@ Clause 2.1(b) – Prohibition on copying unless it is reasonably necessary
+rule F copying_not_reasonable:
+    copy_action.made_by = Company and
+    not copy_action.necessary_for_purpose always
+
+@ Clause 2.1(b) – Permission to copy when it is reasonably necessary for the Purpose
+rule P copying_allowed:
+    copy_action.made_by = Company and
+    copy_action.necessary_for_purpose always
+
+# ----------------------------------------------------------------------
+# Helper (optional) – a predicate that determines whether a copy is allowed
+# ----------------------------------------------------------------------
+func is_copy_permitted(action: CopyAction) -> bool:
+    action.made_by = Company and action.necessary_for_purpose

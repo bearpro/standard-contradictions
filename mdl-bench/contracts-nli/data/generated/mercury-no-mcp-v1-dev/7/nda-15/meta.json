@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-15",
+  "created_at": "2026-06-26T00:19:10.504812+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-15",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_15",
+  "response": {
+    "background": false,
+    "completed_at": 1782433150.0,
+    "created_at": 1782433148.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433148-8odI52BIZj4wHygoBjnR",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-15",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – hypothesis that the Receiving Party receives **no** rights\n@ over the Confidential Information.\nmodule contract_nli_no_align_dev_7_nda_15\n\n# ----------------------------------------------------------------------\n# Domain model\n# ----------------------------------------------------------------------\ntype Party = { name: string }\n\ntype Purpose = { description: string }\n\ntype ConfidentialInfo = {\n    discloser: Party,               # the party that discloses the information\n    recipient: Party,               # the party that receives the information\n    purpose: Purpose,               # the permitted purpose of the disclosure\n    is_marked_confidential: bool,  # true if the material is labelled “Confidential”\n    is_owner_by_recipient: bool,   # true if the recipient claims ownership / licence\n    used_for_other_purpose: bool    # true if the recipient uses the material outside the purpose\n}\nentity confidential_info: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Rules – the hypothesis that no rights are granted to the Receiving Party\n# ----------------------------------------------------------------------\n@ Clause 1.2(b) – all Confidential Information remains the property of the Discloser\nrule F recipient_cannot_be_owner:\n    confidential_info.is_owner_by_recipient always\n\n@ Clause 2.1(a)(i‑iii) – the Recipient may use the information **only** for the Purpose\nrule F recipient_cannot_use_outside_purpose:\n    confidential_info.used_for_other_purpose always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_mgh74dvyuwk",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0025247475,
+      "cost_details": {
+        "upstream_inference_cost": 0.00255025,
+        "upstream_inference_input_cost": 0.001603,
+        "upstream_inference_output_cost": 0.00094725
+      },
+      "input_tokens": 11569,
+      "input_tokens_details": {
+        "cached_tokens": 5730
+      },
+      "is_byok": false,
+      "output_tokens": 1263,
+      "output_tokens_details": {
+        "reasoning_tokens": 969
+      },
+      "total_tokens": 12832
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "206a94408f461b516f14261143ff2cf042e7cebc74642f574a6df2e8b6dff9ab",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

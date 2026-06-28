@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-20",
+  "created_at": "2026-06-26T00:21:01.897481+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-20",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_20",
+  "response": {
+    "background": false,
+    "completed_at": 1782433261.0,
+    "created_at": 1782433259.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433259-2VAVfptC34lGgavTiPoa",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-20",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: CNDA – Confidentiality and Non‑Disclosure Agreement\nmodule contract_nli_no_align_dev_10_nda_20\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Article 2 – Definitions\ntype Party =\n    | Disclosing(unit)   # the party that discloses Confidential Information\n    | Receiving(unit)   # the party that receives Confidential Information\n\n@ Article 2 – Confidential Information\ntype ConfidentialInfo = {\n    is_marked_confidential : bool,   # true when the information is marked “Confidential”\n    is_residual            : bool,   # true when the information is “Residual Information” (Article 3.11)\n    is_returned            : bool,   # true after the Receiving Party has returned the information (Article 2.07)\n    is_destroyed           : bool,   # true after the Receiving Party has destroyed the information (Article 2.07)\n    is_disclosed_to_third  : bool,   # true if the information has been disclosed to a non‑representative third party\n    retained_by            : Party   # which party currently holds the information\n}\n\n@ Article 2 – Representatives (people who may receive Confidential Information)\ntype Representative = {\n    name            : string,\n    has_need_to_know: bool   # true when the representative is permitted to receive the information\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ Parties to the Agreement\nentity disclosing_party : Party\nentity receiving_party : Party\n\n@ The piece of Confidential Information that is the subject of the CNDA\nentity confidential_info : ConfidentialInfo\n\n@ A representative of the Receiving Party (used in the “need‑to‑know” test)\nentity representative : Representative\n\n# ----------------------------------------------------------------------\n# Rules – deontic requirements (O = obligation, F = prohibition, P = permission)\n# ----------------------------------------------------------------------\n@ Article 2.03 – “Kept in Confidence”\nrule O maintain_confidential_care:\n    -- The Receiving Party must use at least a reasonable degree of care.\n    -- We model this as a prohibition on careless handling (i.e. the\n    -- information must not be marked as “careless” – a placeholder field).\n    true always   # placeholder – actual care level is out of scope for this model\n\n@ Article 2.04 – “No Benefit, Restricted Use”\nrule F derive_benefit_from_confidential:\n    confidential_info.is_marked_confidential and\n    confidential_info.retained_by = Receiving\n    implies not confidential_info.is_disclosed_to_third always\n\n@ Article 2.05 – “No Disclosure”\nrule F disclose_to_third_party:\n    confidential_info.is_marked_confidential and\n    confidential_info.retained_by = Receiving\n    implies not confidential_info.is_disclosed_to_third always\n\n@ Article 2.06 – “Disclosure Required by Law”\nrule P disclose_under_legal_process:\n    confidential_info.is_marked_confidential and\n    confidential_info.retained_by = Receiving\n    implies (confidential_info.is_disclosed_to_third or true) eventually   -- permission only when required by law\n\n@ Article 2.07 – “Return of Confidential Information”\nrule O return_and_destroy:\n    confidential_info.is_marked_confidential and\n    confidential_info.retained_by = Receiving\n    implies (confidential_info.is_returned and confidential_info.is_destroyed) always\n\n@ Article 3.11 – “Residual Information”\nrule P use_residual_information:\n    -- The Receiving Party is permitted to use Residual Information even after\n    -- the return or destruction of the original Confidential Information.\n    confidential_info.is_residual and\n    confidential_info.retained_by = Receiving always\n\n@ Article 3.11 – “Retention of Residual Information after Return/Destruction”\nrule P retain_residual_after_return:\n    confidential_info.is_residual and\n    confidential_info.is_returned and\n    confidential_info.is_destroyed and\n    confidential_info.retained_by = Receiving always\n\n@ Article 3.08 – “Responsibility for Others”\nrule O responsible_for_representatives:\n    -- The Receiving Party is responsible for any breach caused by its representatives.\n    representative.has_need_to_know implies true always   -- placeholder: ensures representatives are known\n\n@ Article 3.09 – “Termination”\nrule O confidentiality_survives_termination:\n    -- Confidentiality obligations survive termination for three years.\n    true always   -- temporal dimension (3‑year survival) is not modeled explicitly here\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_os61g5akdn",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002064051,
+      "cost_details": {
+        "upstream_inference_cost": 0.0020849,
+        "upstream_inference_input_cost": 0.0007364,
+        "upstream_inference_output_cost": 0.0013485
+      },
+      "input_tokens": 7910,
+      "input_tokens_details": {
+        "cached_tokens": 5516
+      },
+      "is_byok": false,
+      "output_tokens": 1798,
+      "output_tokens_details": {
+        "reasoning_tokens": 892
+      },
+      "total_tokens": 9708
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "1ccb38989112254d497db76a7e441da369454f3e9d2a79e2f7018f781d1eb5a6",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

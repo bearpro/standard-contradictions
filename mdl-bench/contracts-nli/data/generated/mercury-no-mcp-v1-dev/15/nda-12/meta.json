@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-15-nda-12",
+  "created_at": "2026-06-26T00:24:10.380266+00:00",
+  "doc_id": 15,
+  "hypothesis_id": "nda-12",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_15_nda_12",
+  "response": {
+    "background": false,
+    "completed_at": 1782433450.0,
+    "created_at": 1782433447.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433447-bhCpUjxRsy03yWmiiJre",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-15-nda-12",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ AGREEMENT ON THE NON-DISCLOSURE OF CONFIDENTIAL INFORMATION (TWO‑WAY)\nmodule contract_nli_no_align_dev_15_nda_12\n\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n/* Clause 1 – Parties */\ntype Party = {\n    name: string,\n    address: string\n}\n\n/* Clause 1 – Confidential information (the “information” that is subject to the NDA) */\ntype ConfidentialInfo = {\n    description: string          /* free‑form description of the material */\n}\n\n/* ----------------------------------------------------------------------\n# Entities – the stable public objects that can be aligned with other standards\n# ----------------------------------------------------------------------\n/* Disclosing party (the University of Bristol) */\nentity disclosing_party: Party\n\n/* Receiving party (the other signatory) */\nentity receiving_party: Party\n\n/* The confidential material that is exchanged */\nentity confidential_info: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Helper function – used to express the “independent development” exception\n# ----------------------------------------------------------------------\n/* Clause 4 – exception for independently developed information */\nfunc is_independently_developed(info: ConfidentialInfo, party: Party) -> bool:\n    /* In a concrete model this would be linked to evidence (e.g. dates,\n       source documents).  For the purpose of the logical model we leave it\n       abstract – the solver may assign true/false as needed. */\n    true\n\n# ----------------------------------------------------------------------\n# Obligations (O) – what the Receiving Party must do\n# ----------------------------------------------------------------------\n/* Clause 3a – take reasonable measures to keep the information confidential */\nrule O maintain_confidentiality:\n    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always\n\n/* Clause 3f – acknowledge the source and mark the material “Confidential” */\nrule O acknowledge_and_mark:\n    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always\n\n/* Clause 5 – confidentiality period of ten (10) years from the effective date */\nrule O confidentiality_period:\n    true always   /* temporal scope is handled by the trace length (≤ 10 years) */\n\n/* Clause 6 – English law governs the agreement */\nrule O governed_by_english_law:\n    true always\n\n# ----------------------------------------------------------------------\n# Prohibitions (F) – what the Receiving Party must not do\n# ----------------------------------------------------------------------\n/* Clause 3b – do not use the information for any commercial purpose without a licence */\nrule F use_for_commercial_purpose:\n    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always\n\n/* Clause 3c – do not disclose the information to any third party without written permission */\nrule F disclose_to_third_party:\n    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always\n\n/* Clause 3d – do not disclose to employees except those who need it */\nrule F disclose_to_employees_except_needed:\n    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always\n\n/* Clause 3e – do not make any copy or abstract without specific written permission */\nrule F make_copy_without_permission:\n    (confidential_info and not is_independently_developed(confidential_info, receiving_party)) always\n\n# ----------------------------------------------------------------------\n# Permissions (P) – what the Receiving Party is allowed to do\n# ----------------------------------------------------------------------\n/* Clause 4 – independently developed information is exempt from the obligations */\nrule P independent_development:\n    is_independently_developed(confidential_info, receiving_party) always\n\n# ----------------------------------------------------------------------\n# Facts – external data that can be supplied to the solver (e.g. effective date)\n# ----------------------------------------------------------------------\n/* Effective date of the agreement (year is intentionally left as a placeholder) */\nfact effective_year = 2000   /* replace with the actual year when the model is instantiated */\n\n/* The ten‑year confidentiality horizon expressed as a simple bound on the trace length */\nfact max_confidentiality_years = 10\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_wf3n7652v7i",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00162733725,
+      "cost_details": {
+        "upstream_inference_cost": 0.001643775,
+        "upstream_inference_input_cost": 0.000357525,
+        "upstream_inference_output_cost": 0.00128625
+      },
+      "input_tokens": 6399,
+      "input_tokens_details": {
+        "cached_tokens": 5521
+      },
+      "is_byok": false,
+      "output_tokens": 1715,
+      "output_tokens_details": {
+        "reasoning_tokens": 915
+      },
+      "total_tokens": 8114
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "3ff818af1bbb95b9d8dcee7b8a8a19774377825efb1da2ef1ecb8b570109e529",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

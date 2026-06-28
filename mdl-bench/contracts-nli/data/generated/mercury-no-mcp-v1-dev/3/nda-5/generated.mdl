@@ -1,0 +1,99 @@
+@ OISAIR PROJECT – TWO‑WAY CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_5
+
+open std.collections
+
+/* ----------------------------------------------------------------------
+   Domain model – parties, representatives and confidential information
+   ---------------------------------------------------------------------- */
+
+@ Parties (the two contracting entities)
+type Party = {
+    name: string,
+    is_disclosing: bool,   -- true for the Disclosing Party
+    is_receiving: bool    -- true for the Receiving Party
+}
+
+@ Representatives of a party (employees, advisors, etc.)
+type Representative = {
+    party: Party,                                 -- the party the person belongs to
+    is_employee: bool,                            -- true for employees, false for other reps
+    needs_access_for_permitted_purpose: bool,    -- true if the rep must know the info to fulfil the purpose
+    aware_of_terms: bool                          -- true if the rep has been told the NDA terms
+}
+
+@ Confidential information that is the subject of the agreement
+type ConfidentialInfo = {
+    is_confidential: bool,   -- true for information that falls under the definition
+    content: string,         -- opaque payload (not used in the model)
+    owner: Party              -- the Disclosing Party
+}
+
+/* ----------------------------------------------------------------------
+   Model entities – one instance of each domain object
+   ---------------------------------------------------------------------- */
+
+entity disclosing_party: Party
+entity receiving_party: Party
+entity confidential_info: ConfidentialInfo
+entity representative: Representative
+
+/* ----------------------------------------------------------------------
+   Helper functions
+   ---------------------------------------------------------------------- */
+
+@ Returns true when a representative is allowed to receive confidential info
+func can_share_to_rep(rep: Representative) -> bool:
+    rep.is_employee and
+    rep.needs_access_for_permitted_purpose and
+    rep.aware_of_terms
+
+/* ----------------------------------------------------------------------
+   Normative rules – derived from the clauses of the NDA
+   ---------------------------------------------------------------------- */
+
+@ Clause 3 – General confidentiality and non‑use obligations
+rule O take_reasonable_measures:
+    receiving_party.is_receiving always
+
+rule O not_disclose_to_third_party:
+    not (
+        confidential_info.is_confidential and
+        representative.party = receiving_party and
+        not can_share_to_rep(representative)
+    ) always
+
+rule O not_use_outside_permitted_purpose:
+    not (
+        confidential_info.is_confidential and
+        receiving_party.is_receiving and
+        not representative.needs_access_for_permitted_purpose
+    ) always
+
+@ Clause 4 – Disclosure to representatives (employees, advisors, …)
+@ Permission: sharing with an employee that satisfies the NDA conditions
+rule P share_with_employee:
+    confidential_info.is_confidential and
+    representative.party = receiving_party and
+    can_share_to_rep(representative) always
+
+@ Prohibition: sharing with a person that does **not** satisfy the conditions
+rule F share_with_non_employee:
+    confidential_info.is_confidential and
+    representative.party = receiving_party and
+    not can_share_to_rep(representative) always
+
+@ Clause 5 – Return or destruction of confidential information
+rule O return_or_destroy_after_termination:
+    (termination_date now) implies eventually (confidential_info.is_confidential = false)
+
+@ Clause 10 – Survival of confidentiality obligations after termination
+rule O confidentiality_survives_three_years:
+    (confidential_info.is_confidential and disclosure_date now) implies
+    eventually (confidential_info.is_confidential = false) within 3 years
+
+@ Clause 8 – Injunction on breach (prohibition of breach without court order)
+rule F breach_without_injunction:
+    (confidential_info.is_confidential and
+     receiving_party.is_receiving and
+     not can_share_to_rep(representative)) always

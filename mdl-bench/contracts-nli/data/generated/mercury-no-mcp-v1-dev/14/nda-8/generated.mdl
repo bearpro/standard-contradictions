@@ -1,0 +1,25 @@
+@ NDA 2015‑04‑30 – Inspection of Stockholder List
+module contract_nli_no_align_dev_14_nda_8
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type Party = {
+    name: string,                 # party name (e.g., "Patriot Scientific Corp.")
+    is_disclosing: bool,          # true for the Company, false for the Stockholder
+    must_disclose_by_law: bool,   # true when a legal / regulatory demand to disclose arises
+    notified_disclosing: bool     # true when the disclosing party has been notified
+}
+
+# ----------------------------------------------------------------------
+# Entities – the two parties to the agreement
+# ----------------------------------------------------------------------
+entity disclosing_party: Party
+entity receiving_party: Party
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+@ Clause 3 – notice obligation when a legal demand to disclose Confidential Material arises
+rule O notify_disclosing_when_required:
+    receiving_party.must_disclose_by_law implies receiving_party.notified_disclosing now always

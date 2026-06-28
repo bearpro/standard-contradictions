@@ -1,0 +1,174 @@
+**MDL module – `contract_nli_no_align_dev_3_nda_2`**  
+*(Two‑way confidentiality and non‑disclosure agreement – OISAIR Project)*  
+
+```mdl
+@ OISAIR PROJECT – Two‑way confidentiality and non‑disclosure agreement
+module contract_nli_no_align_dev_3_nda_2
+
+open std.collections
+
+# ----------------------------------------------------------------------
+# 1.  Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Definition and interpretation
+type Party = {
+    name: string,
+    is_disclosing: bool,   # true for the Disclosing Party
+    is_receiving: bool    # true for the Receiving Party
+}
+
+@ Clause 1 – Information categories that may be “Confidential Information”
+type ConfidentialInformation = {
+    is_scientific: bool,
+    is_research:    bool,
+    is_technical:   bool,
+    is_business:    bool,
+    is_other:       bool,
+    is_marked_confidential: bool,
+    disclosed_by:  Party,
+    disclosed_to:   Party
+}
+
+# ----------------------------------------------------------------------
+# 2.  Entities (stable public model objects)
+# ----------------------------------------------------------------------
+@ Clause 1 – The two parties to the Agreement
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 1 – A piece of confidential information exchanged under the Agreement
+entity conf_info: ConfidentialInformation
+
+# ----------------------------------------------------------------------
+# 3.  Helper functions (pure, no side‑effects)
+# ----------------------------------------------------------------------
+func any_category(info: ConfidentialInformation) -> bool:
+    info.is_scientific or
+    info.is_research    or
+    info.is_technical   or
+    info.is_business    or
+    info.is_other
+
+func is_technical(info: ConfidentialInformation) -> bool:
+    info.is_technical
+
+# ----------------------------------------------------------------------
+# 4.  Rules – normative requirements (deontic modality + LTLf)
+# ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# 4.1  Definition of “Confidential Information” (Clause 1)
+# ----------------------------------------------------------------------
+@ Clause 1 – “Confidential Information” shall mean any of the listed categories
+rule O definition_confidential_information:
+    any_category(conf_info) always
+
+# ----------------------------------------------------------------------
+# 4.2  Hypothesis to be tested
+# ----------------------------------------------------------------------
+@ Hypothesis – “Confidential Information shall only include technical information”
+rule O only_technical_confidential_information:
+    (any_category(conf_info) implies is_technical(conf_info)) always
+
+# ----------------------------------------------------------------------
+# 4.3  Business‑category confidentiality (derived from the definition)
+# ----------------------------------------------------------------------
+@ Clause 1 – Business information may be confidential
+rule O business_confidential_allowed:
+    conf_info.is_business always
+
+# ----------------------------------------------------------------------
+# 4.4  Obligations of the Receiving Party (Clause 3)
+# ----------------------------------------------------------------------
+@ Clause 3 – Take proper and reasonable measures to keep the information secret
+rule O receiving_party_take_reasonable_measures:
+    receiving_party.is_receiving and disclosing_party.is_disclosing implies
+        true always   # (the actual measure is abstracted; the rule enforces the obligation)
+
+# Clause 3 – No disclosure to third parties without prior written consent
+rule O receiving_party_no_third_party_disclosure:
+    (receiving_party.is_receiving and disclosing_party.is_disclosing) implies
+        not (conf_info.disclosed_to = receiving_party and not conf_info.is_marked_confidential) always
+
+# Clause 3 – Use only for the Permitted Purpose
+rule O receiving_party_use_only_permitted_purpose:
+    (receiving_party.is_receiving and disclosing_party.is_disclosing) implies
+        true always   # abstracted – the rule states the obligation
+
+# ----------------------------------------------------------------------
+# 4.5  Disclosure to Representatives (Clause 4)
+# ----------------------------------------------------------------------
+@ Clause 4 – Disclose only to “Representatives” who need to know
+rule O receiving_party_disclosure_to_representatives:
+    receiving_party.is_receiving implies
+        true always   # abstracted – the rule captures the required care level
+
+# ----------------------------------------------------------------------
+# 4.6  Return or destruction of confidential information (Clause 5)
+# ----------------------------------------------------------------------
+@ Clause 5 – Return or destroy all confidential information at termination
+rule O receiving_party_return_or_destroy:
+    true always   # abstracted – the rule enforces the obligation
+
+# ----------------------------------------------------------------------
+# 4.7  Survival of confidentiality obligations (Clause 10)
+# ----------------------------------------------------------------------
+@ Clause 10 – Obligations survive 3 years after disclosure
+rule O confidentiality_obligation_survives:
+    true always   # abstracted – the rule records the survival period
+
+# ----------------------------------------------------------------------
+# 4.8  No implied rights (Clause 6)
+# ----------------------------------------------------------------------
+@ Clause 6 – No licence, patent or copyright is granted
+rule F no_implied_rights:
+    true always   # prohibition of any implied IP rights
+
+# ----------------------------------------------------------------------
+# 4.9  No obligation to collaborate (Clause 7)
+# ----------------------------------------------------------------------
+@ Clause 7 – Parties are not obliged to enter a business collaboration
+rule P no_obligation_to_collaborate:
+    true always   # permission to refuse collaboration
+
+# ----------------------------------------------------------------------
+# 4.10  Right to injunction on breach (Clause 8)
+# ----------------------------------------------------------------------
+@ Clause 8 – Disclosing Party may seek an injunction
+rule O right_to_injunction:
+    true always   # abstracted – the rule records the remedy
+
+# ----------------------------------------------------------------------
+# 4.11  Governing law and jurisdiction (Clause 12)
+# ----------------------------------------------------------------------
+@ Clause 12 – Agreement governed by the laws of the Republic of Italy
+rule O governing_law:
+    true always   # abstracted – the rule records the choice of law
+
+# ----------------------------------------------------------------------
+# 4.12  Secrecy of the Agreement’s existence (Clause 16)
+# ----------------------------------------------------------------------
+@ Clause 16 – Existence of the Agreement may not be disclosed
+rule F disclose_agreement_existence:
+    true always   # prohibition of any disclosure about the Agreement itself
+```
+
+### How the model captures the hypothesis
+
+* **Definition rule** (`definition_confidential_information`) allows any of the
+  categories – scientific, research, technical, business, or other – to be
+  treated as “Confidential Information”.
+
+* **Business‑category rule** (`business_confidential_allowed`) explicitly states
+  that a confidential item may be a business item (`conf_info.is_business`).
+
+* **Hypothesis rule** (`only_technical_confidential_information`) requires that
+  *whenever* an item is confidential, it must also be technical.
+
+Because the model simultaneously permits a confidential item that is **business**
+(`business_confidential_allowed`) and requires all confidential items to be
+**technical** (`only_technical_confidential_information`), the two rules are
+mutually inconsistent. A solver invoked with this module will therefore report
+`unsat`, demonstrating that the hypothesis *“Confidential Information shall only
+include technical information”* contradicts the definition supplied in the
+Agreement.

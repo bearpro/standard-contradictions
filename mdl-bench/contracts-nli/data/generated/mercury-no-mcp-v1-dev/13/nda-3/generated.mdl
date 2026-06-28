@@ -1,0 +1,65 @@
+@ Non‑Disclosure Agreement (NDA) – PJM Interconnection – 11 August 2015
+module contract_nli_no_align_dev_13_nda_3
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 9 – Identification of Confidential Information
+type DisclosureMode =
+    | Written(unit)   # information provided in writing or other tangible form
+    | Oral(unit)      # information conveyed verbally
+
+type ConfidentialInformation = {
+    mode: DisclosureMode,                     # how the information was disclosed
+    is_marked_confidential: bool,             # true if written info is marked “Confidential”
+    announced: bool,                          # true if oral info was announced as confidential
+    written_summary_provided: bool,           # true if a written summary was supplied
+    days_since_disclosure: int                # days elapsed since the oral disclosure
+}
+
+# ----------------------------------------------------------------------
+# Entity
+# ----------------------------------------------------------------------
+@ Clause 9 – each piece of information that may be subject to the NDA
+entity confidential_info: ConfidentialInformation
+
+# ----------------------------------------------------------------------
+# Helper function
+# ----------------------------------------------------------------------
+@ Clause 9 – determines whether a given piece of information qualifies as
+# “Confidential Information” under the NDA
+func is_confidential(info: ConfidentialInformation) -> bool:
+    case info.mode:
+        | DisclosureMode.Written():
+            info.is_marked_confidential
+        | DisclosureMode.Oral():
+            info.announced
+            and info.written_summary_provided
+            and info.days_since_disclosure <= 10
+        | _: false   # unreachable – for completeness
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+@ Clause 9 – Oral information may be confidential only if the required
+# conditions are satisfied
+rule O oral_information_confidentiality:
+    (confidential_info.mode = DisclosureMode.Oral())
+    implies (
+        confidential_info.announced
+        and confidential_info.written_summary_provided
+        and confidential_info.days_since_disclosure <= 10
+    ) always
+
+@ Clause 9 – Written information is confidential when it is marked “Confidential”
+rule O written_information_confidentiality:
+    (confidential_info.mode = DisclosureMode.Written())
+    implies confidential_info.is_marked_confidential always
+
+# ----------------------------------------------------------------------
+# Global requirement – every piece of information that the NDA treats as
+# “Confidential Information” must satisfy the definition above
+# ----------------------------------------------------------------------
+@ Clause 9 – Overall confidentiality predicate must hold for any confidential_info
+rule O confidentiality_definition_must_hold:
+    is_confidential(confidential_info) always

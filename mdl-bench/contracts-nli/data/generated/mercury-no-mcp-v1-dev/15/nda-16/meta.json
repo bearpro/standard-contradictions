@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-15-nda-16",
+  "created_at": "2026-06-26T00:24:20.535492+00:00",
+  "doc_id": 15,
+  "hypothesis_id": "nda-16",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_15_nda_16",
+  "response": {
+    "background": false,
+    "completed_at": 1782433460.0,
+    "created_at": 1782433457.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433457-1Uq2WjUJdhwaM7cDzhF8",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-15-nda-16",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Agreement on the non‑disclosure of confidential information (two‑way)\nmodule contract_nli_no_align_dev_15_nda_16\n\n# ----------------------------------------------------------------------\n# Types that capture the domain concepts used in the NDA\n# ----------------------------------------------------------------------\ntype Party = {\n    name: string                     # e.g. “University of Bristol” or the other party\n}\n\ntype ConfidentialInfo = {\n    # Identification / marking\n    marked: bool                     # the information has been marked “Confidential”\n\n    # Ownership / source\n    disclosed_by: Party              # party that supplied the information\n    received_by: Party               # party that receives the information\n\n    # Status flags\n    is_returned: bool                # the information has been returned to the disclosing party\n    is_destroyed: bool               # the information has been destroyed\n    is_copy: bool                    # a copy of the information exists\n    is_public_domain: bool           # the information is already public\n    is_independently_developed: bool # the receiving party can show independent creation\n    is_legal_disclosure: bool        # disclosure required by law / regulator\n    is_third_party_without_restriction: bool # received from a third party with no NDA\n\n    # Permissions / licences\n    licensed: bool                   # a written licence for commercial use has been obtained\n    permission_to_copy: bool         # written permission to make a copy\n    permission_to_disclose: bool     # written permission to disclose to a third party\n\n    # Use flags (for modelling prohibitions)\n    used_for_commercial: bool        # the information is being used for a commercial purpose\n    disclosed_to_third_party: bool   # the information has been disclosed to a third party\n}\n\ntype Agreement = {\n    effective_date: int              # day count from a reference epoch (e.g. Unix days)\n    terminated: bool                 # true when the agreement has been terminated\n    # The model does not need a full calendar – the solver can treat “terminated”\n    # as a Boolean that becomes true at the step where termination occurs.\n}\n\n# ----------------------------------------------------------------------\n# Public entities – these are the stable anchors that can be aligned with\n# other standards or contracts.\n# ----------------------------------------------------------------------\nentity receiving_party: Party\nentity disclosing_party: Party\nentity confidential_info: ConfidentialInfo\nentity agreement: Agreement\n\n# ----------------------------------------------------------------------\n# Helper functions – keep the rule bodies readable\n# ----------------------------------------------------------------------\nfunc is_exception(info: ConfidentialInfo) -> bool:\n    info.is_public_domain\n    or info.is_independently_developed\n    or info.is_legal_disclosure\n    or info.is_third_party_without_restriction\n\n# ----------------------------------------------------------------------\n# Rules – deontic constraints derived from the NDA clauses\n# ----------------------------------------------------------------------\n@ Clause 2 – parties must mark or otherwise designate confidential information\nrule O mark_confidential: confidential_info.marked always\n\n@ Clause 3a – take proper and reasonable measures (modelled by marking)\nrule O protect_confidentiality:\n    not is_exception(confidential_info) implies confidential_info.marked always\n\n@ Clause 3b – do not use the information for commercial purposes without a licence\nrule F commercial_use_without_license:\n    (confidential_info.used_for_commercial and not confidential_info.licensed) always\n\n@ Clause 3c – do not disclose to a third party without written permission\nrule F disclose_without_permission:\n    (confidential_info.disclosed_to_third_party and not confidential_info.permission_to_disclose) always\n\n@ Clause 3e – do not make a copy without written permission\nrule F copy_without_permission:\n    (confidential_info.is_copy and not confidential_info.permission_to_copy) always\n\n@ Clause 5 – during the ten‑year post‑effective period the receiving party must not\n# communicate the confidential information to any third party\nrule F disclose_during_10_years:\n    (not agreement.terminated) implies not confidential_info.disclosed_to_third_party always\n\n@ Clause 5 (hypothesis) – upon termination the receiving party must either\n# return the information to the disclosing party or destroy it\nrule O return_or_destroy_upon_termination:\n    agreement.terminated implies (confidential_info.is_returned or confidential_info.is_destroyed) eventually\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_f0mjdojl655",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0019640115,
+      "cost_details": {
+        "upstream_inference_cost": 0.00198385,
+        "upstream_inference_input_cost": 0.00036385,
+        "upstream_inference_output_cost": 0.00162
+      },
+      "input_tokens": 6499,
+      "input_tokens_details": {
+        "cached_tokens": 5604
+      },
+      "is_byok": false,
+      "output_tokens": 2160,
+      "output_tokens_details": {
+        "reasoning_tokens": 1302
+      },
+      "total_tokens": 8659
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "5baa9251332d980eed2b7abf912db4c2454431d53339419e0e827addf725a315",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

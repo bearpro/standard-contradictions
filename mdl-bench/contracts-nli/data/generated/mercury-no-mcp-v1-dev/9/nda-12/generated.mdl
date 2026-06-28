@@ -1,0 +1,148 @@
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT – TRANSPORTATION CHALLENGE 2017
+module contract_nli_no_align_dev_9_nda_12
+
+open std.collections
+
+-- ----------------------------------------------------------------------
+-- Types that capture the domain objects described in the Agreement
+-- ----------------------------------------------------------------------
+@ Definition of a person (used for contacts and representatives)
+type Person = {
+    name: string,
+    email: string,
+    phone: string
+}
+
+@ BPS contact person (the “notified” representative)
+type BPSContact = Person
+
+@ Vendor representative (employee, subcontractor, etc.)
+type Representative = Person
+
+@ Vendor entity – the “Receiving Party”
+type Vendor = {
+    name: string,
+    representatives: List<Representative>,
+    -- purpose for which confidential data may be used
+    purpose: string,                         -- e.g. "BPS_service"
+    -- flags that are set by the vendor to satisfy obligations
+    disclosed_to_third_party: bool,
+    notified_bps_of_legal_process: bool,
+    returned_or_destroyed_confidential_info: bool,
+    background_check_conducted: bool,
+    may_develop_similar_info: bool           -- permission to develop independent data
+}
+
+@ BPS entity – the “Disclosing Party”
+type BPS = {
+    name: string,
+    address: string,
+    contact: BPSContact
+}
+
+@ Confidential information that is subject to the NDA
+type ConfidentialInfo = {
+    student_home_address: string,
+    latitude: rat,
+    longitude: rat,
+    school_assignment: string,
+    ridership_status: string,   -- corner stop, D2D, wheelchair, …
+    grade: int,
+    bus_stop_intersection: string,
+    bus_stop_lat: rat,
+    bus_stop_long: rat,
+    survey_data: string
+}
+
+@ Database used by the vendor to store and process the confidential data
+type Database = {
+    encryption_at_rest: bool,
+    encryption_in_transit: bool,
+    access_control: bool,
+    audit_log_enabled: bool,
+    firewall_enabled: bool,
+    antivirus_installed: bool
+}
+
+-- ----------------------------------------------------------------------
+-- Entities – the stable public anchors for alignment with other standards
+-- ----------------------------------------------------------------------
+@ Party definitions (the two “Parties” to the Agreement)
+entity vendor: Vendor
+entity bps: BPS
+
+@ The confidential data set that the vendor receives
+entity confidential_info: ConfidentialInfo
+
+@ The secure database that the vendor must maintain
+entity database: Database
+
+-- ----------------------------------------------------------------------
+-- Helper functions (pure, no side‑effects)
+-- ----------------------------------------------------------------------
+@ Check that the vendor’s declared purpose matches the allowed purpose
+func purpose_is_allowed(purpose: string) -> bool:
+    purpose = "BPS_service"
+
+@ Check that the database satisfies the required security controls
+func db_meets_security(db: Database) -> bool:
+    db.encryption_at_rest and
+    db.encryption_in_transit and
+    db.access_control and
+    db.audit_log_enabled and
+    db.firewall_enabled and
+    db.antivirus_installed
+
+-- ----------------------------------------------------------------------
+-- Obligations (O), Prohibitions (F) and Permissions (P)
+-- ----------------------------------------------------------------------
+@ Clause B.1 – Data Sharing – security obligations
+rule O vendor_maintains_secure_database:
+    db_meets_security(database) always
+
+@ Clause B.2 – Nondisclosure – purpose limitation
+rule O vendor_uses_data_only_for_allowed_purpose:
+    purpose_is_allowed(vendor.purpose) always
+
+@ Clause B.2 – Nondisclosure – prohibition on unauthorized disclosure
+rule F vendor_may_not_disclose_without_consent:
+    not vendor.disclosed_to_third_party always
+
+@ Clause B.3 – Background Checks
+rule O vendor_conducts_background_checks:
+    vendor.background_check_conducted always
+
+@ Clause B.4 – Disclosure Sought Under Legal Process – notification obligation
+rule O vendor_notifies_bps_of_legal_process:
+    vendor.notified_bps_of_legal_process always
+
+@ Clause B.6 – Return or Destruction of Materials
+rule O vendor_returns_or_destroys_confidential_info:
+    vendor.returned_or_destroyed_confidential_info always
+
+@ Clause B.9 – Injunctive Relief – implied prohibition on breach (modelled as a prohibition)
+rule F vendor_may_not_breach_obligations:
+    not (
+        vendor.disclosed_to_third_party or
+        not vendor.notified_bps_of_legal_process or
+        not vendor.returned_or_destroyed_confidential_info
+    ) always
+
+@ Clause B.10 – Immediate Notice – same as notification rule (already covered)
+
+@ Clause B.12 – Termination – obligations survive termination (modelled as always)
+rule O vendor_obligations_survive_termination:
+    purpose_is_allowed(vendor.purpose) and
+    db_meets_security(database) and
+    not vendor.disclosed_to_third_party and
+    vendor.notified_bps_of_legal_process and
+    vendor.returned_or_destroyed_confidential_info and
+    vendor.background_check_conducted always
+
+@ Hypothesis – Receiving Party may independently develop information similar to Confidential Information
+rule P vendor_may_develop_similar_information:
+    vendor.may_develop_similar_info always
+
+-- ----------------------------------------------------------------------
+-- End of module
+-- ----------------------------------------------------------------------

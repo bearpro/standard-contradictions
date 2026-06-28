@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-3",
+  "created_at": "2026-06-26T00:23:48.745959+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-3",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_3",
+  "response": {
+    "background": false,
+    "completed_at": 1782433428.0,
+    "created_at": 1782433425.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433425-50o3AXB75d7g3rhOXN9u",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-3",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list\nmodule contract_nli_no_align_dev_14_nda_3\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\ntype Party = {\n    name: string,\n    agrees_to_delaware_jurisdiction: bool,\n    acknowledges_irreparable_harm: bool\n}\n\n@ Clause 2 – Confidential Material\ntype ConfidentialMaterial = {\n    description: string,\n    is_stockholder_list: bool,\n    includes_analyses: bool,\n    includes_verbal: bool          # hypothesis: may include verbally conveyed information\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Clause 1 – The two parties to the agreement\nentity company: Party\nentity stockholder: Party\n\n@ Clause 2 – The material that is subject to confidentiality\nentity confidential_material: ConfidentialMaterial\n\n# ----------------------------------------------------------------------\n# Fields used in rules (modeling state)\n# ----------------------------------------------------------------------\n@ Clause 1 – Stockholder’s use of the material\nentity stockholder_use: {\n    used_for_other_purposes: bool,\n    has_disclosed: bool,\n    notice_given_within_2_days: bool,\n    unauthorized_amendment_attempted: bool\n}\n\n# ----------------------------------------------------------------------\n# Functions (optional helpers)\n# ----------------------------------------------------------------------\nfunc is_prohibited_use(use: stockholder_use) -> bool:\n    use.used_for_other_purposes\n\nfunc is_prohibited_disclosure(use: stockholder_use) -> bool:\n    use.has_disclosed\n\nfunc is_notice_timely(use: stockholder_use) -> bool:\n    use.notice_given_within_2_days\n\nfunc is_unauthorized_amendment(use: stockholder_use) -> bool:\n    use.unauthorized_amendment_attempted\n\n# ----------------------------------------------------------------------\n# Rules – Obligations, Prohibitions, Permissions\n# ----------------------------------------------------------------------\n@ Clause 1 – Use of Confidential Material only for permitted purposes\nrule F stockholder_use_for_other_purposes:\n    is_prohibited_use(stockholder_use) always\n\n@ Clause 2 – No disclosure, publication or communication of Confidential Material\nrule F stockholder_disclose_confidential_material:\n    is_prohibited_disclosure(stockholder_use) always\n\n@ Clause 3 – Prompt notice when disclosure is legally required\nrule O stockholder_provide_notice:\n    is_notice_timely(stockholder_use) always\n\n@ Clause 4 – Jurisdiction of the Delaware Court of Chancery\nrule O party_agrees_to_delaware_jurisdiction:\n    company.agrees_to_delaware_jurisdiction and\n    stockholder.agrees_to_delaware_jurisdiction always\n\n@ Clause 5 – Recognition of irreparable harm and entitlement to injunctive relief\nrule O party_recognizes_irreparable_harm:\n    company.acknowledges_irreparable_harm and\n    stockholder.acknowledges_irreparable_harm always\n\n@ Clause 6 – Amendments must be in writing and signed\nrule F unauthorized_amendment:\n    is_unauthorized_amendment(stockholder_use) always\n\n@ Clause 8 – Governing law of the State of Delaware\nrule O governing_law_is_delaware:\n    true always   # implicit – the rule encodes the choice of law\n\n@ Clause 2 – Hypothesis: Confidential Information may include verbally conveyed information\nrule P confidential_material_may_include_verbal:\n    confidential_material.includes_verbal always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_sud4rz4nzgq",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.001938915,
+      "cost_details": {
+        "upstream_inference_cost": 0.0019585,
+        "upstream_inference_input_cost": 0.00039775,
+        "upstream_inference_output_cost": 0.00156075
+      },
+      "input_tokens": 6523,
+      "input_tokens_details": {
+        "cached_tokens": 5480
+      },
+      "is_byok": false,
+      "output_tokens": 2081,
+      "output_tokens_details": {
+        "reasoning_tokens": 1401
+      },
+      "total_tokens": 8604
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "cb4febb50efda503fb00bbea2e154cff85e9bf7b4491583c25543d02c233eca2",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

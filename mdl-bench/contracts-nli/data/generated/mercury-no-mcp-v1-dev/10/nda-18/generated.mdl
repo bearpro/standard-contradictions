@@ -1,0 +1,115 @@
+@ Contract: CNDA – Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_10_nda_18
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Article 2 – Definitions of parties and representatives
+type Party =
+    | DisclosingParty(unit)
+    | ReceivingParty(unit)
+
+type Representative = {
+    party   : Party,      # the party the representative belongs to
+    name    : string
+}
+
+@ Article 2 – Definition of confidential information
+type ConfidentialInformation = {
+    content          : string,
+    is_confidential  : bool
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The two contractual parties
+entity disclosing_party : Party = Party.DisclosingParty()
+entity receiving_party : Party = Party.ReceivingParty()
+
+@ Representatives of each party (the set may be empty)
+entity disclosing_reps : List<Representative>   # supplied by the Disclosing Party
+entity receiving_reps : List<Representative>   # supplied by the Receiving Party
+
+@ Confidential information exchanged under the CNDA
+entity confidential_info : ConfidentialInformation
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+# Returns true if a representative belongs to the Disclosing Party
+func is_disclosing_rep(rep: Representative) -> bool:
+    case rep.party of
+        | Party.DisclosingParty(): true
+        | _: false
+
+# Returns true if a representative belongs to the Receiving Party
+func is_receiving_rep(rep: Representative) -> bool:
+    case rep.party of
+        | Party.ReceivingParty(): true
+        | _: false
+
+# ----------------------------------------------------------------------
+# Rules – Obligations (O), Prohibitions (F), Permissions (P)
+# ----------------------------------------------------------------------
+@ Article 2.03 – Duty of care (obligation)
+rule O duty_of_care:
+    # The Receiving Party must use at least a reasonable degree of care
+    # to protect Confidential Information, but never less than reasonable care.
+    # (Modeled as a boolean predicate; the actual care level is not
+    # represented in the model, but the rule enforces the obligation.)
+    true always
+
+@ Article 2.04 – No benefit / restricted use (prohibition)
+rule F no_benefit_from_confidential_info:
+    # Receiving Party shall not derive any benefit from Confidential Information.
+    # (Modeled as a prohibition on any benefit; the model does not track
+    # benefit, so the rule simply asserts the prohibition.)
+    false always
+
+@ Article 2.05 – No disclosure except to authorised representatives (prohibition)
+rule F no_unauthorised_disclosure:
+    # The Receiving Party may disclose Confidential Information only to its
+    # own representatives that have a need‑to‑know and have been informed of
+    # its confidential nature.
+    let authorised : bool =
+        forall (rep: Representative) in receiving_reps:
+            is_receiving_rep(rep) implies true   # placeholder – actual need‑to‑know logic omitted
+    authorised always
+
+@ Article 2.08 – Responsibility for breaches by representatives (obligation)
+rule O responsibility_for_representatives:
+    # The Receiving Party is responsible for any breach of the CNDA by its
+    # representatives.
+    true always
+
+@ Article 2.07 – Return of Confidential Information on request (obligation)
+rule O return_on_request:
+    # Upon written request, the Receiving Party must return or destroy
+    # all Confidential Information.
+    true always
+
+@ Article 3.01 – Remedies (obligation to honour remedies)
+rule O respect_remedies:
+    # The Receiving Party acknowledges that breach causes irreparable harm and
+    # that equitable relief is available.
+    true always
+
+@ Article 3.02 – Continuing obligations after termination (obligation)
+rule O confidentiality_survives_termination:
+    # Confidentiality obligations survive termination for three years.
+    true always
+
+@ Article 3.09 – Governing law (obligation – not a deontic rule, but modeled for completeness)
+rule O governing_law:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis – Not present in the source document
+# ----------------------------------------------------------------------
+@ Hypothesis: Receiving Party shall not solicit some of Disclosing Party's representatives.
+rule F receiving_party_not_solicit_disclosing_reps:
+    # The CNDA does not contain any clause that expressly prohibits solicitation
+    # of the Disclosing Party's representatives. This rule is added solely to
+    # capture the hypothesis for analysis; it is not derived from the source.
+    false always

@@ -1,0 +1,53 @@
+@ Non‑Disclosure Agreement – Model for confidentiality handling
+module contract_nli_no_align_dev_13_nda_20
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties defined in the Agreement (Section “Parties”)
+type PartyRole =
+    | DisclosingParty(unit)
+    | ReceivingParty(unit)
+    | TransmissionOwner(unit)
+
+type Party = {
+    name: string,
+    role: PartyRole
+}
+
+@ Confidential Information as described in Section 8 “Ownership and Use…”
+type ConfidentialInformation = {
+    is_returned: bool,   # has the Party returned the information?
+    is_destroyed: bool,  # has the Party destroyed the information?
+    is_retained: bool    # is the Party still holding the information?
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The Party that receives Confidential Information (the “Receiving Party”)
+entity receiving_party: Party
+
+@ The piece of Confidential Information being exchanged
+entity confidential_info: ConfidentialInformation
+
+# ----------------------------------------------------------------------
+# Rules – Obligations, Prohibitions, Permissions
+# ----------------------------------------------------------------------
+@ Section 8 – “Ownership and Use of Confidential Information”
+rule F no_retention_after_return_or_destruction:
+    (confidential_info.is_returned or confidential_info.is_destroyed)
+        implies not confidential_info.is_retained always
+
+@ Section 8 – “Ownership and Use of Confidential Information”
+rule O retain_while_needed:
+    confidential_info.is_retained
+        implies not (confidential_info.is_returned or confidential_info.is_destroyed) always
+
+@ Hypothesis to be tested: “Receiving Party may retain some Confidential Information
+@ even after the return or destruction of Confidential Information.”
+@ This is expressed as a permission that conflicts with the prohibition above.
+rule P hypothesis_retention_after_return:
+    confidential_info.is_returned
+        and confidential_info.is_destroyed
+        and confidential_info.is_retained always

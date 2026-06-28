@@ -1,0 +1,123 @@
+@ CNDA – Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_10_nda_2
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Article 1 – Definitions and Interpretation (general terminology)
+type Party = {
+    name: string,
+    address: string
+}
+
+type Representative = {
+    name: string,
+    party: Party
+}
+
+type ConfidentialInformation = {
+    content: string,                -- the actual information
+    is_technical: bool,             -- true if the information is technical
+    is_marked_confidential: bool,  -- true if the document is marked “Confidential”
+    source: Party                   -- the party that supplied the information
+}
+
+# ----------------------------------------------------------------------
+# Entities (public domain objects)
+# ----------------------------------------------------------------------
+@ Article 2 – Confidential Information – parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Article 2 – Confidential Information – the information itself
+entity confidential_info: ConfidentialInformation
+
+@ Article 2 – Confidential Information – representatives of the receiving party
+entity representative: Representative
+
+# ----------------------------------------------------------------------
+# Helper functions (pure, for readability)
+# ----------------------------------------------------------------------
+func is_confidential(info: ConfidentialInformation) -> bool:
+    -- 2.01 defines Confidential Information as either marked “Confidential”
+    --  or supplied by the Disclosing Party.
+    (info.is_marked_confidential) or (info.source = disclosing_party)
+
+func is_non_technical(info: ConfidentialInformation) -> bool:
+    not info.is_technical
+
+# ----------------------------------------------------------------------
+# Rules (deontic obligations, prohibitions and permissions)
+# ----------------------------------------------------------------------
+@ Article 2 – 2.03 Kept in Confidence
+rule O keep_confidentiality:
+    -- The Receiving Party must protect the Confidential Information with at
+    -- least a reasonable degree of care (the model does not quantify the care,
+    -- the rule simply records the obligation).
+    true always
+
+@ Article 2 – 2.04 No Benefit, Restricted Use
+rule O no_benefit_from_confidential_info:
+    -- The Receiving Party shall not derive any benefit, directly or indirectly,
+    -- from the Confidential Information.
+    true always
+
+@ Article 2 – 2.05 No Disclosure
+rule F disclose_confidential_info:
+    -- The Receiving Party shall not disclose Confidential Information to any
+    -- Person other than its Representatives who need to know.
+    (representative.party = receiving_party) and
+    (representative.name != "") always
+
+@ Article 2 – 2.06 Disclosure Required by Law
+rule O disclose_by_law_with_notice:
+    -- If disclosure is required by law, the Receiving Party must give prior
+    -- written notice to the Disclosing Party.
+    true always
+
+@ Article 2 – 2.07 Return of Confidential Information
+rule O return_on_request:
+    -- Upon written request, the Receiving Party shall return or destroy the
+    -- Confidential Information and certify the destruction.
+    true always
+
+@ Article 2 – 2.08 Responsibility for Others
+rule O responsibility_for_representatives:
+    -- The Receiving Party is responsible for any breach committed by its
+    -- Representatives.
+    true always
+
+@ Article 3 – 3.02 Continuing Obligations Regarding Confidentiality
+rule O obligations_survive_termination:
+    -- Confidentiality obligations survive termination for three (3) years.
+    true always
+
+@ Article 3 – 3.09 Governing Law (no normative effect on confidentiality)
+rule P governing_law_alberta:
+    true always
+
+@ Article 3 – 3.11 Residual Information
+rule O use_residual_information:
+    -- After the term, the Receiving Party may use “Residual Information”.
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis (to be checked for consistency)
+# ----------------------------------------------------------------------
+@ Hypothesis – “Confidential Information shall only include technical information.”
+rule O confidential_info_must_be_technical:
+    confidential_info.is_technical always
+
+# ----------------------------------------------------------------------
+# Consistency check (optional fact for testing the hypothesis)
+# ----------------------------------------------------------------------
+-- The definition in 2.01 does **not** restrict Confidential Information to
+-- technical matters.  The following fact creates a concrete instance that is
+-- non‑technical, which will conflict with the hypothesis rule above.
+fact example_non_technical_info:
+    confidential_info = ConfidentialInformation {
+        content = "Company financial summary",
+        is_technical = false,
+        is_marked_confidential = true,
+        source = disclosing_party
+    }

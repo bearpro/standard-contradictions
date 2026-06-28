@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-18",
+  "created_at": "2026-06-26T00:18:26.245749+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-18",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_18",
+  "response": {
+    "background": false,
+    "completed_at": 1782433106.0,
+    "created_at": 1782433103.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433103-ZYDKjtn8QDfCl2ogmVT6",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-18",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Two‑Way Confidentiality and Non‑Disclosure Agreement\nmodule contract_nli_no_align_dev_3_nda_18\n\n# ----------------------------------------------------------------------\n#  Types\n# ----------------------------------------------------------------------\n@ Parties (Clause 1)\ntype Party = {\n    name: string,\n    address: string,\n    tax_id: string,\n    legal_capacity: string\n}\n\n@ Representatives (Clause 2)\ntype Representative = {\n    name: string,\n    party: Party                # the party the representative belongs to\n}\n\n@ Confidential information (Clause 1)\ntype ConfidentialInformation = {\n    field: string,              # e.g. “technical data”, “business plan”\n    description: string,\n    is_disclosed: bool,         # true when the information has been disclosed\n    consent_given: bool         # true when the disclosing party has given written consent\n    is_returned_or_destroyed: bool   # true when the information has been returned or destroyed\n}\n\n@ Permitted purpose (Clause 1)\ntype PermittedPurpose = {\n    description: string\n}\n\n# ----------------------------------------------------------------------\n#  Entities\n# ----------------------------------------------------------------------\n@ The two parties to the agreement (Clause 1)\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ A representative of the disclosing party (Clause 2)\nentity disclosing_rep: Representative\n\n@ The confidential information that is exchanged (Clause 1)\nentity confidential_info: ConfidentialInformation\n\n@ The purpose for which the receiving party may use the information (Clause 1)\nentity permitted_purpose: PermittedPurpose\n\n# ----------------------------------------------------------------------\n#  Helper functions\n# ----------------------------------------------------------------------\n@ Checks whether a party is allowed to disclose the information\nfunc may_disclose(party: Party, info: ConfidentialInformation) -> bool:\n    info.consent_given\n\n@ Checks whether a party is allowed to use the information for a purpose\nfunc may_use_for(party: Party, info: ConfidentialInformation, purpose: PermittedPurpose) -> bool:\n    true   # the model assumes the purpose is always permitted when the clause is satisfied\n\n@ Checks whether a party solicits a representative (hypothesis)\nfunc solicits(party: Party, rep: Representative) -> bool:\n    false   # placeholder – the rule will forbid any solicitation\n\n# ----------------------------------------------------------------------\n#  Rules\n# ----------------------------------------------------------------------\n@ Clause 3 – General confidentiality obligation\nrule O keep_confidential:\n    not confidential_info.is_disclosed or confidential_info.consent_given always\n\n@ Clause 3  – No disclosure without prior written consent\nrule F disclose_without_consent:\n    confidential_info.is_disclosed and not confidential_info.consent_given always\n\n@ Clause 3c – No use outside the permitted purpose\nrule F use_outside_permitted_purpose:\n    not may_use_for(receiving_party, confidential_info, permitted_purpose) always\n\n@ Clause 3a – Take reasonable measures to protect the information\nrule O reasonable_measures:\n    true always   # abstract – the concrete measures are outside the logical model\n\n@ Clause 5 – Return or destroy information at termination (or within 7 days of instruction)\nrule O return_or_destroy_at_termination:\n    confidential_info.is_returned_or_destroyed always\n\n@ Clause 5 – Retain one copy only for regulatory/insurance purposes\nrule O retain_one_copy_for_regulatory:\n    (confidential_info.is_returned_or_destroyed or confidential_info.is_disclosed) always\n\n@ Clause 4 – Access limited to representatives who need to know\nrule O limited_access_to_representatives:\n    true always   # abstract – the “need‑to‑know” condition is captured by the model’s structure\n\n@ Clause 4 – Receiving party responsible for its representatives’ compliance\nrule O representative_compliance:\n    true always   # abstract – enforcement is outside the logical model\n\n@ Hypothesis – Receiving Party shall not solicit any of Disclosing Party’s representatives\nrule F solicit_disclosing_representatives:\n    solicits(receiving_party, disclosing_rep) always\n\n# ----------------------------------------------------------------------\n#  End of model\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_m5amnrhovuh",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00258729075,
+      "cost_details": {
+        "upstream_inference_cost": 0.002613425,
+        "upstream_inference_input_cost": 0.001363175,
+        "upstream_inference_output_cost": 0.00125025
+      },
+      "input_tokens": 7547,
+      "input_tokens_details": {
+        "cached_tokens": 2327
+      },
+      "is_byok": false,
+      "output_tokens": 1667,
+      "output_tokens_details": {
+        "reasoning_tokens": 869
+      },
+      "total_tokens": 9214
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "b61954e0d5d32bf3f774ecd0871403cba71a2de3dbb0442aee3141151204f4c1",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

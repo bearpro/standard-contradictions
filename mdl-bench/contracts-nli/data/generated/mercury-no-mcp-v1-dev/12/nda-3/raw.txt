@@ -1,0 +1,140 @@
+```mdl
+@ Confidentiality (Non‑Disclosure) Agreement – NDA model
+module contract_nli_no_align_dev_12_nda_3
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Parties (BROOKS and CLIENT)
+type Party = {
+    name: string,
+    is_brooks: bool,      -- true for BROOKS, false for CLIENT
+    is_client: bool       -- true for CLIENT, false for BROOKS
+}
+
+@ Confidential Information (the subject of the NDA)
+type ConfidentialInformation = {
+    is_written: bool,          -- disclosed in writing (e.g., documents)
+    is_verbal: bool,           -- disclosed orally or by other non‑written means
+    is_product_info: bool,     -- product‑related data
+    is_financial_info: bool,   -- personal/financial data
+    is_formulation_info: bool  -- formulations & processing procedures
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects that can be aligned across standards
+# ----------------------------------------------------------------------
+@ The two contracting parties
+entity brooks: Party
+entity client: Party
+
+@ The set of information that may be exchanged under the Agreement
+entity confidential_info: ConfidentialInformation
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Determine whether a piece of information is “Confidential Information”
+func is_confidential(info: ConfidentialInformation) -> bool:
+    info.is_written or info.is_verbal or
+    info.is_product_info or info.is_financial_info or
+    info.is_formulation_info
+
+# ----------------------------------------------------------------------
+# Obligations (O), Prohibitions (F) and Permissions (P)
+# ----------------------------------------------------------------------
+@ Clause 1.2 – BROOKS must keep Confidential Information confidential
+rule O brooks_must_keep_confidential:
+    is_confidential(confidential_info) implies
+    (brooks.is_brooks and client.is_client) always
+
+@ Clause 1.2 – BROOKS may not disclose Confidential Information except with CLIENT consent
+rule F brooks_must_not_disclose_without_consent:
+    is_confidential(confidential_info) and
+    not client_consent_given() always
+
+@ Clause 2.2 – Breach by BROOKS causes irreparable harm; enforceable by injunction
+rule O brooks_breach_causes_irreparable_harm:
+    (is_confidential(confidential_info) and
+     brooks_fails_obligation()) implies
+    injunctive_relief_available() always
+
+@ Clause 2.3 – BROOKS shall not approach CLIENT’s Private Label Condiment Customers
+rule F brooks_must_not_approach_private_label_customers:
+    brooks_attempts_to_contact_private_label_customers() always
+
+@ Clause 3 – Exceptions (Disclosure is permitted under the listed circumstances)
+rule P brooks_may_disclose_under_exception:
+    (confidential_info_already_possessed() or
+     confidential_info_developed_independently() or
+     confidential_info_received_from_third_party() or
+     confidential_info_inadvertently_disclosed() or
+     confidential_info_disclosed_with_client_consent() or
+     confidential_info_disclosed_to_perform_service()) always
+
+@ Clause 4 – Compelled Disclosure (legal process)
+rule O brooks_must_notify_client_of_compelled_disclosure:
+    brooks_is_legally_compelled() implies
+    notify_client_in_writing() always
+
+rule P brooks_may_disclose_compelled_portion:
+    (brooks_is_legally_compelled() and
+     client_has_protective_order_or_waiver()) implies
+    disclose_only_compelled_portion() always
+
+@ Clause 5 – Return of Material
+rule O brooks_must_return_or_destroy_material_on_termination:
+    agreement_terminated() implies
+    (client_requests_return() or
+     retain_material_for_three_years()) always
+
+@ Clause 6 – Governing Law (NY)
+rule O agreement_governed_by_new_york_law:
+    governing_law = "New York" always
+
+@ Clause 7 – Survival (term of the Agreement)
+rule O agreement_survives_until_earliest_event:
+    (one_year_after_termination() or
+     alternate_termination_date_specified()) always
+
+@ Clause 10 – Amendment only by written instrument
+rule F agreement_cannot_be_amended_without_written_document:
+    amendment_attempted() and not amendment_is_written() always
+
+# ----------------------------------------------------------------------
+# Hypothesis – “Confidential Information may include verbally conveyed information.”
+# ----------------------------------------------------------------------
+@ The hypothesis is modeled as a permission that verbal information can be
+# considered Confidential Information.
+rule P confidential_info_may_be_verbal:
+    confidential_info.is_verbal always
+
+# ----------------------------------------------------------------------
+# Placeholder predicates used in the rules above.
+# In a full model these would be defined by additional functions or
+# supplied by the environment (e.g., external data, other modules).
+# ----------------------------------------------------------------------
+func client_consent_given() -> bool: true
+func brooks_fails_obligation() -> bool: false
+func injunctive_relief_available() -> bool: true
+func brooks_attempts_to_contact_private_label_customers() -> bool: false
+func confidential_info_already_possessed() -> bool: false
+func confidential_info_developed_independently() -> bool: false
+func confidential_info_received_from_third_party() -> bool: false
+func confidential_info_inadvertently_disclosed() -> bool: false
+func confidential_info_disclosed_with_client_consent() -> bool: false
+func confidential_info_disclosed_to_perform_service() -> bool: false
+func brooks_is_legally_compelled() -> bool: false
+func notify_client_in_writing() -> bool: true
+func client_has_protective_order_or_waiver() -> bool: false
+func disclose_only_compelled_portion() -> bool: true
+func agreement_terminated() -> bool: false
+func client_requests_return() -> bool: false
+func retain_material_for_three_years() -> bool: true
+func one_year_after_termination() -> bool: false
+func alternate_termination_date_specified() -> bool: false
+func amendment_attempted() -> bool: false
+func amendment_is_written() -> bool: false
+```

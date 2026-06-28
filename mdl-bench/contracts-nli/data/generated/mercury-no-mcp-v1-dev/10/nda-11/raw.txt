@@ -1,0 +1,107 @@
+```mdl
+@ CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (“CNDA”) – Model for contract_nli_no_align_dev_10_nda_11
+module contract_nli_no_align_dev_10_nda_11
+
+open std.collections
+
+-- -------------------------------------------------------------------------
+-- Types
+-- -------------------------------------------------------------------------
+
+@ Parties to the CNDA
+type Party = 
+    | DisclosingParty(unit)
+    | ReceivingParty(unit)
+
+@ Representative of a party (e.g., employee, contractor)
+type Representative = {
+    name: string,
+    is_authorized: bool
+}
+
+@ Information that may be subject to the confidentiality obligations
+type ConfidentialInfo = {
+    description: string,                     -- free‑text description
+    is_marked_confidential: bool,            -- “Confidential” label present
+    source_party: Party,                     -- who supplied the information
+    is_residual: bool                        -- residual information (Article 3.11)
+}
+
+@ Information about a party that is relevant for the CNDA
+type PartyInfo = {
+    name: string,
+    address: string,
+    representatives: List<Representative>,
+    -- behavioural flags used by the rules
+    complies_with_care: bool,                -- Article 2.03 (reasonable care)
+    discloses_confidential: bool,            -- Article 2.05 (prohibited disclosure)
+    reverse_engineers: bool,                 -- hypothesis / Article 2.04 (benefit/use)
+    returns_confidential: bool,              -- Article 2.07 (return on request)
+    destroys_confidential: bool,             -- Article 2.07 (destruction)
+    may_use_residual: bool                   -- Article 3.11 (residual use)
+}
+
+-- -------------------------------------------------------------------------
+-- Entities
+-- -------------------------------------------------------------------------
+
+@ The party that supplies the confidential information (CPR)
+entity disclosing_party: PartyInfo
+
+@ The party that receives the confidential information (Supplier)
+entity receiving_party: PartyInfo
+
+@ A concrete piece of confidential information referenced in the agreement
+entity confidential_info: ConfidentialInfo
+
+-- -------------------------------------------------------------------------
+-- Helper Functions
+-- -------------------------------------------------------------------------
+
+@ Determine whether a given ConfidentialInfo instance is truly confidential
+func is_confidential(info: ConfidentialInfo) -> bool:
+    info.is_marked_confidential or
+    case info.source_party:
+        | Party.DisclosingParty(): true
+        | _: false
+
+-- -------------------------------------------------------------------------
+-- Rules (Deontic constraints)
+-- -------------------------------------------------------------------------
+
+@ Article 2.03 – The Receiving Party shall use at least a reasonable degree of care
+rule O care_obligation:
+    receiving_party.complies_with_care always
+
+@ Article 2.05 – The Receiving Party shall not disclose Confidential Information
+rule F disclose_confidential:
+    receiving_party.discloses_confidential = false always
+
+@ Article 2.04 – The Receiving Party shall not derive benefit or exploit the
+@ Confidential Information (including reverse engineering)
+rule F reverse_engineer:
+    receiving_party.reverse_engineers = false always
+
+@ Article 2.07 – Upon request, the Receiving Party shall return or destroy the
+@ Confidential Information
+rule O return_confidential:
+    receiving_party.returns_confidential always
+
+rule O destroy_confidential:
+    receiving_party.destroys_confidential always
+
+@ Article 3.11 – Residual information may be used after the term
+rule O residual_use:
+    receiving_party.may_use_residual always
+
+-- -------------------------------------------------------------------------
+-- Hypothesis (to be checked by the solver)
+-- -------------------------------------------------------------------------
+
+@ Hypothesis: Receiving Party shall not reverse engineer any objects which embody
+@ Disclosing Party's Confidential Information.
+rule F hypothesis_reverse_engineer:
+    let applies = is_confidential(confidential_info) and
+                 confidential_info.source_party = Party.DisclosingParty()
+    (applies implies (receiving_party.reverse_engineers = false)) always
+```

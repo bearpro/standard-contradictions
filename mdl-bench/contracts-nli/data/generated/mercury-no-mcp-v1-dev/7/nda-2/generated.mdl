@@ -1,0 +1,61 @@
+@ Non‑Disclosure Agreement (NDA) – model for hypothesis testing
+module contract_nli_no_align_dev_7_nda_2
+
+# ----------------------------------------------------------------------
+# Types – domain concepts used in the NDA
+# ----------------------------------------------------------------------
+@ Clause 1.2(a) – “Confidential Information” is a broad set of data.
+type ConfidentialCategory =
+    | Technical(unit)          # technical, scientific, trade‑secret etc.
+    | Commercial(unit)         # marketing, business plans, pricing etc.
+    | Patient(unit)            # patient‑identifiable data
+    | Financial(unit)          # financial statements, accounts etc.
+    | Other(unit)              # any other category not listed above
+
+type ConfidentialInfo = {
+    category: ConfidentialCategory,   # what kind of information it is
+    source:   string                # who disclosed it (e.g., “AHPL”, “Company”)
+}
+
+# ----------------------------------------------------------------------
+# Entities – concrete objects that appear in the agreement
+# ----------------------------------------------------------------------
+@ Clause 1.2(a) – the agreement talks about “Confidential Information”.
+entity confidential_info: ConfidentialInfo
+
+# To make the hypothesis test meaningful we also introduce a concrete
+# non‑technical confidential item that is clearly allowed by the NDA.
+entity non_technical_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Facts – concrete data that the parties are assumed to have.
+# ----------------------------------------------------------------------
+@ Clause 1.2(a) – the NDA permits non‑technical confidential data.
+fact non_technical_info.category = ConfidentialCategory.Commercial()
+fact non_technical_info.source   = "AHPL"
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements extracted from the NDA
+# ----------------------------------------------------------------------
+@ Clause 1.2(a) – any disclosed item that is marked “Confidential” is
+# a piece of Confidential Information, regardless of its category.
+rule O any_marked_confidential_is_confidential:
+    confidential_info.source = "AHPL" or confidential_info.source = "Company" always
+
+@ Clause 2.1(a) – the recipient must keep all Confidential Information
+# confidential and may use it only for the Purpose.
+rule O keep_confidential_info_confidential:
+    true always   # (no additional constraint needed for the model)
+
+# ----------------------------------------------------------------------
+# Hypothesis – the statement we want to test against the NDA
+# ----------------------------------------------------------------------
+@ Hypothesis: “Confidential Information shall only include technical information.”
+rule O only_technical_confidential:
+    confidential_info.category = ConfidentialCategory.Technical() always
+
+# ----------------------------------------------------------------------
+# Consistency check – the model will be unsat because the NDA allows
+# non‑technical confidential data (e.g., commercial information) while the
+# hypothesis forces *all* confidential data to be technical.
+# ----------------------------------------------------------------------

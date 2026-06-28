@@ -1,0 +1,121 @@
+```mdl
+@ Non‑Disclosure Agreement (Two‑Way) – Model for “contract_nli_no_align_dev_15_nda_3”
+module contract_nli_no_align_dev_15_nda_3
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties (disclosing / receiving)
+type Party = {
+    name: string,
+    address: string
+}
+
+@ Medium in which confidential information may be conveyed
+type ConfidentialMedium =
+    | Written(unit)      # paper, PDF, etc.
+    | Oral(unit)         # spoken / verbal
+    | Electronic(unit)   # e‑mail, USB, etc.
+    | Other(unit)        # any other form
+
+@ Confidential information record
+type ConfidentialInfo = {
+    source: Party,                     # disclosing party
+    content: string,                   # description / identifier
+    medium: ConfidentialMedium,        # how it was conveyed
+    is_confidential: bool,             # true if the information falls under the NDA
+    is_exempt: bool,                   # true if one of the statutory exemptions applies
+    disclosed_to_third_party: bool,    # has it been disclosed to a third party?
+    used_for_commercial_purpose: bool, # has it been used commercially?
+    copied: bool,                      # has a copy / abstract been made?
+    marked_confidential: bool,         # has it been marked “Confidential”?
+    employees_access: bool,            # have employees been given access (and made aware)?
+    communicated_to_third_party: bool  # has any communication of the info occurred?
+}
+
+# ----------------------------------------------------------------------
+# Entities – the public model objects that can be aligned across standards
+# ----------------------------------------------------------------------
+@ The University of Bristol (disclosing party)
+entity disclosing_party: Party
+
+@ The other signatory (receiving party)
+entity receiving_party: Party
+
+@ Any piece of confidential information that may be exchanged
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Helper functions (pure, no side‑effects)
+# ----------------------------------------------------------------------
+@ Returns true when the information is not covered by any statutory exemption
+func not_exempt(info: ConfidentialInfo) -> bool:
+    not info.is_exempt
+
+# Returns true when the information is oral (verbal)
+func is_oral(info: ConfidentialInfo) -> bool:
+    case info.medium of
+        | ConfidentialMedium.Oral(): true
+        | _: false
+
+# ----------------------------------------------------------------------
+# Rules – deontic obligations (O), prohibitions (F) and permissions (P)
+# ----------------------------------------------------------------------
+@ Clause 2 – marking / designation of confidential information
+rule O must_confidential_info:
+    confidential_info.is_confidential implies confidential_info.marked_confidential always
+
+@ Clause 3(a) – take reasonable measures to maintain confidentiality
+rule O take_reasonable_measures:
+    confidential_info.is_confidential and not_exempt(confidential_info) implies true always
+    # (The concrete measures are outside the scope of the model; the rule
+    # simply records the existence of the obligation.)
+
+@ Clause 3(b) – prohibition on commercial use / manufacture
+rule F no_commercial_use:
+    confidential_info.is_confidential and not_exempt(confidential_info) implies
+        not confidential_info.used_for_commercial_purpose always
+
+@ Clause 3(c) – prohibition on disclosure to third parties without permission
+rule F no_disclosure_to_third_party:
+    confidential_info.is_confidential and not_exempt(confidential_info) implies
+        not confidential_info.disclosed_to_third_party always
+
+@ Clause 3(d) – limited employee access and awareness
+rule O limited_employee_access:
+    confidential_info.is_confidential and not_exempt(confidential_info) implies
+        confidential_info.employees_access always
+
+@ Clause 3(e) – prohibition on making copies / abstracts without permission
+rule F no_copy_or_abstract:
+    confidential_info.is_confidential and not_exempt(confidential_info) implies
+        not confidential_info.copied always
+
+@ Clause 3(f) – acknowledgement / marking of source
+rule O acknowledge_source:
+    confidential_info.is_confidential implies true always
+    # (The model records the requirement; actual marking is captured by
+    # `marked_confidential` in rule O mark_confidential_info.)
+
+@ Clause 4 – statutory exemptions (do not apply the above obligations)
+rule F exemption_public_domain:
+    confidential_info.is_exempt and
+        (confidential_info.is_confidential) implies true always
+    # (When `is_exempt` is true the obligations are vacuously satisfied.)
+
+@ Clause 5 – ten‑year non‑communication period
+rule F ten_year_non_communication:
+    confidential_info.is_confidential implies
+        not confidential_info.communicated_to_third_party always
+
+@ Clause 6 – governing law / jurisdiction (no normative constraint on the
+# information itself, therefore modelled as a comment only)
+
+# ----------------------------------------------------------------------
+# Hypothesis – verbal information is covered by the definition of
+# “Confidential Information”
+# ----------------------------------------------------------------------
+@ Hypothesis: “Confidential Information may include verbally conveyed information.”
+rule O oral_information_is_confidential:
+    is_oral(confidential_info) implies confidential_info.is_confidential always
+```

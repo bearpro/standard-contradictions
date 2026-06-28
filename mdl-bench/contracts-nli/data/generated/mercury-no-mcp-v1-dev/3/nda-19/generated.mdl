@@ -1,0 +1,161 @@
+@ Contract: OISAIR Project – Two‑Way Confidentiality & Non‑Disclosure Agreement
+module contract_nli_no_align_dev_3_nda_19
+
+# ----------------------------------------------------------------------
+# Imports
+# ----------------------------------------------------------------------
+open std.collections   # for List<T> used in the model
+
+# ----------------------------------------------------------------------
+# Types – domain concepts described in the Agreement
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = {
+    name: string,
+    address: string,
+    representatives: List<Representative>
+}
+
+type Representative = {
+    name: string,
+    role: string          # e.g. “Director”, “Employee”, “Advisor”
+}
+
+@ Clause 1 – Confidential Information
+type ConfidentialInformation = {
+    description: string,                # free‑text description of the info
+    is_marked_confidential: bool,       # true when the Disclosing Party marks it
+    disclosed_by: Party,                # the Disclosing Party
+    disclosed_to: Party,                # the Receiving Party
+    disclosure_day: int,                # day index counted from the Effective Date
+    is_excluded: bool,                  # true when any exclusion (a‑f) applies
+    disclosed_to_third: bool,           # true if the Receiving Party has shared it
+    used_outside_purpose: bool,         # true if used for anything but the Permitted Purpose
+    is_returned: bool,                  # true when the info has been returned
+    is_destroyed: bool,                 # true when the info has been destroyed
+    retained_for_regulatory: bool       # true when a single copy is kept for regulatory/insurance reasons
+}
+
+@ Clause 10 – Agreement meta‑data
+type Agreement = {
+    effective_day: int,          # day 0 = Effective Date
+    termination_day: int,        # day index of the Termination Date (5 years after effective)
+    permitted_purpose: string,
+    field: string
+}
+
+# ----------------------------------------------------------------------
+# Entities – public anchors that can be aligned with other standards
+# ----------------------------------------------------------------------
+@ Clause 1 – the two parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 1 – the confidential material that is exchanged
+entity confidential_info: ConfidentialInformation
+
+@ Clause 10 – the agreement itself (used for temporal calculations)
+entity agreement: Agreement
+
+# ----------------------------------------------------------------------
+# Helper functions – keep rule bodies readable
+# ----------------------------------------------------------------------
+# Is the current step within the 3‑year survival window after disclosure?
+func within_three_years(info: ConfidentialInformation) -> bool:
+    let days_since_disclosure = (agreement.effective_day) - info.disclosure_day
+    days_since_disclosure <= 3 * 365
+
+# Does the Receiving Party have a legitimate reason to keep a copy for
+# regulatory/insurance purposes?
+func may_retain_for_regulatory(info: ConfidentialInformation) -> bool:
+    info.retained_for_regulatory
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (deontic modality + LTLf body)
+# ----------------------------------------------------------------------
+# 3 a – Obligation to keep the information secret (always)
+@ Clause 3 a
+rule O keep_confidentiality:
+    confidential_info.is_marked_confidential always
+
+# 3 b – Prohibition to disclose to a third party without consent
+@ Clause 3 b
+rule F disclose_to_third_without_consent:
+    not confidential_info.disclosed_to_third always
+
+# 3 c – Prohibition to use the information for anything other than the
+#       permitted purpose
+@ Clause 3 c
+rule F use_outside_permitted_purpose:
+    not confidential_info.used_outside_purpose always
+
+# 3 d – Prohibition to use the information for own commercial gain
+@ Clause 3 d
+rule F commercial_use_without_consent:
+    not confidential_info.used_outside_purpose always   # same field captures any unauthorised use
+
+# 3 e – Prohibition to make unauthorised copies
+@ Clause 3 e
+rule F unauthorised_copy:
+    not confidential_info.retained_for_regulatory always   # only the single regulatory copy is allowed
+
+# 3 f – Prohibition to reverse‑engineer, disassemble, etc.
+@ Clause 3 f
+rule F reverse_engineer:
+    not confidential_info.used_outside_purpose always   # modelled as unauthorised use
+
+# 3 g – Prohibition to file patents/trademarks that contain the confidential data
+@ Clause 3 g
+rule F patent_filing_using_confidential_info:
+    not confidential_info.used_outside_purpose always
+
+# 4 – Obligation to permit access only to those representatives who need it
+@ Clause 4
+rule O restrict_access_to_need_to_know:
+    forall r in receiving_party.representatives:
+        (r.role = "Representative") implies
+        (confidential_info.disclosed_to = receiving_party) always
+
+# 5 – Obligation to return or destroy the information after termination
+@ Clause 5
+rule O return_or_destroy_after_termination:
+    (agreement.termination_day) eventually
+        (confidential_info.is_returned or confidential_info.is_destroyed) always
+
+# 5 – Exception: one copy may be retained for regulatory/insurance purposes
+@ Clause 5
+rule O retain_one_copy_for_regulatory:
+    (agreement.termination_day) eventually
+        (may_retain_for_regulatory(confidential_info)) always
+
+# 10 – Survival of confidentiality and non‑use obligations for 3 years after disclosure
+@ Clause 10
+rule O confidentiality_survival_three_years:
+    (within_three_years(confidential_info) now) implies
+        confidential_info.is_marked_confidential always
+
+rule O non_use_survival_three_years:
+    (within_three_years(confidential_info) now) implies
+        not confidential_info.used_outside_purpose always
+
+# 8 – Right to injunctive relief (modeled as a prohibition of breach continuation)
+@ Clause 8
+rule F continue_breach_after_injunction:
+    not confidential_info.used_outside_purpose always
+
+# 12 – Governing law – no normative constraint on the model (informational only)
+
+# 13 – Successors and assigns – no normative constraint on the model
+
+# 14 – No rights for third parties – no normative constraint on the model
+
+# 15 – Communications – not modelled (procedural)
+
+# 16 – Secrecy of the agreement itself – prohibition to disclose the agreement
+@ Clause 16
+rule F disclose_agreement:
+    false always   # “false” is forbidden → the agreement may never be disclosed
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------

@@ -1,0 +1,67 @@
+@ Contract: Two‑Way Confidentiality and Non‑Disclosure Agreement (NDA)
+module contract_nli_no_align_dev_3_nda_3
+
+# ----------------------------------------------------------------------
+# Types that capture the domain objects described in the NDA
+# ----------------------------------------------------------------------
+type PartyRole = Disclosing | Receiving
+
+type Party = {
+    name:    string,
+    address: string,
+    role:    PartyRole
+}
+
+type ConfidentialInfo = {
+    -- true the information is conveyed in a documentary/tangible form
+    is_documentary: bool,
+    -- true when the information is conveyed orally or visually
+    is_oral:       bool,
+    -- true when the disclosing party has marked the information as
+    -- “confidential” (or otherwise identified it as such)
+    marked:        bool,
+    -- true when a written summary has been supplied by the disclosing party
+    summary_provided: bool,
+    -- number of days between the oral disclosure and the written summary
+    summary_days:      int,
+    -- description of the permitted purpose (e.g. “assessment of collaboration”)
+    permitted_purpose: string
+}
+
+# ----------------------------------------------------------------------
+# Entities – the public model objects that can be aligned with other
+# standards or modules
+# ----------------------------------------------------------------------
+entity disclosing_party: Party
+entity receiving_party: Party
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements expressed with deontic modalities
+# ----------------------------------------------------------------------
+@ Clause 3 – Obligations of confidentiality and non‑use
+rule O confidentiality_obligation:
+    -- The receiving party must keep all confidential information secret.
+    true always
+
+@ Clause 3b – Oral (or visual) disclosure must be identified as confidential
+rule O oral_info_must_be_identified:
+    confidential_info.is_oral implies confidential_info.marked always
+
+@ Clause 3b – Oral disclosure must be summarized in writing within 30 days
+rule O oral_summary_within_30_days:
+    confidential_info.is_oral implies
+        (confidential_info.summary_provided
+         and confidential_info.summary_days <= 30) always
+
+@ Clause 5 – Return / destruction of confidential information
+rule O return_or_destroy_on_termination:
+    -- At the end of the agreement (or on written instruction) the receiving
+    -- party must return or destroy all confidential information.
+    true always
+
+@ Clause 10 – Survival of confidentiality obligations after termination
+rule O confidentiality_survives_three_years:
+    -- The duty of non‑use and non‑disclosure survives for three years
+    -- after the date of disclosure, irrespective of the agreement’s term.
+    true always

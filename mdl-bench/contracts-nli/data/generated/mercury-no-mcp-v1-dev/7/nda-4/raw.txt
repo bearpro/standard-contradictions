@@ -1,0 +1,56 @@
+```mdl
+@ Non‑Disclosure Agreement – Module for hypothesis validation
+module contract_nli_no_align_dev_7_nda_4
+
+open std.strings
+
+-- ----------------------------------------------------------------------
+-- Types
+-- ----------------------------------------------------------------------
+@ Parties to the agreement (Company, AHPL, etc.)
+type Party = {
+    name: string
+}
+
+@ The purpose of the exchange as defined in Clause 1.1
+type Purpose = {
+    description: string
+}
+
+@ Confidential information as defined in Clause 1.2(a)
+type ConfidentialInfo = {
+    source: Party,          -- the Discloser
+    receiver: Party,        -- the Recipient
+    purpose: Purpose,       -- purpose for which the info was disclosed
+    content: string,        -- the actual information (abstracted)
+    used: bool              -- true if the receiver has used the info
+}
+
+-- ----------------------------------------------------------------------
+-- Entities
+-- ----------------------------------------------------------------------
+@ The agreement itself, holding the agreed purpose
+entity agreement: {
+    purpose: Purpose
+}
+
+@ A piece of confidential information exchanged under the agreement
+entity confidential_info: ConfidentialInfo
+
+-- ----------------------------------------------------------------------
+-- Functions
+-- ----------------------------------------------------------------------
+@ Returns true iff the confidential information is used for the purpose
+@ that was agreed in the agreement
+func used_for_agreed_purpose(info: ConfidentialInfo, agreed: Purpose) -> bool:
+    info.purpose = agreed
+
+-- ----------------------------------------------------------------------
+-- Rules
+-- ----------------------------------------------------------------------
+@ Clause 2.1(a) – The recipient must not use confidential information
+@ for any purpose other than the agreed purpose.
+rule O no_use_outside_agreed_purpose:
+    not (confidential_info.used and
+         not used_for_agreed_purpose(confidential_info, agreement.purpose)) always
+```

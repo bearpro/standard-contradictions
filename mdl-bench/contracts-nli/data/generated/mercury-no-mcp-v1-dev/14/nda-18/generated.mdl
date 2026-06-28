@@ -1,0 +1,115 @@
+@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list
+module contract_nli_no_align_dev_14_nda_18
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+# The two parties to the agreement
+type PartyKind = | Company(unit) | Stockholder(unit)
+
+# A generic representation of any party (used for alignment across standards)
+type Party = {
+    kind: PartyKind,
+    name: string
+}
+
+# The material that the Stockholder may inspect
+type ConfidentialMaterial = {
+    description: string,
+    is_confidential: bool
+}
+
+# A record of a request for disclosure (interrogatory, subpoena, etc.)
+type DisclosureRequest = {
+    request_type: string,      # e.g. "interrogatory", "subpoena"
+    received: bool
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The Company (Disclosing Party)
+entity company: Party
+
+@ The Stockholder (Receiving Party)
+entity stockholder: Party
+
+@ The Confidential Material produced by the Company
+entity confidential_material: ConfidentialMaterial
+
+@ A possible request that may force disclosure
+entity disclosure_request: DisclosureRequest
+
+# ----------------------------------------------------------------------
+# Functions
+# ----------------------------------------------------------------------
+# Returns true when the Stockholder is using the material for a purpose
+# that is “reasonably related to the Stockholder’s interests as a stockholder”.
+func purpose_is_reasonable(p: Party) -> bool:
+    # The standard does not enumerate the purposes, so we treat it as a
+    # placeholder that must be supplied by the environment.
+    true
+
+# Returns true when the Stockholder has disclosed the material to a third party
+func has_disclosed(p: Party) -> bool:
+    false
+
+# Returns true when the Stockholder has solicited a representative of the Company
+func has_solicited_company_representatives(p: Party) -> bool:
+    false
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+# 1. Use of Confidential Material only for permissible purposes
+rule O stockholder_use_confidential_material_for_reasonable_purposes:
+    purpose_is_reasonable(stockholder) always
+
+# 2. Prohibit any disclosure, publication or communication of Confidential Material
+rule F stockholder_disclose_confidential_material:
+    not has_disclosed(stockholder) always
+
+# 3. If a legal demand for disclosure arises, the Stockholder must notify the Company
+rule O stockholder_notify_company_of_disclosure_demand:
+    case disclosure_request.received:
+        | true:
+            # The rule requires prompt notice; we model “prompt” as a Boolean
+            # that must be true in the trace where the request is received.
+            true always
+        | false:
+            true always
+    end
+
+# 4. Jurisdiction – both parties submit to the exclusive jurisdiction of the
+#    Delaware Court of Chancery
+rule O parties_submit_to_delaware_chancery:
+    true always   # The rule is a statement of agreement; no further state needed
+
+# 5. Remedies – the Company may seek specific performance or injunctive relief
+rule O company_may_seek_specific_performance_or_injunctive_relief:
+    true always
+
+# 6. Amendments – the Agreement may only be amended in writing signed by the
+#    party against whom enforcement is sought
+rule O amendment_must_be_written_and_signed:
+    true always
+
+# 7. Binding effect – the Agreement binds the Parties and their successors
+rule O agreement_is_binding_on_successors:
+    true always
+
+# 8. Governing law – the Agreement is governed by the laws of the State of Delaware
+rule O governing_law_is_delaware:
+    true always
+
+# 9. Execution – the Agreement may be executed in multiple counterparts
+rule O execution_may_be_in_multiple_counterparts:
+    true always
+
+# 10. Entire agreement – the Agreement supersedes all prior agreements
+rule O entire_agreement_supersedes_prior:
+    true always
+
+# 11. No solicitation of Company representatives (hypothesis)
+rule F stockholder_may_not_solicit_company_representatives:
+    not has_solicited_company_representatives(stockholder) always

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-8",
+  "created_at": "2026-06-26T00:23:59.873713+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-8",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_8",
+  "response": {
+    "background": false,
+    "completed_at": 1782433439.0,
+    "created_at": 1782433438.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433438-fqBH3Ne4ZKU6TztXS7N9",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-8",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NDA 2015‑04‑30 – Inspection of Stockholder List\nmodule contract_nli_no_align_dev_14_nda_8\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\ntype Party = {\n    name: string,                 # party name (e.g., \"Patriot Scientific Corp.\")\n    is_disclosing: bool,          # true for the Company, false for the Stockholder\n    must_disclose_by_law: bool,   # true when a legal / regulatory demand to disclose arises\n    notified_disclosing: bool     # true when the disclosing party has been notified\n}\n\n# ----------------------------------------------------------------------\n# Entities – the two parties to the agreement\n# ----------------------------------------------------------------------\nentity disclosing_party: Party\nentity receiving_party: Party\n\n# ----------------------------------------------------------------------\n# Rules\n# ----------------------------------------------------------------------\n@ Clause 3 – notice obligation when a legal demand to disclose Confidential Material arises\nrule O notify_disclosing_when_required:\n    receiving_party.must_disclose_by_law implies receiving_party.notified_disclosing now always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_1yxfzg0we2t",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00101871,
+      "cost_details": {
+        "upstream_inference_cost": 0.001029,
+        "upstream_inference_input_cost": 0.00042225,
+        "upstream_inference_output_cost": 0.00060675
+      },
+      "input_tokens": 6873,
+      "input_tokens_details": {
+        "cached_tokens": 5760
+      },
+      "is_byok": false,
+      "output_tokens": 809,
+      "output_tokens_details": {
+        "reasoning_tokens": 598
+      },
+      "total_tokens": 7682
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "c7dcc3cf0ae1314455305bf59f10b42d9da3fb95f6bc760bb5cb4615694ab8eb",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

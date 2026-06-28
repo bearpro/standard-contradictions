@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-13-nda-10",
+  "created_at": "2026-06-26T00:22:23.518379+00:00",
+  "doc_id": 13,
+  "hypothesis_id": "nda-10",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_13_nda_10",
+  "response": {
+    "background": false,
+    "completed_at": 1782433343.0,
+    "created_at": 1782433341.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433341-KhRCj5J2R4K8oEeZCdAa",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-13-nda-10",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – PJM (2015) – Module for cross‑module alignment\nmodule contract_nli_no_align_dev_13_nda_10\n\nopen std.collections\n\n-- ----------------------------------------------------------------------\n-- Types\n-- ----------------------------------------------------------------------\n@ Parties to the Agreement\ntype Party = {\n    name:                 string,\n    is_transmission_owner: bool,\n    -- True if the Party has ever disclosed that the Agreement exists or was negotiated\n    has_disclosed_agreement: bool\n}\n\n@ Certificate signed by a Reviewing Representative\ntype NonDisclosureCertificate = {\n    signed_by: Party,\n    date:      string\n}\n\n@ A person who may access Confidential Information\ntype ReviewingRepresentative = {\n    person_name:                     string,\n    party:                           Party,\n    -- True when the Representative has executed a Non‑Disclosure Certificate\n    has_executed_certificate:        bool,\n    -- True when the Representative has duties that are “Competitive Duties”\n    has_competitive_duties:          bool,\n    -- True while the Representative is employed/engaged by the Party\n    is_employed:                     bool,\n    -- True if the Representative has used Confidential Information to give a\n    -- competitive or commercial advantage to any Party\n    used_confidential_for_competitive_advantage: bool,\n    -- True while the Representative still has access to Confidential Information\n    has_access:                      bool\n}\n\n-- ----------------------------------------------------------------------\n-- Entities (public model objects)\n-- ----------------------------------------------------------------------\n@ The Party that provides Confidential Information\nentity disclosing_party: Party\n\n@ The Party that receives Confidential Information\nentity receiving_party: Party\n\n@ A Representative of a Party who may view Confidential Information\nentity reviewing_rep: ReviewingRepresentative\n\n@ The signed Non‑Disclosure Certificate attached to a Representative\nentity nd_certificate: NonDisclosureCertificate\n\n-- ----------------------------------------------------------------------\n-- Rules (deontic requirements)\n-- ----------------------------------------------------------------------\n@ Clause 2 – Reviewing Representative must have executed a certificate\nrule O reviewing_rep_must_have_certificate:\n    reviewing_rep.has_executed_certificate always\n\n@ Clause 2 – Representative may not use Confidential Information for competitive advantage\nrule F reviewing_rep_use_competitive_advantage:\n    reviewing_rep.used_confidential_for_competitive_advantage = false always\n\n@ Clause 2 – When employment ends, access must be terminated\nrule O terminate_access_on_employment_end:\n    (not reviewing_rep.is_employed) implies (reviewing_rep.has_access = false) always\n\n@ Clause 5 – No disclosure to third parties without written approval\nrule F disclose_to_third_party_without_approval:\n    -- Modelled by a Boolean field on the disclosing Party; the field must stay false\n    disclosing_party.has_disclosed_agreement = false always\n\n@ Hypothesis – Receiving Party shall not disclose the fact that the Agreement was\n--            agreed or negotiated.\nrule O receiving_party_not_disclose_agreement_fact:\n    receiving_party.has_disclosed_agreement = false always\n\n-- ----------------------------------------------------------------------\n-- Helper Functions (optional, for readability)\n-- ----------------------------------------------------------------------\nfunc is_disclosing(p: Party) -> bool:\n    p = disclosing_party\n\nfunc is_receiving(p: Party) -> bool:\n    p = receiving_party\n\n-- End of module\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_cx2ej0il7he",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002193345,
+      "cost_details": {
+        "upstream_inference_cost": 0.0022155,
+        "upstream_inference_input_cost": 0.00113475,
+        "upstream_inference_output_cost": 0.00108075
+      },
+      "input_tokens": 9624,
+      "input_tokens_details": {
+        "cached_tokens": 5650
+      },
+      "is_byok": false,
+      "output_tokens": 1441,
+      "output_tokens_details": {
+        "reasoning_tokens": 791
+      },
+      "total_tokens": 11065
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "aec38f01325f58c7a58d37d6edecad50ec96728412d65c564d196e88c79dee6f",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

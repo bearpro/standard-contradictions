@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-20",
+  "created_at": "2026-06-26T00:20:12.913668+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-20",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_20",
+  "response": {
+    "background": false,
+    "completed_at": 1782433212.0,
+    "created_at": 1782433210.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433210-h56beaLNZlKaaWC4xt6Y",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-20",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Negotiable Confidentiality and Non‑Disclosure Agreement (Transportation Challenge 2017)\nmodule contract_nli_no_align_dev_9_nda_20\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Record describing the vendor’s handling of confidential information\ntype Vendor = {\n    retains_confidential: bool   # true if any confidential information is still held\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The party that receives the confidential information\nentity vendor: Vendor\n\n# ----------------------------------------------------------------------\n# Rules (obligations / prohibitions)\n# ----------------------------------------------------------------------\n@ Clause 6 – Return or Destruction of Materials\n@ The vendor must not retain any confidential information after BPS has\n@ requested return or destruction, and also after the services are completed.\nrule O vendor_must_not_retain_confidential:\n    not vendor.retains_confidential always\n\n# ----------------------------------------------------------------------\n# Hypothesis (to be checked for consistency)\n# ----------------------------------------------------------------------\n@ Hypothesis: Receiving Party may retain some Confidential Information even after\n@ the return or destruction of Confidential Information.\nfact vendor.retains_confidential = true\n```\n\n**Explanation**\n\n* The rule `vendor_must_not_retain_confidential` encodes the obligation in Clause 6 that the vendor must **not** keep any confidential information once BPS has asked for its return or destruction (and after the work is finished).  \n* The `fact` expresses the hypothesis that the vendor **does** retain confidential information.  \n\nWhen the module is solved (`mdl solve contract_nli_no_align_dev_9_nda_20.mdl`), the solver will return **unsat**, indicating that the hypothesis contradicts the contractual obligation.",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_uko284dpko9",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00181999125,
+      "cost_details": {
+        "upstream_inference_cost": 0.001838375,
+        "upstream_inference_input_cost": 0.000963125,
+        "upstream_inference_output_cost": 0.00087525
+      },
+      "input_tokens": 8951,
+      "input_tokens_details": {
+        "cached_tokens": 5665
+      },
+      "is_byok": false,
+      "output_tokens": 1167,
+      "output_tokens_details": {
+        "reasoning_tokens": 829
+      },
+      "total_tokens": 10118
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "ea2c4ae440a26a56d3f19d6d9d37bbe41f6913fe2987477df236c591e5f653a6",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

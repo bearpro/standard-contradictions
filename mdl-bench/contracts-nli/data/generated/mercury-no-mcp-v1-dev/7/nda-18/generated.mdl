@@ -1,0 +1,49 @@
+@ Non‑Disclosure Agreement – No alignment – Development – NDA #18
+module contract_nli_no_align_dev_7_nda_18
+
+# ----------------------------------------------------------------------
+# Domain model
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party =
+    | Company(unit)          # the “Company” (the Receiving Party)
+    | AHPL(unit)             # ALEXANDRA HEALTH PTE LTD (the Disclosing Party)
+
+@ Representative of a party
+type Representative = {
+    party: Party,              # the party to which the representative belongs
+    name : string              # identifier of the representative
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects that can be aligned across modules
+# ----------------------------------------------------------------------
+@ The party that receives the Confidential Information (the Receiving Party)
+entity receiving_party : Party
+
+@ The party that discloses the Confidential Information (the Disclosing Party)
+entity disclosing_party : Party
+
+@ A specific representative of a party (used when checking solicitation)
+entity representative : Representative
+
+@ Boolean flag indicating whether the Receiving Party has solicited the
+@ representative in the current step of the trace.
+entity solicited : bool
+
+# ----------------------------------------------------------------------
+# Helper function
+# ----------------------------------------------------------------------
+@ Returns true iff the given representative belongs to the Disclosing Party
+func is_disclosing_rep(rep: Representative, discloser: Party) -> bool:
+    rep.party = discloser
+
+# ----------------------------------------------------------------------
+# Prohibition rule (hypothesis)
+# ----------------------------------------------------------------------
+@ Clause 2.1(b) – “not to copy, reproduce …” (interpreted to include
+@ solicitation of the Disclosing Party’s representatives)
+rule F prohibit_solicitation_of_disclosing_representative:
+    let forbidden = bool =
+        is_disclosing_rep(representative, disclosing_party) and solicited
+    forbidden always

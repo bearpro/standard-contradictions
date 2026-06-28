@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-13-nda-16",
+  "created_at": "2026-06-26T00:22:40.190101+00:00",
+  "doc_id": 13,
+  "hypothesis_id": "nda-16",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_13_nda_16",
+  "response": {
+    "background": false,
+    "completed_at": 1782433359.0,
+    "created_at": 1782433358.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433358-SfEiLDUP56QXvqEYA16t",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-13-nda-16",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "**MDL module name:** `contract_nli_no_align_dev_13_nda_16`\n\n```mdl\n@ Non‑Disclosure Agreement (NDA) – 11 Aug 2015 (PJ M & Transmission Owner)\nmodule contract_nli_no_align_dev_13_nda_16\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties to the Agreement\ntype Party = {\n    name: string,               # e.g. \"PJM\" or \"Transmission Owner\"\n    is_disclosing: bool,        # true if this Party supplies Confidential Information\n    is_receiving: bool          # true if this Party receives Confidential Information\n}\n\n@ Confidential Information that is exchanged under the NDA\ntype ConfidentialInformation = {\n    id: int,                    # unique identifier for the piece of information\n    owner: Party,               # the Disclosing Party that supplied it\n    holder: Party,              # the Receiving Party that currently possesses it\n    is_returned: bool,          # true when the information has been returned\n    is_destroyed: bool          # true when the information has been destroyed\n}\n\n@ The NDA itself – we only need the termination flag for this model\ntype Agreement = {\n    terminated: bool            # true when the Agreement has been terminated\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ The NDA that governs the relationship\nentity agreement: Agreement\n\n@ The Party that is receiving Confidential Information (the “Receiving Party”)\nentity receiving_party: Party\n\n@ A piece of Confidential Information that the Receiving Party holds\nentity confidential_info: ConfidentialInformation\n\n# ----------------------------------------------------------------------\n# Rules – deontic obligations extracted from the NDA\n# ----------------------------------------------------------------------\n@ Clause 8 – “Ownership and Use of Confidential Information”\n@ The Receiving Party must return or destroy Confidential Information\n@ when the Agreement is terminated.\nrule O return_or_destroy_on_termination:\n    (agreement.terminated implies\n        (confidential_info.is_returned or confidential_info.is_destroyed)) always\n\n@ Clause 2 – “Reviewing Representative”\n@ A Reviewing Representative (a member of the Receiving Party) may only\n@ have access if they have executed a Non‑Disclosure Certificate.\nrule O reviewing_rep_must_have_certificate:\n    receiving_party.is_receiving implies\n        (confidential_info.holder = receiving_party) always\n\n@ Clause 5 – “Non‑Disclosure to Third Parties”\n@ No Confidential Information may be disclosed to a third party\n@ unless the Disclosing Party gives prior written approval.\nrule F disclose_to_third_party_without_approval:\n    (confidential_info.is_returned or confidential_info.is_destroyed) implies\n        (confidential_info.holder.is_disclosing) always\n\n# ----------------------------------------------------------------------\n# Helper functions (optional – keep the rules readable)\n# ----------------------------------------------------------------------\nfunc is_terminated(a: Agreement) -> bool: a.terminated\n\nfunc is_returned_or_destroyed(ci: ConfidentialInformation) -> bool:\n    ci.is_returned or ci.is_destroyed\n```\n\n**Explanation of the hypothesis**\n\nThe hypothesis *“Receiving Party shall destroy or return some Confidential Information upon the termination of Agreement.”* is captured by the rule `return_or_destroy_on_termination`.  \n- The antecedent `agreement.terminated` models the moment the Agreement ends.  \n- The consequent `confidential_info.is_returned or confidential_info.is_destroyed` expresses the obligation to either return **or** destroy the information.  \n- The `always` temporal operator makes the obligation hold at every step of the trace where the antecedent is true, i.e., from the point of termination onward.  \n\nIf the solver finds a trace where `agreement.terminated` is true but both `confidential_info.is_returned` and `confidential_info.is_destroyed` are false, the rule will be violated and the model will be reported as **unsat**, confirming that the hypothesis is a required obligation under the NDA.",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_45kp5df7yif",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00201066525,
+      "cost_details": {
+        "upstream_inference_cost": 0.002030975,
+        "upstream_inference_input_cost": 0.001127225,
+        "upstream_inference_output_cost": 0.00090375
+      },
+      "input_tokens": 9557,
+      "input_tokens_details": {
+        "cached_tokens": 5609
+      },
+      "is_byok": false,
+      "output_tokens": 1205,
+      "output_tokens_details": {
+        "reasoning_tokens": 424
+      },
+      "total_tokens": 10762
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "60a81e66349324d9a6b5876afc25f9bb6765ea531834a37340c3ff9e8bec986d",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

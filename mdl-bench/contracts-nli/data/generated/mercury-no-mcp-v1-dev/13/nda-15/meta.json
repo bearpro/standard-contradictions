@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-13-nda-15",
+  "created_at": "2026-06-26T00:22:37.356759+00:00",
+  "doc_id": 13,
+  "hypothesis_id": "nda-15",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_13_nda_15",
+  "response": {
+    "background": false,
+    "completed_at": 1782433357.0,
+    "created_at": 1782433354.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433354-dbXCrbvAoR5dc0B0ssEF",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-13-nda-15",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement (NDA) – PJM Energy Management System Model Data\n@ Document: NON‑DISCLOSURE AGREEMENT FOR THE EXCHANGE OF ENERGY MANAGEMENT SYSTEM MODEL DATA\n@ Hypothesis: “Agreement shall not grant Receiving Party any right to Confidential Information.”\nmodule contract_nli_no_align_dev_13_nda_15\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties to the Agreement (PJM and a Transmission Owner)\ntype Party = {\n    name: string,               # e.g. \"PJM Interconnection\" or \"Transmission Owner\"\n    is_disclosing: bool         # true for the Disclosing Party, false for the Receiving Party\n}\n\n@ The confidential data that is exchanged\ntype ConfidentialInformation = {\n    owner: Party,               # the Disclosing Party that supplied the data\n    data: string                # opaque representation of the model data\n}\n\n@ An employee or agent who may view the confidential data\ntype ReviewingRepresentative = {\n    name: string,\n    party: Party,                # the Party the representative belongs to\n    has_certificate: bool,      # true when a signed Non‑Disclosure Certificate has been submitted\n    duties: List<string>        # e.g. [\"TransmissionFunctions\", \"CompetitiveDuties\"]\n}\n\n@ The signed certificate that a Reviewing Representative must provide\ntype NonDisclosureCertificate = {\n    representative: ReviewingRepresentative,\n    signed: bool,\n    date_signed: string\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ Disclosing Party (PJM)\nentity disclosing_party: Party\n\n@ Receiving Party (Transmission Owner)\nentity receiving_party: Party\n\n@ The confidential information that is exchanged\nentity confidential_information: ConfidentialInformation\n\n@ A representative of a Party who may need access\nentity reviewing_rep: ReviewingRepresentative\n\n@ The certificate proving the representative’s understanding of the NDA\nentity certificate: NonDisclosureCertificate\n\n# ----------------------------------------------------------------------\n# Helper Functions\n# ----------------------------------------------------------------------\n# Returns true if the representative’s duties include a competitive duty\nfunc has_competitive_duty(rep: ReviewingRepresentative) -> bool:\n    list.contains(rep.duties, \"CompetitiveDuties\")\n\n# Placeholder for a legal‑requirement check (e.g. subpoena, court order)\n# In a real model this would be supplied by an external fact base.\nfunc required_by_law(party: Party) -> bool:\n    false   # default to false; can be overridden by a fact in a concrete instance\n\n# ----------------------------------------------------------------------\n# Rules – deontic constraints derived from the NDA\n# ----------------------------------------------------------------------\n@ 2.1 – A Reviewing Representative must have executed a Non‑Disclosure Certificate\nrule O rep_must_have_certificate:\n    reviewing_rep.has_certificate always\n\n@ 2.2 – A Reviewing Representative may only access Confidential Information\n#          when the information is needed to perform Transmission Functions\nrule O rep_access_allowed_by_duty:\n    (reviewing_rep.duties.contains(\"TransmissionFunctions\")) always\n\n@ 2.3 – The Receiving Party does NOT obtain ownership of the Confidential Information\nrule F receiving_party_no_ownership:\n    confidential_information.owner = disclosing_party always\n\n@ 2.4 – Prohibit disclosure of Confidential Information to any third party\n#          without prior written approval from the Disclosing Party\nrule F disclose_to_third_party_without_approval:\n    (confidential_information.owner = disclosing_party) and\n    (reviewing_rep.party = receiving_party) and\n    (not reviewing_rep.has_certificate) and\n    (not required_by_law(receiving_party)) always\n\n@ 2.5 – Permit disclosure when required by law or an Authority,\n#          provided the Disclosing Party is notified and a protective order is sought\nrule P disclose_by_law:\n    required_by_law(receiving_party) implies\n        (confidential_information.owner = disclosing_party) and\n        reviewing_rep.has_certificate always\n\n@ 2.6 – When a Reviewing Representative ceases to be employed or acquires\n#          competitive duties, access must be terminated and the information\n#          must be returned or destroyed\nrule F terminate_access_on_employment_change:\n    (has_competitive_duty(reviewing_rep) or not reviewing_rep.has_certificate) implies\n        (confidential_information.owner = disclosing_party) and\n        (not reviewing_rep.party = receiving_party) always\n\n@ 2.7 – The Receiving Party must return or destroy Confidential Information\n#          once it is no longer needed for Transmission Functions\nrule O return_or_destroy_when_not_needed:\n    (not reviewing_rep.duties.contains(\"TransmissionFunctions\")) implies\n        (confidential_information.owner = disclosing_party) and\n        (reviewing_rep.has_certificate = false) always\n\n# ----------------------------------------------------------------------\n# Facts (can be used to instantiate a concrete scenario)\n# ----------------------------------------------------------------------\n# Example fact: the Disclosing Party is PJM\nfact disclosing_party = { name = \"PJM Interconnection\", is_disclosing = true }\n\n# Example fact: the Receiving Party is a Transmission Owner\nfact receiving_party = { name = \"Transmission Owner\", is_disclosing = false }\n\n# Example fact: a representative of the Receiving Party has signed the certificate\nfact certificate = {\n    representative = {\n        name = \"Alice Smith\",\n        party = receiving_party,\n        has_certificate = true,\n        duties = [\"TransmissionFunctions\"]\n    },\n    signed = true,\n    date_signed = \"2015-08-11\"\n}\n\n# Bind the certificate to the representative entity\nfact reviewing_rep = certificate.representative\n\n# Confidential information owned by the Disclosing Party\nfact confidential_information = {\n    owner = disclosing_party,\n    data = \"energy_management_model_data_blob\"\n}\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_6fljlxk0zsi",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00244077075,
+      "cost_details": {
+        "upstream_inference_cost": 0.002465425,
+        "upstream_inference_input_cost": 0.001107925,
+        "upstream_inference_output_cost": 0.0013575
+      },
+      "input_tokens": 9397,
+      "input_tokens_details": {
+        "cached_tokens": 5517
+      },
+      "is_byok": false,
+      "output_tokens": 1810,
+      "output_tokens_details": {
+        "reasoning_tokens": 683
+      },
+      "total_tokens": 11207
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "26785ba7c57e3aaf14cf60126fc0b56406d739f346cad2b12f46b5160de8b009",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

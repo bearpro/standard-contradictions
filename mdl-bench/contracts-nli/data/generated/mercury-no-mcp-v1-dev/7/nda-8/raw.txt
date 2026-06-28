@@ -1,0 +1,46 @@
+```mdl
+@ Non‑Disclosure Agreement – Model for clause 2.3 (notification of legally‑required disclosure)
+module contract_nli_no_align_dev_7_nda_8
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+# Parties to the agreement
+type Party =
+    | Company(unit)          # the receiving party (the Company)
+    | AHPL(unit)             # the disclosing party (ALEXANDRA HEALTH PTE LTD)
+
+# Event describing a possible disclosure of Confidential Information
+type DisclosureEvent = {
+    required_by_law: bool,    # true when a law, regulation or judicial process forces disclosure
+    disclosed: bool           # true when the Confidential Information has actually been disclosed
+}
+
+# ----------------------------------------------------------------------
+# Entities – stable domain objects that can be aligned with other models
+# ----------------------------------------------------------------------
+entity receiving_party: Party          # the party receiving Confidential Information (the Company)
+entity disclosing_party: Party         # the party disclosing Confidential Information (AHPL)
+entity disclosure_event: DisclosureEvent
+entity notification_given: bool       # true when the receiving party has given the required notice
+
+# ----------------------------------------------------------------------
+# Rules – deontic obligations (O = obligation)
+# ----------------------------------------------------------------------
+# Clause 2.3 – The Recipient (receiving party) must give the Disclosing Party
+# at least two business days’ notice before any legally‑required disclosure.
+@ Clause 2.3
+rule O notify_before_legal_disclosure:
+    disclosure_event.required_by_law implies notification_given always
+
+# ----------------------------------------------------------------------
+# (Optional) Helper functions – not needed for this simple rule but kept for
+# extensibility.  They can be used by other modules that model time or
+# business‑day calculations.
+# ----------------------------------------------------------------------
+func is_legal_disclosure(event: DisclosureEvent) -> bool:
+    event.required_by_law
+
+func has_given_notice(notified: bool) -> bool:
+    notified
+```

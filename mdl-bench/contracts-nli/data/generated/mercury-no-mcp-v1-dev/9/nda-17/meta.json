@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-17",
+  "created_at": "2026-06-26T00:20:00.621064+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-17",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_17",
+  "response": {
+    "background": false,
+    "completed_at": 1782433200.0,
+    "created_at": 1782433198.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433198-Zlhkc4VLmgKHikGdnPh2",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-17",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT – 2017\nmodule contract_nli_no_align_dev_9_nda_17\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties defined in the Agreement (Vendor and BPS)\ntype Party = {\n    name: string               # e.g. \"Vendor\" or \"BPS\"\n    email: string\n    phone: string\n}\n\n@ Confidential information that may be shared for the Transportation Challenge\ntype ConfidentialInformation = {\n    description: string        # generic description of the data set\n    is_student_data: bool      # true for student‑routing data\n}\n\n@ Secure database used by the Vendor to store/handle Confidential Information\ntype Database = {\n    is_secure: bool            # must meet BPS security requirements\n    holds_confidential_info: bool\n    # The database is the mechanism by which the Vendor may create a copy\n    # of the Confidential Information for the purposes of the Challenge.\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ The two Parties to the Agreement\nentity vendor: Party\nentity bps: Party\n\n@ The Confidential Information that BPS provides to the Vendor\nentity confidential_info: ConfidentialInformation\n\n@ The secure database that the Vendor must maintain\nentity vendor_database: Database\n\n# ----------------------------------------------------------------------\n# Functions (pure helpers)\n# ----------------------------------------------------------------------\n@ Returns true when the Vendor is permitted to create a copy of the\n@ Confidential Information according to the Agreement.\nfunc copy_allowed(v: Party, db: Database) -> bool:\n    # The Agreement (Section “Data Sharing”) requires a secure database\n    # and restricts use to the performance of the services.\n    db.is_secure and db.holds_confidential_info\n\n# ----------------------------------------------------------------------\n# Rules (deontic requirements)\n# ----------------------------------------------------------------------\n@ Clause “Data Sharing” – Vendor shall maintain a secure database for\n@ handling Confidential Information.\nrule O vendor_maintains_secure_database:\n    vendor_database.is_secure and\n    vendor_database.holds_confidential_info always\n\n@ Clause “Nondisclosure” – Vendor may use Confidential Information only\n@ for the services and may create a copy only within the secure database.\nrule P vendor_may_create_copy_of_confidential_info:\n    copy_allowed(vendor, vendor_database) always\n\n# ----------------------------------------------------------------------\n# Optional fact (used only for testing, should be removed in production)\n# ----------------------------------------------------------------------\n# fact vendor_database.is_secure = true\n# fact vendor_database.holds_confidential_info = true\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_v3eowi63mwf",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00166965975,
+      "cost_details": {
+        "upstream_inference_cost": 0.001686525,
+        "upstream_inference_input_cost": 0.000934275,
+        "upstream_inference_output_cost": 0.00075225
+      },
+      "input_tokens": 8688,
+      "input_tokens_details": {
+        "cached_tokens": 5501
+      },
+      "is_byok": false,
+      "output_tokens": 1003,
+      "output_tokens_details": {
+        "reasoning_tokens": 503
+      },
+      "total_tokens": 9691
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "27de9e3b173707bf0401380187a9d771c9bdf3ec028b8556b34d84c64255e36a",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-5",
+  "created_at": "2026-06-26T00:22:09.990640+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-5",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_5",
+  "response": {
+    "background": false,
+    "completed_at": 1782433329.0,
+    "created_at": 1782433327.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433327-4UEJ5AYh8Wp9LYAuIi9n",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-5",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality (Non‑Disclosure) Agreement\nmodule contract_nli_no_align_dev_12_nda_5\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\ntype Party =\n    | Brooks(unit)      # BROOKS’ BOTTLING COMPANY, LLC\n    | Client(unit)      # CLIENT\n\n@ Clause 1 – Confidential Information\ntype ConfidentialInfo = {\n    is_personal: bool,\n    is_financial: bool,\n    is_product: bool,\n    is_formulation: bool,\n    is_processing_procedure: bool\n}\n\n@ Clause 2 – Employees of the Receiving Party (BROOKS)\ntype Employee = {\n    name: string,\n    has_reasonable_need: bool   # true if the employee needs the info to perform the services\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\nentity brooks: Party = Party.Brooks()\nentity client: Party = Party.Client()\n\n@ Clause 1 – Confidential Information disclosed by CLIENT\nentity confidential_info: ConfidentialInfo\n\n@ Clause 2 – A representative employee of BROOKS\nentity brooks_employee: Employee\n\n@ Clause 4 – Client’s written consent for a particular disclosure\nentity client_consent: bool   # true when CLIENT has given written consent\n\n@ Clause 5 – Termination of the business relationship\nentity termination: bool      # true at the step where the relationship ends\n\n@ Clause 5 – Return of material obligation by BROOKS\nentity material_returned: bool   # true when all CLIENT material has been returned\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n@ Clause 2 – Permission to disclose to a given employee\nfunc can_disclose_to_employee(emp: Employee, consent: bool) -> bool:\n    emp.has_reasonable_need or consent\n\n# ----------------------------------------------------------------------\n# Rules (deontic requirements)\n# ----------------------------------------------------------------------\n@ Clause 1.1 – CONFIDENT INFORMATION is received in confidence\nrule O receive_confidential_info:\n    true always\n\n@ Clause 2 – No disclosure to employees lacking reasonable need unless CLIENT consents\nrule O disclose_to_employee_only_if_allowed:\n    can_disclose_to_employee(brooks_employee, client_consent) always\n\n@ Clause 2 – Prohibition of unlawful disclosure (negative formulation)\nrule F prohibit_disclosure_without_need:\n    not (brooks_employee.has_reasonable_need) and not client_consent always\n\n@ Clause 4 – When legally compelled, BROOKS must notify CLIENT\nrule O notify_client_of_legal_compulsion:\n    true always   # the notification obligation is unconditional\n\n@ Clause 5 – Return of material after termination (if CLIENT requests)\nrule O return_material_on_request:\n    termination implies material_returned always\n\n@ Clause 5 – If CLIENT does not request return, BROOKS may retain material for 3 years\nrule O retain_material_for_three_years:\n    not termination and not material_returned eventually   # allowed to keep until 3‑year deadline (modelled as “eventually”)\n\n@ Clause 6 – Governing law (informational, not a deontic requirement)\nrule O governed_by_new_york_law:\n    true always\n\n@ Clause 7 – Survival of confidentiality for one year after termination\nrule O confidentiality_survives_one_year:\n    termination until (termination and true)   # modelled as “until” the one‑year expiry (abstracted)\n\n# ----------------------------------------------------------------------\n# Hypothesis (derived from the agreement)\n# ----------------------------------------------------------------------\n@ Hypothesis – Receiving Party may share some Confidential Information with some of its employees\nrule P share_with_reasonable_need_employee:\n    brooks_employee.has_reasonable_need always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_4xb5lj9isnk",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00188998425,
+      "cost_details": {
+        "upstream_inference_cost": 0.001909075,
+        "upstream_inference_input_cost": 0.000523825,
+        "upstream_inference_output_cost": 0.00138525
+      },
+      "input_tokens": 7255,
+      "input_tokens_details": {
+        "cached_tokens": 5733
+      },
+      "is_byok": false,
+      "output_tokens": 1847,
+      "output_tokens_details": {
+        "reasoning_tokens": 1079
+      },
+      "total_tokens": 9102
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "5272e53cfcbf5421b199dd7894d237b562d6d47734d7a5199fdc33fc58184144",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

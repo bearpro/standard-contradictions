@@ -1,0 +1,154 @@
+@ Confidentiality (Non‑Disclosure) Agreement – Model
+module contract_nli_no_align_dev_12_nda_13
+
+# ----------------------------------------------------------------------
+# Standard library imports (implicit in most environments)
+# ----------------------------------------------------------------------
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party =
+    | Client(unit)          # the disclosing party
+    | ReceivingParty(unit) # BROOKS – the receiving party
+
+@ Clause 1 – Information categories
+type InfoCategory =
+    | Personal(unit)
+    | Financial(unit)
+    | Product(unit)
+    | Formulation(unit)
+    | ProcessingProcedure(unit)
+
+@ Clause 3 – Source of information
+type Source =
+    | FromClient(unit)
+    | FromThirdParty(unit)
+    | FromReceivingParty(unit)
+    | PublicDomain(unit)
+
+@ Clause 1 – Confidential Information record
+type ConfidentialInfo = {
+    category   : InfoCategory,
+    source     : Source,
+    content    : string,
+    is_similar : bool   # true if the information is “similar” to confidential data
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ Clause 1 – The two parties
+entity client          : Party
+entity brooks          : Party
+
+@ Clause 1 – A piece of information that may be subject to the agreement
+entity info            : ConfidentialInfo
+
+# Clause 4 – Events that affect the temporal dimension
+entity termination          : bool   # true at the step when the business relationship ends
+entity legal_compelled      : bool   # true at the step when BROOKS is legally compelled to disclose
+entity client_consent       : bool   # true when CLIENT has given written consent to a disclosure
+entity client_requests_return : bool # true when CLIENT requests the return of material
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Clause 1 – Is the information confidential (i.e. originated from the CLIENT)?
+func is_confidential(i: ConfidentialInfo) -> bool:
+    i.source = Source.FromClient()
+
+@ Clause 3 – Does an exception to confidentiality apply?
+func exception_applies(i: ConfidentialInfo) -> bool:
+    case i.source:
+        | Source.FromReceivingParty():               # 3.1 Already possesses
+            true
+        | Source.PublicDomain():                    # 3.6 Publicly available
+            true
+        | Source.FromThirdParty():
+            i.is_similar                               # 3.3 Rightfully received (including “similar” info)
+        | _: false
+
+# Clause 3 – Is a disclosure permitted because the CLIENT consented?
+func consented_disclosure(i: ConfidentialInfo) -> bool:
+    client_consent
+
+# ----------------------------------------------------------------------
+# Normative rules (deontic modalities)
+# ----------------------------------------------------------------------
+@ Clause 1.1 – Confidential information must be kept in confidence
+rule O keep_confidential:
+    is_confidential(info) implies
+        (brooks = Party.ReceivingParty()) and
+        (client = Party.Client()) and
+        (info.category = InfoCategory.Personal() or
+         info.category = InfoCategory.Financial() or
+         info.category = InfoCategory.Product() or
+         info.category = InfoCategory.Formulation() or
+         info.category = InfoCategory.ProcessingProcedure()) always
+
+@ Clause 1.2 – BROOKS shall not disclose confidential information except as allowed
+rule F no_unauthorized_disclosure:
+    is_confidential(info) and not exception_applies(info) and not consented_disclosure(info) implies
+        false always   # prohibition of any disclosure
+
+@ Clause 2.2 – Breach causes irreparable harm – modelled as a prohibition of breach
+rule F breach_causes_harm:
+    (is_confidential(info) and not exception_applies(info) and not consented_disclosure(info)) implies
+        false always
+
+@ Clause 2.3 – BROOKS may not approach CLIENT’s private‑label customers
+rule F no_approach_private_label_customers:
+    false always   # placeholder – no state to model; the rule is a prohibition
+
+@ Clause 3 – Exceptions (allowance to possess or develop information)
+rule O exception_allowed:
+    exception_applies(info) always
+
+@ Clause 4 – Compelled disclosure: BROOKS must notify CLIENT
+rule O notify_if_compelled:
+    legal_compelled implies
+        (brooks = Party.ReceivingParty()) and
+        (client = Party.Client()) and
+        true always
+
+@ Clause 4 – After protective order / waiver, limited disclosure is permitted
+rule O limited_disclosure_after_compel:
+    legal_compelled and not client_consent implies
+        (info.category = InfoCategory.Personal() or
+         info.category = InfoCategory.Financial() or
+         info.category = InfoCategory.Product()) and
+        true always   # limited to the portion identified by counsel
+
+@ Clause 5 – Return of material upon termination
+rule O return_material_on_termination:
+    termination implies
+        (client_requests_return implies
+            (brooks = Party.ReceivingParty()) and
+            true) else
+            (true)   # retain for three years – modelled as no obligation to return
+
+@ Clause 6 – Governing law (no operational effect, but recorded for completeness)
+rule O governing_law_new_york:
+    true always
+
+@ Clause 7 – Survival (the agreement remains in force for 1 year after termination)
+rule O agreement_survival:
+    (termination) implies
+        (true)   # the model does not encode duration; the rule records the intent
+
+@ Clause 11 – Notice (no operational effect)
+rule O notice_requirements:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis – Receiving Party may acquire information similar to Confidential Information
+# from a third party.  This is covered by the exception in Clause 3.3.
+# ----------------------------------------------------------------------
+@ Hypothesis – “Receiving Party may acquire similar information from a third party”
+rule P acquire_similar_info_from_third_party:
+    (info.source = Source.FromThirdParty()) and
+    info.is_similar implies
+        true always   # permission to acquire such information

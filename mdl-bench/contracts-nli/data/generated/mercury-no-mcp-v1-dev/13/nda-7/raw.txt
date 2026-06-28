@@ -1,0 +1,113 @@
+```mdl
+@ Non‑Disclosure Agreement for the Exchange of Energy Management System Model Data
+module contract_nli_no_align_dev_13_nda_7
+
+# ----------------------------------------------------------------------
+# Types – domain concepts described in the NDA
+# ----------------------------------------------------------------------
+
+@ Definition of a Party (PJM or a Transmission Owner)
+type Party = {
+    name: string,               # e.g. "PJM", "Transmission Owner"
+    is_disclosing: bool         # true if this Party is the Disclosing Party for a given exchange
+}
+
+@ Definition of a Reviewing Representative (an employee who signs a certificate)
+type ReviewingRepresentative = {
+    name: string,
+    title: string,
+    employed_by: Party,
+    has_executed_certificate: bool
+}
+
+@ Definition of a Third Party (consultant, agent, professional advisor, etc.)
+type ThirdParty = {
+    name: string,
+    relationship: string          # e.g. "consultant", "agent", "advisor"
+}
+
+@ Definition of Confidential Information (the data subject to the NDA)
+type ConfidentialInfo = {
+    description: string,
+    is_marked_confidential: bool,
+    provided_by: Party,
+    received_by: Party
+}
+
+@ Event that records a disclosure of Confidential Information
+type DisclosureEvent = {
+    info: ConfidentialInfo,
+    from_party: Party,
+    to_party: Party,
+    is_third_party: bool,         # true if to_party is a ThirdParty
+    is_by_reviewing_rep: bool    # true if the receiver is a Reviewing Representative
+}
+
+# ----------------------------------------------------------------------
+# Entities – concrete objects that will be instantiated by the solver
+# ----------------------------------------------------------------------
+
+@ The Party that receives the Confidential Information (the “Receiving Party”)
+entity receiving_party: Party
+
+@ The Party that provides the Confidential Information (the “Disclosing Party”)
+entity disclosing_party: Party
+
+@ A Reviewing Representative of the Receiving Party
+entity reviewing_rep: ReviewingRepresentative
+
+@ A Third Party that might be contacted (consultant, agent, advisor, etc.)
+entity third_party: ThirdParty
+
+@ The Confidential Information itself
+entity confidential_info: ConfidentialInfo
+
+@ A specific disclosure event that may occur during the life of the Agreement
+entity disclosure: DisclosureEvent
+
+# ----------------------------------------------------------------------
+# Functions – helpers to keep rule bodies readable
+# ----------------------------------------------------------------------
+func is_disclosure_to_third_party(ev: DisclosureEvent) -> bool:
+    ev.is_third_party
+
+func is_disclosure_by_reviewing_rep(ev: DisclosureEvent) -> bool:
+    ev.is_by_reviewing_rep
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements extracted from the NDA
+# ----------------------------------------------------------------------
+
+@ 5. Non‑Disclosure to Third Parties
+rule F no_third_party_disclosure:
+    is_disclosure_to_third_party(disclosure) always
+
+@ 2. Reviewing Representative must have executed a Non‑Disclosure Certificate
+rule O reviewing_rep_must_have_certificate:
+    reviewing_rep.has_executed_certificate always
+
+@ 2. Reviewing Representative may receive Confidential Information only if needed for Transmission Functions
+rule O reviewing_rep_must_need_info:
+    (reviewing_rep.is_by_reviewing_rep and
+     is_disclosure_by_reviewing_rep(disclosure)) always
+
+@ 8. Confidential Information may be used only for Transmission Functions
+rule O use_only_for_transmission_functions:
+    (disclosure.is_by_reviewing_rep and
+     reviewing_rep.employed_by = receiving_party) always
+
+@ 9. Identification – Confidential Information must be marked as “Confidential” (or announced orally)
+rule O confidential_info_must_be_marked:
+    confidential_info.is_marked_confidential always
+
+# ----------------------------------------------------------------------
+# Hypothesis – the proposition we want to test for consistency
+# ----------------------------------------------------------------------
+@ Hypothesis: Receiving Party may share some Confidential Information with some third‑parties
+rule P share_with_third_party_allowed:
+    is_disclosure_to_third_party(disclosure) always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

@@ -1,0 +1,76 @@
+@ Non‑Disclosure Agreement (NDA) – PJM – 11 August 2015
+module contract_nli_no_align_dev_13_nda_1
+
+# ----------------------------------------------------------------------
+# Domain model
+# ----------------------------------------------------------------------
+# The NDA talks about “Confidential Information” that is supplied by a
+# Disclosing Party to a Receiving Party.  The information may be in written
+# form (including electronic) or oral.  In either case the NDA requires
+# the Disclosing Party to **expressly identify** the information as
+# confidential – either by marking it “Confidential” (written) or by
+# announcing its confidential nature and then providing a written
+# summary (oral).  The hypothesis we want to check is exactly this
+# requirement.
+# ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# Simple enumerations
+# ----------------------------------------------------------------------
+type InfoForm = Written | Oral
+
+# ----------------------------------------------------------------------
+# Core entity: a piece of Confidential Information
+# ----------------------------------------------------------------------
+type ConfidentialInfo = {
+    form: InfoForm,                     -- written or oral
+    is_marked: bool,                    -- “Confidential” label (written)
+    is_announced: bool,                 -- oral announcement flag
+    written_summary_provided: bool      -- written follow‑up for oral info
+}
+
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Parties (only needed for traceability – no rules depend on them directly)
+# ----------------------------------------------------------------------
+type Party = { name: string }
+
+entity disclosing_party: Party
+entity receiving_party: Party
+
+# ----------------------------------------------------------------------
+# Helper functions (pure, for readability)
+# ----------------------------------------------------------------------
+func is_expressly_identified(info: ConfidentialInfo) -> bool:
+    case info.form:
+        | InfoForm.Written():
+            info.is_marked
+        | InfoForm.Oral():
+            info.is_announced and info.written_summary_provided
+        | _: false
+
+# ----------------------------------------------------------------------
+# Rules (deontic obligations)
+# ----------------------------------------------------------------------
+@ Section 9 – Identification of Confidential Information
+rule O disclose_expressly_identify_confidential_info:
+    is_expressly_identified(confidential_info) always
+
+# ----------------------------------------------------------------------
+# Additional sanity rules (optional, help the solver)
+# ----------------------------------------------------------------------
+rule O written_info_must_be_marked:
+    (confidential_info.form = InfoForm.Written()) implies confidential_info.is_marked always
+
+rule O oral_info_must_be_announced_and_written:
+    (confidential_info.form = InfoForm.Oral()) implies
+        (confidential_info.is_announced and confidential_info.written_summary_provided) always
+
+# ----------------------------------------------------------------------
+# Hypothesis (the statement we want to verify)
+# ----------------------------------------------------------------------
+# All Confidential Information shall be expressly identified by the Disclosing Party.
+# In MDL this is captured by the rule `disclose_expressly_identify_confidential_info`.
+# If the solver returns `unsat` for a model where a piece of Confidential
+# Information is not marked/announced, the hypothesis is falsified.

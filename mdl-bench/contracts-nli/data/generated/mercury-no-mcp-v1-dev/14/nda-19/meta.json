@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-19",
+  "created_at": "2026-06-26T00:23:38.970523+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-19",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_19",
+  "response": {
+    "background": false,
+    "completed_at": 1782433418.0,
+    "created_at": 1782433415.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433415-Ifv7fZ9KFli3QE2MbPQR",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-19",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality and Non‑Disclosure Agreement Governing the Inspection of Stockholder List\nmodule contract_nli_no_align_dev_14_nda_19\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\ntype PartyRole = \n    | Company(unit)\n    | Stockholder(unit)\n\ntype Party = {\n    role: PartyRole,\n    name: string,\n    # Boolean flags that capture specific duties of a Party\n    gave_notice: bool,                     # true when the Party has given the required notice\n    agrees_to_jurisdiction: bool,          # true when the Party accepts exclusive Delaware Chancery jurisdiction\n    accepts_specific_performance: bool,    # true when the Party acknowledges the Company’s right to specific performance\n    can_be_amended_by_written_instrument: bool,   # true when the Party recognises the amendment clause\n    is_binding: bool,                      # true when the Party recognises the Agreement as binding\n    is_mutually_prepared: bool            # true when the Party recognises the mutual‑preparation clause\n}\n\ntype ConfidentialMaterial = {\n    is_disclosed: bool,    # true when the material has been disclosed to any third party\n    is_used: bool,         # true when the material has been used for a purpose other than the permitted inspection\n    is_terminated: bool,   # true when the Agreement has been terminated\n}\n\n# ----------------------------------------------------------------------\n# Entities – stable public objects that can be aligned across standards\n# ----------------------------------------------------------------------\n@ Parties to the Agreement\nentity company: Party\nentity stockholder: Party\n\n@ The confidential information that is the subject of the Agreement\nentity confidential_material: ConfidentialMaterial\n\n# ----------------------------------------------------------------------\n# Rules – deontic requirements (O = obligation, F = prohibition, P = permission)\n# ----------------------------------------------------------------------\n@ Clause 1 – material Confidential Material may be used only for purposes reasonably related to the Stockholder’s interests\nrule O use_confidential_material:\n    not_material.is_used = false always\n\n@ Clause 2 – the Stockholder shall not disclose, publish, or communicate Confidential Material\nrule O not_disclose:\n    confidential_material.is_disclosed = false always\n\n@ Clause 3 – if disclosure is required by law, the Stockholder must give the Company prompt notice\nrule O give_notice_before_disclosure:\n    (confidential_material.is_disclosed implies stockholder.gave_notice) always\n\n@ Clause 4 – each Party submits to the exclusive jurisdiction of the Delaware Court of Chancery\nrule O jurisdiction:\n    (company.agrees_to_jurisdiction and stockholder.agrees_to_jurisdiction) always\n\n@ Clause 5 – the Company may seek specific performance/injunctive relief in case of breach\nrule O specific_performance_right:\n    (company.accepts_specific_performance and stockholder.accepts_specific_performance) always\n\n@ Clause 6 – the Agreement may be amended only by a written instrument signed by the affected Party\nrule O amendment_by_written_instrument:\n    (company.can_be_amended_by_written_instrument and stockholder.can_be_amended_by_written_instrument) always\n\n@ Clause 7 – the Agreement is binding upon the Parties and their successors\nrule O binding_agreement:\n    (company.is_binding and stockholder.is_binding) always\n\n@ Clause 8 – the Agreement is governed by Delaware law\nrule O governing_law_delaware:\n    true   # (the law is external to the model; the rule records the intent)\n\n@ Clause 9 – the Agreement may be executed in multiple counterparts\nrule O multiple_counterparts_allowed:\n    true   # (no specific state to model; the rule records the intent)\n\n@ Clause 10 – the Agreement constitutes the entire agreement between the Parties\nrule O entire_agreement:\n    true   # (no specific state to model; the rule records the intent)\n\n@ Clause 11 – the Agreement is mutually prepared\nrule O mutual_preparation:\n    (company.is_mutually_prepared and stockholder.is_mutually_prepared) always\n\n# ----------------------------------------------------------------------\n# Survival of obligations after termination\n# ----------------------------------------------------------------------\n@ Hypothesis – some obligations survive termination of the Agreement\nrule O obligations_survive_termination:\n    (confidential_material.is_terminated implies\n        (confidential_material.is_disclosed = false always and\n         confidential_material.is_used = false always))\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_nxzcf7iyjld",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00199254825,
+      "cost_details": {
+        "upstream_inference_cost": 0.002012675,
+        "upstream_inference_input_cost": 0.000409175,
+        "upstream_inference_output_cost": 0.0016035
+      },
+      "input_tokens": 6710,
+      "input_tokens_details": {
+        "cached_tokens": 5637
+      },
+      "is_byok": false,
+      "output_tokens": 2138,
+      "output_tokens_details": {
+        "reasoning_tokens": 1265
+      },
+      "total_tokens": 8848
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "54221c6736be24793d466efd0868dee8528311a56a76e7200348933376b4f916",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

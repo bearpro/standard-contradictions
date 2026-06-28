@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-7",
+  "created_at": "2026-06-26T00:19:36.040180+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-7",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_7",
+  "response": {
+    "background": false,
+    "completed_at": 1782433175.0,
+    "created_at": 1782433173.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433173-p2G9OnGkzgmizgoREDPc",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-7",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – Clause‑level model\nmodule contract_nli_no_align_dev_7_nda_7\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 2.1(c) – permitted recipients of Confidential Information\ntype Role =\n    | Employee\n    | Director\n    | Servant\n    | Agent\n    | Officer\n    | Representative\n    | Consultant\n    | IndependentContractor\n    | ProfessionalAdvisor\n\n@ Clause 1.2(a) – parties to the agreement\ntype Party = { name: string }\n\n@ Clause 1.2(a) – definition of Confidential Information\ntype ConfidentialInformation = {\n    source: Party,          # the Discloser (AHPL)\n    content: string,\n    is_confidential: bool\n}\n\n@ Clause 2.1(c) – third‑party entities that may receive Confidential Information\ntype ThirdParty = {\n    party: Party,\n    role: Role,\n    purpose: string,               # should be the “Purpose” defined in Clause 1.1\n    signed_confidentiality: bool   # bound by a confidentiality obligation\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Parties to the agreement\nentity receiving_party: Party          # the Company\nentity disclosing_party: Party         # ALEXANDRA HEALTH PTE LTD (AHPL)\n\n@ The Confidential Information that is being exchanged\nentity confidential_info: ConfidentialInformation\n\n@ A concrete third‑party that may be disclosed to\nentity third_party: ThirdParty\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n@ Clause 2.1(c) – check whether a role is one of the permitted categories\nfunc is_permitted_role(r: Role) -> bool:\n    case r:\n        | Role.Employee: true\n        | Role.Director: true\n        | Role.Servant: true\n        | Role.Agent: true\n        | Role.Officer: true\n        | Role.Representative: true\n        | Role.Consultant: true\n        | Role.IndependentContractor: true\n        | Role.ProfessionalAdvisor: true\n        | _: false\n\n# ----------------------------------------------------------------------\n# Rules (deontic constraints)\n# ----------------------------------------------------------------------\n@ Clause 2.1(c) – Permission to disclose Confidential Information to permitted third‑parties\nrule P disclose_to_permitted_roles:\n    is_permitted_role(third_party.role) and\n    third_party.purpose = \"Purpose\" and\n    third_party.signed_confidentiality always\n\n@ Clause 2.1(c) – Prohibition to disclose Confidential Information to non‑permitted parties\nrule F disclose_to_unpermitted_roles:\n    not (is_permitted_role(third_party.role) and\n         third_party.purpose = \"Purpose\" and\n         third_party.signed_confidentiality) always\n\n@ Clause 2.1(a) – Obligation to keep Confidential Information confidential\nrule O keep_confidential_always:\n    confidential_info.is_confidential always\n\n@ Clause 2.1(b) – Obligation to return or destroy Confidential Information on request\nrule O return_or_destroy_on_request:\n    (confidential_info.is_confidential implies true) always   # placeholder – actual return logic is external\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_qofdz4zffe",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0030281625,
+      "cost_details": {
+        "upstream_inference_cost": 0.00305875,
+        "upstream_inference_input_cost": 0.00155425,
+        "upstream_inference_output_cost": 0.0015045
+      },
+      "input_tokens": 11212,
+      "input_tokens_details": {
+        "cached_tokens": 5550
+      },
+      "is_byok": false,
+      "output_tokens": 2006,
+      "output_tokens_details": {
+        "reasoning_tokens": 1344
+      },
+      "total_tokens": 13218
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "8b73557e11ed0bd594f719b7192f57d00d4b9f00c414434d68bc4919afc0cc09",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

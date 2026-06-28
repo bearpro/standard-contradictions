@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-13-nda-2",
+  "created_at": "2026-06-26T00:22:50.976390+00:00",
+  "doc_id": 13,
+  "hypothesis_id": "nda-2",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_13_nda_2",
+  "response": {
+    "background": false,
+    "completed_at": 1782433370.0,
+    "created_at": 1782433368.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433368-rGZfSFhvozAa9A893yFs",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-13-nda-2",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement for the Exchange of Energy Management System Model Data\nmodule contract_nli_no_align_dev_13_nda_2\n\nopen std.strings\n\n-- ----------------------------------------------------------------------\n-- Types\n-- ----------------------------------------------------------------------\n@ Clause 1 – Definitions\ntype Party = {\n    name: string,\n    is_transmission_owner: bool\n}\n\ntype ReviewingRepresentative = {\n    name: string,\n    title: string,\n    party: Party,\n    has_executed_certificate: bool,\n    has_competitive_duties: bool\n}\n\ntype ConfidentialInformation = {\n    description: string,\n    is_technical: bool\n}\n\ntype NonDisclosureCertificate = {\n    reviewer: ReviewingRepresentative,\n    signed_date: string\n}\n\ntype ThirdPartyRequest = {\n    requestor: string,\n    purpose: string\n}\n\n-- ----------------------------------------------------------------------\n-- Entities\n-- ----------------------------------------------------------------------\n@ Clause 1 – Parties\nentity party: Party\n\n@ Clause 2 – Reviewing Representatives\nentity reviewing_representative: ReviewingRepresentative\n\n@ Clause 4 – Confidential Information\nentity confidential_information: ConfidentialInformation\n\n@ Clause 2 – Non‑Disclosure Certificate\nentity non_disclosure_certificate: NonDisclosureCertificate\n\n@ Clause 6 – Third‑Party Requests\nentity third_party_request: ThirdPartyRequest\n\n-- ----------------------------------------------------------------------\n-- Rules (deontic requirements)\n-- ----------------------------------------------------------------------\n@ Clause 4 – Definition of Confidential Information (energy‑management‑system model data)\nrule O confidential_information_is_technical:\n    confidential_information.is_technical always\n\n@ Clause 2 – A Reviewing Representative must have executed a certificate\nrule O reviewing_rep_must_have_certificate:\n    reviewing_representative.has_executed_certificate always\n\n@ Clause 5 – Disclosure to third parties is prohibited without prior written approval\nrule F disclose_to_third_party_without_approval:\n    let prohibited = not (third_party_request.requestor = \"DisclosingParty\") in\n    prohibited always\n\n@ Clause 7 – Confidential Information remains the property of the Disclosing Party\nrule O ownership_remains_with_disclosing:\n    true always\n\n@ Clause 9 – Confidential Information must be clearly marked as “Confidential”\nrule O confidential_information_must_be_marked:\n    let marked = confidential_information.description != \"\" in\n    marked always\n\n@ Clause 10 – The Agreement survives until terminated by the Parties\nrule O agreement_survives_until_termination:\n    true always\n\n-- ----------------------------------------------------------------------\n-- Hypothesis under test\n-- ----------------------------------------------------------------------\n@ Hypothesis: “Confidential Information shall only include technical information.”\nrule O hypothesis_confidential_information_is_technical:\n    confidential_information.is_technical always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_yumi7jwhb8l",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0021244905,
+      "cost_details": {
+        "upstream_inference_cost": 0.00214595,
+        "upstream_inference_input_cost": 0.0011492,
+        "upstream_inference_output_cost": 0.00099675
+      },
+      "input_tokens": 9752,
+      "input_tokens_details": {
+        "cached_tokens": 5728
+      },
+      "is_byok": false,
+      "output_tokens": 1329,
+      "output_tokens_details": {
+        "reasoning_tokens": 795
+      },
+      "total_tokens": 11081
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "6f4c4699799175f176bc636f86054a50727395a0c32915082ce77ee05579215f",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

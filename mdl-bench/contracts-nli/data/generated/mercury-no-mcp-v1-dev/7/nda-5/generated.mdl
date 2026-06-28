@@ -1,0 +1,65 @@
+@ Non‑Disclosure Agreement – Model for Clause 2.1(c) (Sharing with Employees)
+module contract_nli_no_align_dev_7_nda_5
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties to the Agreement
+type Party = { name: string }
+
+@ Information that is designated as Confidential
+type ConfidentialInfo = {
+    is_confidential: bool          # true for all information covered by the NDA
+    source_party: Party             # party that originated the information
+    purpose: string                # purpose of the disclosure (Clause 1.1)
+}
+
+@ Employees, agents, etc. of a receiving party who may need to know the data
+type Employee = {
+    needs_to_know: bool            # true if the employee must access the data for the Purpose
+    bound_by_confidentiality: bool # true if the employee is contractually obliged not to disclose
+    employer: Party                # the party that employs the employee
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The party that receives Confidential Information (the “Recipient”)
+entity recipient: Party
+
+@ The party that discloses Confidential Information (the “Discloser”)
+entity discloser: Party
+
+@ A piece of Confidential Information exchanged under the Agreement
+entity confidential_info: ConfidentialInfo
+
+@ An employee of the recipient who may be granted access
+entity employee: Employee
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+@ Clause 2.1(c) – The Recipient may disclose Confidential Information to its
+@ employees, agents, etc. provided they need to know it and are bound
+@ by confidentiality obligations.
+rule P share_confidential_with_employee:
+    (employee.employer = recipient) and
+    employee.needs_to_know and
+    employee.bound_by_confidentiality and
+    confidential_info.is_confidential always
+
+@ Clause 2.1(b) – The Recipient must not copy or reproduce Confidential
+@ Information except as reasonably necessary for the Purpose.
+rule O prohibit_unnecessary_copy:
+    not (confidential_info.is_confidential and
+         (confidential_info.source_party = discloser) and
+         (confidential_info.purpose != "Purpose")) always
+
+@ Clause 3 – Return of Confidential Information after the Purpose is completed.
+rule O return_on_completion:
+    (confidential_info.is_confidential) implies
+    (confidential_info.purpose = "Purpose") eventually
+
+@ Clause 4.6 – Compliance with the Personal Data Protection Act 2012.
+rule O comply_pdp_act:
+    true always   # placeholder – compliance is assumed external to the model

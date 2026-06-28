@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-15-nda-17",
+  "created_at": "2026-06-26T00:24:23.153644+00:00",
+  "doc_id": 15,
+  "hypothesis_id": "nda-17",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_15_nda_17",
+  "response": {
+    "background": false,
+    "completed_at": 1782433462.0,
+    "created_at": 1782433460.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433460-64pFnQ4MzKuNN3Rc0fSu",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-15-nda-17",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement (Two‑Way) – Model for contract_nli_no_align_dev_15_nda_17\nmodule contract_nli_no_align_dev_15_nda_17\n\nopen std.bool\nopen std.string\nopen std.int\n\n/* ----------------------------------------------------------------------\n   Domain Types\n   ---------------------------------------------------------------------- */\n\n@ Clause 1 – Parties to the agreement\ntype Party = {\n    name: string,\n    address: string\n}\n\n@ Clause 2 – Confidential information (definition in the agreement)\ntype ConfidentialInfo = {\n    description: string,          # free‑form description of the material\n    is_marked: bool,              # whether the material is marked “Confidential”\n    is_proprietary: bool          # whether it falls under the “proprietary” definition\n}\n\n@ Clause 3e – Action of making a copy of confidential information\ntype CopyAction = {\n    made_copy: bool,              # true when the receiving party creates a copy\n    permission_granted: bool      # true when the disclosing party gave written permission\n}\n\n/* ----------------------------------------------------------------------\n   Entities – the concrete objects that the rules talk about\n   ---------------------------------------------------------------------- */\n\n@ Clause 1 – The two parties\nentity receiving_party: Party\nentity disclosing_party: Party\n\n@ Clause 3 – The confidential material that is exchanged\nentity confidential_info: ConfidentialInfo\n\n@ Clause 3e – The copying event (if any)\nentity copy_action: CopyAction\n\n/* ----------------------------------------------------------------------\n   Helper Functions (pure, no side‑effects)\n   ---------------------------------------------------------------------- */\n\nfunc is_copy_allowed(action: CopyAction) -> bool:\n    action.permission_granted\n\nfunc is_copy_prohibited(action: CopyAction) -> bool:\n    action.made_copy and not action.permission_granted\n\n/* ----------------------------------------------------------------------\n   Rules – deontic constraints derived from the NDA clauses\n   ---------------------------------------------------------------------- */\n\n/* Clause 2 – Marking of confidential information */\n@ Clause 2\nrule O must_mark_confidential:\n    confidential_info.is_marked always\n\n/* Clause 3a – Take reasonable measures to preserve confidentiality */\n@ Clause 3a\nrule O take_reasonable_measures:\n    true always   # placeholder – the actual measures are external to the model\n\n/* Clause 3b – No commercial use without licence */\n@ Clause 3b\nrule F no_commercial_use_without_licence:\n    true always   # placeholder – commercial‑use check is external to the model\n\n/* Clause 3c – No disclosure to third parties without written permission */\n@ Clause 3c\nrule F no_disclosure_to_third_without_permission:\n    true always   # placeholder – external disclosure check\n\n/* Clause 3d – Disclosure to employees only as needed and after awareness */\n@ Clause 3d\nrule O disclose_to_employees_only_as_needed:\n    true always   # placeholder – employee‑awareness check\n\n/* Clause 3e – Copying of confidential information */\n@ Clause 3e\nrule F make_copy_without_permission:\n    is_copy_prohibited(copy_action) always\n\n@ Clause 3e\nrule P make_copy_with_permission:\n    copy_action.made_copy and is_copy_allowed(copy_action) always\n\n/* Clause 4 – Exclusions from the obligations (public domain, prior knowledge, etc.) */\n@ Clause 4a\nrule O information_in_public_domain_exempt:\n    true always   # placeholder – external determination\n\n@ Clause 4b\nrule O information_prior_possession_exempt:\n    true always   # placeholder – external determination\n\n@ Clause 4c\nrule O information_disclosed_by_disclosing_party_exempt:\n    true always   # placeholder – external determination\n\n@ Clause 4d\nrule O information_received_from_third_party_exempt:\n    true always   # placeholder – external determination\n\n@ Clause 4e\nrule O legal_disclosure_obligation:\n    true always   # placeholder – external determination\n\n/* Clause 5 – No communication of confidential information for ten years */\n@ Clause 5\nrule F no_communication_for_10_years:\n    true always   # placeholder – temporal restriction would be expressed with a clock variable\n\n/* Clause 6 – Governing law and jurisdiction (no normative effect on the data model) */\n@ Clause 6\nrule O governed_by_english_law:\n    true always   # placeholder – legal jurisdiction does not affect the data model\n\n/* ----------------------------------------------------------------------\n   End of Module\n   ---------------------------------------------------------------------- */\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_g73s1uht9q",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00152650575,
+      "cost_details": {
+        "upstream_inference_cost": 0.001541925,
+        "upstream_inference_input_cost": 0.000373425,
+        "upstream_inference_output_cost": 0.0011685
+      },
+      "input_tokens": 6675,
+      "input_tokens_details": {
+        "cached_tokens": 5757
+      },
+      "is_byok": false,
+      "output_tokens": 1558,
+      "output_tokens_details": {
+        "reasoning_tokens": 646
+      },
+      "total_tokens": 8233
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "f4f04b12727a1ed60e4e6266adb27e242e02f1cb56a8a66ac079796aa82543f7",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

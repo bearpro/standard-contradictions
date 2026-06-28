@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-15-nda-13",
+  "created_at": "2026-06-26T00:24:13.526611+00:00",
+  "doc_id": 15,
+  "hypothesis_id": "nda-13",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_15_nda_13",
+  "response": {
+    "background": false,
+    "completed_at": 1782433453.0,
+    "created_at": 1782433450.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433450-vj5rYfLWTDl28uG6yaYD",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-15-nda-13",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Agreement on the non‑disclosure of confidential information (two‑way)\nmodule contract_nli_no_align_dev_15_nda_13\n\n# ----------------------------------------------------------------------\n# Standard library imports (used for collections and strings)\n# ----------------------------------------------------------------------\nopen std.collections\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain Types\n# ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party = {\n    name: string,\n    address: string\n}\n\n@ Information that is subject to the NDA\ntype ConfidentialInfo = {\n    source: Party,                     # the disclosing party\n    description: string,               # short description of the material\n    is_marked_confidential: bool,      # must be marked as “Confidential”\n    is_public_domain: bool,            # excluded by clause 4‑a\n    is_independently_developed: bool,  # excluded by clause 4‑b\n    is_required_by_law: bool           # excluded by clause 4‑e\n}\n\n@ Documents that may be loaned under the schedule (clause 1)\ntype Document = {\n    title: string,\n    is_marked_confidential: bool\n}\n\n# ----------------------------------------------------------------------\n# Model entities (stable public anchors)\n# ----------------------------------------------------------------------\n@ The university – the disclosing party\nentity disclosing_party: Party\n\n@ The other signatory – the receiving party\nentity receiving_party: Party\n\n@ The set of confidential items exchanged under the agreement\nentity confidential_items: List<ConfidentialInfo>\n\n@ Schedule of loaned documents (clause 1)\nentity loaned_documents: List<Document>\n\n# ----------------------------------------------------------------------\n# Helper functions (pure, for readability)\n# ----------------------------------------------------------------------\nfunc is_exempt(info: ConfidentialInfo) -> bool:\n    info.is_public_domain\n    or info.is_independently_developed\n    or info.is_required_by_law\n\nfunc must_be_protected(info: ConfidentialInfo) -> bool:\n    not (is_exempt(info))\n\n# ----------------------------------------------------------------------\n# Obligations of the Receiving Party (deontic modality O)\n# ----------------------------------------------------------------------\n@ Clause 2 – mark or designate confidential information\nrule O mark_confidential:\n    forall i in confidential_items:\n        i.is_marked_confidential always\n\n@ Clause 3a – take proper and reasonable measures to maintain confidentiality\nrule O maintain_confidentiality:\n    forall i in confidential_items:\n        must_be_protected(i) implies\n            (receiving_party_has_proper_measures) always\n\n@ Clause 3b – no use for commercial purpose without licence\nrule F use_for_commercial_without_licence:\n    forall i in confidential_items:\n        must_be_protected(i) implies\n            (receiving_party_uses_for_commercial(i) = false) always\n\n@ Clause 3c – no disclosure to third parties without written permission\nrule F disclose_to_third_without_permission:\n    forall i in confidential_items:\n        must_be_protected(i) implies\n            (receiving_party_discloses_to_third(i) = false) always\n\n@ Clause 3d – disclosure only to employees who need to know\nrule O disclose_to_employees_only_when_needed:\n    forall i in confidential_items:\n        must_be_protected(i) implies\n            (receiving_party_discloses_to_employee(i) = true) always\n\n@ Clause 3e – no copying or abstracting without written permission\nrule F copy_without_permission:\n    forall i in confidential_items:\n        must_be_protected(i) implies\n            (receiving_party_copies(i) = false) always\n\n@ Clause 3f – acknowledge source and label “Confidential”\nrule O acknowledge_and_label:\n    forall i in confidential_items:\n        must_be_protected(i) implies\n            (receiving_party_acknowledges_source(i) = true) and\n            (i.is_marked_confidential = true) always\n\n@ Clause 1 – return loaned documents on request\nrule O return_loaned_documents_on_request:\n    forall d in loaned_documents:\n        (receiving_party_requested_return(d) implies\n            receiving_party_returns(d)) always\n\n@ Clause 5 – confidentiality period of ten (10) years\nrule O confidentiality_duration:\n    forall i in confidential_items:\n        must_be_protected(i) implies\n            (confidentiality_ends_at(i) = effective_date + 10 years) always\n\n# ----------------------------------------------------------------------\n# Permissions (deontic modality P)\n# ----------------------------------------------------------------------\n@ Hypothesis – receiving party may acquire information similar to confidential\n@ information from a third party (not prohibited by the NDA)\nrule P acquire_similar_info_from_third_party:\n    true always\n\n# ----------------------------------------------------------------------\n# Placeholder boolean fields (to be instantiated by the solver / external data)\n# ----------------------------------------------------------------------\n# In a concrete deployment these would be supplied by the environment\n# (e.g., a compliance system) or by additional facts.\nfact receiving_party_has_proper_measures = true\nfact receiving_party_uses_for_commercial(i: ConfidentialInfo) = false\nfact receiving_party_discloses_to_third(i: ConfidentialInfo) = false\nfact receiving_party_discloses_to_employee(i: ConfidentialInfo) = true\nfact receiving_party_copies(i: ConfidentialInfo) = false\nfact receiving_party_acknowledges_source(i: ConfidentialInfo) = true\nfact receiving_party_requested_return(d: Document) = false\nfact receiving_party_returns(d: Document) = false\nfact effective_date = 2000-01-01   # placeholder for the actual effective date\nfact confidentiality_ends_at(i: ConfidentialInfo) = effective_date + 10 years\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_gbmce74qcwd",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00169277625,
+      "cost_details": {
+        "upstream_inference_cost": 0.001709875,
+        "upstream_inference_input_cost": 0.000364375,
+        "upstream_inference_output_cost": 0.0013455
+      },
+      "input_tokens": 6511,
+      "input_tokens_details": {
+        "cached_tokens": 5615
+      },
+      "is_byok": false,
+      "output_tokens": 1794,
+      "output_tokens_details": {
+        "reasoning_tokens": 667
+      },
+      "total_tokens": 8305
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "619cd420ba0d3f39603ca0a15f3c0e123fb325ae6a89a19b20919b3a8d31d47b",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

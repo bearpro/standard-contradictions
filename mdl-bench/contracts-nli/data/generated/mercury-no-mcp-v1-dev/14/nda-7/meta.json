@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-7",
+  "created_at": "2026-06-26T00:23:58.143182+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-7",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_7",
+  "response": {
+    "background": false,
+    "completed_at": 1782433437.0,
+    "created_at": 1782433434.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433434-FPwvBcvV5O44zMt04d1K",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-7",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list\nmodule contract_nli_no_align_dev_14_nda_7\n\n# ----------------------------------------------------------------------\n# Standard library imports (implicit in most environments)\n# ----------------------------------------------------------------------\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties and roles\ntype PartyRole = Company | Stockholder\n\n@ Clause 1 – Party entity\ntype Party = {\n    role: PartyRole,\n    name: string\n}\n\n@ Clause 2 – Confidential material (the stockholder list and any derived data)\ntype ConfidentialMaterial = {\n    produced_by: Party,          # the Company\n    produced_for: Party,         # the Stockholder\n    is_confidential: bool\n}\n\n@ Clause 2 – Recipient of a disclosure (could be a Party or a third‑party)\ntype Recipient =\n    | PartyRec(Party)            # the Company or the Stockholder themselves\n    | ThirdPartyRec(string)      # any other person / entity (consultant, advisor, etc.)\n\n@ Clause 3 – Disclosure event (used only for rule formulation)\ntype Disclosure = {\n    material: ConfidentialMaterial,\n    recipient: Recipient,\n    disclosed_at_step: int       # step index in the trace (for temporal reasoning)\n}\n\n# ----------------------------------------------------------------------\n# Entities – concrete objects that the solver will assign values to\n# ----------------------------------------------------------------------\n@ Clause 1 – the two parties to the agreement\nentity company: Party\nentity stockholder: Party\n\n@ Clause 2 – the confidential material produced for the Stockholder\nentity confidential_material: ConfidentialMaterial\n\n@ Clause 3 – a (potential) disclosure event; the model may contain zero or more\n@ Clause events, but at least one placeholder is needed for rule formulation\nentity disclosure: Disclosure\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n@ Clause 2 – true a recipient is a third‑party (i.e. not a Party)\nfunc is_third_party(r: Recipient) -> bool:\n    case r of\n        | PartyRec(_): false\n        | ThirdPartyRec(_): true\n\n@ Clause 3 – check whether a legal‑process notice is required\n# (the model does not capture the external trigger, so we expose a Boolean\n# flag that can be set by the environment when such a demand occurs)\nentity legal_process_required: bool   # true when the Stockholder receives a subpoena, etc.\n\n@ Clause 3 – time‑window for notice (2 business days ≈ 2 steps in a simple trace)\nfunc within_two_steps(current: int, target: int) -> bool:\n    target - current <= 2\n\n# ----------------------------------------------------------------------\n# Normative rules (deontic modalities)\n# ----------------------------------------------------------------------\n@ Clause 1 – the Stockholder must use the material only for purposes reasonably\n@ related to its stockholder interest.  This is captured by an obligation that the\n@ material is not used for any other purpose; we model it as a prohibition of\n@ any “non‑permitted” use (the concrete purpose check is outside the scope of the\n@ model, so we simply require the flag `is_confidential` to be true).\nrule O material_used_for_permitted_purposes:\n    confidential_material.is_confidential always\n\n@ Clause 2 – prohibition on disclosing the confidential material to any person or\n@ entity, except as expressly provided in the agreement.\nrule F no_disclosure_to_third_party:\n    let is_third = is_third_party(disclosure.recipient) in\n    not is_third always\n\n@ Clause 2 – an additional prohibition on public disclosure of other\n@ stockholder identifiers (names, addresses, holdings).  We model this as a\n@ generic prohibition on any disclosure whose recipient is a third‑party and\n@ the material contains identifying information.  The model does not\n@ differentiate the content, so the same rule above covers it.\n\n@ Clause 3 – when a legal process requires disclosure, the Stockholder must\n@ give the Company prompt notice (within 2 business days).  The rule is an\n@ obligation on the Stockholder to notify the Company; we model the notice as\n@ a Boolean field `legal_process_required` that must be cleared within two\n@ steps after it becomes true.\nrule O notice_to_company_for_legal_process:\n    let step_now = 0 in                     # the current step (solver treats this as 0)\n    let step_notice = disclosure.disclosed_at_step in\n    (legal_process_required implies within_two_steps(step_now, step_notice)) always\n\n@ Clause 4 – jurisdiction clause (no normative constraint on the model, but we\n@ keep it as an informational fact for traceability)\nfact jurisdiction = \"Delaware Court of Chancery\"\n\n@ Clause 5 – remedies clause (no direct constraint on the model; recorded as a fact)\nfact remedies = \"specific performance and/or injunctive relief\"\n\n@ Clause 6 – amendment/waiver clause (no direct constraint on the model; recorded\n@ as a fact)\nfact amendment_procedure = \"written instrument signed by the obligated party\"\n\n@ Clause 7 – binding effect clause (no direct constraint on the model; recorded\n@ as a fact)\nfact binding_effect = \"benefits and obligations extend to successors and assigns\"\n\n@ Clause 8 – governing law clause (recorded as a fact)\nfact governing_law = \"laws of the State of Delaware\"\n\n@ Clause 9 – counterparts clause (recorded as a fact)\nfact counterparts = \"multiple counterparts constitute one agreement\"\n\n@ Clause 10 – entire agreement clause (recorded as a fact)\nfact entire_agreement = \"supersedes all prior agreements and understandings\"\n\n@ Clause 11 – construction clause (recorded as a fact)\nfact construction = \"not construed against either party by reason of authorship\"\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_edd0r9lwqsq",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00215495775,
+      "cost_details": {
+        "upstream_inference_cost": 0.002176725,
+        "upstream_inference_input_cost": 0.000414225,
+        "upstream_inference_output_cost": 0.0017625
+      },
+      "input_tokens": 6759,
+      "input_tokens_details": {
+        "cached_tokens": 5669
+      },
+      "is_byok": false,
+      "output_tokens": 2350,
+      "output_tokens_details": {
+        "reasoning_tokens": 1144
+      },
+      "total_tokens": 9109
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "f286f15c117f77933281e7e061ba4f11ecdcb6996d4c9839966cc5d3bd968a73",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-3",
+  "created_at": "2026-06-26T00:18:41.702891+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-3",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_3",
+  "response": {
+    "background": false,
+    "completed_at": 1782433121.0,
+    "created_at": 1782433119.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433119-2Otak9XgQfUqjnOBZoP0",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-3",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Two‑Way Confidentiality and Non‑Disclosure Agreement (NDA)\nmodule contract_nli_no_align_dev_3_nda_3\n\n# ----------------------------------------------------------------------\n# Types that capture the domain objects described in the NDA\n# ----------------------------------------------------------------------\ntype PartyRole = Disclosing | Receiving\n\ntype Party = {\n    name:    string,\n    address: string,\n    role:    PartyRole\n}\n\ntype ConfidentialInfo = {\n    -- true the information is conveyed in a documentary/tangible form\n    is_documentary: bool,\n    -- true when the information is conveyed orally or visually\n    is_oral:       bool,\n    -- true when the disclosing party has marked the information as\n    -- “confidential” (or otherwise identified it as such)\n    marked:        bool,\n    -- true when a written summary has been supplied by the disclosing party\n    summary_provided: bool,\n    -- number of days between the oral disclosure and the written summary\n    summary_days:      int,\n    -- description of the permitted purpose (e.g. “assessment of collaboration”)\n    permitted_purpose: string\n}\n\n# ----------------------------------------------------------------------\n# Entities – the public model objects that can be aligned with other\n# standards or modules\n# ----------------------------------------------------------------------\nentity disclosing_party: Party\nentity receiving_party: Party\nentity confidential_info: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements expressed with deontic modalities\n# ----------------------------------------------------------------------\n@ Clause 3 – Obligations of confidentiality and non‑use\nrule O confidentiality_obligation:\n    -- The receiving party must keep all confidential information secret.\n    true always\n\n@ Clause 3b – Oral (or visual) disclosure must be identified as confidential\nrule O oral_info_must_be_identified:\n    confidential_info.is_oral implies confidential_info.marked always\n\n@ Clause 3b – Oral disclosure must be summarized in writing within 30 days\nrule O oral_summary_within_30_days:\n    confidential_info.is_oral implies\n        (confidential_info.summary_provided\n         and confidential_info.summary_days <= 30) always\n\n@ Clause 5 – Return / destruction of confidential information\nrule O return_or_destroy_on_termination:\n    -- At the end of the agreement (or on written instruction) the receiving\n    -- party must return or destroy all confidential information.\n    true always\n\n@ Clause 10 – Survival of confidentiality obligations after termination\nrule O confidentiality_survives_three_years:\n    -- The duty of non‑use and non‑disclosure survives for three years\n    -- after the date of disclosure, irrespective of the agreement’s term.\n    true always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_c8vmludcfua",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00158491575,
+      "cost_details": {
+        "upstream_inference_cost": 0.001600925,
+        "upstream_inference_input_cost": 0.000643925,
+        "upstream_inference_output_cost": 0.000957
+      },
+      "input_tokens": 7514,
+      "input_tokens_details": {
+        "cached_tokens": 5487
+      },
+      "is_byok": false,
+      "output_tokens": 1276,
+      "output_tokens_details": {
+        "reasoning_tokens": 757
+      },
+      "total_tokens": 8790
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "2d6a654dfa7fe819e5c281a35b8aa3af3bad123b3bd3560ce49ffae501fe7b44",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

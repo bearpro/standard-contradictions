@@ -1,0 +1,113 @@
+```mdl
+@ Contract: Two‑Way Confidentiality and Non‑Disclosure Agreement (NDA)
+@ Module name: contract_nli_no_align_dev_3_nda_13
+module contract_nli_no_align_dev_3_nda_13
+
+open std.collections
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain model
+# ----------------------------------------------------------------------
+# The parties to the agreement
+type Party =
+    | Disclosing(unit)
+    | Receiving(unit)
+
+# Information that may be subject to the NDA
+type Information = {
+    content: string,                     # description of the information
+    source_is_disclosing: bool,          # true if the Disclosing Party supplied it
+    source_is_third_party: bool,         # true if it came from a third party
+    known_prior: bool,                  # known to Receiving Party before disclosure
+    public_knowledge: bool,              # already public at time of disclosure
+    independently_developed: bool,      # derived without using the Disclosing Party’s info
+    written_consent: bool,              # disclosed with written consent of Disclosing Party
+    legal_requirement: bool              # required disclosure by law / court
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ Clause 3 – Obligations of confidentiality and non‑use
+entity confidential_info: Information
+
+# Clause 5 – Return / destruction of information
+entity returned_info: Information
+
+# ----------------------------------------------------------------------
+# Helper predicates
+# ----------------------------------------------------------------------
+@ Clause 2 – Exclusions from confidentiality
+func is_excluded(info: Information) -> bool:
+    # The information is excluded if any of the exclusion grounds apply
+    info.known_prior
+    or info.public_knowledge
+    or info.source_is_third_party
+    or info.independently_developed
+    or info.written_consent
+    or info.legal_requirement
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements
+# ----------------------------------------------------------------------
+@ Clause 3a – Reasonable measures to protect secrecy
+rule O take_reasonable_measures:
+    true always
+
+@ Clause 3b – No disclosure to third parties without consent
+rule F disclose_to_third_party:
+    not (confidential_info.source_is_disclosing
+         and not confidential_info.written_consent
+         and not confidential_info.source_is_third_party) always
+
+@ Clause 3c – Use only for the Permitted Purpose
+rule F use_outside_permitted_purpose:
+    not (confidential_info.source_is_disclosing
+         and not confidential_info.written_consent
+         and not confidential_info.source_is_third_party) always
+
+@ Clause 3d – No commercial use without consent
+rule F commercial_use_without_consent:
+    not (confidential_info.source_is_disclosing
+         and not confidential_info.written_consent
+         and not confidential_info.source_is_third_party) always
+
+@ Clause 3e – No copying without authorisation
+rule F copy_without_authorisation:
+    not (confidential_info.source_is_disclosing
+         and not confidential_info.written_consent
+         and not confidential_info.source_is_third_party) always
+
+@ Clause 3f – No alteration / reverse‑engineering
+rule F alter_or_reverse_engineer:
+    not (confidential_info.source_is_disclosing
+         and not confidential_info.written_consent
+         and not confidential_info.source_is_third_party) always
+
+@ Clause 3g – No patent / trademark filing that includes the information
+rule F patent_or_trademark_using_info:
+    not (confidential_info.source_is_disclosing
+         and not confidential_info.written_consent
+         and not confidential_info.source_is_third_party) always
+
+@ Clause 2 – General confidentiality obligation (applies only when not excluded)
+rule O keep_confidential_when_not_excluded:
+    not is_excluded(confidential_info) always
+
+@ Clause 2c – Information disclosed by a third party is *not* covered by the NDA
+rule P receive_third_party_info:
+    confidential_info.source_is_third_party always
+
+# Clause 5 – Return / destruction at termination (or on request)
+rule O return_or_destroy_at_termination:
+    true always
+
+# Clause 10 – Survival of confidentiality obligations (3 years after disclosure)
+rule O confidentiality_survives_three_years:
+    true always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

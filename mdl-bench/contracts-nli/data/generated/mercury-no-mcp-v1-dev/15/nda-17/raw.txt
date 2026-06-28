@@ -1,0 +1,128 @@
+```mdl
+@ Non‑Disclosure Agreement (Two‑Way) – Model for contract_nli_no_align_dev_15_nda_17
+module contract_nli_no_align_dev_15_nda_17
+
+open std.bool
+open std.string
+open std.int
+
+/* ----------------------------------------------------------------------
+   Domain Types
+   ---------------------------------------------------------------------- */
+
+@ Clause 1 – Parties to the agreement
+type Party = {
+    name: string,
+    address: string
+}
+
+@ Clause 2 – Confidential information (definition in the agreement)
+type ConfidentialInfo = {
+    description: string,          # free‑form description of the material
+    is_marked: bool,              # whether the material is marked “Confidential”
+    is_proprietary: bool          # whether it falls under the “proprietary” definition
+}
+
+@ Clause 3e – Action of making a copy of confidential information
+type CopyAction = {
+    made_copy: bool,              # true when the receiving party creates a copy
+    permission_granted: bool      # true when the disclosing party gave written permission
+}
+
+/* ----------------------------------------------------------------------
+   Entities – the concrete objects that the rules talk about
+   ---------------------------------------------------------------------- */
+
+@ Clause 1 – The two parties
+entity receiving_party: Party
+entity disclosing_party: Party
+
+@ Clause 3 – The confidential material that is exchanged
+entity confidential_info: ConfidentialInfo
+
+@ Clause 3e – The copying event (if any)
+entity copy_action: CopyAction
+
+/* ----------------------------------------------------------------------
+   Helper Functions (pure, no side‑effects)
+   ---------------------------------------------------------------------- */
+
+func is_copy_allowed(action: CopyAction) -> bool:
+    action.permission_granted
+
+func is_copy_prohibited(action: CopyAction) -> bool:
+    action.made_copy and not action.permission_granted
+
+/* ----------------------------------------------------------------------
+   Rules – deontic constraints derived from the NDA clauses
+   ---------------------------------------------------------------------- */
+
+/* Clause 2 – Marking of confidential information */
+@ Clause 2
+rule O must_mark_confidential:
+    confidential_info.is_marked always
+
+/* Clause 3a – Take reasonable measures to preserve confidentiality */
+@ Clause 3a
+rule O take_reasonable_measures:
+    true always   # placeholder – the actual measures are external to the model
+
+/* Clause 3b – No commercial use without licence */
+@ Clause 3b
+rule F no_commercial_use_without_licence:
+    true always   # placeholder – commercial‑use check is external to the model
+
+/* Clause 3c – No disclosure to third parties without written permission */
+@ Clause 3c
+rule F no_disclosure_to_third_without_permission:
+    true always   # placeholder – external disclosure check
+
+/* Clause 3d – Disclosure to employees only as needed and after awareness */
+@ Clause 3d
+rule O disclose_to_employees_only_as_needed:
+    true always   # placeholder – employee‑awareness check
+
+/* Clause 3e – Copying of confidential information */
+@ Clause 3e
+rule F make_copy_without_permission:
+    is_copy_prohibited(copy_action) always
+
+@ Clause 3e
+rule P make_copy_with_permission:
+    copy_action.made_copy and is_copy_allowed(copy_action) always
+
+/* Clause 4 – Exclusions from the obligations (public domain, prior knowledge, etc.) */
+@ Clause 4a
+rule O information_in_public_domain_exempt:
+    true always   # placeholder – external determination
+
+@ Clause 4b
+rule O information_prior_possession_exempt:
+    true always   # placeholder – external determination
+
+@ Clause 4c
+rule O information_disclosed_by_disclosing_party_exempt:
+    true always   # placeholder – external determination
+
+@ Clause 4d
+rule O information_received_from_third_party_exempt:
+    true always   # placeholder – external determination
+
+@ Clause 4e
+rule O legal_disclosure_obligation:
+    true always   # placeholder – external determination
+
+/* Clause 5 – No communication of confidential information for ten years */
+@ Clause 5
+rule F no_communication_for_10_years:
+    true always   # placeholder – temporal restriction would be expressed with a clock variable
+
+/* Clause 6 – Governing law and jurisdiction (no normative effect on the data model) */
+@ Clause 6
+rule O governed_by_english_law:
+    true always   # placeholder – legal jurisdiction does not affect the data model
+
+/* ----------------------------------------------------------------------
+   End of Module
+   ---------------------------------------------------------------------- */
+```

@@ -1,0 +1,66 @@
+```mdl
+@ Confidentiality and Non‑Disclosure Agreement (the “Agreement”)
+module contract_nli_no_align_dev_14_nda_20
+
+# ----------------------------------------------------------------------
+#  Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = {
+    name: string,
+    # has the party disclosed any Confidential Material?
+    has_disclosed_confidential_material: bool,
+    # has the party retained any Confidential Material after it has been
+    # returned or destroyed?
+    has_retained_confidential_material: bool
+}
+
+@ Clause 2 – Confidential Material (the stock‑holder list and any derived data)
+type ConfidentialMaterial = {
+    description: string
+}
+
+# ----------------------------------------------------------------------
+#  Entities
+# ----------------------------------------------------------------------
+@ The two Parties to the Agreement
+entity company: Party
+entity stockholder: Party
+
+@ The Confidential Material that is the subject of the Agreement
+entity confidential_material: ConfidentialMaterial
+
+# ----------------------------------------------------------------------
+#  Rules – Obligations, Prohibitions and Permissions derived from the Agreement
+# ----------------------------------------------------------------------
+@ Clause 1 – Use of Confidential Material only for purposes reasonably related
+rule O use_confidential_material_for_purposes:
+    # The Agreement does not model the purpose directly; we capture the
+    # obligation that the Stockholder must be allowed to use the material.
+    true always
+
+@ Clause 2 – Prohibition on disclosure, publication or communication
+rule F disclose_confidential_material:
+    stockholder.has_disclosed_confidential_material = false always
+
+@ Clause 3 – Prohibition on retaining Confidential Material after return
+# (the Agreement is silent on a “return” or “destruction” event, but the
+# usual interpretation of a confidentiality agreement is that the
+# receiving party must not keep the material once its purpose has ended.)
+rule F retain_confidential_material_after_return:
+    stockholder.has_retained_confidential_material = false always
+
+# ----------------------------------------------------------------------
+#  Hypothesis – Receiving Party may retain Confidential Information
+# ----------------------------------------------------------------------
+@ Hypothesis: “Receiving Party may retain some Confidential Information even
+# after the return or destruction of Confidential Information.”
+rule P retain_confidential_material_after_return_hypothesis:
+    stockholder.has_retained_confidential_material = true always
+
+# ----------------------------------------------------------------------
+#  Optional helper function (pure) – not required for this simple model
+# ----------------------------------------------------------------------
+func is_retention_allowed(p: Party) -> bool:
+    p.has_retained_confidential_material
+```

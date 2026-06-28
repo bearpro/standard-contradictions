@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-19",
+  "created_at": "2026-06-26T00:21:53.558344+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-19",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_19",
+  "response": {
+    "background": false,
+    "completed_at": 1782433313.0,
+    "created_at": 1782433309.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433309-KuwPKcFsFQQ7KGi0uy2V",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-19",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract ofNLI‑No‑Align‑Dev‑12‑NDA‑19 – Confidentiality (Non‑Disclosure) Agreement\nmodule contract_nli_no_align_dev_12_nda_19\n\n# ----------------------------------------------------------------------\n# Standard library imports (implicit in most environments)\n# ----------------------------------------------------------------------\nopen std.strings\nopen std.collections\n\n# ----------------------------------------------------------------------\n# Domain types\n# ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party = {\n    name: string\n}\n\n@ Information that may be disclosed by CLIENT to BROOKS\ntype ConfidentialInfo = {\n    is_personal: bool,          -- personal data\n    is_financial: bool,         -- financial data\n    is_product: bool,           -- product data\n    is_formulation: bool,       -- CLIENT’s Formulations\n    is_processing: bool         -- CLIENT’s Processing Procedures\n}\n\n@ Types of exceptions that relieve BROOKS from the confidentiality duty\ntype Exception =\n    | AlreadyPossesses(unit)\n    | IndependentlyDevelops(unit)\n    | ThirdPartyNoObligation(unit)\n    | InadvertentDisclosure(unit)\n    | ClientConsentWritten(unit)\n    | ServiceRelatedDisclosure(unit)\n\n@ State of the agreement (used for temporal reasoning)\ntype AgreementState = {\n    terminated: bool,           -- true once the business relationship ends\n    amendment: bool,            -- true if a written amendment changes the term\n    years_since_termination: int, -- number of years after termination (0‑based)\n    client_requested_return: bool, -- CLIENT has asked for return of material\n    client_given_consent: bool, -- CLIENT has given written consent for a disclosure\n    brooks_compelled: bool,     -- BROOKS is legally compelled to disclose\n    brooks_compelled_opinion: bool, -- opinion counsel says disclosure is required\n    brooks_best_efforts_done: bool -- BROOKS has used best efforts to obtain protective order\n}\n\n# ----------------------------------------------------------------------\n# Entities – the public objects that can be aligned with other standards\n# ----------------------------------------------------------------------\n@ The two parties to the agreement\nentity brooks: Party\nentity client: Party\n\n@ Information supplied by CLIENT to BROOKS\nentity confidential_info: ConfidentialInfo\n\n@ The mutable state of the agreement (updated by the environment)\nentity agreement_state: AgreementState\n\n# ----------------------------------------------------------------------\n# Helper functions – pure, side‑effect‑free predicates\n# ----------------------------------------------------------------------\n@ Does the current confidential information fall under one of the listed exceptions?\nfunc exception_applies(info: ConfidentialInfo, exc: Exception) -> bool:\n    case exc of\n        | AlreadyPossesses():            false   -- not modelled – assume false\n        | IndependentlyDevelops():       false   -- not modelled – assume false\n        | ThirdPartyNoObligation():      false   -- not modelled – assume false\n        | InadvertentDisclosure():       false   -- not modelled – assume false\n        | ClientConsentWritten():        info.is_personal or info.is_financial or info.is_product or info.is_formulation or info.is_processing\n        | ServiceRelatedDisclosure():    true    -- assumed always permitted when service‑related\n\n@ Is the confidentiality obligation still in force?\nfunc confidentiality_active(state: AgreementState) -> bool:\n    -- The obligation survives until the earlier of:\n    --   a) one year after termination, or\n    --   b) a written amendment that changes the term.\n    not state.terminated\n    or (state.termination_since_since_termination 1)\n   \n not state.amendment\n\n@ Does BROOKS have a legitimate need to access the confidential information?\nfunc reasonable_need(state: AgreementState) -> bool:\n    -- For modeling purposes we treat the need as always true when the\n    -- information is being processed for the business relationship.\n    true\n\n# ----------------------------------------------------------------------\n# Rules – normative statements (deontic modalities + LTLf)\n# ----------------------------------------------------------------------\n@ 1.1 Confidential Information must be received in confidence\nrule O receive_confidential_in_confidence:\n    confidentiality_active(agreement_state) implies\n    (confidential_info.is_personal or\n     confidential_info.is_financial or\n     confidential_info.is_product or\n     confidential_info.is_formulation or\n     confidential_info.is_processing) always\n\n@ 1.2 BROOKS must not disclose confidential information unless an exception applies\nrule F forbid_unauthorized_disclosure:\n    confidentiality_active(agreement_state) implies\n    not (\n        (confidential_info.is_personal or\n         confidential_info.is_financial or\n         confidential_info.is_product or\n         confidential_info.is_formulation or\n         confidential_info.is_processing) and\n        not (reasonable_need(agreement_state) and\n             (exception_applies(confidential_info, ClientConsentWritten()) or\n              exception_applies(confidential_info, ServiceRelatedDisclosure())))\n    ) always\n\n@ 2.2 Breach causes immediate irreparable harm – obliges BROOKS to seek injunctive relief\nrule O seek_injunctive_relief_on_breach:\n    not confidentiality_active(agreement_state) implies\n    false always   -- This rule is a placeholder to capture the legal effect; the solver\n    -- will treat it as an obligation that cannot be satisfied without\n    -- a breach, thus highlighting the conflict if a breach occurs.\n\n@ 3.5 CLIENT may give prior written consent for disclosure\nrule P disclose_with_client_consent:\n    confidentiality_active(agreement_state) and\n    agreement_state.client_given_consent implies\n    (confidential_info.is_personal or\n     confidential_info.is_financial or\n     confidential_info.is_product or\n     confidential_info.is_formulation or\n     confidential_info.is_processing) always\n\n@ 4. Compelled disclosure – permission only after notice and best‑efforts\nrule P compelled_disclosure_permission:\n    agreement_state.brooks_compelled and\n    confidentiality_active(agreement_state) implies\n    (agreement_state.brooks_best_efforts_done and\n     agreement_state.brooks_compelled_opinion) always\n\n@ 5. Return of material upon termination (or after 3‑year retention if no request)\nrule O return_material_after_termination:\n    agreement_state.terminated implies\n    (agreement_state.client_requested_return implies\n        (confidential_info.is_product or\n         confidential_info.is_formulation or\n         confidential_info.is_processing) eventually) and\n    (not agreement_state.client_requested_return implies\n        (confidential_info.is_product or\n         confidential_info.is_formulation or\n         confidential_info.is_processing) eventually)   -- retained for 3 years, then disposal\n    always\n\n@ 7. Survival of confidentiality obligations\nrule O confidentiality_survives_until_expiry:\n    (confidential_info.is_personal or\n     confidential_info.is_financial or\n     confidential_info.is_product or\n     confidential_info.is_formulation or\n     confidential_info.is_processing) until\n    (agreement_state.termination_years_elapsed >= 1 or\n     agreement_state.amendment) always\n\n@ 10. Amendment and modification – only by written document\nrule O amendment_requires_written_agreement:\n    agreement_state.amendment implies\n    false always   -- The model treats a written amendment as an external event;\n    -- the rule captures that without the amendment the term cannot change.\n\n@ 11. Notice – must be delivered in writing\nrule O notice_must_be_written:\n    true always   -- Placeholder to indicate that any notice event must satisfy a\n    -- “written” predicate; omitted here for brevity.\n\n# ----------------------------------------------------------------------\n# Facts – external data that can be supplied to the solver (optional)\n# ----------------------------------------------------------------------\n# Example fact (to be replaced by actual data when solving)\n# fact agreement_state = { terminated = false, amendment = false,\n#                         years_since_termination = 0, client_requested_return = false,\n#                         client_given_consent = false, brooks_compelled = false,\n#                         brooks_compelled_opinion = false, brooks_best_efforts_done = false }\n```\n\n**Explanation of the model**\n\n* **Entities** – `brooks`, `client`, `confidential_info`, and `agreement_state` are the public objects that can be aligned with other standards.  \n* **Types** – `Party`, `ConfidentialInfo`, `Exception`, and `AgreementState` capture the domain concepts while keeping the model simple enough for automated solving.  \n* **Functions** – Pure helpers (`exception_applies`, `confidentiality_active`, `reasonable_need`) keep rule bodies readable and avoid duplication.  \n* **Rules** – Each clause of the NDA is expressed as a deontic rule (`O` for obligation, `F` for prohibition, `P` for permission). Temporal operators (`always`, `eventually`, `until`) give the required LTLf semantics.  \n* **Survival clause** – Rule `confidentiality_survives_until_expiry` models the “survival until the earlier of one year after termination or an amendment” using the `until` operator.  \n* **Compelled disclosure** – The permission rule `compelled_disclosure_permission` reflects the notice‑and‑best‑efforts requirement before a legally compelled disclosure may occur.  \n\nThe module name is exactly `contract_nli_no_align_dev_12_nda_19` as requested, and all annotations reference the original document sections for traceability.",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_zxm5sbi2kj",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00249739875,
+      "cost_details": {
+        "upstream_inference_cost": 0.002522625,
+        "upstream_inference_input_cost": 0.000511875,
+        "upstream_inference_output_cost": 0.00201075
+      },
+      "input_tokens": 7101,
+      "input_tokens_details": {
+        "cached_tokens": 5615
+      },
+      "is_byok": false,
+      "output_tokens": 2681,
+      "output_tokens_details": {
+        "reasoning_tokens": 785
+      },
+      "total_tokens": 9782
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "0f868d0fa85841a923415ed3dc40ceb42e563367811547dc8c8fc6e3c4cc24ca",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

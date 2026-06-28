@@ -1,0 +1,42 @@
+@ Contract: Confidentiality and Non‑Disclosure Agreement (CNDA)
+module contract_nli_no_align_dev_10_nda_8
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type Party = {
+    name: string
+}
+
+type ReceivingParty = {
+    name: string,
+    # true when a legal, regulatory or judicial process forces disclosure
+    is_legal_disclosure_required: bool,
+    # true when the Disclosing Party has been notified of the impending disclosure
+    has_notified_disclosing_party: bool
+}
+
+type DisclosingParty = {
+    name: string
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ Clause 2.01 – Parties to the CNDA
+entity receiving_party: ReceivingParty
+
+@ Clause 2.01 – Parties to the CNDA
+entity disclosing_party: DisclosingParty
+
+# ----------------------------------------------------------------------
+# Rules (deontic requirements)
+# ----------------------------------------------------------------------
+@ Clause 2.06 – Disclosure Required by Law
+rule O notify_disclosing_before_legal_disclosure:
+    receiving_party.is_legal_disclosure_required
+        implies receiving_party.has_notified_disclosing_party now
+
+# ----------------------------------------------------------------------
+# Optional helper functions (none needed for this simple rule)
+# ----------------------------------------------------------------------

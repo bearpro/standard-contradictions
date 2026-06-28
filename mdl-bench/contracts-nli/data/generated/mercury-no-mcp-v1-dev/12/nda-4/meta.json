@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-4",
+  "created_at": "2026-06-26T00:22:06.673355+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-4",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_4",
+  "response": {
+    "background": false,
+    "completed_at": 1782433326.0,
+    "created_at": 1782433324.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433324-iq5rmD5oVizf0e2Cr2GF",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-4",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality (Non‑Disclosure) Agreement – Model\nmodule contract_nli_no_align_dev_12_nda_4\n\nopen std.strings\n\n-- ----------------------------------------------------------------------\n-- Domain Types\n-- ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party = {\n    name: string\n}\n\n@ Purpose for which Confidential Information may be disclosed\ntype Purpose =\n    | AgreementPurpose(unit)   -- the purpose expressly stated in the Agreement\n    | OtherPurpose(unit)       -- any purpose not covered by the Agreement\n\n@ Confidential Information as defined in Sections 1‑3\ntype ConfidentialInformation = {\n    disclosed_by: Party,      -- the Party that provides the information\n    received_by: Party,       -- the Party that receives the information\n    purpose: Purpose,         -- intended use of the information\n    content: string           -- abstract representation of the data\n}\n\n-- ----------------------------------------------------------------------\n-- Entities (public model objects)\n-- ----------------------------------------------------------------------\n@ The disclosing Party (CLIENT)\nentity client: Party\n\n@ The receiving Party (BROOKS)\nentity brooks: Party\n\n@ Each piece of Confidential Information exchanged under the Agreement\nentity confidential_info: ConfidentialInformation\n\n-- ----------------------------------------------------------------------\n-- Helper Functions\n-- ----------------------------------------------------------------------\n@ Determine whether a purpose is the one expressly allowed by the Agreement\nfunc is_agreement_purpose(p: Purpose) -> bool:\n    case p:\n        | Purpose.AgreementPurpose(): true\n        | Purpose.OtherPurpose(): false\n\n-- ----------------------------------------------------------------------\n-- Obligations / Prohibitions (rules)\n-- ----------------------------------------------------------------------\n@ Clause 1.2 – BROOKS must not disclose Confidential Information to anyone\n@           outside BROOKS or to any employee without a need‑to‑know.\nrule F disclose_confidential_information:\n    confidential_info.received_by = brooks and\n    not (confidential_info.disclosed_by = brooks) always\n\n@ Clause 2.2 – BROOKS acknowledges that breach causes irreparable harm.\nrule O injunctive_relief:\n    confidential_info.received_by = brooks always\n\n@ Clause 3 – Exceptions (already possessed, independently developed, etc.).\n@ The model treats these as separate entities; no rule is needed here.\n\n@ Clause 4 – Compelled disclosure: BROOKS must notify CLIENT before any\n@           legally compelled disclosure.\nrule O notify_before_compelled_disclosure:\n    confidential_info.received_by = brooks and\n    /* The act of being legally compelled is an external event; we model the\n       obligation to notify as a requirement that the notification occurs\n       before the disclosure. */\n    true always   -- placeholder – actual event modeling omitted for brevity\n\n@ Clause 5 – Return of material after termination.\nrule O return_material_upon_termination:\n    /* The termination event is not modeled; we require that the material\n       be returned (or retained for 3 years) after termination. */\n    true always   -- placeholder – temporal condition omitted for brevity\n\n@ Clause 6 – Governing law (no normative constraint on entities).\n\n@ Clause 7 – Survival (term of the Agreement).\n\n@ ----------------------------------------------------------------------\n-- Hypothesis (derived requirement)\n-- ----------------------------------------------------------------------\n@ Receiving Party shall not use any Confidential Information for any purpose\n@ other than the purposes stated in the Agreement.\nrule F use_confidential_information_for_other_purposes:\n    confidential_info.received_by = brooks and\n    not is_agreement_purpose(confidential_info.purpose) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_mndx5swmmm",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.001613799,
+      "cost_details": {
+        "upstream_inference_cost": 0.0016301,
+        "upstream_inference_input_cost": 0.0005186,
+        "upstream_inference_output_cost": 0.0011115
+      },
+      "input_tokens": 7172,
+      "input_tokens_details": {
+        "cached_tokens": 5664
+      },
+      "is_byok": false,
+      "output_tokens": 1482,
+      "output_tokens_details": {
+        "reasoning_tokens": 785
+      },
+      "total_tokens": 8654
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "9066e4632b63cc5657fda754e481eef48c1f0b7b6be5b611fc7fce2d920971c1",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

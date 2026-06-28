@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-10",
+  "created_at": "2026-06-26T00:23:13.167055+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-10",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_10",
+  "response": {
+    "background": false,
+    "completed_at": 1782433392.0,
+    "created_at": 1782433390.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433390-6I7wP8woc0K1zuNtKxdc",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-10",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list\nmodule contract_nli_no_align_dev_14_nda_10\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\ntype Party = {\n    name: string,                     # e.g. \"Patriot Scientific Corporation\" or \"Stockholder\"\n    is_company: bool,                 # true for the Company, false for the Stockholder\n    disclosed_confidential_material: bool,   # has the party disclosed any Confidential Material?\n    disclosed_agreement_existence: bool,     # has the party disclosed that the Agreement exists?\n    required_to_disclose: bool,               # is the party legally required to disclose Confidential Material?\n    notified_company_within_2_days: bool,     # has the party notified the Company within 2 business days?\n    used_for_reasonable_purposes: bool,       # is the Confidential Material used only for permissible purposes?\n    amendment_written: bool                   # is any amendment to the Agreement in writing and signed?\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ Clause 1 – The two parties to the Agreement\nentity company: Party\nentity stockholder: Party\n\n# ----------------------------------------------------------------------\n# Rules – Obligations, Prohibitions and Permissions\n# ----------------------------------------------------------------------\n@ Clause 1 – Use of Confidential Material only for permissible purposes\nrule O stockholder_use_for_reasonable_purposes:\n    stockholder.used_for_reasonable_purposes always\n\n@ Clause 2 – Prohibit disclosure of Confidential Material (any form)\nrule F stockholder_disclose_confidential_material:\n    not stockholder.disclosed_confidential_material always\n\n@ Clause 3 – If disclosure is legally required, notify the Company promptly\nrule O stockholder_notify_company_if_required:\n    (stockholder.required_to_disclose implies stockholder.notified_company_within_2_days) always\n\n@ Clause 4 – Exclusive jurisdiction of the Delaware Court of Chancery\nrule O exclusive_jurisdiction_delaware:\n    true always   # (jurisdiction is a factual assumption of the model; no field needed)\n\n@ Clause 5 – Remedies for breach (specific performance / injunctive relief)\nrule O company_irreparable_harm:\n    true always   # placeholder – no concrete field needed for consistency checking\n\n@ Clause 6 – Amendments must be in writing and signed by the other Party\nrule F amendment_without_written:\n    not (company.amendment_written and stockholder.amendment_written) always\n\n@ Clause 7 – Agreement binds successors and assigns (no explicit field required)\nrule O binding_to_successors:\n    true always\n\n@ Clause 8 – Governing law is Delaware (no explicit field required)\nrule O governing_law_delaware:\n    true always\n\n@ Clause 9 – Multiple counterparts constitute a single agreement (no explicit field required)\nrule O multiple_counterparts_one_agreement:\n    true always\n\n@ Clause 10 – Entire agreement clause (no explicit field required)\nrule O entire_agreement_supersedes_prior:\n    true always\n\n@ Clause 11 – No construction against either party due to authorship (no explicit field required)\nrule O no_authorship_construction:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis – Receiving Party shall not disclose that the Agreement was agreed or negotiated\n# ----------------------------------------------------------------------\n@ Hypothesis\nrule F receiving_party_disclose_agreement_existence:\n    (company.disclosed_agreement_existence or stockholder.disclosed_agreement_existence) = false always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_3h53syzakeh",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00157372875,
+      "cost_details": {
+        "upstream_inference_cost": 0.001589625,
+        "upstream_inference_input_cost": 0.000418125,
+        "upstream_inference_output_cost": 0.0011715
+      },
+      "input_tokens": 6843,
+      "input_tokens_details": {
+        "cached_tokens": 5745
+      },
+      "is_byok": false,
+      "output_tokens": 1562,
+      "output_tokens_details": {
+        "reasoning_tokens": 839
+      },
+      "total_tokens": 8405
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "2580e3dca35ebc192ad8262c3d9c86bc1adb8d07f78d213f832a5655fb02e920",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

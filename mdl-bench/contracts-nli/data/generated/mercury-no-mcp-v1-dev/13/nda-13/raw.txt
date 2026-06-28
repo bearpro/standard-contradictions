@@ -1,0 +1,115 @@
+```mdl
+@ Non‑Disclosure Agreement for the Exchange of Energy Management System Model Data
+module contract_nli_no_align_dev_13_nda_13
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = {
+    name: string,
+    is_pjm: bool                # true for PJM, false for the Transmission Owner
+}
+
+@ Clause 2 – Reviewing Representative
+type ReviewingRepresentative = {
+    name: string,
+    title: string,
+    party: Party,
+    has_certificate: bool,      # true when a signed Non‑Disclosure Certificate has been delivered
+    has_competitive_duties: bool
+}
+
+@ Clause 4 – Confidential Information
+type ConfidentialInformation = {
+    description: string,
+    is_marked_confidential: bool,
+    source_party: Party
+}
+
+@ Clause 7 – Third‑Party Request
+type ThirdPartyRequest = {
+    requestor: string,
+    reason: string
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Clause 1 – each Party (PJM and the Transmission Owner)
+entity party: Party
+
+@ Clause 2 – each Reviewing Representative who signs a certificate
+entity reviewing_rep: ReviewingRepresentative
+
+@ Clause 4 – a piece of Confidential Information exchanged under the Agreement
+entity conf_info: ConfidentialInformation
+
+@ Clause 7 – a request from a third party for disclosure
+entity third_party_req: ThirdPartyRequest
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Clause 2 – a Reviewing Representative must have a signed certificate before
+#           accessing Confidential Information.
+func can_access_confidential(rep: ReviewingRepresentative) -> bool:
+    rep.has_certificate
+
+@ Clause 5 – a Party may disclose Confidential Information to a third party
+#           only if it has obtained prior written approval from the Disclosing Party.
+func has_written_approval(conf: ConfidentialInformation) -> bool:
+    -- In a real model this would be linked to an approval record.
+    -- For the purpose of the logical model we assume no approval by default.
+    false
+
+# ----------------------------------------------------------------------
+# Rules (Deontic constraints)
+# ----------------------------------------------------------------------
+@ Clause 2 – Obligation to deliver a signed Non‑Disclosure Certificate
+rule O deliver_certificate:
+    reviewing_rep.has_certificate always
+
+@ Clause 2 – Obligation: only a Reviewing Representative with a certificate
+#           may access Confidential Information.
+rule O only_certified_rep_may_access:
+    (conf_info.is_marked_confidential implies can_access_confidential(reviewing_rep)) always
+
+@ Clause 5 – Prohibition: disclose Confidential Information to a third party
+#           without prior written approval.
+rule F disclose_confidential_to_third_party_without_approval:
+    (conf_info.is_marked_confidential and not has_written_approval(conf_info)) always
+
+@ Clause 5 – Obligation: Parties shall not disclose Confidential Information
+#           to any third party without prior written approval.
+rule O no_unauthorized_third_party_disclosure:
+    (conf_info.is_marked_confidential and not has_written_approval(conf_info)) always
+
+@ Clause 8 – Obligation: return or destroy Confidential Information when it
+#           is no longer needed for Transmission Functions.
+rule O return_or_destroy_when_not_needed:
+    -- The model does not track the “need” state; we express the obligation
+    -- as a generic requirement that the information must eventually be
+    -- returned or destroyed.
+    (conf_info.is_marked_confidential) eventually
+
+@ Clause 9 – Permission: acquire information that is *not* marked confidential
+#           from a third party (i.e., “similar” information that is not confidential).
+rule P acquire_nonconfidential_info_from_third_party:
+    (not conf_info.is_marked_confidential) always
+
+@ Clause 9 – Prohibition: acquire confidential information from a third party
+#           without approval (reinforces the prohibition above).
+rule F acquire_confidential_info_from_third_party_without_approval:
+    (conf_info.is_marked_confidential and not has_written_approval(conf_info)) always
+
+# ----------------------------------------------------------------------
+# Hypothesis (for verification)
+# ----------------------------------------------------------------------
+@ The hypothesis to be checked against the model:
+#   “Receiving Party may acquire information similar to Confidential Information
+#    from a third party.”
+#   This is expressed by the permission rule above (acquire_nonconfidential_info_from_third_party).
+#   If a verifier finds a conflict with rule F acquire_confidential_info_from_third_party_without_approval,
+#   the hypothesis would be false for confidential material.
+```

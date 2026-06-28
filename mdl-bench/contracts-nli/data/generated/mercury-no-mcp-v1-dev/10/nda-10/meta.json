@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-10",
+  "created_at": "2026-06-26T00:20:31.255876+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-10",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_10",
+  "response": {
+    "background": false,
+    "completed_at": 1782433231.0,
+    "created_at": 1782433228.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433228-4b7oykCiVYmEMS8laP36",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-10",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract & Non‑Disclosure Agreement (CNDA) – “contract_nli_no_align_dev_10_nda_10”\nmodule contract_nli_no_align_dev_10_nda_10\n\nopen std.collections\n\n* ----------------------------------------------------------------------\n*  Domain model\n* ---------------------------------------------------------------------- */\n@ Clause 1 – Parties\ntype Party = \n    | CPR(unit)          # Canadian Pacific Railway\n    | Supplier(unit)    # Supplier (the other contracting party)\n\n@ Clause 1 – Agreement (the CNDA itself)\ntype Agreement = {\n    parties: List<Party>,          # the two contracting parties\n    effective_date: string        # date the agreement becomes effective\n}\n\n@ Clause 2 – Disclosure event (used to model any act of revealing information)\ntype Disclosure = {\n    content: string,              # free‑text description of what is disclosed\n    disclosed_by: Party,          # party that performed the disclosure\n    to_person: string             # external recipient (could be a “Person”, “Entity”, …)\n}\n\n* ----------------------------------------------------------------------\n*  Entities – the concrete objects that the solver will assign values to\n* ---------------------------------------------------------------------- */\n@ Clause 1 – the concrete agreement\nentity agreement: Agreement\n\n@ Clause 1 – the party that receives the confidential information\nentity receiving_party: Party\n\n@ Clause 2 – a (potential) disclosure event; the model may contain zero or\n@ many such events – the solver can instantiate any number of them.\nentity disclosure: Disclosure\n\n* ----------------------------------------------------------------------\n*  Helper predicates\n* ---------------------------------------------------------------------- */\n@ Clause 2.01 – “Confidential Information” is defined in the CNDA as any\n@ information that is marked “Confidential” or otherwise intended to be\n@ disclosed in confidence.  For the purpose of this model we treat the\n@ agreement itself as confidential (the parties agree not to reveal that\n@ an agreement was ever negotiated or concluded).\nfunc is_agreement_fact(content: string) -> bool:\n    content = \"agreement_exists\"\n    or content = \"agreement_negotiated\"\n\n* ----------------------------------------------------------------------\n*  Requirements (rules)\n* ---------------------------------------------------------------------- */\n\n@ Clause 2.03 – “Kept in Confidence” (obligation to protect confidential info)\nrule O keep_confidential_information:\n    let is_confidential: bool =\n        is_agreement_fact(disclosure.content)          # agreement fact is confidential\n        or disclosure.content = \"Confidential\"         # generic confidential tag\n    (disclosure.disclosed_by = receiving_party) implies\n        (not is_confidential) always\n\n@ Clause 2.05 – “No Disclosure” (prohibition to disclose confidential info)\nrule F receiving_party_not_disclose_agreement_fact:\n    (disclosure.disclosed_by = receiving_party) implies\n        (not is_agreement_fact(disclosure.content)) always\n\n@ Clause 2.06 – “Disclosure Required by Law” (exception)\nrule O disclose_if_required_by_law:\n    let lawful_disclosure: bool = false   # placeholder – external legal‑counsel input\n    (disclosure.disclosed_by = receiving_party) and\n    (is_agreement_fact(disclosure.content)) implies\n        lawful_disclosure always\n\n@ Clause 2.07 – “Return of Confidential Information” (obligation after request)\nrule O return_confidential_information_on_request:\n    let request_received: bool = false   # placeholder – model of a request event\n    (request_received) implies\n        (disclosure.disclosed_by = receiving_party) and\n        (disclosure.content = \"agreement_exists\") always\n\n* ----------------------------------------------------------------------\n*  Additional cross‑document obligations (survival, term, etc.)\n* ---------------------------------------------------------------------- */\n@ Clause 3.02 – “Continuing Obligations Regarding Confidentiality”\nrule O confidentiality_survives_termination:\n    true always   # the model treats all confidentiality rules as perpetual\n\n@ Clause 3.09 – “Termination” (the agreement lasts 3 years; obligations survive 3 years)\nrule O obligations_survive_three_years:\n    true always   # temporal depth handled by the solver; no explicit time model needed\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_7sxo6cltm3a",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00190938825,
+      "cost_details": {
+        "upstream_inference_cost": 0.001928675,
+        "upstream_inference_input_cost": 0.000738425,
+        "upstream_inference_output_cost": 0.00119025
+      },
+      "input_tokens": 7937,
+      "input_tokens_details": {
+        "cached_tokens": 5537
+      },
+      "is_byok": false,
+      "output_tokens": 1587,
+      "output_tokens_details": {
+        "reasoning_tokens": 768
+      },
+      "total_tokens": 9524
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "07e3b270b789a0ebdbe478ea45e52f557a9635f44824abbf00ca21519a6c58e6",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

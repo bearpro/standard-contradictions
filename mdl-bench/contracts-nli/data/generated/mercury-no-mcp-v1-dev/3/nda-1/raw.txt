@@ -1,0 +1,92 @@
+```mdl
+@ OISAIR PROJECT – TWO‑WAY CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT
+module contract_nli_no_align_dev_3_nda_1
+
+# ----------------------------------------------------------------------
+# Standard library imports
+# ----------------------------------------------------------------------
+open std.collections   # List<T>, Empty, Cons
+open std.strings      # to_list, list.len (if needed)
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+@ Role of a Party in the Agreement
+type Role =
+    | Disclosing(unit)   # The Party that provides Confidential Information
+    | Receiving(unit)    # The Party that receives Confidential Information
+
+@ A Party to a name and a role (Disclosing or Receiving)
+type Party = {
+    name: string,
+    role: Role
+}
+
+@ How Confidential Information is transmitted
+type DisclosureForm =
+    | Document(unit)   # Written, electronic, or any tangible medium
+    | Oral(unit)       # Spoken or visual presentation
+    | Other(unit)      # Any other form not covered above
+
+@ The core object the Agreement protects
+type ConfidentialInformation = {
+    content: string,                     # The actual information (opaque to the model)
+    is_marked_confidential: bool,        # “Marked as confidential” flag
+    disclosed_by: Party,                 # Party that originates the disclosure
+    disclosed_to: Party,                 # Party that receives the disclosure
+    form: DisclosureForm                 # How the information was conveyed
+}
+
+# ----------------------------------------------------------------------
+# Entities – the concrete objects that the solver will assign values to
+# ----------------------------------------------------------------------
+@ The two parties to the Agreement
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ All pieces of Confidential Information exchanged under the Agreement
+entity confidential_informations: List<ConfidentialInformation>
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Returns true iff a given ConfidentialInformation item is properly marked
+func is_properly_marked(ci: ConfidentialInformation) -> bool:
+    ci.is_marked_confidential
+
+@ Recursively checks that every ConfidentialInformation item in the list
+@ satisfies the marking requirement when it originates from the Disclosing Party
+func all_marked(lst: List<ConfidentialInformation>) -> bool:
+    case lst:
+        | Empty(): true
+        | Cons(ci, tail):
+            let is_disclosing = (ci.disclosed_by.role = Role.Disclosing()) in
+            (not is_disclosing) or is_properly_marked(ci) and all_marked(tail)
+
+# ----------------------------------------------------------------------
+# Rules – normative statements (deontic modalities)
+# ----------------------------------------------------------------------
+@ Clause 1 (definition of “Confidential Information”) – marking requirement
+rule O disclosing_party_must_mark_all_confidential_information:
+    all_marked(confidential_informations) always
+
+@ Clause 2 (oral disclosures) – oral disclosures must be identified before
+@ disclosure and a written summary must be supplied within 30 days.
+@ (The summary‑within‑30‑days part is modelled as a separate obligation.)
+func oral_summary_due(ci: ConfidentialInformation) -> bool:
+    let is_oral = (ci.form = DisclosureForm.Oral()) in
+    let is_disclosing = (ci.disclosed_by.role = Role.Disclosing()) in
+    (not (is_oral and is_disclosing)) or
+        (ci.is_marked_confidential)   # marking already guarantees identification
+
+rule O oral_disclosure_identification_and_summary:
+    let lst = confidential_informations in
+    case lst:
+        | Empty(): true
+        | Cons(ci, tail):
+            oral_summary_due(ci) and oral_disclosure_identification_and_summary   # recursion via case
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

@@ -1,0 +1,102 @@
+@ Confidentiality (Non‑Disclosure) Agreement – NDAs
+module contract_nli_no_align_dev_12_nda_8
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Parties (BROOKS and CLIENT)
+type Party = {
+    name: string,                     # e.g. "BROOKS", "CLIENT"
+    is_receiving: bool,               # true for the Receiving Party (BROOKS)
+    notification_sent: bool,          # true when a legal‑compelled notice has been sent
+    disclosed: bool                   # true when Confidential Information has been disclosed
+}
+
+@ Confidential Information (any of the categories listed in the Agreement)
+type ConfidentialInfo = {
+    is_personal: bool,
+    is_financial: bool,
+    is_product: bool,
+    is_formulation: bool,
+    is_processing_procedure: bool
+}
+
+@ Event that may trigger a disclosure (e.g. legal compulsion)
+type DisclosureEvent = {
+    legally_compelled: bool,           # true when law, regulation or court order applies
+    reason: string                    # free‑form description of the legal trigger
+}
+
+# ----------------------------------------------------------------------
+# Entities – the public model objects that can be aligned across standards
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 1 – Confidential Information
+entity confidential_info: ConfidentialInfo
+
+@ Clause 4 – Legal‑Compelled Disclosure Event
+entity disclosure_event: DisclosureEvent
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Clause 3 – Exceptions to confidentiality (simplified to a Boolean placeholder)
+func is_exception(info: ConfidentialInfo, event: DisclosureEvent) -> bool:
+    # The full set of exceptions (already possessed, independent development,
+    # third‑party receipt, public domain, client consent, etc.) is omitted for
+    # brevity.  In a complete model each exception would be expressed as a
+    # separate predicate.  Here we return `false` so that the default rule
+    # enforces the prohibition unless a concrete exception is added later.
+    false
+
+# ----------------------------------------------------------------------
+# Obligations (Deontic Modality O) and Prohibitions (F)
+# ----------------------------------------------------------------------
+@ Clause 1.2 – Non‑disclosure obligation
+rule O receiving_party_must_not_disclose:
+    # The Receiving Party may disclose only if an exception applies or the
+    # disclosure is legally compelled.
+    (is_exception(confidential_info, disclosure_event) or
+     disclosure_event.legally_compelled) implies
+    (receiving_party.disclosed = false) always
+
+@ Clause 4 – Notification when legally compelled
+rule O notify_disclosing_party_when_legal_compelled:
+    # If the Receiving Party is legally compelled to disclose, it must
+    # notify the Disclosing Party in writing.
+    disclosure_event.legally_compelled implies
+    (receiving_party.notification_sent = true) always
+
+@ Clause 5 – Return of material (simplified)
+rule O return_material_upon_termination:
+    # After termination the Receiving Party must return all material within
+    # ten days unless the Client explicitly waives the request.
+    # The model assumes a termination event `termination` that occurs once.
+    # For brevity we model the requirement as “always” after termination.
+    true always   # placeholder – actual temporal logic would reference a termination event
+
+# ----------------------------------------------------------------------
+# Prohibitions (F) – absolute bans
+# ----------------------------------------------------------------------
+@ Clause 2.2 – Injunctive relief for breach
+rule F breach_causes_irreparable_harm:
+    # Any breach (disclosure without exception or legal compulsion) is
+    # prohibited and would cause irreparable harm to the Disclosing Party.
+    (receiving_party.disclosed and not is_exception(confidential_info, disclosure_event) and
+     not disclosure_event.legally_compelled) implies false always
+
+# ----------------------------------------------------------------------
+# Facts – global constraints (no deontic modality)
+# ----------------------------------------------------------------------
+# The Disclosing Party is never the Receiving Party in this Agreement.
+fact disclosing_is_not_receiving:
+    disclosing_party.is_receiving = false
+
+# The Receiving Party is always the party that receives Confidential Information.
+fact receiving_is_receiving:
+    receiving_party.is_receiving = true

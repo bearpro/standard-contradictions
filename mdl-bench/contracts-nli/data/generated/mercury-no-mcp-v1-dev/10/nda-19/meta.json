@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-10-nda-19",
+  "created_at": "2026-06-26T00:20:55.043488+00:00",
+  "doc_id": 10,
+  "hypothesis_id": "nda-19",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_10_nda_19",
+  "response": {
+    "background": false,
+    "completed_at": 1782433254.0,
+    "created_at": 1782433252.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433252-KE5U8QQPg0paoJHkC696",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-10-nda-19",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement (CNDA) – Model\nmodule contract_nli_no_align_dev_10_nda_19\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Article 2 – Confidential Information\ntype ConfidentialInfo = {\n    is_confidential: bool          # true when the datum is marked “Confidential”\n}\n\n@ Article 3 – Contract state (used for temporal reasoning)\ntype ContractState = {\n    terminated: bool               # true once the CNDA has been terminated\n    years_since_termination: int   # whole years elapsed after termination (0 while not terminated)\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The parties of the agreement – only the Receiving Party (the party that\n# receives Confidential Information) has obligations that must be modelled.\nentity receiving_party: {\n    # The Receiving Party must keep any ConfidentialInfo it obtains\n    # confidential and must not disclose it except as permitted.\n    confidentiality_obligation: bool\n    # The Receiving Party must return or destroy Confidential Information\n    # upon request after termination.\n    return_obligation: bool\n}\n\n@ Global contract state – used to express obligations that survive termination.\nentity contract_state: ContractState\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n@ Returns true while the confidentiality obligation is still in force.\nfunc confidentiality_in_force(cs: ContractState) -> bool:\n    not cs.terminated\n    or (cs.terminated and cs.years_since_termination <= 3)\n\n@ Returns true while the return/destroy obligation is still in force.\nfunc return_in_force(cs: ContractState) -> bool:\n    not cs.terminated\n    or (cs.terminated and cs.years_since_termination <= 3)\n\n# ----------------------------------------------------------------------\n# Rules – obligations (O), prohibitions (F) and permissions (P)\n# ----------------------------------------------------------------------\n@ Article 2.03 – “Kept in Confidence”\nrule O confidentiality_obligation_is_kept:\n    receiving_party.confidentiality_obligation = true\n    and confidentiality_in_force(contract_state) always\n\n@ Article 2.05 – “No Disclosure”\nrule F disclose_confidential_information:\n    receiving_party.confidentiality_obligation = false\n    and confidentiality_in_force(contract_state) always\n\n@ Article 2.07 – “Return of Confidential Information”\nrule O return_confidential_information_on_request:\n    receiving_party.return_obligation = true\n    and return_in_force(contract_state) always\n\n@ Article 3.02 – “Continuing Obligations Regarding Confidentiality”\nrule O confidentiality_obligation_survives_termination:\n    confidentiality_in_force(contract_state) always\n\n@ Article 3.09 – “Termination” (obligations survive 3 years after termination)\nrule O confidentiality_obligation_survival_period:\n    (contract_state.terminated -> contract_state.years_since_termination <= 3) always\n\nrule O return_obligation_survival_period:\n    (contract_state.terminated -> contract_state.years_since_termination <= 3) always\n\n# ----------------------------------------------------------------------\n# Temporal evolution of the contract state (for illustration only)\n# ----------------------------------------------------------------------\n# In a real‑world model the values of `contract_state.terminated` and\n# `contract_state.years_since_termination` would be supplied by the\n# surrounding system (e.g., a contract‑management tool).  The following\n# auxiliary rules show how the year counter could be updated when the\n# contract is terminated, but they are not required for the core\n# contradiction‑detection task.\nfunc increment_years(cs: ContractState) -> ContractState:\n    if cs.terminated then\n        { terminated = true, years_since_termination = cs.years_since_termination + 1 }\n    else\n        cs\n\nrule update_year_counter:\n    let _ = increment_years(contract_state) in true always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_gc91w9oc1g",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0018288765,
+      "cost_details": {
+        "upstream_inference_cost": 0.00184735,
+        "upstream_inference_input_cost": 0.0007411,
+        "upstream_inference_output_cost": 0.00110625
+      },
+      "input_tokens": 7972,
+      "input_tokens_details": {
+        "cached_tokens": 5564
+      },
+      "is_byok": false,
+      "output_tokens": 1475,
+      "output_tokens_details": {
+        "reasoning_tokens": 710
+      },
+      "total_tokens": 9447
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "f9065746b8a6ee40e5163cbaf64d1d87406d94d2ab017215b917aaf0d1d849df",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

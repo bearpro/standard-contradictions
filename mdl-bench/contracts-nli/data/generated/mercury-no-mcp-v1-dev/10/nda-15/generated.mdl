@@ -1,0 +1,86 @@
+@ Confidentiality and Non‑Disclosure Agreement (CNDA) – 2015
+module contract_nli_no_align_dev_10_nda_15
+
+open std.strings
+
+-- ----------------------------------------------------------------------
+-- Types
+-- ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party = {
+    name: string,                -- legal name of the party
+    is_disclosing: bool          -- true for the Disclosing Party, false for the Receiving Party
+}
+
+@ Information that may be exchanged under the CNDA
+type ConfidentialInfo = {
+    description: string,        -- free‑form description of the information
+    is_marked_confidential: bool -- true when the information is clearly marked “Confidential”
+}
+
+@ Representation of a party that may handle confidential information
+type Representation = {
+    party: Party,
+    info: ConfidentialInfo
+}
+
+-- ----------------------------------------------------------------------
+-- Entities (public model objects)
+-- ----------------------------------------------------------------------
+@ The party that discloses the information (CPR)
+entity disclosing_party: Party
+
+@ The party that receives the information (Supplier)
+entity receiving_party: Party
+
+@ The confidential information that is the subject of the CNDA
+entity confidential_info: ConfidentialInfo
+
+@ A representative of a party who may access the information
+entity representative: Representation
+
+-- ----------------------------------------------------------------------
+-- Helper functions
+-- ----------------------------------------------------------------------
+@ Returns true if the given information is considered confidential under the CNDA
+func is_confidential(info: ConfidentialInfo) -> bool:
+    info.is_marked_confidential
+
+@ Returns true when the given party is the Receiving Party
+func is_receiving(party: Party) -> bool:
+    not party.is_disclosing
+
+-- ----------------------------------------------------------------------
+-- Rules (deontic requirements)
+-- ----------------------------------------------------------------------
+@ Article 2.03 – “Kept in Confidence”
+rule O receiving_party_obligation_to_keep_confidential:
+    is_receiving(receiving_party) implies
+        ( is_confidential(confidential_info) implies
+            true ) always   -- the actual care level is a qualitative requirement; modeled as a Boolean obligation
+
+@ Article 2.04 – “No Benefit, Restricted Use”
+rule F receiving_party_prohibited_from_deriving_benefit:
+    is_receiving(receiving_party) implies
+        ( is_confidential(confidential_info) implies false ) always
+
+@ Article 2.05 – “No Disclosure”
+rule F receiving_party_prohibited_from_disclosing:
+    is_receiving(receiving_party) implies
+        ( is_confidential(confidential_info) implies false ) always
+
+@ Article 2.08 – “Responsibility for Others”
+rule O receiving_party_responsible_for_representatives:
+    is_receiving(receiving_party) implies
+        ( representative.party = receiving_party implies
+            true ) always
+
+@ Article 3.01 – “Remedies” (implied right to enforce)
+rule O receiving_party_must_not_have_right_to_confidential_information:
+    is_receiving(receiving_party) implies
+        ( is_confidential(confidential_info) implies false ) always
+
+@ Hypothesis – the agreement does NOT grant any right to the Receiving Party
+rule F receiving_party_has_no_right_to_confidential_information:
+    is_receiving(receiving_party) implies
+        ( is_confidential(confidential_info) implies false ) always

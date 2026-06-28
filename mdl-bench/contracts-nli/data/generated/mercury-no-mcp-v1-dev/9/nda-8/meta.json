@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-8",
+  "created_at": "2026-06-26T00:20:26.043444+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-8",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_8",
+  "response": {
+    "background": false,
+    "completed_at": 1782433225.0,
+    "created_at": 1782433224.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433224-6sg6NY7HDAG6SwePNr1e",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-8",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT\nmodule contract_nli_no_align_dev_9_nda_8\n\n# ----------------------------------------------------------------------\n# Parties\n# ----------------------------------------------------------------------\ntype PartyRole = Vendor | BPS\n\ntype Party = {\n    name: string,\n    role: PartyRole\n}\n\nentity vendor: Party\nentity bps: Party\n\n# ----------------------------------------------------------------------\n# Confidential information (placeholder – only needed for alignment)\n# ----------------------------------------------------------------------\ntype ConfidentialInfo = { description: string }\n\nentity confidential_info: ConfidentialInfo\n\n# ----------------------------------------------------------------------\n# Disclosure request triggered by law, regulation or judicial process\n# ----------------------------------------------------------------------\ntype DisclosureRequest = {\n    required_by_law: bool   # true when a subpoena, court order, etc. is received\n}\n\nentity disclosure_request: DisclosureRequest\n\n# ----------------------------------------------------------------------\n# Vendor’s notification to BPS\n# ----------------------------------------------------------------------\ntype VendorNotification = {\n    notified: bool   # true when Vendor has given BPS the required notice\n}\n\nentity vendor_notification: VendorNotification\n\n# ----------------------------------------------------------------------\n# Rule: Vendor must notify BPS whenever a legal process forces disclosure\n# ----------------------------------------------------------------------\n@ Clause “Disclosure Sought Under Legal Process”\nrule O vendor_must_notify_when_required:\n    (disclosure_request.required_by_law implies vendor_notification.notified) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_woy2q7vnr9d",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00149185575,
+      "cost_details": {
+        "upstream_inference_cost": 0.001506925,
+        "upstream_inference_input_cost": 0.000938425,
+        "upstream_inference_output_cost": 0.0005685
+      },
+      "input_tokens": 8710,
+      "input_tokens_details": {
+        "cached_tokens": 5507
+      },
+      "is_byok": false,
+      "output_tokens": 758,
+      "output_tokens_details": {
+        "reasoning_tokens": 498
+      },
+      "total_tokens": 9468
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "822e98be8e37dac0bffdaccd440f93ff53f317cb30bfe5ac8246dd4349854cce",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

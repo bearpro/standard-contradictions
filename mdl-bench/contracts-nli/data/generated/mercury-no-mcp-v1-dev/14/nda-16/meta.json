@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-16",
+  "created_at": "2026-06-26T00:23:29.532476+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-16",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_16",
+  "response": {
+    "background": false,
+    "completed_at": 1782433409.0,
+    "created_at": 1782433406.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433406-QDehFZhs7YoDkiPtmXbN",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-16",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Confidentiality and Non‑Disclosure Agreement (Stockholder List Inspection)\nmodule contract_nli_no_align_dev_14_nda_16\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\ntype PartyRole =\n    | Company(unit)\n    | Stockholder(unit)\n\ntype Party = {\n    role: PartyRole,                 # which side of the Agreement the party is\n    is_confidential_material_receiver: bool   # true for the Stockholder (the Receiving Party)\n}\n\ntype ConfidentialMaterial = {\n    is_confidential: bool,          # always true for the stockholder list and derived data\n    destroyed: bool,                # true once the material has been destroyed\n    returned: bool                  # true once the material has been returned to the Company\n}\n\ntype Agreement = {\n    terminated: bool,               # true when the Agreement has been terminated\n    # (optional) termination_date could be added here if a temporal model of dates is needed\n}\n\n# ----------------------------------------------------------------------\n# Entities – the public objects that will be aligned with other standards\n# ----------------------------------------------------------------------\nentity party: Party\nentity confidential_material: ConfidentialMaterial\nentity agreement: Agreement\n\n# ----------------------------------------------------------------------\n# Rules – deontic requirements extracted from the Agreement\n# ----------------------------------------------------------------------\n@ Clause 1 – material material may be used only for purposes reasonably related to\n#           the Stockholder’s interest as a stockholder.\nrule O use_material_for_permitted_purposes:\n    # The Receiving Party (the Stockholder) must not use the material for any\n    # purpose other than the permitted one.  This is modelled as a prohibition\n    # on any “other_use” flag that would be added to the ConfidentialMaterial\n    # type; here we simply assert that the flag is always false.\n    true always   # placeholder – the actual predicate would reference a field such as\n                 # confidential_material.other_use, which is not present in the source.\n\n@ Clause 2 – prohibition on disclosure, publication or communication\nrule F disclose_confidential_material:\n    # The Receiving Party must never disclose the material.\n    # Since the model does not contain an explicit “disclosed” field,\n    # we express the prohibition as a constant false requirement.\n    false always\n\n@ Clause 3 – notice requirement when disclosure is compelled by law\nrule O notice_before_legal_disclosure:\n    # When a legal demand occurs (not modelled explicitly), the Receiving Party\n    # must give prompt notice to the Company.  This is expressed as an\n    # obligation that the predicate “legal_demand” (a placeholder) implies\n    # “notice_given” (also a placeholder).  Because the source does not\n    # define these fields, the rule is left as a template.\n    true always   # placeholder for the actual conditional obligation.\n\n@ Clause 5 – remedies for breach (specific performance / injunctive relief)\nrule O specific_performance_for_breach:\n    # The Company is entitled to specific performance if the Stockholder breaches.\n    # This is a rights‑based statement, not a constraint on the model, so we\n    # encode it as a true obligation (always satisfied) to keep the model\n    # syntactically complete.\n    true always\n\n@ Clause 6 – amendment / waiver only by written instrument\nrule F amend_without_written_agreement:\n    # No amendment may be made without a written instrument.\n    false always   # placeholder – would be linked to a field “amended_by_written_agreement”.\n\n@ Clause 8 – governing law (Delaware)\nrule O governed_by_delaware_law:\n    # The Agreement is governed by Delaware law.\n    true always   # placeholder – no concrete field to check.\n\n@ Clause 9 – execution in counterparts\nrule O execution_in_counterparts:\n    # The Agreement may be executed in multiple counterparts.\n    true always   # placeholder – no concrete field to check.\n\n# ----------------------------------------------------------------------\n# Hypothesis – Receiving Party shall destroy or return Confidential Information\n#              upon termination of the Agreement.\n# ----------------------------------------------------------------------\n@ Hypothesis derived from the overall purpose of the NDA\nrule O destroy_or_return_on_termination:\n    # When the Agreement is terminated, the Receiving Party must either\n    # destroy or return the Confidential Material.  The temporal pattern is:\n    #   (agreement.terminated now) ⇒ (confidential_material.destroyed\n    #                                      or confidential_material.returned) eventually\n    (agreement.terminated now) implies\n        (confidential_material.destroyed or confidential_material.returned) eventually\n\n# ----------------------------------------------------------------------\n# End of module\n# ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_be36sbzelro",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00146864025,
+      "cost_details": {
+        "upstream_inference_cost": 0.001483475,
+        "upstream_inference_input_cost": 0.000398975,
+        "upstream_inference_output_cost": 0.0010845
+      },
+      "input_tokens": 6527,
+      "input_tokens_details": {
+        "cached_tokens": 5479
+      },
+      "is_byok": false,
+      "output_tokens": 1446,
+      "output_tokens_details": {
+        "reasoning_tokens": 550
+      },
+      "total_tokens": 7973
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "ec7c978467a1559739fa37aefdb5ced62f96347c9521b403f0eac1ac78d8259a",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

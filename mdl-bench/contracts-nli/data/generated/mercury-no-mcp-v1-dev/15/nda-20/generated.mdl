@@ -1,0 +1,110 @@
+@ Contract: Non‑Disclosure Agreement (Two‑Way) – NDA 15‑20
+module contract_nli_no_align_dev_15_nda_20
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – definition of confidential material
+type ConfidentialInfo = {
+    id: int,                     -- stable identifier of the item
+    is_returned: bool,           -- true when the item has been returned to the disclosing party
+    is_destroyed: bool,          -- true when the item has been destroyed by the receiving party
+    is_retained: bool,           -- true when the receiving party still holds the item
+    is_marked_confidential: bool -- true when the item bears a “Confidential” label
+    source_party: Party,         -- the party that disclosed the information
+    receiving_party: Party       -- the party that received the information
+}
+
+type Party = {
+    name: string,
+    address: string
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Clause 1 – the two parties to the agreement
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 1 – each piece of confidential information exchanged
+entity confidential_item: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Clause 3b – proper protection measures (placeholder for detailed checks)
+func proper_protection(item: ConfidentialInfo) -> bool:
+    -- The model does not capture the concrete security controls;
+    -- we assume the requirement is satisfied if the item is marked
+    -- and the receiving party acknowledges the source.
+    item.is_marked_confidential and (item.source_party.name != "")
+
+@ Clause 3c – permission to disclose to a third party
+func permission_to_disclose(item: ConfidentialInfo, third_party: Party) -> bool:
+    -- The NDA forbids any third‑party disclosure without written consent.
+    false
+
+@ Clause 3e – permission to copy or abstract
+func permission_to_copy(item: ConfidentialInfo) -> bool:
+    -- Copying is prohibited unless a written licence is obtained.
+    false
+
+# ----------------------------------------------------------------------
+# Rules (Deontic Requirements)
+# ----------------------------------------------------------------------
+@ Clause 3a – take reasonable measures to preserve confidentiality
+rule O take_proper_measures:
+    proper_protection(confidential_item) always
+
+@ Clause 3b – no commercial use without licence
+rule F use_for_commercial_purpose:
+    not (confidential_item.is_retained and
+         (confidential_item.is_returned or confidential_item.is_destroyed)) always
+
+@ Clause 3c – no disclosure to third parties without permission
+rule F disclose_to_third_party:
+    not permission_to_disclose(confidential_item, Party { name = "", address = "" }) always
+
+@ Clause 3d – disclose only to employees who need it and who are aware of confidentiality
+rule O disclose_to_employees:
+    -- The model abstracts employee access; we assume compliance if the item
+    -- is marked confidential and the receiving party acknowledges it.
+    confidential_item.is_marked_confidential always
+
+@ Clause 3e – no copying or abstracting without written permission
+rule F copy_or_abstract:
+    not permission_to_copy(confidential_item) always
+
+@ Clause 3f – acknowledge source and mark "Confidential"
+rule O acknowledge_and_mark:
+    confidential_item.is_marked_confidential always
+
+@ Clause 4 – exclusions (public domain, prior knowledge, etc.) – modeled as permission
+rule P retain_exempt_information:
+    -- If the information is already public or independently developed,
+    -- the receiving party may retain it.  This is a permission, not an obligation.
+    (confidential_item.is_retained and
+     (confidential_item.source_party.name = "public_domain" or
+      confidential_item.source_party.name = "independently_developed")) always
+
+@ Clause 5 – confidentiality period of ten years
+rule O maintain_confidentiality_for_ten_years:
+    -- The trace is assumed to represent the whole contractual period.
+    -- The rule requires that no disclosure occurs at any step.
+    not (confidential_item.is_retained and
+         (confidential_item.is_returned or confidential_item.is_destroyed)) always
+
+@ Clause 5 – return or destroy all confidential information on request
+rule O return_or_destroy_on_request:
+    (confidential_item.is_returned or confidential_item.is_destroyed) always
+
+# ----------------------------------------------------------------------
+# Hypothesis (for analysis only – not a contractual requirement)
+# ----------------------------------------------------------------------
+@ Hypothesis – the receiving party may retain some confidential information
+-- after it has been returned or destroyed.
+-- This hypothesis contradicts rule `F retain_after_return_or_destruction`.
+rule P retain_after_return_or_destruction:
+    confidential_item.is_retained and
+    (confidential_item.is_returned or confidential_item.is_destroyed) always

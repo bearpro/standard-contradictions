@@ -1,0 +1,64 @@
+@ CNDA – Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_10_nda_13
+
+# ----------------------------------------------------------------------
+# Domain model
+# ----------------------------------------------------------------------
+type Party =
+    | DisclosingParty()
+    | ReceivingParty()
+
+type ConfidentialInfo = {
+    source: Party,               # who supplied the information
+    content: string,             # the actual data (abstracted)
+    marked_confidential: bool    # true if the document is clearly marked “Confidential”
+}
+
+type ThirdPartyInfo = {
+    source: string,              # name of the third‑party source
+    content: string,             # the actual data (abstracted)
+    marked_confidential: bool    # true if the third‑party document is marked “Confidential”
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+entity disclosing_party: Party = Party.DisclosingParty()
+entity receiving_party: Party = Party.ReceivingParty()
+entity confidential_info: ConfidentialInfo
+entity third_party_info: ThirdPartyInfo
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+# Determines whether a piece of information is “Confidential Information” as
+# defined in Article 2.01 of the CNDA.
+func is_confidential(info: ConfidentialInfo) -> bool:
+    info.marked_confidential or info.source = Party.DisclosingParty()
+
+# ----------------------------------------------------------------------
+# Requirements (deontic rules)
+# ----------------------------------------------------------------------
+# 2.03 – The Receiving Party must not disclose Confidential Information.
+rule F cannot_disclose_confidential:
+    is_confidential(confidential_info) always
+
+# 2.04 – The Receiving Party may acquire information that is *similar* to
+# Confidential Information from a third party, provided that such information
+# is not itself marked confidential.  This captures the hypothesis that
+# “Receiving Party may acquire information similar to Confidential Information
+# from a third party.”
+rule P acquire_third_party_info:
+    not third_party_info.marked_confidential always
+
+# 2.05 – The Receiving Party must not disclose third‑party information that
+# is marked confidential (i.e. it becomes Confidential Information under the
+# definition above).
+rule F cannot_disclose_third_party_confidential:
+    third_party_info.marked_confidential always
+
+# 2.07 – Upon request, the Receiving Party must return or destroy all
+# Confidential Information.  (Simplified to an obligation that the condition
+# holds at every step.)
+rule O return_confidential_on_request:
+    true always

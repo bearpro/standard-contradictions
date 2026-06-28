@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-10",
+  "created_at": "2026-06-26T00:17:09.935413+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-10",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_10",
+  "response": {
+    "background": false,
+    "completed_at": 1782433029.0,
+    "created_at": 1782433026.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433026-3grDE6cdOSyDz9z7hijh",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-10",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: OISAIR PROJECT – Two‑Way Confidentiality & Non‑Disclosure Agreement\n@ Module name required by the request\nmodule contract_nli_no_align_dev_3_nda_10\n\n# ----------------------------------------------------------------------\n# Standard library imports (optional – only needed for helper functions)\n# ----------------------------------------------------------------------\nopen std.strings\nopen std.collections\n\n# ----------------------------------------------------------------------\n# Domain types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\ntype Party = {\n    name: string,          # legal name of the party\n    role: string           # \"Disclosing\" or \"Receiving\"\n}\n\n@ Clause 2 – Confidential Information (simplified)\ntype ConfidentialInfo = {\n    description: string,  # free‑text description of the information\n    marked: bool           # true if the Disclosing Party has marked it as confidential\n}\n\n@ Clause 4 – Disclosure event (used for modelling non‑disclosure obligations)\ntype Disclosure = {\n    party: Party,                     # the party that makes the disclosure\n    is_agreement_existence: bool,     # true only if the disclosed content is the fact that the Agreement exists / was negotiated\n    content: string                   # free‑text representation of what is disclosed\n}\n\n# ----------------------------------------------------------------------\n# Entities – public model objects (stable, singular nouns)\n# ----------------------------------------------------------------------\n@ Clause 1 – the two contracting parties\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ Clause 2 – the confidential material that may be exchanged\nentity confidential_info: ConfidentialInfo\n\n@ Clause 4 – a (potential) disclosure made by the Receiving Party\nentity receiving_party_disclosure: Disclosure\n\n# ----------------------------------------------------------------------\n# Helper functions (pure, no side‑effects)\n# ----------------------------------------------------------------------\n@ Clause 3 – “reasonable measures” predicate (simplified to a Boolean flag)\nfunc takes_reasonable_measures(p: Party) -> bool:\n    # In a real model this would inspect many fields; here we assume a flag exists\n    true\n\n@ Clause 5 – “return or destroy” predicate (simplified)\nfunc has_returned_or_destroyed(p: Party) -> bool:\n    true\n\n# ----------------------------------------------------------------------\n# Rules – normative requirements (deontic modality + temporal operator)\n# ----------------------------------------------------------------------\n@ Clause 3 – Obligation to take reasonable care of the Confidential Information\nrule O receiving_party_must_take_reasonable_measures:\n    takes_reasonable_measures(receiving_party) always\n\n@ Clause 3 – Prohibition: no disclosure to third parties without consent\nrule F receiving_party_must_not_disclose_to_third_party:\n    let disclosed_to_third = receiving_party_disclosure.content != \"\" and\n        receiving_party_disclosure.is_agreement_existence = false and\n        receiving_party_disclosure.party = receiving_party and\n        not receiving_party_disclosure.content.contains(\"third party\")\n    not disclosed_to_third always\n\n@ Clause 3 – Prohibition: no use outside the Permitted Purpose\nrule F receiving_party_must_not_use_outside_permitted_purpose:\n    # A concrete flag would be modelled in a real system; we use a placeholder\n    let uses_outside = false\n    not uses_outside always\n\n@ Clause 6 – Prohibition: the Receiving Party shall not disclose the existence of the Agreement\nrule F receiving_party_must_not_disclose_agreement_existence:\n    receiving_party_disclosure.is_agreement_existence = false always\n\n@ Clause 5 – Obligation to return or destroy Confidential Information at termination\nrule O receiving_party_must_return_or_destroy_at_termination:\n    # “termination_date” is a placeholder; we model the obligation as “eventually”\n    has_returned_or_destroyed(receiving_party) eventually\n\n@ Clause 10 – Survival of confidentiality obligations after termination (3‑year survival)\nrule O confidentiality_obligations_survive_three_years:\n    # We model the survival as “always” because the rule applies to the whole trace\n    true always\n\n# ----------------------------------------------------------------------\n# Facts – static data (optional, can be removed in the final model)\n# ----------------------------------------------------------------------\nfact disclosing_party.role = \"Disclosing\"\nfact receiving_party.role   = \"Receiving\"\nfact receiving_party_disclosure.is_agreement_existence = false\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_igr3w3nxcl",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0026082045,
+      "cost_details": {
+        "upstream_inference_cost": 0.00263455,
+        "upstream_inference_input_cost": 0.0014128,
+        "upstream_inference_output_cost": 0.00122175
+      },
+      "input_tokens": 7822,
+      "input_tokens_details": {
+        "cached_tokens": 2412
+      },
+      "is_byok": false,
+      "output_tokens": 1629,
+      "output_tokens_details": {
+        "reasoning_tokens": 766
+      },
+      "total_tokens": 9451
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "d5c8a5f5b93f69b904e488d596472ab003f6cc7d002d8614053b19b5acd6f70b",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,129 @@
+@ Contract: Confidentiality and Non‑Disclosure Agreement (CNDA)
+@ Module name required by the user
+module contract_nli_no_align_dev_10_nda_17
+
+# ------------------------------------------------------------
+# Imports
+# ------------------------------------------------------------
+open std.collections   # for List<T>
+
+# ------------------------------------------------------------
+# Types – domain concepts appearing in the CNDA
+# ------------------------------------------------------------
+
+@ Parties to the agreement
+type Party = {
+    name: string               # e.g. "Canadian Pacific Railway", "Supplier"
+}
+
+@ Information that is identified as confidential
+type ConfidentialInfo = {
+    marked_confidential: bool  # true when the information is labelled “Confidential”
+    source: Party              # the Disclosing Party that supplied the information
+    is_disclosed: bool         # true if the Receiving Party has disclosed it to a third‑party
+    is_returned: bool          # true if the information has been returned/destroyed on request
+}
+
+@ Information that may be retained in the unaided memory of a person
+type ResidualInfo = {
+    description: string        # free‑form description of the residual knowledge
+}
+
+# ------------------------------------------------------------
+# Entities – stable public objects that can be aligned across modules
+# ------------------------------------------------------------
+
+@ The whole CNDA agreement (the “contract”)
+entity cnda: {
+    disclosing_party: Party,
+    receiving_party: Party,
+    confidential_infos: List<ConfidentialInfo>,
+    residual_infos: List<ResidualInfo>,
+    termination_date: string,        # ISO‑date of termination (if any)
+    request_return: bool            # true when the Disclosing Party has asked for return
+}
+
+# ------------------------------------------------------------
+# Helper functions – keep rules readable
+# ------------------------------------------------------------
+
+@ True whether a piece of information is confidential
+func is_confidential(info: ConfidentialInfo) -> bool:
+    info.marked_confidential
+
+@ True when a piece of confidential information has been disclosed
+func has_been_disclosed(info: ConfidentialInfo) -> bool:
+    info.is_disclosed
+
+@ True when a piece of confidential information has been returned/destroyed
+func has_been_returned(info: ConfidentialInfo) -> bool:
+    info.is_returned
+
+@ True when a piece of residual information exists
+func residual_exists(c: { residual_infos: List<ResidualInfo> }) -> bool:
+    list.len(c.residual_infos) > 0
+
+# ------------------------------------------------------------
+# Rules – deontic constraints derived from the CNDA text
+# ------------------------------------------------------------
+
+# Article 2.03 – “Kept in Confidence”
+@ 2.03 Kept in Confidence
+rule O keep_confidential_information:
+    # The Receiving Party must keep every confidential item with at least
+    # a reasonable degree of care (the rule is an obligation; the exact
+    # quantitative care level is not modelled here).
+    true always
+
+# Article 2.05 – “No Disclosure”
+@ 2.05 No Disclosure
+rule F disclose_confidential_information:
+    let any_disclosed: bool =
+        exists i: ConfidentialInfo in cnda.confidential_infos where
+            is_confidential(i) and has_been_disclosed(i)
+    any_disclosed false always
+
+# Article 2.07 – “Return of Confidential Information”
+@ 2.07 Return of Confidential Information
+rule O return_confidential_on_request:
+    let any_not_returned: bool =
+        exists i: ConfidentialInfo in cnda.confidential_infos where
+            cnda.request_return and not has_been_returned(i)
+    any_not_returned false always
+
+# Article 2.08 – “Responsibility for Others”
+@ 2.08 Responsibility for Others
+rule O responsibility_for_representatives:
+    # The Receiving Party is responsible for any breach caused by its
+    # Representatives.  This is modelled as an obligation that must hold
+    # at all times.
+    true always
+
+# Article 3.02 – “Continuing Obligations Regarding Confidentiality”
+@ 3.02 Continuing Obligations
+rule O obligations_survive_three_years:
+    # The confidentiality obligations survive three years after termination.
+    # We model the survival as an obligation that is active while the
+    # current date is within three years of the termination date.
+    # (The actual date arithmetic is omitted – the rule simply states
+    # the intent that the obligation is perpetual for the required period.)
+    true always
+
+# Article 3.11 – “Residuals”
+@ 3.11 Residual Information
+rule P use_residual_information:
+    # The Receiving Party may use residual information “during and after the term”.
+    # This is a permission that is always available (the clause does not
+    # impose any further condition).
+    residual_exists(cnda) always
+
+# ------------------------------------------------------------
+# Hypothesis – “Receiving Party may create a copy of some Confidential
+# Information in some circumstances.”
+# ------------------------------------------------------------
+@ This rule captures the hypothesis that a copy (i.e., a residual
+@ representation) may be created.  The permission granted by clause 3.11
+@ allows the Receiving Party to retain such a copy in its unaided memory.
+rule P create_copy_of_residual_information:
+    # The permission is granted whenever residual information exists.
+    residual_exists(cnda) always

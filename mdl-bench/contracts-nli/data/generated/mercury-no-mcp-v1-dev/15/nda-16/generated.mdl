@@ -1,0 +1,93 @@
+@ Agreement on the non‑disclosure of confidential information (two‑way)
+module contract_nli_no_align_dev_15_nda_16
+
+# ----------------------------------------------------------------------
+# Types that capture the domain concepts used in the NDA
+# ----------------------------------------------------------------------
+type Party = {
+    name: string                     # e.g. “University of Bristol” or the other party
+}
+
+type ConfidentialInfo = {
+    # Identification / marking
+    marked: bool                     # the information has been marked “Confidential”
+
+    # Ownership / source
+    disclosed_by: Party              # party that supplied the information
+    received_by: Party               # party that receives the information
+
+    # Status flags
+    is_returned: bool                # the information has been returned to the disclosing party
+    is_destroyed: bool               # the information has been destroyed
+    is_copy: bool                    # a copy of the information exists
+    is_public_domain: bool           # the information is already public
+    is_independently_developed: bool # the receiving party can show independent creation
+    is_legal_disclosure: bool        # disclosure required by law / regulator
+    is_third_party_without_restriction: bool # received from a third party with no NDA
+
+    # Permissions / licences
+    licensed: bool                   # a written licence for commercial use has been obtained
+    permission_to_copy: bool         # written permission to make a copy
+    permission_to_disclose: bool     # written permission to disclose to a third party
+
+    # Use flags (for modelling prohibitions)
+    used_for_commercial: bool        # the information is being used for a commercial purpose
+    disclosed_to_third_party: bool   # the information has been disclosed to a third party
+}
+
+type Agreement = {
+    effective_date: int              # day count from a reference epoch (e.g. Unix days)
+    terminated: bool                 # true when the agreement has been terminated
+    # The model does not need a full calendar – the solver can treat “terminated”
+    # as a Boolean that becomes true at the step where termination occurs.
+}
+
+# ----------------------------------------------------------------------
+# Public entities – these are the stable anchors that can be aligned with
+# other standards or contracts.
+# ----------------------------------------------------------------------
+entity receiving_party: Party
+entity disclosing_party: Party
+entity confidential_info: ConfidentialInfo
+entity agreement: Agreement
+
+# ----------------------------------------------------------------------
+# Helper functions – keep the rule bodies readable
+# ----------------------------------------------------------------------
+func is_exception(info: ConfidentialInfo) -> bool:
+    info.is_public_domain
+    or info.is_independently_developed
+    or info.is_legal_disclosure
+    or info.is_third_party_without_restriction
+
+# ----------------------------------------------------------------------
+# Rules – deontic constraints derived from the NDA clauses
+# ----------------------------------------------------------------------
+@ Clause 2 – parties must mark or otherwise designate confidential information
+rule O mark_confidential: confidential_info.marked always
+
+@ Clause 3a – take proper and reasonable measures (modelled by marking)
+rule O protect_confidentiality:
+    not is_exception(confidential_info) implies confidential_info.marked always
+
+@ Clause 3b – do not use the information for commercial purposes without a licence
+rule F commercial_use_without_license:
+    (confidential_info.used_for_commercial and not confidential_info.licensed) always
+
+@ Clause 3c – do not disclose to a third party without written permission
+rule F disclose_without_permission:
+    (confidential_info.disclosed_to_third_party and not confidential_info.permission_to_disclose) always
+
+@ Clause 3e – do not make a copy without written permission
+rule F copy_without_permission:
+    (confidential_info.is_copy and not confidential_info.permission_to_copy) always
+
+@ Clause 5 – during the ten‑year post‑effective period the receiving party must not
+# communicate the confidential information to any third party
+rule F disclose_during_10_years:
+    (not agreement.terminated) implies not confidential_info.disclosed_to_third_party always
+
+@ Clause 5 (hypothesis) – upon termination the receiving party must either
+# return the information to the disclosing party or destroy it
+rule O return_or_destroy_upon_termination:
+    agreement.terminated implies (confidential_info.is_returned or confidential_info.is_destroyed) eventually

@@ -1,0 +1,24 @@
+@ Non‑Disclosure Agreement – Return or destroy Confidential Information on termination
+module contract_nli_no_align_dev_7_nda_16
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type ConfidentialInfo = {
+    id: string,               # stable identifier of the information item
+    is_returned: bool,        # true when the item has been returned to the Discloser
+    is_destroyed: bool        # true when the item has been securely destroyed
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+entity ci: ConfidentialInfo                # a piece of Confidential Information
+entity termination: { occurred: bool }      # flag that becomes true when the Agreement ends
+
+# ----------------------------------------------------------------------
+# Rules – obligations of the Receiving Party (the “Recipient”)
+# ----------------------------------------------------------------------
+@ Clause 3 – Return of Confidential Information
+rule O return_or_destroy_on_termination:
+    termination.occurred implies (ci.is_returned or ci.is_destroyed) eventually

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-16",
+  "created_at": "2026-06-26T00:21:41.628593+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-16",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_16",
+  "response": {
+    "background": false,
+    "completed_at": 1782433301.0,
+    "created_at": 1782433299.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433299-4FIc1KVQ4H37dwBMKfeK",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-16",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: Non‑Disclosure Agreement (NDA) – “BROOKS’ BOTTLING COMPANY, LLC v. CLIENT”\nmodule contract_nli_no_align_dev_12_nda_16\n\n# ------------------------------------------------------------\n# Types\n# ------------------------------------------------------------\ntype Party = {\n    name: string,               # e.g. \"BROOKS\" or \"CLIENT\"\n    is_receiving_party: bool   # true for the party that receives Confidential Information\n}\n\ntype ConfidentialMaterial = {\n    description: string,   # free‑form description of the material\n    is_returned: bool,      # true if the material has been handed back to CLIENT\n    is_destroyed: bool,     # true if the material has been destroyed / disposed\n    retained_years: int,    # number of years the material has been kept after termination\n    notice_given: bool      # true if CLIENT has received the required 10‑day written notice\n}\n\n# ------------------------------------------------------------\n# Entities\n# ------------------------------------------------------------\n@ Section 1 – Parties\nentity brooks: Party = { name = \"BROOKS\", is_receiving_party = true }\nentity client: Party = { name = \"CLIENT\", is_receiving_party = false }\n\n@ Section 5 – Confidential material that BROOKS holds\nentity material: ConfidentialMaterial = {\n    description = \"Confidential records, data, information and other documents\",\n    is_returned = false,\n    is_destroyed = false,\n    retained_years = 0,\n    notice_given = false\n}\n\n# ------------------------------------------------------------\n# Helper functions\n# ------------------------------------------------------------\nfunc client_requested_return() -> bool:\n    # The NDA does not give a concrete flag; we model the request as a boolean\n    # that can be set by the environment (e.g. a test harness).  The function\n    # exists only to keep the rule readable.\n    false   # default: no written request (can be overridden in a concrete trace)\n\n# ------------------------------------------------------------\n# Rules – obligations of the Receiving Party (BROOKS)\n# ------------------------------------------------------------\n@ Section 5 – Return of material upon termination\nrule O return_or_destroy_on_termination:\n    # The termination event is implicit – the rule is evaluated at the step\n    # where the agreement has ended.  The obligation is:\n    #   * If CLIENT requests the material, BROOKS must return it immediately.\n    #   * If CLIENT does not request it, BROOKS may retain it for up to 3 years,\n    #     after which it must give CLIENT a 10‑day written notice and then\n    #     destroy the material.\n    let termination: bool = true               # the rule is scoped to the termination step\n    let request: bool = client_requested_return()\n    let must_return: bool = request implies material.is_returned\n    let must_destroy: bool =\n        (not request) implies\n            (material.retained_years >= 3 and material.notice_given and material.is_destroyed)\n    (termination implies (must_return and must_destroy)) always\n\n@ Section 2 – Prohibition on disclosure (for completeness)\nrule F disclose_confidential_information:\n    # BROOKS, its directors, employees, agents and representatives shall not\n    # disclose Confidential Information except as permitted in Sections 3 or 4.\n    true always   # placeholder – the actual disclosure logic would be modelled elsewhere\n\n# ------------------------------------------------------------\n# Optional: a fact to instantiate a concrete scenario (used only for testing)\n# ------------------------------------------------------------\n# fact material.retained_years = 4\n# fact material.notice_given = true\n# fact material.is_destroyed = true\n# fact client_requested_return = false\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_udgelgjpj7c",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00129751875,
+      "cost_details": {
+        "upstream_inference_cost": 0.001310625,
+        "upstream_inference_input_cost": 0.000501375,
+        "upstream_inference_output_cost": 0.00080925
+      },
+      "input_tokens": 6942,
+      "input_tokens_details": {
+        "cached_tokens": 5485
+      },
+      "is_byok": false,
+      "output_tokens": 1079,
+      "output_tokens_details": {
+        "reasoning_tokens": 356
+      },
+      "total_tokens": 8021
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "e34982bf68cbbf99efd78d35fc94af36266680bef4c1ffd226beb8f1231a513a",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-1",
+  "created_at": "2026-06-26T00:23:10.276746+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-1",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_1",
+  "response": {
+    "background": false,
+    "completed_at": 1782433390.0,
+    "created_at": 1782433387.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433387-4Bry4SayhKGURoHPyKJo",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-1",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list\nmodule contract_nli_no_align_dev_14_nda_1\n\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain types\n# ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party = {\n    name: string\n}\n\n@ Information that the Company may disclose to the Stockholder\ntype ConfidentialMaterial = {\n    description: string,          # free‑text description of the material\n    is_identified: bool           # true iff the material has been expressly identified by the disclosing Party\n}\n\n# ----------------------------------------------------------------------\n# Entities (stable public objects)\n# ----------------------------------------------------------------------\n@ The Company (Patriot Scientific Corporation)\nentity company: Party\n\n@ The Stockholder (the receiving party)\nentity stockholder: Party\n\n@ The Confidential Material that may be inspected\nentity confidential_material: ConfidentialMaterial\n\n# ----------------------------------------------------------------------\n# Helper functions (pure, used only to keep rules readable)\n# ----------------------------------------------------------------------\n@ Returns true if the Stockholder has disclosed the material to any third party\nfunc disclosed(cm: ConfidentialMaterial) -> bool:\n    false   # placeholder – the solver will assign a value consistent with other rules\n\n@ Returns true if an external legal process forces disclosure of the material\nfunc required_to_disclose(cm: ConfidentialMaterial) -> bool:\n    false   # placeholder\n\n@ Returns true if the Stockholder gives the Company notice within two business days\nfunc notice_given_within_2_days(cm: ConfidentialMaterial) -> bool:\n    true    # placeholder\n\n@ Returns true if an amendment is made without a written, signed instrument\nfunc unsigned_amendment() -> bool:\n    false   # placeholder\n\n# ----------------------------------------------------------------------\n# Normative rules (deontic modalities + LTLf temporal operators)\n# ----------------------------------------------------------------------\n@ Clause 1 – use of Confidential Material only for purposes reasonably related to the Stockholder’s interests\nrule O use_confidential_material_for_purposes:\n    true always   # the model assumes the Stockholder complies; a concrete predicate can be added later\n\n@ Clause 2 – prohibition on disclosure, publication or communication of Confidential Material\nrule F disclose_confidential_material:\n    disclosed(confidential_material) always\n\n@ Clause 2 – prohibition on disclosing names, addresses, holdings of any other stockholder\nrule F disclose_other_stockholder_details:\n    false always   # placeholder – a concrete predicate could be added if such a field existed\n\n@ Clause 3 – notice requirement when disclosure is compelled by law\nrule O provide_notice_when_required:\n    required_to_disclose(confidential_material) implies\n        notice_given_within_2_days(confidential_material) always\n\n@ Clause 4 – exclusive jurisdiction of the Delaware Court of Chancery\nrule O accept_delaware_chancery_jurisdiction:\n    true always\n\n@ Clause 5 – acknowledgment that the Company has no adequate legal remedy and may seek specific performance / injunctive relief\nrule P seek_specific_performance_or_injunctive_relief:\n    true always\n\n@ Clause 6 – amendment, waiver or termination only by a written, signed instrument\nrule F unsigned_amendment:\n    unsigned_amendment() always\n\n@ Clause 7 – binding effect on parties and their successors, assigns, etc.\nrule O agreement_is_binding_on_successors:\n    true always\n\n@ Clause 8 – governing law of the State of Delaware\nrule O governed_by_delaware_law:\n    true always\n\n@ Clause 9 – execution in multiple counterparts constitutes a single agreement\nrule O multiple_counterparts_form_one_agreement:\n    true always\n\n@ Clause 10 – entire agreement clause\nrule O entire_agreement_supersedes_prior:\n    true always\n\n@ Clause 11 – no construction against either party by reason of authorship\nrule O no_construction_against_author:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis to be checked against the model\n# ----------------------------------------------------------------------\n@ Hypothesis: All Confidential Information shall be expressly identified by the Disclosing Party\nrule O all_confidential_information_must_be_identified:\n    confidential_material.is_identified always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_4jqrwhlfko7",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00181489275,
+      "cost_details": {
+        "upstream_inference_cost": 0.001833225,
+        "upstream_inference_input_cost": 0.000416475,
+        "upstream_inference_output_cost": 0.00141675
+      },
+      "input_tokens": 6822,
+      "input_tokens_details": {
+        "cached_tokens": 5729
+      },
+      "is_byok": false,
+      "output_tokens": 1889,
+      "output_tokens_details": {
+        "reasoning_tokens": 1054
+      },
+      "total_tokens": 8711
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "48d102131829ac9816d7002d6399f6ae11126cf1bbf769ab27cb7f25c2089064",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

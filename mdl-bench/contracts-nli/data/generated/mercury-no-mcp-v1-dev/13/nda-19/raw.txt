@@ -1,0 +1,88 @@
+```mdl
+@ Non‑Disclosure Agreement (NDA) – model for clause‑level obligations
+module contract_nli_no_align_dev_13_nda_19
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties to the Agreement
+type Party = {
+    name: string,                # e.g. “PJM Interconnection, L.L.C.” or a Transmission Owner
+    is_disclosing: bool,         # true if this Party is the Disclosing Party for a given exchange
+    is_reviewing: bool           # true if this Party is a Reviewing Representative’s employer
+}
+
+@ Clause 5 – Definition of Confidential Information
+type ConfidentialInfo = {
+    is_marked_confidential: bool,   # true when the information is clearly marked “Confidential”
+    is_oral: bool,                  # true when the information was disclosed orally
+    is_returned_or_destroyed: bool  # true when the information has been returned or destroyed per §8
+}
+
+@ Clause 10 – Status of the Agreement
+type AgreementStatus = {
+    terminated: bool,   # true after the Agreement has been terminated (see §10)
+    effective: bool     # true while the Agreement is in force
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Clause 1 – The two parties (PJM and the Transmission Owner)
+entity pjm: Party
+entity transmission_owner: Party
+
+@ Clause 5 – The confidential information that may be exchanged
+entity confidential_data: ConfidentialInfo
+
+@ Clause 10 – The life‑cycle status of the Agreement
+entity agreement: AgreementStatus
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Clause 5 – Is the confidential data currently protected?
+func is_protected(info: ConfidentialInfo) -> bool:
+    info.is_marked_confidential or info.is_oral
+
+@ Clause 8 – Is the confidential data still in the possession of a Party?
+func still_in_possession(info: ConfidentialInfo) -> bool:
+    not info.is_returned_or_destroyed
+
+# ----------------------------------------------------------------------
+# Rules – Obligations (O), Prohibitions (F) and Permissions (P)
+# ----------------------------------------------------------------------
+@ Clause 8 – The receiving Party shall safeguard the Confidential Information
+rule O safeguard_confidential_information:
+    still_in_possession(confidential_data) implies is_protected(confidential_data) always
+
+@ Clause 9 – Marking requirement for written Confidential Information
+rule O mark_written_confidential_information:
+    confidential_data.is_marked_confidential always
+
+@ Clause 9 – Oral disclosure must be followed by written notice within ten days
+rule O oral_disclosure_notice:
+    confidential_data.is_oral implies (confidential_data.is_marked_confidential) always
+
+@ Clause 10 – Obligations survive termination of the Agreement
+rule O obligations_survive_termination:
+    agreement.terminated implies (
+        # the confidentiality obligations that are already expressed above must
+        # continue to hold after termination
+        (still_in_possession(confidential_data) implies is_protected(confidential_data)) and
+        confidential_data.is_marked_confidential and
+        (confidential_data.is_oral implies confidential_data.is_marked_confidential)
+    ) always
+
+@ Clause 7 – The Reviewing Representative must have executed a Non‑Disclosure Certificate
+rule O reviewing_rep_must_have_certificate:
+    transmission_owner.is_reviewing implies (transmission_owner.is_disclosing = false) always
+
+@ Clause 12 – No disclosure to a Third Party without prior written approval
+rule F disclose_to_third_party_without_approval:
+    (confidential_data.is_marked_confidential and not agreement.terminated) implies false always
+
+# ----------------------------------------------------------------------
+# End of model
+# ----------------------------------------------------------------------
+```

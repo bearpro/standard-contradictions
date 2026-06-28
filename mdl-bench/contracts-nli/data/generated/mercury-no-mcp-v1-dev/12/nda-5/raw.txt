@@ -1,0 +1,98 @@
+```mdl
+@ Contract: Confidentiality (Non‑Disclosure) Agreement
+module contract_nli_no_align_dev_12_nda_5
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party =
+    | Brooks(unit)      # BROOKS’ BOTTLING COMPANY, LLC
+    | Client(unit)      # CLIENT
+
+@ Clause 1 – Confidential Information
+type ConfidentialInfo = {
+    is_personal: bool,
+    is_financial: bool,
+    is_product: bool,
+    is_formulation: bool,
+    is_processing_procedure: bool
+}
+
+@ Clause 2 – Employees of the Receiving Party (BROOKS)
+type Employee = {
+    name: string,
+    has_reasonable_need: bool   # true if the employee needs the info to perform the services
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+entity brooks: Party = Party.Brooks()
+entity client: Party = Party.Client()
+
+@ Clause 1 – Confidential Information disclosed by CLIENT
+entity confidential_info: ConfidentialInfo
+
+@ Clause 2 – A representative employee of BROOKS
+entity brooks_employee: Employee
+
+@ Clause 4 – Client’s written consent for a particular disclosure
+entity client_consent: bool   # true when CLIENT has given written consent
+
+@ Clause 5 – Termination of the business relationship
+entity termination: bool      # true at the step where the relationship ends
+
+@ Clause 5 – Return of material obligation by BROOKS
+entity material_returned: bool   # true when all CLIENT material has been returned
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Clause 2 – Permission to disclose to a given employee
+func can_disclose_to_employee(emp: Employee, consent: bool) -> bool:
+    emp.has_reasonable_need or consent
+
+# ----------------------------------------------------------------------
+# Rules (deontic requirements)
+# ----------------------------------------------------------------------
+@ Clause 1.1 – CONFIDENT INFORMATION is received in confidence
+rule O receive_confidential_info:
+    true always
+
+@ Clause 2 – No disclosure to employees lacking reasonable need unless CLIENT consents
+rule O disclose_to_employee_only_if_allowed:
+    can_disclose_to_employee(brooks_employee, client_consent) always
+
+@ Clause 2 – Prohibition of unlawful disclosure (negative formulation)
+rule F prohibit_disclosure_without_need:
+    not (brooks_employee.has_reasonable_need) and not client_consent always
+
+@ Clause 4 – When legally compelled, BROOKS must notify CLIENT
+rule O notify_client_of_legal_compulsion:
+    true always   # the notification obligation is unconditional
+
+@ Clause 5 – Return of material after termination (if CLIENT requests)
+rule O return_material_on_request:
+    termination implies material_returned always
+
+@ Clause 5 – If CLIENT does not request return, BROOKS may retain material for 3 years
+rule O retain_material_for_three_years:
+    not termination and not material_returned eventually   # allowed to keep until 3‑year deadline (modelled as “eventually”)
+
+@ Clause 6 – Governing law (informational, not a deontic requirement)
+rule O governed_by_new_york_law:
+    true always
+
+@ Clause 7 – Survival of confidentiality for one year after termination
+rule O confidentiality_survives_one_year:
+    termination until (termination and true)   # modelled as “until” the one‑year expiry (abstracted)
+
+# ----------------------------------------------------------------------
+# Hypothesis (derived from the agreement)
+# ----------------------------------------------------------------------
+@ Hypothesis – Receiving Party may share some Confidential Information with some of its employees
+rule P share_with_reasonable_need_employee:
+    brooks_employee.has_reasonable_need always
+```

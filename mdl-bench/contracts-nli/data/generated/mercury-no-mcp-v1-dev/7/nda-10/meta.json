@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-10",
+  "created_at": "2026-06-26T00:18:58.525319+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-10",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_10",
+  "response": {
+    "background": false,
+    "completed_at": 1782433138.0,
+    "created_at": 1782433137.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433137-CjBt1qG4Yly9iU6JnCrr",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-10",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ contract_nli_no_align_dev_7_nda_10\nmodule contract_nli_no_align_dev_7_nda_10\n\n@ Hypothesis: Receiving Party shall not disclose the fact that the Agreement was\n@ agreed or negotiated.\ntype Party = {\n    name: string,\n    has_disclosed_agreement_existence: bool   # true iff the party has revealed that the Agreement exists or was negotiated\n}\n\n@ The two contractual parties\nentity company: Party\nentity ahpl: Party\n\n@ Prohibition – the receiving party (the Company) must never disclose that the\n@ Agreement was concluded or negotiated.\nrule F disclose_agreement_existence:\n    company.has_disclosed_agreement_existence always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_18p44zhg6m7",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0021411225,
+      "cost_details": {
+        "upstream_inference_cost": 0.00216275,
+        "upstream_inference_input_cost": 0.00158075,
+        "upstream_inference_output_cost": 0.000582
+      },
+      "input_tokens": 11408,
+      "input_tokens_details": {
+        "cached_tokens": 5650
+      },
+      "is_byok": false,
+      "output_tokens": 776,
+      "output_tokens_details": {
+        "reasoning_tokens": 628
+      },
+      "total_tokens": 12184
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "f592203a39b6187629d0cc43526ce1bd5f67ffaf250c166bb2c40a9932273fcb",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

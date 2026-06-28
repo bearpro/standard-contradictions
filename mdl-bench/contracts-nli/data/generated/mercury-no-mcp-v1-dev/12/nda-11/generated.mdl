@@ -1,0 +1,89 @@
+@ CONFIDENTIALITY (NON‑DISCLOSURE) AGREEMENT – Model for contract_nli_no_align_dev_12_nda_11
+module contract_nli_no_align_dev_12_nda_11
+
+# ----------------------------------------------------------------------
+# Types – domain concepts used throughout the agreement
+# ----------------------------------------------------------------------
+type Party = {
+    name: string
+}
+
+type ConfidentialKind =
+    | Personal
+    | Financial
+    | Product
+    | Formulation
+    | Procedure
+
+type ConfidentialInfo = {
+    source: Party,                     # the Disclosing Party (CLIENT)
+    kind: ConfidentialKind,            # kind of information
+    is_disclosed: bool,                # has the info been disclosed by BROOKS?
+    client_consent: bool,              # CLIENT has given written consent?
+    already_possesses: bool,           # BROOKS already possessed the info
+    developed_independently: bool,     # BROOKS developed it independently
+    rightfully_received: bool,         # received from a third party without duty
+    public: bool,                      # public domain
+    is_embodied_in_object: bool,      # the info is embodied in a tangible object
+    reverse_engineered: bool,          # BROOKS performed reverse‑engineering?
+    is_compelled: bool                 # legal compulsion to disclose?
+}
+
+# ----------------------------------------------------------------------
+# Entities – the concrete objects that the rules refer to
+# ----------------------------------------------------------------------
+@ Parties (BROOKS and CLIENT)
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Confidential information that may be exchanged
+entity confidential_info: ConfidentialInfo
+
+@ Termination of the business relationship
+entity termination: { occurred: bool }
+
+@ CLIENT’s request for return of material after termination
+entity client_request_return: { requested: bool }
+
+@ Material that may be returned, retained or disposed
+entity material: {
+    returned: bool,
+    retained: bool,
+    disposed: bool
+}
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (obligations, prohibitions, permissions)
+# ----------------------------------------------------------------------
+@ Clause 1.2 – BROOKS must not disclose Confidential Information without CLIENT consent
+rule F unauthorized_disclosure:
+    confidential_info.is_disclosed and
+    not (
+        confidential_info.already_possesses
+        or confidential_info.developed_independently
+        or confidential_info.rightfully_received
+        or confidential_info.public
+        or confidential_info.client_consent
+    ) always
+
+@ Clause 2.2 – BROOKS must notify CLIENT immediately if legally compelled to disclose
+rule O notify_compelled:
+    confidential_info.is_compelled implies receiving_party.notified always
+
+@ Clause 4 – BROOKS must use best efforts to obtain a protective order when compelled
+rule O best_efforts_protective_order:
+    confidential_info.is_compelled implies true always
+
+@ Clause 5 – Return of material after termination (CLIENT request vs. retention)
+rule O return_material:
+    termination.occurred implies
+        (client_request_return.requested implies material.returned) and
+        (not client_request_return.requested implies material.retained) always
+
+@ Clause 5 – If material is retained, it must be disposed after the 10‑day notice period
+rule O dispose_material:
+    (not client_request_return.requested and material.retained) eventually material.disposed always
+
+@ Hypothesis – Receiving Party shall not reverse‑engineer any objects embodying Confidential Information
+rule F reverse_engineer:
+    confidential_info.is_embodied_in_object and confidential_info.reverse_engineered always

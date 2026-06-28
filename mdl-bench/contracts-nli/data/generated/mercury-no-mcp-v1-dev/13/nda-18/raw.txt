@@ -1,0 +1,55 @@
+```mdl
+@ Non‑Disclosure Agreement (NDA) for the Exchange of Energy Management System Model Data
+module contract_nli_no_align_dev_13_nda_18
+
+open std.collections
+
+* ----------------------------------------------------------------------
+ * Domain model
+ * ---------------------------------------------------------------------- */
+
+@ Party – an organization that is either the Disclosing Party or the Receiving Party
+type Party = {
+    name: string,
+    is_disclosing: bool          // true for the Disclosing Party, false for the Receiving Party
+}
+
+@ Representative – a person acting on behalf of a Party
+type Representative = {
+    name: string,
+    party: Party
+}
+
+@ Solicitation – an action in which one Party contacts a Representative of another Party
+type Solicitation = {
+    from: Party,                // the Party that initiates the contact
+    to: Representative,         // the Representative being contacted
+    occurred: bool              // true when the solicitation actually takes place
+}
+
+/* ----------------------------------------------------------------------
+ * Entities – the concrete objects that will be aligned across modules
+ * ---------------------------------------------------------------------- */
+
+entity receiving_party: Party
+entity disclosing_party: Party
+entity representative: Representative
+entity solicitation: Solicitation
+
+* ----------------------------------------------------------------------
+ * Helper function
+ * ---------------------------------------------------------------------- */
+
+@ Returns true when the solicitation is from the Receiving Party to a Representative
+@ belonging to the Disclosing Party – i.e. the situation covered by the hypothesis
+func is_prohibited_solicitation(s: Solicitation) -> bool:
+    not s.from.is_disclosing and s.to.party.is_disclosing
+
+* ----------------------------------------------------------------------
+ * Requirement (hypothesis) – prohibition
+ * ---------------------------------------------------------------------- */
+
+@ Hypothesis: “Receiving Party shall not solicit some of Disclosing Party's representatives.”
+rule F receiving_party_no_solicit_disclosing_reps:
+    is_prohibited_solicitation(solicitation) implies not solicitation.occurred always
+```

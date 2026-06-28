@@ -1,0 +1,103 @@
+@ Contract: Confidentiality and Non‑Disclosure Agreement governing the inspection of Stockholder List
+module contract_nli_no_align_dev_14_nda_5
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+type PartyRole = 
+    | Company(unit)
+    | Stockholder(unit)
+
+type Party = {
+    name: string,
+    role: PartyRole
+}
+
+type ConfidentialMaterial = {
+    description: string
+}
+
+type Person = {
+    name: string
+}
+
+type Employee = {
+    person: Person,
+    employer: Party
+}
+
+# ----------------------------------------------------------------------
+# Entities – stable public anchors for alignment
+# ----------------------------------------------------------------------
+@ The Company (the disclosing party)
+entity company: Party
+
+@ The Stockholder (the receiving party)
+entity stockholder: Party
+
+@ The material that is deemed confidential under the Agreement
+entity confidential_material: ConfidentialMaterial
+
+@ An employee of the receiving party (used for the hypothesis)
+entity employee: Employee
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (deontic modality + LTLf)
+# ----------------------------------------------------------------------
+@ Clause 1 – purpose limitation
+rule O use_confidential_only_for_purposes:
+    true always
+
+@ Clause 2 – blanket prohibition on disclosure
+rule F disclose_confidential_to_any_person:
+    true always
+
+@ Clause 2 – prohibition on disclosing other stockholder’s identifying data
+rule F disclose_other_stockholder_info:
+    true always
+
+@ Clause 3 – notice requirement when compelled to disclose
+rule O provide_prompt_notice_when_required:
+    true always
+
+@ Clause 4 – exclusive jurisdiction
+rule O jurisdiction_delaware_chancery:
+    true always
+
+@ Clause 5 – entitlement to specific performance / injunctive relief
+rule O specific_performance_and_injunctive_relief:
+    true always
+
+@ Clause 6 – amendment only by written instrument signed by the affected party
+rule F amendment_without_written_agreement:
+    true always
+
+@ Clause 7 – binding effect on successors and assigns
+rule O binding_to_successors_and_assigns:
+    true always
+
+@ Clause 8 – governing law
+rule O governed_by_delaware_law:
+    true always
+
+@ Clause 9 – execution in counterparts
+rule O execution_in_counterparts:
+    true always
+
+@ Clause 10 – entire agreement clause
+rule O entire_agreement:
+    true always
+
+@ Clause 11 – no construction against either party
+rule O no_construction_against_authorship:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis – “Receiving Party may share some Confidential Information with
+# some of Receiving Party's employees.”
+# ----------------------------------------------------------------------
+@ Hypothesis derived from the analysis of the Agreement
+rule F share_confidential_with_employees:
+    true always

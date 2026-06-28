@@ -1,0 +1,122 @@
+```mdl
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT – TRANSPORTATION CHALLENGE 2017
+module contract_nli_no_align_dev_9_nda_10
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties (Vendor and BPS)
+type Party = {
+    name: string,
+    address: string,
+    contact_email: string,
+    # Deontic state fields
+    has_disclosed_agreement: bool,          # true if the party has disclosed that an agreement exists
+    disclosed_to_third_party: bool,         # true if confidential information has been disclosed to a third party
+    published_without_consent: bool,        # true if the party has published data without BPS consent
+    notified_bps_of_legal_process: bool,    # true if the party has given BPS notice of a subpoena, court order, etc.
+    returned_or_destroyed: bool,            # true if the party has returned or destroyed all confidential material
+    indemnified: bool,                     # true if the party has fulfilled indemnification obligations
+    background_check_consent: bool,         # true if the party consents to BPS background checks
+    security_policies_in_place: bool,      # true if the party has implemented the required security policies
+    all_employees_signed_nda: bool,         # true if every employee/representative has signed an NDA
+    uses_info_outside_service: bool,        # true if confidential information is used for any purpose other than the BPS services
+    # Service‑specific flag
+    uses_info_for_service: bool             # true if the party uses the information only for the BPS‑mandated services
+}
+
+@ Confidential information (student routing data)
+type ConfidentialInfo = {
+    student_home_address: bool,
+    latitude: decimal,
+    longitude: decimal,
+    school_assignment: string,
+    ridership_status: string,
+    grade: int,
+    bus_stop_intersection: string,
+    bus_stop_lat: decimal,
+    bus_stop_long: decimal,
+    survey_data: string
+}
+
+@ Secure database used by the Vendor
+type Database = {
+    is_secure: bool,                # overall security flag
+    encryption_at_rest: bool,       # encryption of data at rest
+    encryption_in_transit: bool,    # encryption of data in transit
+    access_control: bool,           # role‑based access controls
+    audit_log: bool                 # audit logging enabled
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The two contractual parties
+entity vendor: Party
+entity bps: Party
+
+@ The confidential data set supplied by BPS
+entity confidential_info: ConfidentialInfo
+
+@ The database the Vendor must maintain
+entity database: Database
+
+# ----------------------------------------------------------------------
+# Rules – Deontic requirements
+# ----------------------------------------------------------------------
+@ Prohibition: the existence of the agreement must never be disclosed
+rule F disclose_agreement_existence:
+    (vendor.has_disclosed_agreement or bps.has_disclosed_agreement) always
+
+@ Prohibition: confidential information may not be disclosed to third parties without BPS consent
+rule F unauthorized_disclosure:
+    (vendor.disclosed_to_third_party or bps.disclosed_to_third_party) always
+
+@ Prohibition: the Vendor may not publish, present or otherwise use the data without BPS written consent
+rule F publish_without_consent:
+    vendor.published_without_consent always
+
+@ Prohibition: the Vendor may not use confidential information for any purpose other than the BPS‑mandated services
+rule F use_outside_service:
+    vendor.uses_info_outside_service always
+
+@ Obligation: the Vendor must maintain a secure database meeting all listed security controls
+rule O maintain_secure_database:
+    database.is_secure
+    and database.encryption_at_rest
+    and database.encryption_in_transit
+    and database.access_control
+    and database.audit_log always
+
+@ Obligation: the Vendor must use confidential information only in connection with the services it provides to BPS
+rule O use_info_only_for_service:
+    vendor.uses_info_for_service always
+
+@ Obligation: the Vendor must notify BPS immediately of any legal process seeking disclosure of confidential information
+rule O notify_bps_of_legal_process:
+    vendor.notified_bps_of_legal_process always
+
+@ Obligation: the Vendor must return or destroy all confidential material upon BPS request or at the end of the engagement
+rule O return_or_destroy_materials:
+    vendor.returned_or_destroyed always
+
+@ Obligation: the Vendor must indemnify the City of Boston and BPS for any claims arising from its performance
+rule O indemnify_city_and_bps:
+    vendor.indemnified always
+
+@ Obligation: the Vendor must allow BPS to conduct background checks on any employee/representative with access to the data
+rule O allow_background_checks:
+    vendor.background_check_consent always
+
+@ Obligation: the Vendor must have documented data‑governance policies and procedures in place
+rule O security_policies_in_place:
+    vendor.security_policies_in_place always
+
+@ Obligation: every employee or representative of the Vendor who accesses the data must sign an NDA
+rule O all_employees_signed_nda:
+    vendor.all_employees_signed_nda always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

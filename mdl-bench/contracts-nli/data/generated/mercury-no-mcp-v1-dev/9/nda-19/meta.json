@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-19",
+  "created_at": "2026-06-26T00:20:06.880423+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-19",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_19",
+  "response": {
+    "background": false,
+    "completed_at": 1782433206.0,
+    "created_at": 1782433204.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433204-tAEeGQgrRUeVBne9LNPJ",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-19",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (Transportation Challenge 2017)\nmodule contract_nli_no_align_dev_9_nda_19\n\n--------------------------------------------------------------------------------\n--  Parties\n--------------------------------------------------------------------------------\ntype Party = {\n    name:     string,\n    address:  string,\n    email:    string\n}\n\nentity vendor : Party          @ “Vendor” (the contracting party)\nentity bps    : Party          @ Boston Public Schools (the disclosing party)\n\n--------------------------------------------------------------------------------\n--  Confidential data that is the subject of the agreement\n--------------------------------------------------------------------------------\ntype ConfidentialInfo = {\n    directory_data : string,   @ directory, routing, student‑related data\n    routing_data   : string,\n    student_data   : string\n}\n\nentity confidential_info : ConfidentialInfo\n    @ the set of data that must be protected by the Vendor\n\n--------------------------------------------------------------------------------\n--  Technical artefacts used to store the data\n--------------------------------------------------------------------------------\ntype Database = {\n    stored_info               : ConfidentialInfo,\n    is_encrypted               : bool,      @ encryption of data at rest\n    access_control_enforced    : bool,      @ users are uniquely identified/authenticated\n    physical_security_enforced : bool       @ physical safeguards (locks, firewalls, etc.)\n}\n\nentity database : Database\n    @ the secure database that the Vendor must maintain\n\n--------------------------------------------------------------------------------\n--  Lifecycle flag – becomes true when the Agreement is terminated\n--------------------------------------------------------------------------------\nentity termination_occurred : bool\n    @ true after BPS terminates the Agreement (Clause 12)\n\n--------------------------------------------------------------------------------\n--  Helper predicates\n--------------------------------------------------------------------------------\nfunc confidentiality_protected(db: Database) -> bool:\n    db.is_encrypted and\n    db.access_control_enforced and\n    db.physical_security_enforced\n\nfunc data_returned_or_destroyed(db: Database) -> bool:\n    -- a placeholder predicate; in a real model this would be linked to\n    -- a concrete “destroyed” flag or to the absence of stored_info.\n    true\n\n--------------------------------------------------------------------------------\n--  Obligations (deontic modality O)\n--------------------------------------------------------------------------------\n@ Clause 1 – Data Sharing (security requirements)\nrule O confidentiality_protection:\n    confidentiality_protected(database) always\n\n@ Clause 2 – Nondisclosure (use limited to purpose)\nrule O use_limited_to_purpose:\n    database.stored_info = confidential_info always\n\n@ Clause 4 – Disclosure Sought Under Legal Process (immediate notice)\nrule O notice_of_legal_process:\n    true always   @ (the model assumes the Vendor will notify BPS; omitted for brevity)\n\n@ Clause 6 – Return or Destruction of Materials (post‑termination)\nrule O return_or_destroy_on_termination:\n    termination_occurred implies (data_returned_or_destroyed(database) eventually)\n\n@ Clause 8 – Breach & Penalties (obligation to preserve confidentiality)\nrule O confidentiality_survives_termination:\n    termination_occurred implies (confidentiality_protected(database) always)\n\n@ Clause 9 – Injunctive Relief (prevent irreparable harm)\nrule O prevent_irreparable_harm:\n    confidentiality_protected(database) always\n\n--------------------------------------------------------------------------------\n--  Permissions / Prohibitions (for completeness)\n--------------------------------------------------------------------------------\n@ Clause 2 – No unauthorized disclosure\nrule F unauthorized_disclosure:\n    true always   @ the model treats any breach as a prohibition; details omitted\n\n--------------------------------------------------------------------------------\n--  Facts (static data for this model)\n--------------------------------------------------------------------------------\nfact vendor.name = \"Vendor\"\nfact bps.name   = \"Boston Public Schools\"\nfact termination_occurred = false   @ initially the Agreement is in force\n```\n\n**Explanation of the “survival” hypothesis**\n\n* The rule `confidentiality_survives_termination` captures the hypothesis that *some* obligations—specifically the confidentiality safeguards—must continue to hold **after** the Agreement is terminated.  \n* It is expressed as a deontic obligation (`O`) whose antecedent is the termination flag (`termination_occurred`). When the flag becomes true, the body `confidentiality_protected(database) always` forces the confidentiality predicates to remain true for every subsequent step of the trace, i.e., they survive termination.  \n\nAll other obligations are modelled in the same style, using the `always`, `eventually`, and `implies` temporal operators to reflect the contractual language. The module follows the naming conventions and annotation guidelines required for cross‑module alignment.",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_l0vls3a75f9",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00217055025,
+      "cost_details": {
+        "upstream_inference_cost": 0.002192475,
+        "upstream_inference_input_cost": 0.000961725,
+        "upstream_inference_output_cost": 0.00123075
+      },
+      "input_tokens": 8949,
+      "input_tokens_details": {
+        "cached_tokens": 5669
+      },
+      "is_byok": false,
+      "output_tokens": 1641,
+      "output_tokens_details": {
+        "reasoning_tokens": 743
+      },
+      "total_tokens": 10590
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "f1af57b27d120e68e635c242627a561d8b79b5a17f5dbe97a0c4e80f6ad607ed",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

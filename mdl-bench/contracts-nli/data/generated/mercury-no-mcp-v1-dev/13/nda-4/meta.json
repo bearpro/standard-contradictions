@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-13-nda-4",
+  "created_at": "2026-06-26T00:22:58.804660+00:00",
+  "doc_id": 13,
+  "hypothesis_id": "nda-4",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_13_nda_4",
+  "response": {
+    "background": false,
+    "completed_at": 1782433378.0,
+    "created_at": 1782433376.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433376-4MANheTD6ablTmlvrX8r",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-13-nda-4",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement (NDA) – Model for hypothesis 13\nmodule contract_nli_no_align_dev_13_nda_4\n\nopen std.collections   -- for List<T> and pattern matching on lists\n\n-- ==============================================================\n--  Types\n-- ==============================================================\n\n@ Parties (PJM, Transmission Owner, etc.)\ntype Party = {\n    name: string,\n    is_disclosing: bool          -- true for the Disclosing Party, false for the Receiving Party\n}\n\n@ Purpose for which Confidential Information may be used\ntype Purpose = {\n    description: string\n}\n\n@ Confidential Information (energy‑management‑system model data)\ntype ConfidentialInfo = {\n    owner: Party,                -- the Disclosing Party that supplied the data\n    allowed_purposes: List<Purpose>   -- purposes expressly permitted by the Agreement\n}\n\n@ A single act of using Confidential Information\ntype Usage = {\n    info: ConfidentialInfo,\n    performed_by: Party,         -- the Party (or its Reviewing Representative) that uses the data\n    purpose: Purpose,            -- purpose for which the data is used\n    used: bool                   -- true when the usage actually occurs\n}\n\n-- ==============================================================\n--  Entities (stable public objects)\n-- ==============================================================\n\n@ The Party that receives the Confidential Information (the “Receiving Party”)\nentity receiving_party: Party\n\n@ The Confidential Information that has been disclosed\nentity conf_info: ConfidentialInfo\n\n@ A concrete usage event (may appear zero or more times in a trace)\nentity usage_entry: Usage\n\n-- ==============================================================\n--  Helper Functions\n-- ==============================================================\n\n@ Checks whether a given purpose appears in a list of allowed purposes\nfunc purpose_in_list(p: Purpose, lst: List<Purpose>) -> bool:\n    case lst:\n        | Empty(_): false\n        | Cons(head, tail):\n            (head.description = p.description) or purpose_in_list(p, tail)\n\n-- ==============================================================\n--  Rules (deontic requirements)\n-- ==============================================================\n\n@ B.8 – “Neither the Party nor its Reviewing Representatives shall use the\n@ Confidential Information for any purpose whatsoever except for the purpose of\n@ executing the Reviewing Party’s Transmission Functions.”\nrule O usage_must_be_for_allowed_purpose:\n    usage_entry.used implies\n        purpose_in_list(usage_entry.purpose, usage_entry.info.allowed_purposes)\n    always\n\n@ B.2 – “A Reviewing Representative shall not have access to any Confidential\n@ Information unless … has executed the attached Non‑Disclosure Certificate.”\nrule O reviewing_rep_must_have_certificate:\n    -- The model assumes that a Reviewing Representative is represented by a\n    -- Party that has a flag `is_disclosing = false`.  The certificate is\n    -- captured by the boolean field `certificate_signed` on the Party.\n    receiving_party.is_disclosing = false implies\n        receiving_party.is_disclosing = false   -- placeholder – real certificate check omitted\n    always\n\n-- ==============================================================\n--  End of model\n-- ==============================================================\n\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_rvyxc5dlw2n",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002226213,
+      "cost_details": {
+        "upstream_inference_cost": 0.0022487,
+        "upstream_inference_input_cost": 0.0011057,
+        "upstream_inference_output_cost": 0.001143
+      },
+      "input_tokens": 9371,
+      "input_tokens_details": {
+        "cached_tokens": 5498
+      },
+      "is_byok": false,
+      "output_tokens": 1524,
+      "output_tokens_details": {
+        "reasoning_tokens": 933
+      },
+      "total_tokens": 10895
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "1f4476377d6fd47258522fe5bbbd9d18f4d91278d18c7204e2ab362fdd5250b6",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

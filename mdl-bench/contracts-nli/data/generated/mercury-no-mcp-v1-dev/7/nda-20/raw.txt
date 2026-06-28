@@ -1,0 +1,76 @@
+```mdl
+@ Non‑Disclosure Agreement – Singapore (2025)
+module contract_nli_no_align_dev_7_nda_20
+
+open std.collections
+
+@ Clause 2.1 – handling of Confidential Information
+type ConfidentialInfo = {
+    id: string,                 # unique identifier of the item of information
+    is_returned: bool,          # true when the item has been returned to the Discloser
+    is_destroyed: bool,         # true when the item has been destroyed as required
+    is_retained: bool           # true when the Receiving Party still holds a copy
+}
+
+@ The Receiving Party (the Company) that receives the information
+entity receiving_party: {
+    info: List<ConfidentialInfo>
+}
+
+@ Helper predicate – a piece of information must not be retained after it has been
+@ returned or destroyed.
+func not_retained_after_return_or_destroy(info: ConfidentialInfo) -> bool:
+    (info.is_returned or info.is_destroyed) implies not info.is_retained
+
+@ Clause 2.1(c) – prohibition on retaining Confidential Information after return
+@ The Receiving Party is prohibited from keeping any copy once it has been
+@ returned or destroyed.
+rule F retain_after_return_or_destroy:
+    forall i in receiving_party.info:
+        not_retained_after_return_or_destroy(i) always
+
+@ Clause 2.1(e) – obligation to apply at least the same security measures as for
+@ its own confidential information.  This is modeled as an obligation that the
+@ Receiving Party’s security level for each item is at least “adequate”.
+type SecurityLevel = Low | Adequate | High
+
+entity security_policy: {
+    level: SecurityLevel
+}
+
+entity info_security: {
+    info_id: string,
+    level: SecurityLevel
+}
+
+rule O security_not_lower_than_adequate:
+    forall s in receiving_party.info:
+        let sec = info_security { info_id = s.id, level = Adequate } in
+        sec.level >= Adequate always
+
+@ Clause 3 – return of Confidential Information
+@ The Receiving Party must return all documents and copies within one month.
+rule O return_within_one_month:
+    forall i in receiving_party.info:
+        (i.is_returned) always
+
+@ Clause 4 – data protection (integrity, loss, corruption)
+@ The Receiving Party must preserve integrity of the data.
+rule O preserve_integrity:
+    forall i in receiving_party.info:
+        (i.is_destroyed or i.is_returned) implies not i.is_retained always
+
+@ Clause 5 – no licence granted
+rule F licence_granted:
+    true always   # placeholder – the agreement explicitly states no licence is granted
+
+@ Clause 7 – equitable relief for breach
+rule O seek_equitable_relief_on_breach:
+    true always   # placeholder – the right to seek injunctions is an obligation of the Discloser
+
+@ Clause 15 – dispute resolution (mediation before arbitration)
+rule O mediation_before_arbitration:
+    true always   # placeholder – parties must attempt mediation first
+
+@ End of model
+```

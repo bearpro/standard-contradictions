@@ -1,0 +1,114 @@
+@ Contract: Confidentiality (Non‑Disclosure) Agreement
+module contract_nli_no_align_dev_12_nda_12
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties
+type Party = { name: string }
+
+@ Information categories covered by the Agreement
+type InfoCategory =
+    | Personal
+    | Financial
+    | Product
+    | Formulation
+    | ProcessingProcedure
+
+@ Confidential information that may be exchanged
+type ConfidentialInfo = {
+    category: InfoCategory,
+    source: Party,
+    -- state flags (set by the environment or by other rules)
+    is_disclosed: bool,
+    is_already_possessed: bool,
+    is_developed_independently: bool,
+    received_from_third_party: bool,
+    inadvertent_with_reasonable_care: bool,
+    consent_obtained: bool,
+    necessary_for_service: bool,
+    is_publicly_available: bool
+}
+
+@ Agreement lifecycle state
+type AgreementState = {
+    terminated: bool,
+    client_requested_return: bool
+}
+
+@ Compelled disclosure event (e.g., subpoena)
+type CompelledDisclosure = { occurs: bool }
+
+@ Material return status
+type MaterialReturn = { returned: bool }
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The two contracting parties
+entity brooks: Party
+entity client: Party
+
+@ The piece of confidential information under consideration
+entity info: ConfidentialInfo
+
+@ Current state of the agreement
+entity agreement: AgreementState
+
+@ Whether a legal compulsion to disclose has arisen
+entity compelled: CompelledDisclosure
+
+@ Whether the client has received the material back
+entity material_return: MaterialReturn
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Determines whether an exception to confidentiality applies (Clause 3)
+func exception_applies(i: ConfidentialInfo) -> bool:
+    i.is_already_possessed or
+    i.is_developed_independently or
+    i.received_from_third_party or
+    i.inadvertent_with_reasonable_care or
+    i.consent_obtained or
+    i.necessary_for_service or
+    i.is_publicly_available
+
+# ----------------------------------------------------------------------
+# Rules – Obligations (O), Prohibitions (F) and Permissions (P)
+# ----------------------------------------------------------------------
+@ Clause 1.2 – Obligation to keep confidential information confidential
+rule O confidentiality_obligation:
+    (not info.is_disclosed) or exception_applies(info) always
+
+@ Clause 1.2 – Prohibition of unauthorized disclosure
+rule F unauthorized_disclosure:
+    info.is_disclosed and not exception_applies(info) always
+
+@ Clause 4 – Obligation to notify client when legally compelled to disclose
+rule O notify_client_when_compelled:
+    compelled.occurs implies true always   -- the “true” body represents the duty to notify
+
+@ Clause 4 – Obligation to use best efforts to obtain protective order
+rule O best_efforts_for_protective_order:
+    compelled.occurs implies true always   -- placeholder for the effort obligation
+
+@ Clause 5 – Return of material upon termination and client request
+rule O return_material_on_termination:
+    agreement.terminated and agreement.client_requested_return implies material_return.returned always
+
+@ Clause 5 – Retention of material when no return request (3‑year hold)
+rule O retain_material_when_no_return:
+    agreement.terminated and not agreement.client_requested_return implies true always   -- represents the right to retain
+
+@ Clause 7 – Survival of obligations for one year after termination
+rule O survival_term:
+    agreement.terminated implies true always   -- the “true” body captures that obligations survive; timing is external
+
+@ Clause 3.2 – Permission to independently develop information similar to confidential info
+rule P independent_development_allowed:
+    info.is_developed_independently always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------

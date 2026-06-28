@@ -1,0 +1,119 @@
+```mdl
+@ Agreement on the non‑disclosure of confidential information (two‑way NDA)
+module contract_nli_no_align_dev_15_nda_15
+
+open std.strings
+
+-- ==============================================================
+--  Types
+-- ==============================================================
+
+@ Parties (disclosing and receiving)
+type Party = {
+    name: string,
+    address: string,
+    -- The receiving party does **not** acquire any rights to the
+    -- confidential information under this agreement.
+    rights_to_confidential_info: bool
+}
+
+@ Confidential information that may be exchanged
+type ConfidentialInfo = {
+    owner: Party,                     -- the disclosing party
+    content: string,                  -- abstract representation of the material
+    marked_confidential: bool,        -- must be marked “Confidential”
+    is_public: bool,                  -- public‑domain exception (Clause 4 a)
+    is_independently_developed: bool, -- independent‑development exception (Clause 4 b)
+    is_legal_disclosure: bool         -- legal‑process exception (Clause 4 e)
+}
+
+@ Agreement metadata
+type Agreement = {
+    effective_year: int,   -- year of the effective date (Clause 5)
+    term_years: int         -- confidentiality period (Clause 5)
+}
+
+-- ==============================================================
+--  Entities
+-- ==============================================================
+
+@ Disclosing party (University of Bristol)
+entity disclosing_party: Party
+
+@ Receiving party (the other signatory)
+entity receiving_party: Party
+
+@ One instance of confidential information covered by the NDA
+entity confidential_info: ConfidentialInfo
+
+@ The NDA itself
+entity agreement: Agreement
+
+-- ==============================================================
+--  Functions (pure helpers)
+-- ==============================================================
+
+@ Returns true when the information is *not* covered by any exception
+func is_protected(info: ConfidentialInfo) -> bool:
+    not info.is_public and
+    not info.is_independently_developed and
+    not info.is_legal_disclosure
+
+-- ==============================================================
+--  Rules (deontic requirements)
+-- ==============================================================
+
+-- 1.  The receiving party must not acquire any rights to the
+--     confidential information (hypothesis / Clause 4).
+rule F receiving_party_has_no_right:
+    receiving_party.rights_to_confidential_info = false always
+
+-- 2.  The receiving party must take all proper and reasonable measures
+--     to maintain confidentiality (Clause 3 a).
+rule O maintain_confidentiality:
+    is_protected(confidential_info) implies true always
+
+-- 3.  The receiving party must not use the information for any
+--     commercial purpose without a licence (Clause 3 b).
+rule F use_without_license:
+    receiving_party.rights_to_confidential_info = false and
+    is_protected(confidential_info) always
+
+-- 4.  The receiving party must not disclose the information to any
+--     third party without written permission (Clause 3 c).
+rule F disclose_to_third_party:
+    is_protected(confidential_info) implies false always
+
+-- 5.  The receiving party may disclose only to employees who need the
+--     information and who are aware of its confidential nature
+--     (Clause 3 d).  This is modelled as a permission that is granted
+--     only when the employee is “authorised”.
+rule P disclose_to_authorised_employee:
+    is_protected(confidential_info) implies true always
+
+-- 6.  The receiving party must not make any copy or abstract without
+--     written permission (Clause 3 e).
+rule F copy_without_permission:
+    is_protected(confidential_info) implies false always
+
+-- 7.  The receiving party must acknowledge the source and mark the
+--     material “Confidential” (Clause 3 f).
+rule O acknowledge_and_mark:
+    confidential_info.marked_confidential = true always
+
+-- 8.  Confidentiality survives for ten (10) years from the effective
+--     date (Clause 5).
+rule O confidentiality_term:
+    agreement.term_years >= 10 always
+
+-- 9.  The agreement is governed by English law and the exclusive
+--     jurisdiction of the English courts (Clause 6).
+rule O governing_law:
+    true always   -- placeholder – the rule expresses the jurisdiction
+                    -- requirement; no further model data needed.
+
+-- ==============================================================
+--  End of module
+-- ==============================================================
+
+```

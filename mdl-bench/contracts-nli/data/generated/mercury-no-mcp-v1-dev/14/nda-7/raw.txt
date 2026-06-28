@@ -1,0 +1,136 @@
+```mdl
+@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list
+module contract_nli_no_align_dev_14_nda_7
+
+# ----------------------------------------------------------------------
+# Standard library imports (implicit in most environments)
+# ----------------------------------------------------------------------
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties and roles
+type PartyRole = Company | Stockholder
+
+@ Clause 1 – Party entity
+type Party = {
+    role: PartyRole,
+    name: string
+}
+
+@ Clause 2 – Confidential material (the stockholder list and any derived data)
+type ConfidentialMaterial = {
+    produced_by: Party,          # the Company
+    produced_for: Party,         # the Stockholder
+    is_confidential: bool
+}
+
+@ Clause 2 – Recipient of a disclosure (could be a Party or a third‑party)
+type Recipient =
+    | PartyRec(Party)            # the Company or the Stockholder themselves
+    | ThirdPartyRec(string)      # any other person / entity (consultant, advisor, etc.)
+
+@ Clause 3 – Disclosure event (used only for rule formulation)
+type Disclosure = {
+    material: ConfidentialMaterial,
+    recipient: Recipient,
+    disclosed_at_step: int       # step index in the trace (for temporal reasoning)
+}
+
+# ----------------------------------------------------------------------
+# Entities – concrete objects that the solver will assign values to
+# ----------------------------------------------------------------------
+@ Clause 1 – the two parties to the agreement
+entity company: Party
+entity stockholder: Party
+
+@ Clause 2 – the confidential material produced for the Stockholder
+entity confidential_material: ConfidentialMaterial
+
+@ Clause 3 – a (potential) disclosure event; the model may contain zero or more
+@ Clause events, but at least one placeholder is needed for rule formulation
+entity disclosure: Disclosure
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Clause 2 – true a recipient is a third‑party (i.e. not a Party)
+func is_third_party(r: Recipient) -> bool:
+    case r of
+        | PartyRec(_): false
+        | ThirdPartyRec(_): true
+
+@ Clause 3 – check whether a legal‑process notice is required
+# (the model does not capture the external trigger, so we expose a Boolean
+# flag that can be set by the environment when such a demand occurs)
+entity legal_process_required: bool   # true when the Stockholder receives a subpoena, etc.
+
+@ Clause 3 – time‑window for notice (2 business days ≈ 2 steps in a simple trace)
+func within_two_steps(current: int, target: int) -> bool:
+    target - current <= 2
+
+# ----------------------------------------------------------------------
+# Normative rules (deontic modalities)
+# ----------------------------------------------------------------------
+@ Clause 1 – the Stockholder must use the material only for purposes reasonably
+@ related to its stockholder interest.  This is captured by an obligation that the
+@ material is not used for any other purpose; we model it as a prohibition of
+@ any “non‑permitted” use (the concrete purpose check is outside the scope of the
+@ model, so we simply require the flag `is_confidential` to be true).
+rule O material_used_for_permitted_purposes:
+    confidential_material.is_confidential always
+
+@ Clause 2 – prohibition on disclosing the confidential material to any person or
+@ entity, except as expressly provided in the agreement.
+rule F no_disclosure_to_third_party:
+    let is_third = is_third_party(disclosure.recipient) in
+    not is_third always
+
+@ Clause 2 – an additional prohibition on public disclosure of other
+@ stockholder identifiers (names, addresses, holdings).  We model this as a
+@ generic prohibition on any disclosure whose recipient is a third‑party and
+@ the material contains identifying information.  The model does not
+@ differentiate the content, so the same rule above covers it.
+
+@ Clause 3 – when a legal process requires disclosure, the Stockholder must
+@ give the Company prompt notice (within 2 business days).  The rule is an
+@ obligation on the Stockholder to notify the Company; we model the notice as
+@ a Boolean field `legal_process_required` that must be cleared within two
+@ steps after it becomes true.
+rule O notice_to_company_for_legal_process:
+    let step_now = 0 in                     # the current step (solver treats this as 0)
+    let step_notice = disclosure.disclosed_at_step in
+    (legal_process_required implies within_two_steps(step_now, step_notice)) always
+
+@ Clause 4 – jurisdiction clause (no normative constraint on the model, but we
+@ keep it as an informational fact for traceability)
+fact jurisdiction = "Delaware Court of Chancery"
+
+@ Clause 5 – remedies clause (no direct constraint on the model; recorded as a fact)
+fact remedies = "specific performance and/or injunctive relief"
+
+@ Clause 6 – amendment/waiver clause (no direct constraint on the model; recorded
+@ as a fact)
+fact amendment_procedure = "written instrument signed by the obligated party"
+
+@ Clause 7 – binding effect clause (no direct constraint on the model; recorded
+@ as a fact)
+fact binding_effect = "benefits and obligations extend to successors and assigns"
+
+@ Clause 8 – governing law clause (recorded as a fact)
+fact governing_law = "laws of the State of Delaware"
+
+@ Clause 9 – counterparts clause (recorded as a fact)
+fact counterparts = "multiple counterparts constitute one agreement"
+
+@ Clause 10 – entire agreement clause (recorded as a fact)
+fact entire_agreement = "supersedes all prior agreements and understandings"
+
+@ Clause 11 – construction clause (recorded as a fact)
+fact construction = "not construed against either party by reason of authorship"
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

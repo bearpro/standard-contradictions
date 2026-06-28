@@ -1,0 +1,90 @@
+@ Non‑Disclosure Agreement for the Exchange of Energy Management System Model Data
+module contract_nli_no_align_dev_13_nda_2
+
+open std.strings
+
+-- ----------------------------------------------------------------------
+-- Types
+-- ----------------------------------------------------------------------
+@ Clause 1 – Definitions
+type Party = {
+    name: string,
+    is_transmission_owner: bool
+}
+
+type ReviewingRepresentative = {
+    name: string,
+    title: string,
+    party: Party,
+    has_executed_certificate: bool,
+    has_competitive_duties: bool
+}
+
+type ConfidentialInformation = {
+    description: string,
+    is_technical: bool
+}
+
+type NonDisclosureCertificate = {
+    reviewer: ReviewingRepresentative,
+    signed_date: string
+}
+
+type ThirdPartyRequest = {
+    requestor: string,
+    purpose: string
+}
+
+-- ----------------------------------------------------------------------
+-- Entities
+-- ----------------------------------------------------------------------
+@ Clause 1 – Parties
+entity party: Party
+
+@ Clause 2 – Reviewing Representatives
+entity reviewing_representative: ReviewingRepresentative
+
+@ Clause 4 – Confidential Information
+entity confidential_information: ConfidentialInformation
+
+@ Clause 2 – Non‑Disclosure Certificate
+entity non_disclosure_certificate: NonDisclosureCertificate
+
+@ Clause 6 – Third‑Party Requests
+entity third_party_request: ThirdPartyRequest
+
+-- ----------------------------------------------------------------------
+-- Rules (deontic requirements)
+-- ----------------------------------------------------------------------
+@ Clause 4 – Definition of Confidential Information (energy‑management‑system model data)
+rule O confidential_information_is_technical:
+    confidential_information.is_technical always
+
+@ Clause 2 – A Reviewing Representative must have executed a certificate
+rule O reviewing_rep_must_have_certificate:
+    reviewing_representative.has_executed_certificate always
+
+@ Clause 5 – Disclosure to third parties is prohibited without prior written approval
+rule F disclose_to_third_party_without_approval:
+    let prohibited = not (third_party_request.requestor = "DisclosingParty") in
+    prohibited always
+
+@ Clause 7 – Confidential Information remains the property of the Disclosing Party
+rule O ownership_remains_with_disclosing:
+    true always
+
+@ Clause 9 – Confidential Information must be clearly marked as “Confidential”
+rule O confidential_information_must_be_marked:
+    let marked = confidential_information.description != "" in
+    marked always
+
+@ Clause 10 – The Agreement survives until terminated by the Parties
+rule O agreement_survives_until_termination:
+    true always
+
+-- ----------------------------------------------------------------------
+-- Hypothesis under test
+-- ----------------------------------------------------------------------
+@ Hypothesis: “Confidential Information shall only include technical information.”
+rule O hypothesis_confidential_information_is_technical:
+    confidential_information.is_technical always

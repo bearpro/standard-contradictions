@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-9-nda-3",
+  "created_at": "2026-06-26T00:20:15.965463+00:00",
+  "doc_id": 9,
+  "hypothesis_id": "nda-3",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_9_nda_3",
+  "response": {
+    "background": false,
+    "completed_at": 1782433215.0,
+    "created_at": 1782433213.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433213-HSbgfuSAKyfS10aEsWRe",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-9-nda-3",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT – TRANSPORTATION CHALLENGE 2017\nmodule contract_nli_no_align_dev_9_nda_3\n\nopen std.strings\n\n-- ----------------------------------------------------------------------\n-- Types\n-- ----------------------------------------------------------------------\n@ Clause “A. DEFINITIONS – Confidential Information”\ntype ConfidentialInfo = {\n    includes_directory: bool,          -- directory data (address, lat/long)\n    includes_routing: bool,            -- routing data (stops, lat/long)\n    includes_student_characteristics: bool, -- grade, ridership status, etc.\n    is_verbal: bool                    -- information conveyed verbally\n}\n\n@ Clause “A. DEFINITIONS – Vendor”\ntype Vendor = {\n    name: string,\n    has_signed_nda: bool,\n    has_background_check: bool,\n    database_secure: bool,\n    notified_bps_of_legal_process: bool,\n    returned_or_destroyed: bool,\n    used_info_only_for_challenge: bool,\n    authorized_to_disclose: bool       -- true only when BPS gives written consent\n}\n\n@ Clause “B. TERMS OF AGREEMENT – BPS Contact”\ntype BPS = {\n    contact_name: string,\n    contact_email: string,\n    contact_phone: string\n}\n\n-- ----------------------------------------------------------------------\n-- Entities (public model objects)\n-- ----------------------------------------------------------------------\n@ Clause “A. DEFINITIONS – Confidential Information”\nentity confidential_information: ConfidentialInfo\n\n@ Clause “A. DEFINITIONS – Vendor”\nentity vendor: Vendor\n\n@ Clause “B. TERMS OF AGREEMENT – BPS”\nentity bps: BPS\n\n-- ----------------------------------------------------------------------\n-- Functions (pure helpers)\n-- ----------------------------------------------------------------------\nfunc vendor_is_authorized_to_use(v: Vendor, ci: ConfidentialInfo) -> bool:\n    -- the vendor may use the information only if BPS has given written consent\n    v.authorized_to_disclose\n\nfunc vendor_has_proper_security(v: Vendor) -> bool:\n    v.database_secure and\n    v.has_background_check and\n    v.has_signed_nda\n\n-- ----------------------------------------------------------------------\n-- Rules (deontic requirements)\n-- ----------------------------------------------------------------------\n@ Clause “B. TERMS OF AGREEMENT – 1. Data Sharing – security obligations”\nrule O vendor_must_maintain_secure_database:\n    vendor_has_proper_security(vendor) always\n\n@ Clause “B. TERMS OF AGREEMENT – 2. Nondisclosure”\nrule F vendor_prohibited_from_disclosing_confidential_information:\n    not vendor.authorized_to_disclose always\n\n@ Clause “B. TERMS OF AGREEMENT – 2. Nondisclosure – purpose limitation”\nrule O vendor_must_use_information_only_for_challenge:\n    vendor.used_info_only_for_challenge always\n\n@ Clause “B. TERMS OF AGREEMENT – 3. Background Checks”\nrule O vendor_must_have_background_check:\n    vendor.has_background_check always\n\n@ Clause “B. TERMS OF AGREEMENT – 4. Disclosure Sought Under Legal Process”\nrule O vendor_must_notify_bps_of_legal_process:\n    vendor.notified_bps_of_legal_process always\n\n@ Clause “B. TERMS OF AGREEMENT – 6. Return or Destruction of Materials”\nrule O vendor_must_return_or_destroy_on_request:\n    vendor.returned_or_destroyed always\n\n@ Clause “B. TERMS OF AGREEMENT – 9. Injunctive Relief – breach consequences”\nrule F vendor_breach_causes_irreparable_harm:\n    false always   -- prohibition of breach (modelled as a prohibition)\n\n@ Clause “B. TERMS OF AGREEMENT – 10. Immediate Notice of Unauthorized Use”\nrule O vendor_must_give_immediate_notice_of_unauthorized_use:\n    true always   -- placeholder to capture the obligation; detailed\n                    -- implementation would depend on an event model\n\n@ Clause “Hypothesis – Confidential Information may include verbally conveyed information”\nrule P confidential_information_may_be_verbal:\n    confidential_information.is_verbal always\n\n-- ----------------------------------------------------------------------\n-- End of module\n-- ----------------------------------------------------------------------\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_lrsmosvekj",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.002178,
+      "cost_details": {
+        "upstream_inference_cost": 0.0022,
+        "upstream_inference_input_cost": 0.0009415,
+        "upstream_inference_output_cost": 0.0012585
+      },
+      "input_tokens": 8761,
+      "input_tokens_details": {
+        "cached_tokens": 5550
+      },
+      "is_byok": false,
+      "output_tokens": 1678,
+      "output_tokens_details": {
+        "reasoning_tokens": 878
+      },
+      "total_tokens": 10439
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "6de0c004d04801c07157a4e565411782f554c611c9f9abdb859fcc01697e8686",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

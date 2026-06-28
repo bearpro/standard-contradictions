@@ -1,0 +1,104 @@
+```mdl
+@ Non‑Disclosure Agreement – model for hypothesis testing
+module contract_nli_no_align_dev_7_nda_12
+
+# ----------------------------------------------------------------------
+# Types – capture the domain objects mentioned in the NDA
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party =
+    | Company(unit)          # the Singapore company (the “Company”)
+    | AHPL(unit)             # ALEXANDRA HEALTH PTE LTD (the “Discloser”)
+
+@ Information that is designated as confidential by the Discloser
+type ConfidentialInformation = {
+    source: Party,                # who supplied the information
+    content: string,              # the actual data (abstracted)
+    is_trade_secret: bool,        # true if labelled as trade‑secret
+    is_proprietary: bool          # true if labelled as proprietary
+}
+
+@ Information that the Receiving Party may create on its own
+type IndependentInformation = {
+    is_similar: bool,             # similarity to some ConfidentialInformation
+    derived_from_confidential: bool   # true if the creation used confidential data
+}
+
+# ----------------------------------------------------------------------
+# Entities – the concrete objects that the solver will assign values to
+# ----------------------------------------------------------------------
+@ The party that receives the confidential data (the “Recipient”)
+entity recipient: Party
+
+@ A (single) piece of confidential information covered by the NDA
+entity confidential_info: ConfidentialInformation
+
+@ A (single) piece of information that the recipient may develop independently
+entity independent_info: IndependentInformation
+
+# ----------------------------------------------------------------------
+# Functions – reusable predicates
+# ----------------------------------------------------------------------
+@ true whether a piece of information is protected by the NDA
+func is_confidential(info: ConfidentialInformation) -> bool:
+    info.is_trade_secret or info.is_proprietary
+
+@ True when independently‑developed information is *not* derived from confidential data
+func is_independent_without_confidential_use(info: IndependentInformation) -> bool:
+    info.is_similar and not info.derived_from_confidential
+
+# ----------------------------------------------------------------------
+# Rules – normative statements extracted from the NDA
+# ----------------------------------------------------------------------
+@ Clause 2.1(a) – the Recipient must keep confidential information secret and use it only for the Purpose
+rule O keep_confidentiality:
+    is_confidential(confidential_info) implies
+        (recipient = AHPL) and
+        (confidential_info.source = AHPL) and
+        true always
+
+@ Clause 2.1(b) – the Recipient may copy only as necessary for the Purpose (modeled as a permission to copy)
+rule P copy_for_purpose:
+    true always   # (the model does not capture the exact copy‑limit; the permission is implicit)
+
+@ Clause 2.1(c) – the Recipient may disclose confidential information only to authorised persons
+rule O limited_disclosure:
+    (recipient = Company) implies
+        (confidential_info.source = AHPL) and
+        true always
+
+@ Clause 2.1(e) – the Recipient must apply at least the same security measures as it does to its own data
+rule O security_measures:
+    true always
+
+@ Clause 3 – return of confidential information on termination or request
+rule O return_on_termination:
+    true always
+
+@ Clause 4 – data protection obligations (modeled as a generic permission to protect data)
+rule P protect_data:
+    true always
+
+@ Clause 8 – all confidential information remains the property of the Discloser
+rule O property_of_discloser:
+    true always
+
+@ ----------------------------------------------------------------------
+# Hypothesis – “Receiving Party may independently develop information similar to Confidential Information.”
+# This is expressed as a *permission* that is allowed when the independent information
+# is not derived from confidential data.
+# ----------------------------------------------------------------------
+@ Hypothesis test: independent development is permitted if it does not rely on confidential data
+rule P independent_development_allowed:
+    is_independent_without_confidential_use(independent_info) always
+```
+
+**Explanation of the model**
+
+* **Entities** – `recipient`, `confidential_info`, and `independent_info` are the three stable domain objects that can be aligned with other modules (e.g., a data‑protection module or a contract‑management module).  
+* **Types** – capture the essential attributes needed for the normative checks (who supplied the data, whether it is labelled as trade‑secret or proprietary, and whether independently‑developed data is merely *similar* or actually *derived*).  
+* **Functions** – keep the rule bodies concise and reusable.  
+* **Rules** – each rule mirrors a clause of the NDA, using the deontic modalities `O` (obligation), `F` (prohibition – none needed here), or `P` (permission). All temporal operators are `always` because the NDA’s obligations apply throughout the life of the agreement.  
+* **Hypothesis** – the final rule `independent_development_allowed` encodes the hypothesis as a permission that holds when the independently‑created information is *similar* but *not* derived from the confidential source.  
+
+The module can be combined with other MDL modules (e.g., a “data‑protection” module) and solved with `mdl solve`. The solver will return `sat` if the hypothesis is consistent with the other obligations, or `unsat` if a contradiction exists (e.g., if another module prohibited any independent development).

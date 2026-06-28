@@ -1,0 +1,101 @@
+@ NON-NEGOTIABLE CONFIDENTIALITY AND NON-DISCLOSURE AGREEMENT – TRANSPORTATION CHALLENGE 2017
+module contract_nli_no_align_dev_9_nda_11
+
+open std.collections
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Party – generic participant in the agreement
+type Party = {
+    name: string,
+    address: string,
+    contact_email: string
+}
+
+@ Confidential information that is shared between the parties
+type ConfidentialInfo = {
+    data_type: string,          # e.g. "student routing data"
+    description: string
+}
+
+@ Security measures that must be present in the Vendor's database
+type SecurityMeasure = {
+    name: string                 # e.g. "encryption", "firewall", "anti-virus"
+}
+
+@ Database used by the Vendor to store Confidential Information
+type Database = {
+    security_measures: List<SecurityMeasure>
+}
+
+@ Vendor – the receiving party (the “Receiving Party”)
+type Vendor = {
+    name: string,
+    # Boolean flags that capture the Vendor's compliance state
+    has_disclosed_confidential: bool,
+    has_reverse_engineered: bool,
+    has_returned_confidential: bool,
+    has_notified_breach: bool,
+    has_signed_nda: bool
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ The Boston Public Schools (the “Disclosing Party”)
+entity bps: Party
+
+@ The Vendor (the “Receiving Party”)
+entity vendor: Vendor
+
+@ The set of Confidential Information covered by the Agreement
+entity confidential_info: ConfidentialInfo
+
+@ The Vendor's secure database
+entity database: Database
+
+# ----------------------------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------------------------
+@ Checks whether a given security measure is present in the database
+func has_security_measure(db: Database, measure_name: string) -> bool:
+    case db.security_measures:
+        | Cons(m, rest) =>
+            if m.name = measure_name then true
+            else has_security_measure({ security_measures = rest }, measure_name)
+        | Empty(_) => false
+
+# ----------------------------------------------------------------------
+# Rules – Obligations (O), Prohibitions (F), Permissions (P)
+# ----------------------------------------------------------------------
+@ Clause 2.1 – Vendor must keep Confidential Information secret
+rule F vendor_must_not_disclose_confidential:
+    vendor.has_disclosed_confidential always
+
+@ Clause 2.1 – Vendor shall not reverse‑engineer any objects embodying Confidential Information
+rule F vendor_must_not_reverse_engineer:
+    vendor.has_reverse_engineered always
+
+@ Clause 2.6 – Vendor must return or destroy Confidential Information when requested
+rule O vendor_must_return_or_destroy_confidential:
+    vendor.has_returned_confidential always
+
+@ Clause 2.4 – Vendor must give BPS immediate notice of any unauthorized use or breach
+rule O vendor_must_notify_breach_immediately:
+    vendor.has_notified_breach always
+
+@ Clause 2.1 – Vendor must have signed the NDA before accessing data
+rule O vendor_must_have_signed_nda:
+    vendor.has_signed_nda always
+
+@ Clause 2.1 – Database must include required security safeguards
+rule O database_must_include_required_security_measures:
+    has_security_measure(database, "encryption") and
+    has_security_measure(database, "firewall") and
+    has_security_measure(database, "anti-virus") and
+    has_security_measure(database, "access-authentication") always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------

@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-3-nda-4",
+  "created_at": "2026-06-26T00:18:43.640585+00:00",
+  "doc_id": 3,
+  "hypothesis_id": "nda-4",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_3_nda_4",
+  "response": {
+    "background": false,
+    "completed_at": 1782433123.0,
+    "created_at": 1782433122.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433122-9bevDG6btXqRZzzSmPCR",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-3-nda-4",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Contract: OISAIR PROJECT – Two‑Way Confidentiality and Non‑Disclosure Agreement\n@ Module: contract_nli_no_align_dev_3_nda_4\nmodule contract_nli_no_align_dev_3_nda_4\n\n# ----------------------------------------------------------------------\n# Types – domain concepts that appear in the Agreement\n# ----------------------------------------------------------------------\ntype Party = {\n    name: string,\n    address: string\n}\n\ntype Purpose = { description: string }\n\ntype ConfidentialInfo = {\n    description: string,          -- what the information is about\n    purpose: Purpose,             -- purpose for which the Disclosing Party\n                                 -- permits the Receiving Party to use it\n    used: bool,                   -- true when the Receiving Party has used it\n    purpose_used: Purpose         -- purpose for which it was actually used\n}\n\n# ----------------------------------------------------------------------\n# Entities – public model objects that can be aligned across standards\n# ----------------------------------------------------------------------\n@ Parties (Disclosing Party and Receiving Party)\nentity disclosing_party: Party\nentity receiving_party: Party\n\n@ The confidential information that is exchanged\nentity confidential_info: ConfidentialInfo\n\n@ The purpose that the Agreement explicitly permits\nentity permitted_purpose: Purpose\n\n# ----------------------------------------------------------------------\n# Rules – normative obligations (deontic modality O = obligation)\n# ----------------------------------------------------------------------\n@ Clause 3 – Obligations of confidentiality and non‑use\nrule O use_confidential_info_only_for_permitted_purpose:\n    (confidential_info.used implies confidential_info.purpose_used = permitted_purpose) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_2jvci1gwuij",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0012489345,
+      "cost_details": {
+        "upstream_inference_cost": 0.00126155,
+        "upstream_inference_input_cost": 0.0006728,
+        "upstream_inference_output_cost": 0.00058875
+      },
+      "input_tokens": 7832,
+      "input_tokens_details": {
+        "cached_tokens": 5712
+      },
+      "is_byok": false,
+      "output_tokens": 785,
+      "output_tokens_details": {
+        "reasoning_tokens": 479
+      },
+      "total_tokens": 8617
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "4c4614ae9a3bf26a810e6abd02c8e8f72187078b49bcd6e8f7e3740d9aedca26",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

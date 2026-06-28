@@ -1,0 +1,37 @@
+@ Contract NDLI No Align Dev 10 NDA 16 – Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_10_nda_16
+
+# ----------------------------------------------------------------------
+# Domain model
+# ----------------------------------------------------------------------
+type Party = {
+    name: string                # legal name of the party
+}
+
+type ConfidentialInfo = {
+    id: string                  # unique identifier for the piece of information
+    is_confidential: bool       # true if the information is marked/confidential
+}
+
+type Agreement = {
+    terminated: bool            # true once the agreement has been terminated
+    returned_confidential: bool # true if the receiving party has returned the info
+    destroyed_confidential: bool# true if the receiving party has destroyed the info
+}
+
+# ----------------------------------------------------------------------
+# Entities – stable public objects that can be aligned with other standards
+# ----------------------------------------------------------------------
+entity agreement: Agreement
+entity receiving_party: Party
+entity disclosing_party: Party
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Hypothesis expressed as a normative rule
+# ----------------------------------------------------------------------
+@ Hypothesis: Receiving Party shall destroy or return some Confidential Information
+# upon the termination of the Agreement (Article 2.07, Article 3.09).
+rule O return_or_destroy_on_termination:
+    agreement.terminated implies
+        (agreement.returned_confidential or agreement.destroyed_confidential) always

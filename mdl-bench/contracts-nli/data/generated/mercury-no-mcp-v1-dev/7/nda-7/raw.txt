@@ -1,0 +1,94 @@
+```mdl
+@ Non‑Disclosure Agreement – Clause‑level model
+module contract_nli_no_align_dev_7_nda_7
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 2.1(c) – permitted recipients of Confidential Information
+type Role =
+    | Employee
+    | Director
+    | Servant
+    | Agent
+    | Officer
+    | Representative
+    | Consultant
+    | IndependentContractor
+    | ProfessionalAdvisor
+
+@ Clause 1.2(a) – parties to the agreement
+type Party = { name: string }
+
+@ Clause 1.2(a) – definition of Confidential Information
+type ConfidentialInformation = {
+    source: Party,          # the Discloser (AHPL)
+    content: string,
+    is_confidential: bool
+}
+
+@ Clause 2.1(c) – third‑party entities that may receive Confidential Information
+type ThirdParty = {
+    party: Party,
+    role: Role,
+    purpose: string,               # should be the “Purpose” defined in Clause 1.1
+    signed_confidentiality: bool   # bound by a confidentiality obligation
+}
+
+# ----------------------------------------------------------------------
+# Entities
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+entity receiving_party: Party          # the Company
+entity disclosing_party: Party         # ALEXANDRA HEALTH PTE LTD (AHPL)
+
+@ The Confidential Information that is being exchanged
+entity confidential_info: ConfidentialInformation
+
+@ A concrete third‑party that may be disclosed to
+entity third_party: ThirdParty
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Clause 2.1(c) – check whether a role is one of the permitted categories
+func is_permitted_role(r: Role) -> bool:
+    case r:
+        | Role.Employee: true
+        | Role.Director: true
+        | Role.Servant: true
+        | Role.Agent: true
+        | Role.Officer: true
+        | Role.Representative: true
+        | Role.Consultant: true
+        | Role.IndependentContractor: true
+        | Role.ProfessionalAdvisor: true
+        | _: false
+
+# ----------------------------------------------------------------------
+# Rules (deontic constraints)
+# ----------------------------------------------------------------------
+@ Clause 2.1(c) – Permission to disclose Confidential Information to permitted third‑parties
+rule P disclose_to_permitted_roles:
+    is_permitted_role(third_party.role) and
+    third_party.purpose = "Purpose" and
+    third_party.signed_confidentiality always
+
+@ Clause 2.1(c) – Prohibition to disclose Confidential Information to non‑permitted parties
+rule F disclose_to_unpermitted_roles:
+    not (is_permitted_role(third_party.role) and
+         third_party.purpose = "Purpose" and
+         third_party.signed_confidentiality) always
+
+@ Clause 2.1(a) – Obligation to keep Confidential Information confidential
+rule O keep_confidential_always:
+    confidential_info.is_confidential always
+
+@ Clause 2.1(b) – Obligation to return or destroy Confidential Information on request
+rule O return_or_destroy_on_request:
+    (confidential_info.is_confidential implies true) always   # placeholder – actual return logic is external
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

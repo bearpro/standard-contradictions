@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-7-nda-12",
+  "created_at": "2026-06-26T00:19:04.056758+00:00",
+  "doc_id": 7,
+  "hypothesis_id": "nda-12",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_7_nda_12",
+  "response": {
+    "background": false,
+    "completed_at": 1782433143.0,
+    "created_at": 1782433141.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433141-7KrU6k2FqBq8OFxzVQ2R",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-7-nda-12",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Non‑Disclosure Agreement – model for hypothesis testing\nmodule contract_nli_no_align_dev_7_nda_12\n\n# ----------------------------------------------------------------------\n# Types – capture the domain objects mentioned in the NDA\n# ----------------------------------------------------------------------\n@ Parties to the agreement\ntype Party =\n    | Company(unit)          # the Singapore company (the “Company”)\n    | AHPL(unit)             # ALEXANDRA HEALTH PTE LTD (the “Discloser”)\n\n@ Information that is designated as confidential by the Discloser\ntype ConfidentialInformation = {\n    source: Party,                # who supplied the information\n    content: string,              # the actual data (abstracted)\n    is_trade_secret: bool,        # true if labelled as trade‑secret\n    is_proprietary: bool          # true if labelled as proprietary\n}\n\n@ Information that the Receiving Party may create on its own\ntype IndependentInformation = {\n    is_similar: bool,             # similarity to some ConfidentialInformation\n    derived_from_confidential: bool   # true if the creation used confidential data\n}\n\n# ----------------------------------------------------------------------\n# Entities – the concrete objects that the solver will assign values to\n# ----------------------------------------------------------------------\n@ The party that receives the confidential data (the “Recipient”)\nentity recipient: Party\n\n@ A (single) piece of confidential information covered by the NDA\nentity confidential_info: ConfidentialInformation\n\n@ A (single) piece of information that the recipient may develop independently\nentity independent_info: IndependentInformation\n\n# ----------------------------------------------------------------------\n# Functions – reusable predicates\n# ----------------------------------------------------------------------\n@ true whether a piece of information is protected by the NDA\nfunc is_confidential(info: ConfidentialInformation) -> bool:\n    info.is_trade_secret or info.is_proprietary\n\n@ True when independently‑developed information is *not* derived from confidential data\nfunc is_independent_without_confidential_use(info: IndependentInformation) -> bool:\n    info.is_similar and not info.derived_from_confidential\n\n# ----------------------------------------------------------------------\n# Rules – normative statements extracted from the NDA\n# ----------------------------------------------------------------------\n@ Clause 2.1(a) – the Recipient must keep confidential information secret and use it only for the Purpose\nrule O keep_confidentiality:\n    is_confidential(confidential_info) implies\n        (recipient = AHPL) and\n        (confidential_info.source = AHPL) and\n        true always\n\n@ Clause 2.1(b) – the Recipient may copy only as necessary for the Purpose (modeled as a permission to copy)\nrule P copy_for_purpose:\n    true always   # (the model does not capture the exact copy‑limit; the permission is implicit)\n\n@ Clause 2.1(c) – the Recipient may disclose confidential information only to authorised persons\nrule O limited_disclosure:\n    (recipient = Company) implies\n        (confidential_info.source = AHPL) and\n        true always\n\n@ Clause 2.1(e) – the Recipient must apply at least the same security measures as it does to its own data\nrule O security_measures:\n    true always\n\n@ Clause 3 – return of confidential information on termination or request\nrule O return_on_termination:\n    true always\n\n@ Clause 4 – data protection obligations (modeled as a generic permission to protect data)\nrule P protect_data:\n    true always\n\n@ Clause 8 – all confidential information remains the property of the Discloser\nrule O property_of_discloser:\n    true always\n\n@ ----------------------------------------------------------------------\n# Hypothesis – “Receiving Party may independently develop information similar to Confidential Information.”\n# This is expressed as a *permission* that is allowed when the independent information\n# is not derived from confidential data.\n# ----------------------------------------------------------------------\n@ Hypothesis test: independent development is permitted if it does not rely on confidential data\nrule P independent_development_allowed:\n    is_independent_without_confidential_use(independent_info) always\n```\n\n**Explanation of the model**\n\n* **Entities** – `recipient`, `confidential_info`, and `independent_info` are the three stable domain objects that can be aligned with other modules (e.g., a data‑protection module or a contract‑management module).  \n* **Types** – capture the essential attributes needed for the normative checks (who supplied the data, whether it is labelled as trade‑secret or proprietary, and whether independently‑developed data is merely *similar* or actually *derived*).  \n* **Functions** – keep the rule bodies concise and reusable.  \n* **Rules** – each rule mirrors a clause of the NDA, using the deontic modalities `O` (obligation), `F` (prohibition – none needed here), or `P` (permission). All temporal operators are `always` because the NDA’s obligations apply throughout the life of the agreement.  \n* **Hypothesis** – the final rule `independent_development_allowed` encodes the hypothesis as a permission that holds when the independently‑created information is *similar* but *not* derived from the confidential source.  \n\nThe module can be combined with other MDL modules (e.g., a “data‑protection” module) and solved with `mdl solve`. The solver will return `sat` if the hypothesis is consistent with the other obligations, or `unsat` if a contradiction exists (e.g., if another module prohibited any independent development).",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_0fki8a74qgye",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00279251775,
+      "cost_details": {
+        "upstream_inference_cost": 0.002820725,
+        "upstream_inference_input_cost": 0.001565975,
+        "upstream_inference_output_cost": 0.00125475
+      },
+      "input_tokens": 11303,
+      "input_tokens_details": {
+        "cached_tokens": 5599
+      },
+      "is_byok": false,
+      "output_tokens": 1673,
+      "output_tokens_details": {
+        "reasoning_tokens": 602
+      },
+      "total_tokens": 12976
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "e76ad948ffcb073c7f68fc0b9b29a94caf0f25daa4750093d7509d3d56659aa4",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

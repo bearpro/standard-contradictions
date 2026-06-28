@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-17",
+  "created_at": "2026-06-26T00:21:45.322587+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-17",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_17",
+  "response": {
+    "background": false,
+    "completed_at": 1782433305.0,
+    "created_at": 1782433301.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433301-BxkIojceNhhUncVlPxeL",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-17",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality (Non‑Disclosure) Agreement – Model for NDA #12‑17\nmodule contract_nli_no_align_dev_12_nda_17\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n@ Parties to the Agreement\ntype Party = \n    | Broker(unit)      # BROOKS’ BOTTLING COMPANY, LLC\n    | Client(unit)      # CLIENT (the other party)\n\n@ Information that is subject to the confidentiality obligations\ntype ConfidentialInfo = {\n    owner: Party,                     # who originally owns the information (Client)\n    content: string,                  # free‑form description (not used in logic)\n    received_by_brooks: bool,         # true when BROOKS has obtained the info\n    # Exception flags (see Section 3)\n    already_possessed: bool,           # 3.1 – BROOKS already possessed it\n    developed_independently: bool,    # 3.2 – BROOKS developed it independently\n    rightfully_received: bool,        # 3.3 – received from a third party without duty\n    inadvertent_disclosure: bool,     # 3.4 – disclosed inadvertently\n    client_consent: bool,             # 3.5 – CLIENT gave prior written consent\n    service_disclosure: bool,         # 3.6 – disclosure necessary to perform services\n    publicly_available: bool          # disclosed by law or public domain\n}\n\n@ A copy of confidential information that may be created by the receiving party\ntype ConfidentialCopy = {\n    original: ConfidentialInfo,\n    created_by: Party,\n    created_at: string                # timestamp placeholder (not used in logic)\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The two parties to the NDA\nentity broker: Party      @ BROOKS\nentity client: Party      @ CLIENT\n\n@ The set of confidential items exchanged under the Agreement\nentity ci: ConfidentialInfo\n\n@ Optional copy that may be produced by the broker\nentity copy: ConfidentialCopy\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n@ Determine whether any of the Section‑3 exceptions apply to a piece of info\nfunc exception_applies(info: ConfidentialInfo) -> bool:\n    info.already_possessed\n    or info.developed_independently\n    or info.rightfully_received\n    or info.inadvertent_disclosure\n    or info.client_consent\n    or info.service_disclosure\n    or info.publicly_available\n\n@ Determine whether the broker is legally compelled to disclose the info\nfunc legally_compelled(info: ConfidentialInfo) -> bool:\n    # The model does not capture the external legal trigger; it is a placeholder\n    false   # (to be instantiated by an external fact when testing)\n\n# ----------------------------------------------------------------------\n# Rules – Deontic constraints (O = obligation, F = prohibition, P = permission)\n# ----------------------------------------------------------------------\n@ Section 1.1 – Confidential information must be received in confidence\nrule O receive_in_confidence:\n    ci.owner = client\n    implies (ci.received_by_brooks) (not exception_applies(ci)) always\n\n@ Section 1.2 – Prohibit unauthorized disclosure\nrule F disclose_without_consent:\n    ci.received_by_brooks\n    and not exception_applies(ci)\n    implies (not (ci.owner = client and broker = broker)) always\n\n@ Section 2.2 – Injunctive relief (modelled as a prohibition of breach)\nrule F breach_causes_irreparable_harm:\n    ci.received_by_brooks\n    and not exception_applies(ci)\n    implies (not (ci.owner = client and broker = broker)) always\n\n@ Section 3 – Exceptions (modelled as permissions to copy/disclose)\nrule P copy_allowed_under_exception:\n    ci.received_by_brooks\n    and exception_applies(ci)\n    implies (exists copy: ConfidentialCopy . copy.original = ci and copy.created_by = broker) always\n\n@ Section 4 – Compelled disclosure – must notify client first\nrule O notify_before_compelled_disclosure:\n    legally_compelled(ci)\n    implies (ci.owner = client and broker = broker) always\n\n@ Section 5 – Return or retention of material after termination\nrule O return_or_retain_material:\n    # The rule is abstracted: if client requests return, broker must return;\n    # otherwise broker may retain for 3 years then dispose after 10 days.\n    true always   # (implementation detail omitted – handled by external process)\n\n@ Section 6 – Governing law (no operational effect, kept for traceability)\nrule O governed_by_new_york_law:\n    true always\n\n@ Section 7 – Survival period (no operational effect, kept for traceability)\nrule O agreement_survives_until_earliest_event:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis – “Receiving Party may create a copy of some Confidential Information in some circumstances.”\n# ----------------------------------------------------------------------\n@ The hypothesis is captured by the permission rule above (copy_allowed_under_exception).\n@ It is explicitly restated here for testing purposes.\nrule P hypothesis_create_copy:\n    ci.received_by_brooks\n    and exception_applies(ci)\n    implies (exists copy: ConfidentialCopy . copy.original = ci and copy.created_by = broker) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_rf49utiatu",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00205452225,
+      "cost_details": {
+        "upstream_inference_cost": 0.002075275,
+        "upstream_inference_input_cost": 0.000516025,
+        "upstream_inference_output_cost": 0.00155925
+      },
+      "input_tokens": 7150,
+      "input_tokens_details": {
+        "cached_tokens": 5651
+      },
+      "is_byok": false,
+      "output_tokens": 2079,
+      "output_tokens_details": {
+        "reasoning_tokens": 1002
+      },
+      "total_tokens": 9229
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "c5e9b30b617cc35a83236b3dd726cb85db440cc9984e55c243d6d4e8e1fc8d08",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

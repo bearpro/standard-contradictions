@@ -1,0 +1,150 @@
+```mdl
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (BPS – Vendor)
+module contract_nli_no_align_dev_9_nda_2
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party = {
+    name: string,
+    address: string
+}
+
+@ Individual person (e.g., BPS contact, vendor employee)
+type Person = {
+    name: string,
+    title: string,
+    email: string,
+    phone: string
+}
+
+@ The categories of data that may be disclosed under the Agreement
+type ConfidentialInfo = {
+    directory_info: bool,   # address, latitude/longitude of student home
+    routing_info: bool,     # bus‑stop locations, routes, grades, etc.
+    student_info: bool,     # ridership status, school assignment, etc.
+    technical_info: bool    # any purely technical data (e.g., algorithmic results)
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ The Boston Public Schools (BPS) – the data owner
+entity bps: Party
+
+@ The vendor (company or individual) that receives the data
+entity vendor: Party
+
+@ The BPS representative who must be notified of incidents
+entity bps_contact: Person
+
+@ The set of Confidential Information that BPS may share with the vendor
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements (O = obligation, F = prohibition, P = permission)
+# ----------------------------------------------------------------------
+@ Clause A – definition of “Confidential Information”
+rule O confidential_info_definition:
+    confidential_info.directory_info and
+    confidential_info.routing_info and
+    confidential_info.student_info and
+    not confidential_info.technical_info always
+
+@ Clause B.1 – vendor must maintain a secure database
+rule O secure_database:
+    true always   # placeholder – actual security controls are procedural
+
+@ Clause B.2 – vendor may use Confidential Information only for the Challenge
+rule O use_limited_to_challenge:
+    true always   # procedural; enforced by policy outside the model
+
+@ Clause B.3 – vendor must not disclose Confidential Information except as permitted
+rule F unauthorized_disclosure:
+    not (confidential_info.directory_info or
+         confidential_info.routing_info or
+         confidential_info.student_info) always
+
+@ Clause B.4 – vendor must notify BPS of any legal process seeking disclosure
+rule O legal_process_notice:
+    true always   # procedural; modeled as an obligation
+
+@ Clause B.5 – BPS contact information (for notices)
+rule O bps_contact_defined:
+    bps_contact.email != "" and
+    bps_contact.phone != "" always
+
+@ Clause B.6 – return or destroy Confidential Information on request
+rule O return_or_destroy:
+    true always   # procedural; modeled as an obligation
+
+@ Clause B.7 – vendor may not publish reports without BPS consent
+rule F publish_without_consent:
+    not (confidential_info.directory_info or
+         confidential_info.routing_info or
+         confidential_info.student_info) always
+
+@ Clause B.8 – breach leads to penalties (modeled as a prohibition of breach)
+rule F breach_of_confidentiality:
+    not (confidential_info.directory_info or
+         confidential_info.routing_info or
+         confidential_info.student_info) always
+
+@ Clause B.9 – injunctive relief (modeled as an obligation to avoid breach)
+rule O avoid_irreparable_harm:
+    true always   # procedural
+
+@ Clause B.10 – immediate notice of unauthorized use
+rule O immediate_notice:
+    true always   # procedural
+
+@ Clause B.11 – venue (no operational effect on data)
+rule O venue_massachusetts:
+    true always
+
+@ Clause B.12 – termination notice (procedural)
+rule O termination_notice:
+    true always
+
+@ Clause B.13 – indemnification (procedural)
+rule O indemnification:
+    true always
+
+@ Clause B.14 – relationship of parties (no agency)
+rule O no_agency:
+    true always
+
+@ Clause B.15 – conflict of interest (procedural)
+rule O conflict_of_interest:
+    true always
+
+@ Clause B.16 – assurances of compliance
+rule O compliance_assurances:
+    true always
+
+@ Clause B.17 – survivability of obligations after termination
+rule O survivable_obligations:
+    true always
+
+@ Clause B.18 – severability (no operational effect)
+rule O severability:
+    true always
+
+@ Clause B.19 – entire agreement / amendment (procedural)
+rule O amendment_requires_written_agreement:
+    true always
+
+# ----------------------------------------------------------------------
+# Hypothesis (to be checked for consistency)
+# ----------------------------------------------------------------------
+@ Hypothesis: “Confidential Information shall only include technical information.”
+rule F hypothesis_non_technical_confidential_info:
+    (confidential_info.directory_info or
+     confidential_info.routing_info or
+     confidential_info.student_info) always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------
+```

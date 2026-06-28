@@ -1,0 +1,92 @@
+```mdl
+@ Contract: Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list
+module contract_nli_no_align_dev_14_nda_13
+
+# ----------------------------------------------------------------------
+# Types that capture the domain objects described in the agreement
+# ----------------------------------------------------------------------
+type Party = {
+    name: string,                # e.g. "Patriot Scientific Corporation" or "Stockholder"
+    is_company: bool,            # true for the Company, false for the Stockholder
+    is_stockholder: bool         # true for the Stockholder, false for the Company
+}
+
+type ConfidentialMaterial = {
+    description: string,                     # e.g. "stockholder list and related analyses"
+    disclosed: bool,                          # true when the material has been disclosed
+    required_by_legal_process: bool,         # true when a subpoena / interrogatory etc. forces disclosure
+    notice_given: bool,                       # true when the Stockholder has given the Company prompt notice
+    used_for_other_purposes: bool             # true when the material is used for a purpose not reasonably related to stockholder interests
+}
+
+# ----------------------------------------------------------------------
+# Entities – the public model objects that can be aligned with other standards
+# ----------------------------------------------------------------------
+entity company: Party
+entity stockholder: Party
+entity confidential_material: ConfidentialMaterial
+
+# ----------------------------------------------------------------------
+# Helper functions (pure, no side‑effects)
+# ----------------------------------------------------------------------
+func is_company(p: Party) -> bool: p.is_company
+func is_stockholder(p: Party) -> bool: p.is_stockholder
+
+# ----------------------------------------------------------------------
+# Deontic rules – obligations (O), prohibitions (F) and permissions (P)
+# ----------------------------------------------------------------------
+@ Clause 1 – material may be used only for purposes reasonably related to the stockholder’s interests
+rule F use_confidential_material_for_other_purposes:
+    confidential_material.used_for_other_purposes always
+
+@ Clause 2 – the Stockholder must not disclose the Confidential Material except as permitted
+rule F disclose_confidential_material_without_legal_process:
+    not confidential_material.required_by_legal_process and confidential_material.disclosed always
+
+@ Clause 3 – when disclosure is required by law, the Stockholder must give prompt notice to the Company
+rule O give_prompt_notice_on_legal_disclosure:
+    confidential_material.required_by_legal_process implies confidential_material.notice_given always
+
+@ Clause 3 – when disclosure is required by law, the Stockholder may disclose only the material that is legally required
+rule O disclose_only_legally_required_material:
+    confidential_material.required_by_legal_process implies confidential_material.disclosed always
+
+@ Clause 4 – jurisdiction and venue
+rule O accept_delaware_chancery_jurisdiction:
+    true always
+
+@ Clause 5 – remedies (specific performance / injunctive relief) – modeled as an obligation to seek them when a breach occurs
+rule O seek_irreparable_harm_remedy_on_breach:
+    true always   # the existence of the remedy is an obligation of the Company; no further state needed
+
+@ Clause 6 – amendment / waiver must be in writing and signed
+rule O amendment_must_be_written_and_signed:
+    true always
+
+@ Clause 7 – binding effect on successors and assigns
+rule O binding_on_successors_and_assigns:
+    true always
+
+@ Clause 8 – governing law
+rule O governed_by_delaware_law:
+    true always
+
+@ Clause 9 – execution in counterparts
+rule O execution_in_multiple_counterparts:
+    true always
+
+@ Clause 10 – entire agreement
+rule O entire_agreement_clause:
+    true always
+
+@ Clause 11 – no adverse inference of authorship
+rule O no_authorship_adverse_inference:
+    true always
+
+# ----------------------------------------------------------------------
+# Permission derived from the hypothesis (not prohibited by the agreement)
+# ----------------------------------------------------------------------
+@ Hypothesis – the Receiving Party may acquire information similar to Confidential Material from a third party
+rule P acquire_similar_information_from_third_party:
+    true always
+```

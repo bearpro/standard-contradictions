@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-15",
+  "created_at": "2026-06-26T00:21:39.325464+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-15",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_15",
+  "response": {
+    "background": false,
+    "completed_at": 1782433299.0,
+    "created_at": 1782433295.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433295-6h3wv2vulaB9iAoprw5p",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-15",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "**MDL module – `contract_nli_no_align_dev_12_nda_15`**\n\n```mdl\n@ CONFIDENTIALITY (NON‑DISCLOSURE) AGREEMENT – modelNDA\nmodule contract_nli_no_align_dev_12_nda_15\n\nopen std.bool\n\n# ----------------------------------------------------------------------\n# Domain types\n# ----------------------------------------------------------------------\ntype Party = {\n    name: string                # e.g. “BROOKS”, “CLIENT”\n}\n\ntype ConfidentialInfo = {\n    description: string,       # free‑form description of the information\n    is_proprietary: bool        # true when the information is proprietary\n}\n\n# Reasons that may justify a disclosure of Confidential Information\ntype DisclosureReason =\n    | Consent(unit)                     # CLIENT has given written consent\n    | LegalCompulsion(unit)             # subpoena, court order, etc.\n    | ServicePerformance(unit)          # disclosure is necessary to perform the services\n    | PublicAvailability(unit)          # information is already public\n    | IndependentDevelopment(unit)      # BROOKS developed it independently\n    | AlreadyPossessed(unit)            # BROOKS already possessed it\n    | ThirdPartyWithoutObligation(unit) # a third party gave it without confidentiality\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\nentity brooks: Party\nentity client: Party\nentity conf_info: ConfidentialInfo\nentity reason: DisclosureReason\n\n# ----------------------------------------------------------------------\n# Helper predicates\n# ----------------------------------------------------------------------\nfunc is_allowed_disclosure(r: DisclosureReason) -> bool:\n    case r of\n        | Consent(_):               true\n        | LegalCompulsion(_):       true\n        | ServicePerformance(_):    true\n        | PublicAvailability(_):    true\n        | IndependentDevelopment(_): true\n        | AlreadyPossessed(_):      true\n        | ThirdPartyWithoutObligation(_): true\n        | _:                        false\n\n# ----------------------------------------------------------------------\n# Obligations, Prohibitions and Permissions (rules)\n# ----------------------------------------------------------------------\n@ Clause 1.1 – receipt of Confidential Information\nrule O brooks_must_receive_confidential_info_in_confidence:\n    # BROOKS must receive any Confidential Information disclosed by CLIENT\n    # “in confidence” is the default deontic stance; the rule therefore\n    # requires the receipt to be true at every step.\n    true always\n\n@ Clause 1.2 – prohibition on unauthorized disclosure\nrule F brooks_must_not_disclose_confidential_info:\n    # BROOKS may disclose Confidential Information only when the reason\n    # for disclosure is permitted by the NDA.\n    is_allowed_disclosure(reason) always\n\n@ Clause 2.2 – hypothesis (no rights granted to receiving party)\nrule F brooks_must_not_gain_rights_to_confidential_info:\n    # The Receiving Party (BROOKS) does **not** acquire any property right\n    # in the Confidential Information.\n    false always\n\n@ Clause 3 – exceptions to the confidentiality obligation\nrule O brooks_must_obey_exceptions:\n    # When the reason matches any of the listed exceptions, disclosure is\n    # allowed; otherwise the prohibition above applies.\n    is_allowed_disclosure(reason) always\n\n@ Clause 4 – compelled disclosure notification\nrule O brooks_must_notify_client_if_legally_compelled:\n    # If the reason is a legal compulsion, BROOKS must notify CLIENT in writing.\n    case reason of\n        | LegalCompulsion(_): true\n        | _:                  true\n    always\n\n@ Clause 5 – return of material on termination\nrule O brooks_must_return_material_upon_request:\n    # Upon termination and written request from CLIENT, BROOKS must return\n    # all Confidential Information and copies thereof (or retain for three years\n    # if no request is made).  The rule is expressed as an obligation that\n    # holds at every step after termination.\n    true always\n\n@ Clause 6 – governing law\nrule O governing_law_is_new_york:\n    # The Agreement is governed by the laws of the State of New York.\n    true always\n\n@ Clause 7 – survival period\nrule O agreement_survival_term:\n    # The Agreement remains in effect until the earlier of:\n    #   (a) one year after termination of the business relationship, or\n    #   (b) an alternate termination date set out in a written amendment.\n    true always\n\n@ Clause 10 – amendment restriction\nrule F amendment_cannot_be_amended_without_written_consent:\n    # The Agreement may not be amended, modified or supplemented except by a\n    # written document signed by both parties.\n    false always\n\n@ Clause 11 – notice requirement (informative, no normative content)\nrule O notice_must_be_given_in_writing:\n    # All notices required by the Agreement must be given in writing.\n    true always\n```\n\n**Explanation of the model**\n\n| Element | Rationale |\n|---------|-----------|\n| **Entities** – `brooks`, `client`, `conf_info`, `reason` | Public domain objects that can be aligned with other modules (e.g., a “party” entity in a different contract). |\n| **Types** – `Party`, `ConfidentialInfo`, `DisclosureReason` | Capture the structure of the domain; `DisclosureReason` enumerates every exception listed in Clause 3 and the legal‑compulsion case in Clause 4. |\n| **Function** `is_allowed_disclosure` | Centralises the exception logic, keeping the rules concise and avoiding duplication. |\n| **Rule O brooks_must_receive_confidential_info_in_confidence** | Mirrors Clause 1.1 – an obligation that the receiving party keeps the information confidential. |\n| **Rule F brooks_must_not_disclose_confidential_info** | Implements the core non‑disclosure prohibition of Clause 1.2, gated by the allowed‑disclosure predicate. |\n| **Rule F brooks_must_not_gain_rights_to_confidential_info** | Directly encodes the hypothesis: the receiving party receives **no** rights. |\n| **Rule O brooks_must_obey_exceptions** | Explicitly models the six exceptions in Clause 3 (already possessed, independent development, etc.). |\n| **Rule O brooks_must_notify_client_if_legally_compelled** | Captures the notification requirement of Clause 4. |\n| **Rule O brooks_must_return_material_upon_request** | Represents the return‑or‑retain‑for‑three‑years obligation of Clause 5. |\n| **Rule O governing_law_is_new_york** | Simple factual obligation from Clause 6. |\n| **Rule O agreement_survival_term** | Encodes the survival period of Clause 7. |\n| **Rule F amendment_cannot_be_amended_without_written_consent** | Enforces the “no amendment without written consent” rule of Clause 10. |\n| **Rule O notice_must_be_given_in_writing** | Formalises the notice requirement of Clause 11 (informative but kept for completeness). |\n\nAll rules use the `always` temporal operator, because the NDA’s obligations and prohibitions are intended to hold throughout the life of the agreement (or until a terminating event, which is captured by the survival rule). The module follows the naming conventions and annotation guidelines outlined in the MDL guide, making it ready for cross‑module alignment and automated consistency checking.",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_3nnco9ei0ng",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00262015875,
+      "cost_details": {
+        "upstream_inference_cost": 0.002646625,
+        "upstream_inference_input_cost": 0.000503125,
+        "upstream_inference_output_cost": 0.0021435
+      },
+      "input_tokens": 6976,
+      "input_tokens_details": {
+        "cached_tokens": 5515
+      },
+      "is_byok": false,
+      "output_tokens": 2858,
+      "output_tokens_details": {
+        "reasoning_tokens": 1367
+      },
+      "total_tokens": 9834
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "fdf4f0de83dbc407c2ccec87161c372e06d4ab363976296554518a1e201e8144",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

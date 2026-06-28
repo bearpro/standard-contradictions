@@ -1,0 +1,117 @@
+```mdl
+@ Confidentiality and Non‑Disclosure Agreement Governing the Inspection of Stockholder List
+module contract_nli_no_align_dev_14_nda_12
+
+open std.collections
+open std.strings
+
+-- ----------------------------------------------------------------------
+-- Domain Types
+-- ----------------------------------------------------------------------
+@ Parties (Company and Stockholder)
+type Party = {
+    name: string,
+    is_company: bool,
+    is_stockholder: bool
+}
+
+@ Demand that triggers the inspection
+type Demand = {
+    date: string,                -- e.g. "2015‑04‑30"
+    requester: Party
+}
+
+@ Confidential material that the Company provides for inspection
+type ConfidentialMaterial = {
+    description: string,
+    is_confidential: bool,
+    produced_for: Party,                -- the Party that receives it
+    purpose_related_to_stockholder: bool,
+    notice_given: bool,                -- has the Stockholder given the required notice?
+    disclosed: bool,                   -- has the Stockholder disclosed it?
+    used_for_other_purposes: bool      -- has the Stockholder used it for any purpose outside the permitted one?
+}
+
+-- ----------------------------------------------------------------------
+-- Entity Declarations (public model objects)
+-- ----------------------------------------------------------------------
+entity company: Party
+entity stockholder: Party
+entity demand: Demand
+entity confidential_material: ConfidentialMaterial
+
+-- ----------------------------------------------------------------------
+-- Helper Functions (pure, no side‑effects)
+-- ----------------------------------------------------------------------
+func is_purpose_related(cm: ConfidentialMaterial) -> bool:
+    cm.purpose_related_to_stockholder
+
+func is_independent_development(info: string, cm: ConfidentialMaterial) -> bool:
+    -- In a real model this would check that `info` is not derived from `cm`.
+    -- For the purpose of the hypothesis we treat it as true.
+    true
+
+-- ----------------------------------------------------------------------
+-- Normative Rules (deontic modalities + temporal operators)
+-- ----------------------------------------------------------------------
+@ Clause 1 – Use limitation
+rule O use_confidential_material_only_for_permitted_purposes:
+    stockholder.is_stockholder and
+    confidential_material.produced_for = stockholder and
+    is_purpose_related(confidential_material) and
+    not confidential_material.used_for_other_purposes always
+
+@ Clause 2 – Non‑disclosure
+rule F disclose_confidential_material:
+    stockholder.is_stockholder and
+    confidential_material.produced_for = stockholder and
+    not confidential_material.disclosed always
+
+@ Clause 3 – Notice when legal disclosure is required
+rule O give_notice_to_company:
+    stockholder.is_stockholder and
+    confidential_material.produced_for = stockholder and
+    confidential_material.notice_given always
+
+@ Clause 4 – Jurisdiction
+rule O submit_to_delaware_chancery:
+    true always
+
+@ Clause 5 – Remedies (specific performance / injunctive relief)
+rule O specific_performance_and_injunctive_relief:
+    true always
+
+@ Clause 6 – Amendment restriction
+rule F amend_without_written_consent:
+    stockholder.is_stockholder and
+    confidential_material.produced_for = stockholder and
+    not (confidential_material.notice_given and confidential_material.disclosed) always
+
+@ Clause 7 – Binding effect on successors, assigns, etc.
+rule O binding_upon_successors:
+    true always
+
+@ Clause 8 – Governing law (Delaware)
+rule O governed_by_delaware_law:
+    true always
+
+@ Clause 9 – Counterparts constitute one agreement
+rule O counterparts_form_one_agreement:
+    true always
+
+@ Clause 10 – Entire agreement clause
+rule O entire_agreement:
+    true always
+
+@ Clause 11 – No contra‑proferentem
+rule O no_contra_proferentem:
+    true always
+
+-- ----------------------------------------------------------------------
+-- Hypothesis: Receiving Party may independently develop information similar to Confidential Material
+-- ----------------------------------------------------------------------
+@ Hypothesis – Permission to develop independent, similar information
+rule P develop_independent_similar_information:
+    let info: string = ""  -- placeholder for the independently created information
+    is_independent_development(info, confidential_material) always
+```

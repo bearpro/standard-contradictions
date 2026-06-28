@@ -1,0 +1,71 @@
+```mdl
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT – 2017
+module contract_nli_no_align_dev_9_nda_17
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Parties defined in the Agreement (Vendor and BPS)
+type Party = {
+    name: string               # e.g. "Vendor" or "BPS"
+    email: string
+    phone: string
+}
+
+@ Confidential information that may be shared for the Transportation Challenge
+type ConfidentialInformation = {
+    description: string        # generic description of the data set
+    is_student_data: bool      # true for student‑routing data
+}
+
+@ Secure database used by the Vendor to store/handle Confidential Information
+type Database = {
+    is_secure: bool            # must meet BPS security requirements
+    holds_confidential_info: bool
+    # The database is the mechanism by which the Vendor may create a copy
+    # of the Confidential Information for the purposes of the Challenge.
+}
+
+# ----------------------------------------------------------------------
+# Entities (public model objects)
+# ----------------------------------------------------------------------
+@ The two Parties to the Agreement
+entity vendor: Party
+entity bps: Party
+
+@ The Confidential Information that BPS provides to the Vendor
+entity confidential_info: ConfidentialInformation
+
+@ The secure database that the Vendor must maintain
+entity vendor_database: Database
+
+# ----------------------------------------------------------------------
+# Functions (pure helpers)
+# ----------------------------------------------------------------------
+@ Returns true when the Vendor is permitted to create a copy of the
+@ Confidential Information according to the Agreement.
+func copy_allowed(v: Party, db: Database) -> bool:
+    # The Agreement (Section “Data Sharing”) requires a secure database
+    # and restricts use to the performance of the services.
+    db.is_secure and db.holds_confidential_info
+
+# ----------------------------------------------------------------------
+# Rules (deontic requirements)
+# ----------------------------------------------------------------------
+@ Clause “Data Sharing” – Vendor shall maintain a secure database for
+@ handling Confidential Information.
+rule O vendor_maintains_secure_database:
+    vendor_database.is_secure and
+    vendor_database.holds_confidential_info always
+
+@ Clause “Nondisclosure” – Vendor may use Confidential Information only
+@ for the services and may create a copy only within the secure database.
+rule P vendor_may_create_copy_of_confidential_info:
+    copy_allowed(vendor, vendor_database) always
+
+# ----------------------------------------------------------------------
+# Optional fact (used only for testing, should be removed in production)
+# ----------------------------------------------------------------------
+# fact vendor_database.is_secure = true
+# fact vendor_database.holds_confidential_info = true
+```

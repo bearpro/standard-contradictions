@@ -1,0 +1,98 @@
+@ Contract: OISAIR PROJECT – Two‑Way Confidentiality & Non‑Disclosure Agreement
+@ Module name required by the request
+module contract_nli_no_align_dev_3_nda_10
+
+# ----------------------------------------------------------------------
+# Standard library imports (optional – only needed for helper functions)
+# ----------------------------------------------------------------------
+open std.strings
+open std.collections
+
+# ----------------------------------------------------------------------
+# Domain types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+type Party = {
+    name: string,          # legal name of the party
+    role: string           # "Disclosing" or "Receiving"
+}
+
+@ Clause 2 – Confidential Information (simplified)
+type ConfidentialInfo = {
+    description: string,  # free‑text description of the information
+    marked: bool           # true if the Disclosing Party has marked it as confidential
+}
+
+@ Clause 4 – Disclosure event (used for modelling non‑disclosure obligations)
+type Disclosure = {
+    party: Party,                     # the party that makes the disclosure
+    is_agreement_existence: bool,     # true only if the disclosed content is the fact that the Agreement exists / was negotiated
+    content: string                   # free‑text representation of what is disclosed
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects (stable, singular nouns)
+# ----------------------------------------------------------------------
+@ Clause 1 – the two contracting parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 2 – the confidential material that may be exchanged
+entity confidential_info: ConfidentialInfo
+
+@ Clause 4 – a (potential) disclosure made by the Receiving Party
+entity receiving_party_disclosure: Disclosure
+
+# ----------------------------------------------------------------------
+# Helper functions (pure, no side‑effects)
+# ----------------------------------------------------------------------
+@ Clause 3 – “reasonable measures” predicate (simplified to a Boolean flag)
+func takes_reasonable_measures(p: Party) -> bool:
+    # In a real model this would inspect many fields; here we assume a flag exists
+    true
+
+@ Clause 5 – “return or destroy” predicate (simplified)
+func has_returned_or_destroyed(p: Party) -> bool:
+    true
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (deontic modality + temporal operator)
+# ----------------------------------------------------------------------
+@ Clause 3 – Obligation to take reasonable care of the Confidential Information
+rule O receiving_party_must_take_reasonable_measures:
+    takes_reasonable_measures(receiving_party) always
+
+@ Clause 3 – Prohibition: no disclosure to third parties without consent
+rule F receiving_party_must_not_disclose_to_third_party:
+    let disclosed_to_third = receiving_party_disclosure.content != "" and
+        receiving_party_disclosure.is_agreement_existence = false and
+        receiving_party_disclosure.party = receiving_party and
+        not receiving_party_disclosure.content.contains("third party")
+    not disclosed_to_third always
+
+@ Clause 3 – Prohibition: no use outside the Permitted Purpose
+rule F receiving_party_must_not_use_outside_permitted_purpose:
+    # A concrete flag would be modelled in a real system; we use a placeholder
+    let uses_outside = false
+    not uses_outside always
+
+@ Clause 6 – Prohibition: the Receiving Party shall not disclose the existence of the Agreement
+rule F receiving_party_must_not_disclose_agreement_existence:
+    receiving_party_disclosure.is_agreement_existence = false always
+
+@ Clause 5 – Obligation to return or destroy Confidential Information at termination
+rule O receiving_party_must_return_or_destroy_at_termination:
+    # “termination_date” is a placeholder; we model the obligation as “eventually”
+    has_returned_or_destroyed(receiving_party) eventually
+
+@ Clause 10 – Survival of confidentiality obligations after termination (3‑year survival)
+rule O confidentiality_obligations_survive_three_years:
+    # We model the survival as “always” because the rule applies to the whole trace
+    true always
+
+# ----------------------------------------------------------------------
+# Facts – static data (optional, can be removed in the final model)
+# ----------------------------------------------------------------------
+fact disclosing_party.role = "Disclosing"
+fact receiving_party.role   = "Receiving"
+fact receiving_party_disclosure.is_agreement_existence = false

@@ -1,0 +1,46 @@
+@ Contract: OISAIR Project – Two‑Way Confidentiality and Non‑Disclosure Agreement
+@ Module name: contract_nli_no_align_dev_3_nda_11
+module contract_nli_no_align_dev_3_nda_11
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type Party = {
+    name: string,          # legal name of the party
+    role: string           # "disclosing" or "receiving"
+}
+
+type ConfidentialInformation = {
+    description: string,  # short description of the confidential material
+    source: Party          # the party that originally disclosed the information
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects that can be aligned across modules
+# ----------------------------------------------------------------------
+entity receiving_party: Party
+entity disclosing_party: Party
+entity confidential_information: ConfidentialInformation
+
+# ----------------------------------------------------------------------
+# Helper predicate (pure function) – models the act of reverse‑engineering
+# ----------------------------------------------------------------------
+func reverse_engineer(party: Party, info: ConfidentialInformation) -> bool:
+    # The solver will assign a truth value to this predicate.
+    # A value of `true` means the party has reverse‑engineered the information.
+    false
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements extracted from the Agreement
+# ----------------------------------------------------------------------
+# Clause 3 – “Not to alter, modify, disassemble, reverse engineer or decompile any Confidential Information.”
+@ Clause 3 – prohibition of reverse‑engineering
+rule F no_reverse_engineer_confidential_information:
+    reverse_engineer(receiving_party, confidential_information) now
+
+# ----------------------------------------------------------------------
+# (Optional) Additional consistency facts – not part of the final model
+# ----------------------------------------------------------------------
+# fact receiving_party.role = "receiving"
+# fact disclosing_party.role = "disclosing"
+# fact confidential_information.source = disclosing_party

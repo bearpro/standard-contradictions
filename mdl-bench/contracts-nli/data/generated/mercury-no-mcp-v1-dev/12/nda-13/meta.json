@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-12-nda-13",
+  "created_at": "2026-06-26T00:21:34.846655+00:00",
+  "doc_id": 12,
+  "hypothesis_id": "nda-13",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_12_nda_13",
+  "response": {
+    "background": false,
+    "completed_at": 1782433294.0,
+    "created_at": 1782433291.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433291-2Dpvm8gmxB2rSWp4z4ms",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-12-nda-13",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality (Non‑Disclosure) Agreement – Model\nmodule contract_nli_no_align_dev_12_nda_13\n\n# ----------------------------------------------------------------------\n# Standard library imports (implicit in most environments)\n# ----------------------------------------------------------------------\nopen std.strings\n\n# ----------------------------------------------------------------------\n# Domain types\n# ----------------------------------------------------------------------\n@ Clause 1 – Parties\ntype Party =\n    | Client(unit)          # the disclosing party\n    | ReceivingParty(unit) # BROOKS – the receiving party\n\n@ Clause 1 – Information categories\ntype InfoCategory =\n    | Personal(unit)\n    | Financial(unit)\n    | Product(unit)\n    | Formulation(unit)\n    | ProcessingProcedure(unit)\n\n@ Clause 3 – Source of information\ntype Source =\n    | FromClient(unit)\n    | FromThirdParty(unit)\n    | FromReceivingParty(unit)\n    | PublicDomain(unit)\n\n@ Clause 1 – Confidential Information record\ntype ConfidentialInfo = {\n    category   : InfoCategory,\n    source     : Source,\n    content    : string,\n    is_similar : bool   # true if the information is “similar” to confidential data\n}\n\n# ----------------------------------------------------------------------\n# Entities (public model objects)\n# ----------------------------------------------------------------------\n@ Clause 1 – The two parties\nentity client          : Party\nentity brooks          : Party\n\n@ Clause 1 – A piece of information that may be subject to the agreement\nentity info            : ConfidentialInfo\n\n# Clause 4 – Events that affect the temporal dimension\nentity termination          : bool   # true at the step when the business relationship ends\nentity legal_compelled      : bool   # true at the step when BROOKS is legally compelled to disclose\nentity client_consent       : bool   # true when CLIENT has given written consent to a disclosure\nentity client_requests_return : bool # true when CLIENT requests the return of material\n\n# ----------------------------------------------------------------------\n# Helper functions\n# ----------------------------------------------------------------------\n@ Clause 1 – Is the information confidential (i.e. originated from the CLIENT)?\nfunc is_confidential(i: ConfidentialInfo) -> bool:\n    i.source = Source.FromClient()\n\n@ Clause 3 – Does an exception to confidentiality apply?\nfunc exception_applies(i: ConfidentialInfo) -> bool:\n    case i.source:\n        | Source.FromReceivingParty():               # 3.1 Already possesses\n            true\n        | Source.PublicDomain():                    # 3.6 Publicly available\n            true\n        | Source.FromThirdParty():\n            i.is_similar                               # 3.3 Rightfully received (including “similar” info)\n        | _: false\n\n# Clause 3 – Is a disclosure permitted because the CLIENT consented?\nfunc consented_disclosure(i: ConfidentialInfo) -> bool:\n    client_consent\n\n# ----------------------------------------------------------------------\n# Normative rules (deontic modalities)\n# ----------------------------------------------------------------------\n@ Clause 1.1 – Confidential information must be kept in confidence\nrule O keep_confidential:\n    is_confidential(info) implies\n        (brooks = Party.ReceivingParty()) and\n        (client = Party.Client()) and\n        (info.category = InfoCategory.Personal() or\n         info.category = InfoCategory.Financial() or\n         info.category = InfoCategory.Product() or\n         info.category = InfoCategory.Formulation() or\n         info.category = InfoCategory.ProcessingProcedure()) always\n\n@ Clause 1.2 – BROOKS shall not disclose confidential information except as allowed\nrule F no_unauthorized_disclosure:\n    is_confidential(info) and not exception_applies(info) and not consented_disclosure(info) implies\n        false always   # prohibition of any disclosure\n\n@ Clause 2.2 – Breach causes irreparable harm – modelled as a prohibition of breach\nrule F breach_causes_harm:\n    (is_confidential(info) and not exception_applies(info) and not consented_disclosure(info)) implies\n        false always\n\n@ Clause 2.3 – BROOKS may not approach CLIENT’s private‑label customers\nrule F no_approach_private_label_customers:\n    false always   # placeholder – no state to model; the rule is a prohibition\n\n@ Clause 3 – Exceptions (allowance to possess or develop information)\nrule O exception_allowed:\n    exception_applies(info) always\n\n@ Clause 4 – Compelled disclosure: BROOKS must notify CLIENT\nrule O notify_if_compelled:\n    legal_compelled implies\n        (brooks = Party.ReceivingParty()) and\n        (client = Party.Client()) and\n        true always\n\n@ Clause 4 – After protective order / waiver, limited disclosure is permitted\nrule O limited_disclosure_after_compel:\n    legal_compelled and not client_consent implies\n        (info.category = InfoCategory.Personal() or\n         info.category = InfoCategory.Financial() or\n         info.category = InfoCategory.Product()) and\n        true always   # limited to the portion identified by counsel\n\n@ Clause 5 – Return of material upon termination\nrule O return_material_on_termination:\n    termination implies\n        (client_requests_return implies\n            (brooks = Party.ReceivingParty()) and\n            true) else\n            (true)   # retain for three years – modelled as no obligation to return\n\n@ Clause 6 – Governing law (no operational effect, but recorded for completeness)\nrule O governing_law_new_york:\n    true always\n\n@ Clause 7 – Survival (the agreement remains in force for 1 year after termination)\nrule O agreement_survival:\n    (termination) implies\n        (true)   # the model does not encode duration; the rule records the intent\n\n@ Clause 11 – Notice (no operational effect)\nrule O notice_requirements:\n    true always\n\n# ----------------------------------------------------------------------\n# Hypothesis – Receiving Party may acquire information similar to Confidential Information\n# from a third party.  This is covered by the exception in Clause 3.3.\n# ----------------------------------------------------------------------\n@ Hypothesis – “Receiving Party may acquire similar information from a third party”\nrule P acquire_similar_info_from_third_party:\n    (info.source = Source.FromThirdParty()) and\n    info.is_similar implies\n        true always   # permission to acquire such information\n\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_yif8ya8p3l",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.0020225205,
+      "cost_details": {
+        "upstream_inference_cost": 0.00204295,
+        "upstream_inference_input_cost": 0.00050395,
+        "upstream_inference_output_cost": 0.001539
+      },
+      "input_tokens": 6982,
+      "input_tokens_details": {
+        "cached_tokens": 5518
+      },
+      "is_byok": false,
+      "output_tokens": 2052,
+      "output_tokens_details": {
+        "reasoning_tokens": 827
+      },
+      "total_tokens": 9034
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "f799071527928ba5f5d636ab2317ffc9a00964400193f59bd0e2b7f88c631f7d",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}

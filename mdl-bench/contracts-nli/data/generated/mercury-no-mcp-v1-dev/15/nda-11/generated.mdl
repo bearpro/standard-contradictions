@@ -1,0 +1,100 @@
+@ Contract: Non‑Disclosure Agreement (Two‑Way) – University of Bristol
+module contract_nli_no_align_dev_15_nda_11
+
+open std.strings
+
+# ----------------------------------------------------------------------
+# Domain Types
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties to the agreement
+type Party = {
+    name: string,
+    address: string
+}
+
+@ Clause 2‑3 – Information that is subject to the NDA
+type ConfidentialInfo = {
+    description: string,                     # free‑text description of the material
+    marked: bool,                             # “Confidential” label applied
+    source: Party,                            # the disclosing party
+    is_public_domain: bool,                   # true if already public at disclosure
+    is_independently_developed: bool,         # true if recipient already possessed it
+    is_made_public_by_disclosing_party: bool, # true if disclosing party later publishes it
+    is_received_from_third_without_restriction: bool,
+    is_required_by_law: bool,
+    is_copied: bool,                          # true if a copy/abstract has been made
+    is_disclosed_to_third: bool,              # true if disclosed to a third party
+    is_used_for_commercial_purpose: bool,     # true if used commercially
+    is_reverse_engineered: bool,              # true if reverse‑engineered
+    source_acknowledged: bool                 # true if the source is identified as “Confidential”
+}
+
+# ----------------------------------------------------------------------
+# Entities – the concrete objects that appear in the agreement
+# ----------------------------------------------------------------------
+@ Clause 1 – the two contracting parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 2‑3 – the confidential material that may be exchanged
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Helper Functions (pure, no side‑effects)
+# ----------------------------------------------------------------------
+func is_exception(info: ConfidentialInfo) -> bool:
+    info.is_public_domain or
+    info.is_independently_developed or
+    info.is_made_public_by_disclosing_party or
+    info.is_received_from_third_without_restriction or
+    info.is_required_by_law
+
+# ----------------------------------------------------------------------
+# Obligations (O) – what the receiving party must do
+# ----------------------------------------------------------------------
+@ Clause 3‑a – take proper and reasonable measures
+rule O take_proper_measures:
+    not is_exception(confidential_info) implies true always
+
+@ Clause 3‑f – acknowledge the source and mark the material
+rule O acknowledge_and_mark:
+    (confidential_info.source_acknowledged and confidential_info.marked) always
+
+@ Clause 5 – confidentiality period of ten (10) years from the effective date
+rule O confidentiality_period:
+    true always   # the solver will treat the trace length as the 10‑year horizon
+
+# ----------------------------------------------------------------------
+# Prohibitions (F) – what the receiving party must NOT do
+# ----------------------------------------------------------------------
+@ Clause 3‑b – commercial use without licence
+rule F commercial_use:
+    confidential_info.is_used_for_commercial_purpose always
+
+@ Clause 3‑c – disclosure to third parties without written permission
+rule F disclose_to_third_party:
+    confidential_info.is_disclosed_to_third always
+
+@ Clause 3‑e – make copies or abstracts without permission
+rule F make_copy_or_abstract:
+    confidential_info.is_copied always
+
+@ Clause 3‑d – disclosure to employees beyond those needed (modelled as a prohibition
+# on any disclosure that is not required for the purpose)
+rule F disclose_to_unnecessary_employee:
+    confidential_info.is_disclosed_to_third always   # same predicate captures any unauthorised disclosure
+
+@ Clause Hypothesis – reverse engineering of objects embodying confidential information
+rule F reverse_engineer:
+    confidential_info.is_reverse_engineered always
+
+# ----------------------------------------------------------------------
+# Permissions (P) – situations where the above obligations do NOT apply
+# ----------------------------------------------------------------------
+@ Clause 4 – statutory or public‑domain exceptions
+rule P exception_allowed:
+    is_exception(confidential_info) always
+
+# ----------------------------------------------------------------------
+# End of model
+# ----------------------------------------------------------------------

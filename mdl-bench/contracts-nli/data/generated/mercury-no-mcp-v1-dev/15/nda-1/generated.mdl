@@ -1,0 +1,38 @@
+@ AGREEMENT ON THE NON‑DISCLOSURE OF CONFIDENTIAL INFORMATION (TWO‑WAY)
+module contract_nli_no_align_dev_15_nda_1
+
+open std.strings
+
+-- ----------------------------------------------------------------------
+-- Domain types
+-- ----------------------------------------------------------------------
+@ Clause 2 – “The parties will mark or otherwise designate confidential
+  information to show expressly or by necessary implication that it is
+  imparted in confidence.”
+type ConfidentialInformation = {
+    description : string,   -- free‑form description of the material
+    is_marked   : bool      -- true iff the material has been marked
+                         -- as “Confidential” (or equivalent)
+}
+
+-- ----------------------------------------------------------------------
+-- Entities (public model objects)
+-- ----------------------------------------------------------------------
+@ Clause 2 – the material that is to be protected
+entity confidential_information : ConfidentialInformation
+
+-- ----------------------------------------------------------------------
+-- Rules (deontic requirements)
+-- ----------------------------------------------------------------------
+@ Clause 2 – the disclosing party must expressly identify every piece of
+  confidential information.
+rule O confidential_information_must_be_marked:
+    confidential_information.is_marked always
+
+-- ----------------------------------------------------------------------
+-- Hypothesis check (optional, for traceability)
+-- ----------------------------------------------------------------------
+@ Hypothesis: All Confidential Information shall be expressly identified by the
+  Disclosing Party.
+rule O hypothesis_all_confidential_info_marked:
+    confidential_information.is_marked always

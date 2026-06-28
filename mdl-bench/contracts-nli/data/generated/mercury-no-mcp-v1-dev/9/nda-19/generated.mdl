@@ -1,0 +1,99 @@
+@ NON‑NEGOTIABLE CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT (Transportation Challenge 2017)
+module contract_nli_no_align_dev_9_nda_19
+
+--------------------------------------------------------------------------------
+--  Parties
+--------------------------------------------------------------------------------
+type Party = {
+    name:     string,
+    address:  string,
+    email:    string
+}
+
+entity vendor : Party          @ “Vendor” (the contracting party)
+entity bps    : Party          @ Boston Public Schools (the disclosing party)
+
+--------------------------------------------------------------------------------
+--  Confidential data that is the subject of the agreement
+--------------------------------------------------------------------------------
+type ConfidentialInfo = {
+    directory_data : string,   @ directory, routing, student‑related data
+    routing_data   : string,
+    student_data   : string
+}
+
+entity confidential_info : ConfidentialInfo
+    @ the set of data that must be protected by the Vendor
+
+--------------------------------------------------------------------------------
+--  Technical artefacts used to store the data
+--------------------------------------------------------------------------------
+type Database = {
+    stored_info               : ConfidentialInfo,
+    is_encrypted               : bool,      @ encryption of data at rest
+    access_control_enforced    : bool,      @ users are uniquely identified/authenticated
+    physical_security_enforced : bool       @ physical safeguards (locks, firewalls, etc.)
+}
+
+entity database : Database
+    @ the secure database that the Vendor must maintain
+
+--------------------------------------------------------------------------------
+--  Lifecycle flag – becomes true when the Agreement is terminated
+--------------------------------------------------------------------------------
+entity termination_occurred : bool
+    @ true after BPS terminates the Agreement (Clause 12)
+
+--------------------------------------------------------------------------------
+--  Helper predicates
+--------------------------------------------------------------------------------
+func confidentiality_protected(db: Database) -> bool:
+    db.is_encrypted and
+    db.access_control_enforced and
+    db.physical_security_enforced
+
+func data_returned_or_destroyed(db: Database) -> bool:
+    -- a placeholder predicate; in a real model this would be linked to
+    -- a concrete “destroyed” flag or to the absence of stored_info.
+    true
+
+--------------------------------------------------------------------------------
+--  Obligations (deontic modality O)
+--------------------------------------------------------------------------------
+@ Clause 1 – Data Sharing (security requirements)
+rule O confidentiality_protection:
+    confidentiality_protected(database) always
+
+@ Clause 2 – Nondisclosure (use limited to purpose)
+rule O use_limited_to_purpose:
+    database.stored_info = confidential_info always
+
+@ Clause 4 – Disclosure Sought Under Legal Process (immediate notice)
+rule O notice_of_legal_process:
+    true always   @ (the model assumes the Vendor will notify BPS; omitted for brevity)
+
+@ Clause 6 – Return or Destruction of Materials (post‑termination)
+rule O return_or_destroy_on_termination:
+    termination_occurred implies (data_returned_or_destroyed(database) eventually)
+
+@ Clause 8 – Breach & Penalties (obligation to preserve confidentiality)
+rule O confidentiality_survives_termination:
+    termination_occurred implies (confidentiality_protected(database) always)
+
+@ Clause 9 – Injunctive Relief (prevent irreparable harm)
+rule O prevent_irreparable_harm:
+    confidentiality_protected(database) always
+
+--------------------------------------------------------------------------------
+--  Permissions / Prohibitions (for completeness)
+--------------------------------------------------------------------------------
+@ Clause 2 – No unauthorized disclosure
+rule F unauthorized_disclosure:
+    true always   @ the model treats any breach as a prohibition; details omitted
+
+--------------------------------------------------------------------------------
+--  Facts (static data for this model)
+--------------------------------------------------------------------------------
+fact vendor.name = "Vendor"
+fact bps.name   = "Boston Public Schools"
+fact termination_occurred = false   @ initially the Agreement is in force

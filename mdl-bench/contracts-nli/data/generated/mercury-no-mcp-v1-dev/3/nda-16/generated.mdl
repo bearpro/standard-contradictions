@@ -1,0 +1,92 @@
+@ Contract: OISAIR PROJECT – TWO‑WAY CONFIDENTIALITY AND NON‑DISCLOSURE AGREEMENT
+@ Module name required by the task
+module contract_nli_no_align_dev_3_nda_16
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1 – definition of the parties
+type PartyRole = Disclosing(unit) | Receiving(unit)
+
+type Party = {
+    name : string,
+    role : PartyRole
+}
+
+@ Clause 1 – definition of a piece of Confidential Information
+type ConfidentialInformation = {
+    id               : int,          -- stable identifier for the item
+    owner            : Party,        -- the Disclosing Party that owns it
+    retained_copy    : bool,         -- true if a copy may be kept for regulatory/insurance purposes
+    returned         : bool,         -- true once the item has been returned to the Disclosing Party
+    destroyed        : bool,         -- true once the item has been destroyed
+    retention_allowed: bool          -- true if the retained‑copy exception is exercised
+}
+
+# ----------------------------------------------------------------------
+# Entities – the objects that will be aligned across modules
+# ----------------------------------------------------------------------
+@ Parties (the two contractual sides)
+entity disclosing_party : Party
+entity receiving_party : Party
+
+@ Every piece of Confidential Information is modelled by an entity.
+@ In a concrete deployment the solver will be given a collection of such
+@ entities (e.g. by instantiating the module multiple times or by using a
+@ list type).  The rules below are written so that they hold for *any*
+@ ConfidentialInformation entity.
+entity ci : ConfidentialInformation
+
+@ Temporal flags required to express the post‑termination obligations
+entity termination_occurred : bool          -- becomes true on the Termination Date
+entity instruction_given    : bool          -- true when the Disclosing Party has issued the
+                                          -- “return or destroy” instruction
+entity days_since_instruction : int         -- number of days elapsed since the instruction
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Returns true when the allowed‑copy exception may be used (regulatory/insurance)
+func allowed_retention(ci: ConfidentialInformation) -> bool:
+    ci.retained_copy and ci.retention_allowed
+
+@ Returns true when the item has been dealt with (returned or destroyed)
+func dealt_with(ci: ConfidentialInformation) -> bool:
+    ci.returned or ci.destroyed
+
+@ Returns true when the deadline (7 days) has not been exceeded
+func within_deadline(days: int) -> bool:
+    days <= 7
+
+# ----------------------------------------------------------------------
+# Rules – normative requirements (deontic modality O = obligation)
+# ----------------------------------------------------------------------
+@ Clause 5 – obligation to return or destroy Confidential Information
+rule O ci_return_or_destroy_after_termination:
+    -- The obligation becomes active after the Termination Date and after the
+    -- Disclosing Party has issued its written instruction.
+    (termination_occurred and instruction_given and within_deadline(days_since_instruction))
+        implies (dealt_with(ci) or allowed_retention(ci)) always
+
+@ Clause 5 – the retained‑copy exception may be exercised only for one copy
+rule O single_retained_copy_allowed:
+    -- If a piece of information is marked as retained, the retention_allowed flag
+    -- must be true for at most one piece per Receiving Party.
+    let retained_cnt : int =
+        case (receiving_party.role):
+            | PartyRole.Receiving():
+                -- The solver can count retained copies across all ci entities.
+                -- In practice this is expressed by a separate alignment module;
+                -- here we state the intended property.
+                1   -- placeholder – the actual counting is performed by the solver
+            | _: 0
+    retained_cnt <= 1 always
+
+@ Clause 5 – the Receiving Party must keep the information secret at all times
+rule O confidentiality_obligation:
+    -- This rule captures the general “do not disclose” duty.
+    ci.owner.role = PartyRole.Disclosing() implies (ci.returned = false and ci.destroyed = false) always
+
+# ----------------------------------------------------------------------
+# End of module
+# ----------------------------------------------------------------------

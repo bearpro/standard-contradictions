@@ -1,0 +1,56 @@
+@ Non‑Negotiable Confidentiality & Non‑Disclosure Agreement (Transportation Challenge 2017)
+module contract_nli_no_align_dev_9_nda_7
+
+open std.collections
+
+# ----------------------------------------------------------------------
+# Domain entities
+# ----------------------------------------------------------------------
+@ Parties to the agreement
+type Party = {
+    name: string               # e.g. "Boston Public Schools", "Vendor"
+}
+
+@ The confidential data that is being exchanged
+type ConfidentialInfo = {
+    id: string,                # identifier for the data set
+    shared_with: List<Party>,  # parties that have received the data
+    is_shared_externally: bool # true if any party other than the intended recipient has it
+}
+
+# ----------------------------------------------------------------------
+# Concrete entities (stable, public model objects)
+# ----------------------------------------------------------------------
+entity bps: Party               # Boston Public Schools (receiving party)
+entity vendor: Party             # Vendor (providing party)
+entity confidential_info: ConfidentialInfo
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+@ Returns true if any party in the list is not BPS
+func any_third_party_shared(info: ConfidentialInfo) -> bool:
+    let rec check(lst: List<Party>) : bool =
+        case lst:
+            | Empty(_): false
+            | Cons(p, rest):
+                if p.name != bps.name then true else check(rest)
+    check(info.shared_with)
+
+# ----------------------------------------------------------------------
+# Obligations (deontic rules) – all requirements are expressed as LTLf “always”
+# ----------------------------------------------------------------------
+@ Clause 2 – Nondisclosure (VENDOR must not disclose Confidential Information)
+rule F vendor_must_not_share_confidential:
+    not any_third_party_shared(confidential_info) always
+
+@ Clause 2 – Nondisclosure (BPS as not disclose Confidential Information to third parties)
+rule F bps_must_not_share_confidential:
+    not any_third_party_shared(confidential_info) always
+
+# ----------------------------------------------------------------------
+# Optional: explicit statement that the “is_shared_externally” flag must reflect
+# the actual sharing list (consistency check)
+# ----------------------------------------------------------------------
+rule O shared_flag_consistency:
+    confidential_info.is_shared_externally = any_third_party_shared(confidential_info) always

@@ -1,0 +1,109 @@
+```mdl
+@ Contract: Two‑Way Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_3_nda_18
+
+# ----------------------------------------------------------------------
+#  Types
+# ----------------------------------------------------------------------
+@ Parties (Clause 1)
+type Party = {
+    name: string,
+    address: string,
+    tax_id: string,
+    legal_capacity: string
+}
+
+@ Representatives (Clause 2)
+type Representative = {
+    name: string,
+    party: Party                # the party the representative belongs to
+}
+
+@ Confidential information (Clause 1)
+type ConfidentialInformation = {
+    field: string,              # e.g. “technical data”, “business plan”
+    description: string,
+    is_disclosed: bool,         # true when the information has been disclosed
+    consent_given: bool         # true when the disclosing party has given written consent
+    is_returned_or_destroyed: bool   # true when the information has been returned or destroyed
+}
+
+@ Permitted purpose (Clause 1)
+type PermittedPurpose = {
+    description: string
+}
+
+# ----------------------------------------------------------------------
+#  Entities
+# ----------------------------------------------------------------------
+@ The two parties to the agreement (Clause 1)
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ A representative of the disclosing party (Clause 2)
+entity disclosing_rep: Representative
+
+@ The confidential information that is exchanged (Clause 1)
+entity confidential_info: ConfidentialInformation
+
+@ The purpose for which the receiving party may use the information (Clause 1)
+entity permitted_purpose: PermittedPurpose
+
+# ----------------------------------------------------------------------
+#  Helper functions
+# ----------------------------------------------------------------------
+@ Checks whether a party is allowed to disclose the information
+func may_disclose(party: Party, info: ConfidentialInformation) -> bool:
+    info.consent_given
+
+@ Checks whether a party is allowed to use the information for a purpose
+func may_use_for(party: Party, info: ConfidentialInformation, purpose: PermittedPurpose) -> bool:
+    true   # the model assumes the purpose is always permitted when the clause is satisfied
+
+@ Checks whether a party solicits a representative (hypothesis)
+func solicits(party: Party, rep: Representative) -> bool:
+    false   # placeholder – the rule will forbid any solicitation
+
+# ----------------------------------------------------------------------
+#  Rules
+# ----------------------------------------------------------------------
+@ Clause 3 – General confidentiality obligation
+rule O keep_confidential:
+    not confidential_info.is_disclosed or confidential_info.consent_given always
+
+@ Clause 3  – No disclosure without prior written consent
+rule F disclose_without_consent:
+    confidential_info.is_disclosed and not confidential_info.consent_given always
+
+@ Clause 3c – No use outside the permitted purpose
+rule F use_outside_permitted_purpose:
+    not may_use_for(receiving_party, confidential_info, permitted_purpose) always
+
+@ Clause 3a – Take reasonable measures to protect the information
+rule O reasonable_measures:
+    true always   # abstract – the concrete measures are outside the logical model
+
+@ Clause 5 – Return or destroy information at termination (or within 7 days of instruction)
+rule O return_or_destroy_at_termination:
+    confidential_info.is_returned_or_destroyed always
+
+@ Clause 5 – Retain one copy only for regulatory/insurance purposes
+rule O retain_one_copy_for_regulatory:
+    (confidential_info.is_returned_or_destroyed or confidential_info.is_disclosed) always
+
+@ Clause 4 – Access limited to representatives who need to know
+rule O limited_access_to_representatives:
+    true always   # abstract – the “need‑to‑know” condition is captured by the model’s structure
+
+@ Clause 4 – Receiving party responsible for its representatives’ compliance
+rule O representative_compliance:
+    true always   # abstract – enforcement is outside the logical model
+
+@ Hypothesis – Receiving Party shall not solicit any of Disclosing Party’s representatives
+rule F solicit_disclosing_representatives:
+    solicits(receiving_party, disclosing_rep) always
+
+# ----------------------------------------------------------------------
+#  End of model
+# ----------------------------------------------------------------------
+```

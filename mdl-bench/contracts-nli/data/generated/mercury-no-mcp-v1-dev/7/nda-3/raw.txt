@@ -1,0 +1,68 @@
+```mdl
+@ Non‑Disclosure Agreement – Model for hypothesis “Confidential Information may include verbally conveyed information.”
+module contract_nli_no_align_dev_7_nda_3
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+@ Clause 1.2(a) – definition of Confidential Information (including oral)
+type InfoMedium = 
+    | Written(unit)          # information disclosed in writing
+    | Oral(unit)             # information disclosed verbally
+    | Other(unit)            # any other means of disclosure
+
+@ Clause 1.2(a) – confirmation of oral disclosures
+type Confirmation = 
+    | Confirmed(unit)        # oral disclosure confirmed in writing within 15 days
+    | Unconfirmed(unit)      # oral disclosure not confirmed
+
+@ Clause 1.2(a) – parties to the agreement
+type Party = 
+    | Company(unit)          # “the Company”
+    | AHPL(unit)             # “ALEXANDRA HEALTH PTE LTD”
+
+# ----------------------------------------------------------------------
+# Entity
+# ----------------------------------------------------------------------
+@ Clause 1.2(a) – each piece of information exchanged
+entity confidential_info: {
+    medium: InfoMedium,
+    confirmation: Confirmation,   # relevant only when medium = Oral
+    disclosing_party: Party,
+    receiving_party: Party,
+    is_confidential: bool
+}
+
+# ----------------------------------------------------------------------
+# Rules
+# ----------------------------------------------------------------------
+@ Clause 1.2(a) – written information is always confidential
+rule O written_information_is_confidential:
+    (confidential_info.medium = InfoMedium.Written(())) implies
+    confidential_info.is_confidential always
+
+@ Clause 1.2(a) – orally disclosed information becomes confidential
+@     if it is confirmed in writing within fifteen (15) days
+rule O oral_information_confidential_when_confirmed:
+    (confidential_info.medium = InfoMedium.Oral(()) and
+     confidential_info.confirmation = Confirmation.Confirmed(())) implies
+    confidential_info.is_confidential always
+
+@ Clause 1.2(a) – oral information not confirmed is NOT automatically confidential
+rule F oral_information_not_confidential_without_confirmation:
+    (confidential_info.medium = InfoMedium.Oral(()) and
+     confidential_info.confirmation = Confirmation.Unconfirmed(())) implies
+    not confidential_info.is_confidential always
+
+@ Clause 1.2(a) – other means of disclosure are treated as confidential
+rule O other_information_is_confidential:
+    (confidential_info.medium = InfoMedium.Other(())) implies
+    confidential_info.is_confidential always
+
+# ----------------------------------------------------------------------
+# Hypothesis check (expressed as a permission – it may be true)
+# ----------------------------------------------------------------------
+@ Hypothesis: “Confidential Information may include verbally conveyed information.”
+rule P hypothesis_oral_can_be_confidential:
+    true always
+```

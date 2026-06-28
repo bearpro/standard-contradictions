@@ -1,0 +1,100 @@
+@ Contract – OISAIR Project – Two‑Way Confidentiality and Non‑Disclosure Agreement
+module contract_nli_no_align_dev_3_nda_15
+
+# ----------------------------------------------------------------------
+# Types
+# ----------------------------------------------------------------------
+type Party = {
+    name: string,
+    address: string,
+    representatives: List<string>
+}
+
+type ConfidentialInfo = {
+    field: string,          # e.g. “technical data”, “business plan”
+    description: string
+}
+
+# ----------------------------------------------------------------------
+# Entities – public model objects (stable domain concepts)
+# ----------------------------------------------------------------------
+@ Clause 1 – Parties
+entity disclosing_party: Party
+entity receiving_party: Party
+
+@ Clause 1 – Core agreement data
+entity agreement: {
+    effective_date: string,
+    termination_date: string,
+    permitted_purpose: string,
+    confidential_info: List<ConfidentialInfo>,
+
+    # Boolean flags that capture the normative obligations
+    confidentiality_obligation: bool,          # O – keep information secret
+    non_use_obligation: bool,                 # O – use only for permitted purpose
+    secrecy_obligation: bool,                 # O – do not disclose existence of agreement
+    confidential_info_returned: bool,         # O – return/destroy at end of term
+    receiving_party_has_rights: bool,          # F – no rights granted to receiving party
+
+    # Numeric / enumerated parameters
+    duration_years: int,                       # 5 years after Effective Date
+    termination_notice_days: int,              # 30‑day written notice
+    surviving_obligation_years: int,           # 3 years of confidentiality after termination
+    governing_law: string,                     # “Republic of Italy”
+    jurisdiction: string                       # “ordinary Courts of Trieste”
+}
+
+# ----------------------------------------------------------------------
+# Functions – reusable predicates (optional, kept simple)
+# ----------------------------------------------------------------------
+func is_positive_int(v: int) -> bool: v > 0
+
+# ----------------------------------------------------------------------
+# Rules – deontic requirements (modality, name, LTLf body)
+# ----------------------------------------------------------------------
+@ Clause 3 – Obligation to keep information secret
+rule O confidentiality_obligation:
+    agreement.confidentiality_obligation always
+
+@ Clause 3 – Obligation to use information only for the permitted purpose
+rule O non_use_obligation:
+    agreement.non_use_obligation always
+
+@ Clause 6 – No rights granted to the Receiving Party (hypothesis)
+rule F granting_rights:
+    agreement.receiving_party_has_rights always
+
+@ Clause 5 – Return / destruction of Confidential Information at termination
+rule O return_or_destroy:
+    agreement.confidential_info_returned always
+
+@ Clause 10 – Duration of the Agreement (5 years)
+rule O agreement_duration:
+    agreement.duration_years = 5 always
+
+@ Clause 10 – Termination notice period (30 days)
+rule O termination_notice:
+    agreement.termination_notice_days = 30 always
+
+@ Clause 10 – Survival of confidentiality obligations (3 years)
+rule O surviving_obligation:
+    agreement.surviving_obligation_years = 3 always
+
+@ Clause 12 – Governing law (Republic of Italy)
+rule O governing_law:
+    agreement.governing_law = "Republic of Italy" always
+
+@ Clause 12 – Jurisdiction (ordinary Courts of Trieste)
+rule O jurisdiction:
+    agreement.jurisdiction = "ordinary Courts of Trieste" always
+
+@ Clause 16 – Secrecy of the Agreement itself
+rule O secrecy_obligation:
+    agreement.secrecy_obligation always
+
+# ----------------------------------------------------------------------
+# Optional sanity checks (facts) – removed for final model
+# ----------------------------------------------------------------------
+# fact is_positive_int(agreement.duration_years)
+# fact is_positive_int(agreement.termination_notice_days)
+# fact is_positive_int(agreement.surviving_obligation_years)

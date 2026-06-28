@@ -1,0 +1,88 @@
+{
+  "base_url": "https://openrouter.ai/api/v1",
+  "benchmark": "contracts-nli-no-align",
+  "case_id": "dev-14-nda-18",
+  "created_at": "2026-06-26T00:23:35.503235+00:00",
+  "doc_id": 14,
+  "hypothesis_id": "nda-18",
+  "max_output_tokens": 9000,
+  "migrated_from_scenario": "no-align-v1",
+  "migrated_from_scenario_slug": "no-align-v1",
+  "model": "inception/mercury-2",
+  "model_slug": "inception-mercury-2-no-align",
+  "module_name": "contract_nli_no_align_dev_14_nda_18",
+  "response": {
+    "background": false,
+    "completed_at": 1782433415.0,
+    "created_at": 1782433412.0,
+    "frequency_penalty": 0,
+    "id": "gen-1782433412-mfXPwWz5kxD66zKwNnch",
+    "max_output_tokens": 9000,
+    "metadata": {
+      "benchmark": "contracts-nli-no-align",
+      "case_id": "dev-14-nda-18",
+      "scenario": "no-align-v1"
+    },
+    "model": "inception/mercury-2-20260304",
+    "object": "response",
+    "output": [
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "```mdl\n@ Confidentiality and Non‑Disclosure Agreement governing the inspection of the stockholder list\nmodule contract_nli_no_align_dev_14_nda_18\n\n# ----------------------------------------------------------------------\n# Types\n# ----------------------------------------------------------------------\n# The two parties to the agreement\ntype PartyKind = | Company(unit) | Stockholder(unit)\n\n# A generic representation of any party (used for alignment across standards)\ntype Party = {\n    kind: PartyKind,\n    name: string\n}\n\n# The material that the Stockholder may inspect\ntype ConfidentialMaterial = {\n    description: string,\n    is_confidential: bool\n}\n\n# A record of a request for disclosure (interrogatory, subpoena, etc.)\ntype DisclosureRequest = {\n    request_type: string,      # e.g. \"interrogatory\", \"subpoena\"\n    received: bool\n}\n\n# ----------------------------------------------------------------------\n# Entities\n# ----------------------------------------------------------------------\n@ The Company (Disclosing Party)\nentity company: Party\n\n@ The Stockholder (Receiving Party)\nentity stockholder: Party\n\n@ The Confidential Material produced by the Company\nentity confidential_material: ConfidentialMaterial\n\n@ A possible request that may force disclosure\nentity disclosure_request: DisclosureRequest\n\n# ----------------------------------------------------------------------\n# Functions\n# ----------------------------------------------------------------------\n# Returns true when the Stockholder is using the material for a purpose\n# that is “reasonably related to the Stockholder’s interests as a stockholder”.\nfunc purpose_is_reasonable(p: Party) -> bool:\n    # The standard does not enumerate the purposes, so we treat it as a\n    # placeholder that must be supplied by the environment.\n    true\n\n# Returns true when the Stockholder has disclosed the material to a third party\nfunc has_disclosed(p: Party) -> bool:\n    false\n\n# Returns true when the Stockholder has solicited a representative of the Company\nfunc has_solicited_company_representatives(p: Party) -> bool:\n    false\n\n# ----------------------------------------------------------------------\n# Rules\n# ----------------------------------------------------------------------\n# 1. Use of Confidential Material only for permissible purposes\nrule O stockholder_use_confidential_material_for_reasonable_purposes:\n    purpose_is_reasonable(stockholder) always\n\n# 2. Prohibit any disclosure, publication or communication of Confidential Material\nrule F stockholder_disclose_confidential_material:\n    not has_disclosed(stockholder) always\n\n# 3. If a legal demand for disclosure arises, the Stockholder must notify the Company\nrule O stockholder_notify_company_of_disclosure_demand:\n    case disclosure_request.received:\n        | true:\n            # The rule requires prompt notice; we model “prompt” as a Boolean\n            # that must be true in the trace where the request is received.\n            true always\n        | false:\n            true always\n    end\n\n# 4. Jurisdiction – both parties submit to the exclusive jurisdiction of the\n#    Delaware Court of Chancery\nrule O parties_submit_to_delaware_chancery:\n    true always   # The rule is a statement of agreement; no further state needed\n\n# 5. Remedies – the Company may seek specific performance or injunctive relief\nrule O company_may_seek_specific_performance_or_injunctive_relief:\n    true always\n\n# 6. Amendments – the Agreement may only be amended in writing signed by the\n#    party against whom enforcement is sought\nrule O amendment_must_be_written_and_signed:\n    true always\n\n# 7. Binding effect – the Agreement binds the Parties and their successors\nrule O agreement_is_binding_on_successors:\n    true always\n\n# 8. Governing law – the Agreement is governed by the laws of the State of Delaware\nrule O governing_law_is_delaware:\n    true always\n\n# 9. Execution – the Agreement may be executed in multiple counterparts\nrule O execution_may_be_in_multiple_counterparts:\n    true always\n\n# 10. Entire agreement – the Agreement supersedes all prior agreements\nrule O entire_agreement_supersedes_prior:\n    true always\n\n# 11. No solicitation of Company representatives (hypothesis)\nrule F stockholder_may_not_solicit_company_representatives:\n    not has_solicited_company_representatives(stockholder) always\n```",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_tmp_wxldrvppd7k",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": true,
+    "presence_penalty": 0,
+    "service_tier": "auto",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      }
+    },
+    "tool_choice": "auto",
+    "tools": [],
+    "top_logprobs": 0,
+    "top_p": 1.0,
+    "truncation": "disabled",
+    "usage": {
+      "cost": 0.00171044775,
+      "cost_details": {
+        "upstream_inference_cost": 0.001727725,
+        "upstream_inference_input_cost": 0.000417475,
+        "upstream_inference_output_cost": 0.00131025
+      },
+      "input_tokens": 6835,
+      "input_tokens_details": {
+        "cached_tokens": 5739
+      },
+      "is_byok": false,
+      "output_tokens": 1747,
+      "output_tokens_details": {
+        "reasoning_tokens": 885
+      },
+      "total_tokens": 8582
+    }
+  },
+  "scenario": "mercury-no-mcp-v1-dev",
+  "scenario_slug": "mercury-no-mcp-v1-dev",
+  "scope": "dev",
+  "split": "dev",
+  "system_prompt": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.system.md",
+  "system_prompt_sha256": "864e353f73c549da9ca043592fe1dd049a39f97ac4dd92fb34840768e3ad53cf",
+  "temperature": null,
+  "user_prompt_sha256": "af568fe9ac2616c59f58af38ac51bc093319126e0dec65bf4f5bfd3637a6dff0",
+  "user_prompt_template": "/home/bearpro/source/personal/standard-contradictions/mdl-bench/contracts-nli/prompts/no_align_v1.user.md"
+}
